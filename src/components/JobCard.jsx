@@ -2,10 +2,14 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { BENCH_COLORS } from '../data/jobs.js';
 
-export default function JobCard({ job, inCalendar = false, dragMode = 'regular', compact = false }) {
+export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false }) {
+  // Each calendar slot gets a unique draggable id to avoid dnd-kit duplicate-id crashes
+  // when the same job spans multiple slots. Sidebar cards just use job.id.
+  const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: job.id,
-    data: { job, source: inCalendar ? 'calendar' : 'sidebar', dragMode },
+    id: draggableId,
+    data: { jobId: job.id, job, source: inCalendar ? 'calendar' : 'sidebar', dragMode },
   });
 
   const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;

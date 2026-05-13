@@ -87,7 +87,8 @@ export default function App() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   function onDragStart({ active }) {
-    const job = jobs.find(j => j.id === active.id);
+    const jobId = active.data?.current?.jobId ?? active.id;
+    const job = jobs.find(j => j.id === jobId);
     setActiveJob(job || null);
     setIsDragging(true);
   }
@@ -96,7 +97,9 @@ export default function App() {
     setActiveJob(null);
     setIsDragging(false);
 
-    const job = jobs.find(j => j.id === active.id);
+    // Calendar cards have id "jobId::slotKey" — extract real job id from data
+    const jobId = active.data?.current?.jobId ?? active.id;
+    const job = jobs.find(j => j.id === jobId);
     if (!job) return;
     const source = active.data?.current?.source;
     const mode = active.data?.current?.dragMode || dragMode;

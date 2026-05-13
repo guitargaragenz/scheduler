@@ -22,7 +22,7 @@ function TimeSlot({ dayIdx, hour, job, externalEvent, isDropping }) {
         padding: 2, position: 'relative', background: colors.bg,
         borderLeft: `3px solid ${colors.border}`,
       }}>
-        <JobCard job={job} inCalendar dragMode="regular" compact />
+        <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact />
       </div>
     );
   }
