@@ -4,7 +4,7 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { parseCSV, RAW_CSV, BENCH_COLORS } from './data/jobs.js';
-import { getWeekDays, formatDateRange, slotKey, dayLabel } from './utils/calendar.js';
+import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours } from './utils/calendar.js';
 import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
 import {
   initGoogleApi, requestAuth, isSignedIn, signOut, listEvents,
@@ -131,110 +131,125 @@ export default function App() {
     }
   }
 
+  // Find N available 1-hr slots from startDay/startHour onwards, skipping occupied & blocked
+  function findAvailableSlots(startDayIdx, startHour, needed, tempSlots) {
+    const found = [];
+    for (let d = startDayIdx; d < weekDays.length && found.length < needed; d++) {
+      const date = weekDays[d];
+      const { start, end } = getWorkHours(date);
+      const sat = date.getDay() === 6;
+      const startH = d === startDayIdx ? Math.max(startHour, start) : start;
+      for (let h = startH; h < end && found.length < needed; h++) {
+        if (!sat && h === 12) continue; // skip lunch
+        if (!tempSlots[slotKey(d, h)]) found.push({ dayIdx: d, hour: h });
+      }
+    }
+    return found;
+  }
+
   function handleRegularDrop(job, dayIdx, hour, source) {
     const current = scheduledSlotsRef.current;
-    const needed = slotsNeeded(job);
+    const totalHours = Math.ceil(job.hours); // full hours needed, may span multiple days
 
-    // Build temp slots without the job's own current position
+    // Temp slots without job's own current position
     const tempSlots = { ...current };
-    if (source === 'calendar' && job.calendarSlot) {
-      const { dayIdx: od, hour: oh } = job.calendarSlot;
-      for (let h = oh; h < oh + needed; h++) delete tempSlots[slotKey(od, h)];
+    if (source === 'calendar') {
+      Object.keys(tempSlots).forEach(k => { if (tempSlots[k] === job.id) delete tempSlots[k]; });
     }
 
-    // Hard constraints first (outside hours, lunch)
-    const check = canPlace(dayIdx, hour, job, weekDays, tempSlots);
-    if (!check.ok && !check.reason.startsWith('Slot occupied')) {
-      showToast(`⚠ Can't place here — ${check.reason}`);
+    // Validate the drop point isn't a hard-blocked area (lunch/outside hours)
+    const date = weekDays[dayIdx];
+    const { start, end } = getWorkHours(date);
+    if (hour < start || hour >= end) {
+      showToast('⚠ Outside work hours — pick a slot inside the work day');
       return;
     }
 
-    // Collect any jobs that will be bumped out of the target slots
-    const bumped = [];
-    for (let h = hour; h < hour + needed; h++) {
-      const occupant = tempSlots[slotKey(dayIdx, h)];
-      if (occupant && occupant !== job.id && !bumped.includes(occupant)) {
-        bumped.push(occupant);
-      }
+    // Find available slots starting from the drop point
+    const slots = findAvailableSlots(dayIdx, hour, totalHours, tempSlots);
+    if (slots.length < totalHours) {
+      showToast(`⚠ Not enough space — only ${slots.length} of ${totalHours} hours free from here to end of week`);
+      return;
     }
 
-    // Apply atomically: clear old position, bump occupants, place job
+    // Describe placement in a friendly way
+    const firstDay = weekDays[slots[0].dayIdx].toLocaleDateString('en-NZ', { weekday: 'short' });
+    const lastDay  = weekDays[slots[slots.length - 1].dayIdx].toLocaleDateString('en-NZ', { weekday: 'short' });
+    const spanDesc = slots[0].dayIdx === slots[slots.length - 1].dayIdx
+      ? `${firstDay} ${slots[0].hour}:00–${slots[slots.length - 1].hour + 1}:00`
+      : `${firstDay} ${slots[0].hour}:00 → ${lastDay} ${slots[slots.length - 1].hour + 1}:00`;
+
+    // Atomically clear old slots and write new ones
     setScheduledSlots(prev => {
       const next = { ...prev };
-      // Clear own old slots
-      if (source === 'calendar' && job.calendarSlot) {
-        const { dayIdx: od, hour: oh } = job.calendarSlot;
-        for (let h = oh; h < oh + needed; h++) delete next[slotKey(od, h)];
+      if (source === 'calendar') {
+        Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       }
-      // Clear bumped jobs' slots
-      bumped.forEach(bid => {
-        Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
-      });
-      // Write job into new slot
-      for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
+      slots.forEach(({ dayIdx: d, hour: h }) => { next[slotKey(d, h)] = job.id; });
       return next;
     });
-
-    // Mark bumped jobs as unscheduled
-    if (bumped.length > 0) {
-      setJobs(prev => prev.map(j =>
-        bumped.includes(j.id) ? { ...j, scheduled: false, calendarSlot: null } : j
-      ));
-      const bumpedNames = bumped.map(id => `#${id}`).join(', ');
-      showToast(`Placed #${job.job} — moved ${bumpedNames} back to sidebar`);
-      addChangelog(`#${job.job} placed at ${weekDays[dayIdx].toLocaleDateString('en-NZ', { weekday: 'short' })} ${hour}:00, bumped ${bumpedNames} to sidebar`);
-    }
-
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slots[0] } : j
     ));
-    const d = weekDays[dayIdx];
-    if (bumped.length === 0) addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${d.toLocaleDateString('en-NZ', { weekday: 'short' })} ${hour}:00`);
+    showToast(`#${job.job} placed — ${spanDesc}`);
+    addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
   }
 
   function handleUrgentDrop(job, dayIdx, hour, source) {
     const current = scheduledSlotsRef.current;
     const tempSlots = { ...current };
-    if (source === 'calendar' && job.calendarSlot) {
-      const { dayIdx: od, hour: oh } = job.calendarSlot;
-      const needed = slotsNeeded(job);
-      for (let h = oh; h < oh + needed; h++) delete tempSlots[slotKey(od, h)];
+    // Remove job's own slots from consideration
+    if (source === 'calendar') {
+      Object.keys(tempSlots).forEach(k => { if (tempSlots[k] === job.id) delete tempSlots[k]; });
     }
-    const result = scheduleUrgent(job, dayIdx, hour, weekDays, tempSlots, {});
-    if (!result) {
-      showToast(`⚠ Can't place urgent job — outside work hours`);
+
+    const date = weekDays[dayIdx];
+    const { start, end } = getWorkHours(date);
+    const needed = Math.min(Math.ceil(job.hours), 3); // max 3hr continuous block
+    if (hour < start || hour + needed > end) {
+      showToast('⚠ Cannot place urgent job — outside work hours');
       return;
     }
 
-    const { moved } = result;
+    // Collect jobs in the target slots
+    const displaced = [];
+    for (let h = hour; h < hour + needed; h++) {
+      const occupant = tempSlots[slotKey(dayIdx, h)];
+      if (occupant && !displaced.includes(occupant)) displaced.push(occupant);
+    }
+
+    // Atomically: clear old, clear displaced, place urgent job
     setScheduledSlots(prev => {
       const next = { ...prev };
-      // Remove displaced jobs from their slots
-      moved.forEach(movedId => {
-        Object.keys(next).forEach(k => { if (next[k] === movedId) delete next[k]; });
-      });
-      // Clear old slots for job being moved from calendar
-      if (source === 'calendar' && job.calendarSlot) {
-        const { dayIdx: od, hour: oh } = job.calendarSlot;
-        const needed = slotsNeeded(job);
-        for (let h = oh; h < oh + needed; h++) delete next[slotKey(od, h)];
+      if (source === 'calendar') {
+        Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       }
+      displaced.forEach(bid => {
+        Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
+      });
+      for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
       return next;
     });
 
-    if (moved.length > 0) {
+    // Mark displaced jobs as unscheduled (back to sidebar)
+    if (displaced.length > 0) {
       setJobs(prev => prev.map(j =>
-        moved.includes(j.id) ? { ...j, scheduled: false, calendarSlot: null } : j
+        displaced.includes(j.id) ? { ...j, scheduled: false, calendarSlot: null } : j
       ));
-      const movedNames = moved.map(id => `#${id}`).join(', ');
-      const d = weekDays[dayIdx];
-      const dayName = d.toLocaleDateString('en-NZ', { weekday: 'short' });
-      const msg = `Job #${job.job} scheduled ${dayName} ${hour}:00–${hour + slotsNeeded(job)}:00. Moved ${movedNames} back to sidebar.`;
-      showToast(msg);
-      addChangelog(msg);
     }
 
-    placeJob(job, dayIdx, hour);
+    // Place the urgent job and mark it scheduled
+    setJobs(prev => prev.map(j =>
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
+    ));
+
+    const d = weekDays[dayIdx];
+    const dayName = d.toLocaleDateString('en-NZ', { weekday: 'short' });
+    const msg = displaced.length > 0
+      ? `🚨 #${job.job} forced to ${dayName} ${hour}:00. Moved ${displaced.map(id => `#${id}`).join(', ')} back to sidebar.`
+      : `🚨 #${job.job} scheduled ${dayName} ${hour}:00–${hour + needed}:00`;
+    showToast(msg);
+    addChangelog(msg);
   }
 
   function placeJob(job, dayIdx, hour) {
