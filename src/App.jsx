@@ -149,7 +149,8 @@ export default function App() {
 
   function handleRegularDrop(job, dayIdx, hour, source) {
     const current = scheduledSlotsRef.current;
-    const totalHours = Math.ceil(job.hours); // full hours needed, may span multiple days
+    // Round to nearest whole hour — 2.5h → 3 slots, 1.8h → 2 slots
+    const totalHours = Math.round(job.hours);
 
     // Temp slots without job's own current position
     const tempSlots = { ...current };
@@ -186,6 +187,7 @@ export default function App() {
         Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       }
       slots.forEach(({ dayIdx: d, hour: h }) => { next[slotKey(d, h)] = job.id; });
+      scheduledSlotsRef.current = next; // update ref immediately so next drag is never stale
       return next;
     });
     setJobs(prev => prev.map(j =>
@@ -228,6 +230,7 @@ export default function App() {
         Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
       });
       for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
+      scheduledSlotsRef.current = next; // keep ref in sync immediately
       return next;
     });
 
@@ -268,12 +271,10 @@ export default function App() {
   }
 
   function unscheduleJob(job) {
-    if (!job.calendarSlot) return;
-    const { dayIdx, hour } = job.calendarSlot;
-    const needed = slotsNeeded(job);
+    // Clear ALL slots for this job — it may be split across non-consecutive slots
     setScheduledSlots(prev => {
       const next = { ...prev };
-      for (let h = hour; h < hour + needed; h++) delete next[slotKey(dayIdx, h)];
+      Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       return next;
     });
     setJobs(prev => prev.map(j =>
