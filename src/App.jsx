@@ -21,7 +21,6 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function App() {
   const [jobs, setJobs] = useState(() => parseCSV(RAW_CSV));
   const [scheduledSlots, setScheduledSlots] = useState({}); // slotKey -> jobId
-  const scheduledSlotsRef = useRef({});  // always-current mirror for drag handlers
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
   const [dragMode, setDragMode] = useState('regular');
   const [activeJob, setActiveJob] = useState(null);
@@ -79,9 +78,6 @@ export default function App() {
     pollRef.current = setInterval(poll, 30000);
     return () => clearInterval(pollRef.current);
   }, [signedIn, weekDays]);
-
-  // Keep ref in sync so drag handlers always read current slot state
-  useEffect(() => { scheduledSlotsRef.current = scheduledSlots; }, [scheduledSlots]);
 
   const showToast = useCallback((msg) => setToast(msg), []);
   const addChangelog = useCallback((msg) => {
@@ -148,7 +144,7 @@ export default function App() {
   }
 
   function handleRegularDrop(job, dayIdx, hour, source) {
-    const current = scheduledSlotsRef.current;
+    const current = scheduledSlots;
     // Round to nearest whole hour — 2.5h → 3 slots, 1.8h → 2 slots
     const totalHours = Math.round(job.hours);
 
@@ -187,7 +183,7 @@ export default function App() {
         Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       }
       slots.forEach(({ dayIdx: d, hour: h }) => { next[slotKey(d, h)] = job.id; });
-      scheduledSlotsRef.current = next; // update ref immediately so next drag is never stale
+      scheduledSlots = next; // update ref immediately so next drag is never stale
       return next;
     });
     setJobs(prev => prev.map(j =>
@@ -198,7 +194,7 @@ export default function App() {
   }
 
   function handleUrgentDrop(job, dayIdx, hour, source) {
-    const current = scheduledSlotsRef.current;
+    const current = scheduledSlots;
     const tempSlots = { ...current };
     // Remove job's own slots from consideration
     if (source === 'calendar') {
@@ -230,7 +226,6 @@ export default function App() {
         Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
       });
       for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
-      scheduledSlotsRef.current = next; // keep ref in sync immediately
       return next;
     });
 
