@@ -130,8 +130,26 @@ export default function App() {
     }
   }
 
+  // Build a set of slot keys blocked by Google Calendar external events
+  function buildExternalBlockedSlots() {
+    const blocked = new Set();
+    externalEvents.forEach(ev => {
+      // Skip GGNZ-created events (they're already in scheduledSlots)
+      if (ev.summary?.startsWith('#')) return;
+      const start = new Date(ev.start?.dateTime || ev.start?.date);
+      const end   = new Date(ev.end?.dateTime   || ev.end?.date);
+      const dayIdx = weekDays.findIndex(d => d.toDateString() === start.toDateString());
+      if (dayIdx < 0) return;
+      for (let h = start.getHours(); h < end.getHours(); h++) {
+        blocked.add(slotKey(dayIdx, h));
+      }
+    });
+    return blocked;
+  }
+
   // Find N available 1-hr slots from startDay/startHour onwards, skipping occupied & blocked
   function findAvailableSlots(startDayIdx, startHour, needed, tempSlots) {
+    const externalBlocked = buildExternalBlockedSlots();
     const found = [];
     for (let d = startDayIdx; d < weekDays.length && found.length < needed; d++) {
       const date = weekDays[d];
@@ -140,7 +158,10 @@ export default function App() {
       const startH = d === startDayIdx ? Math.max(startHour, start) : start;
       for (let h = startH; h < end && found.length < needed; h++) {
         if (!sat && h === 12) continue; // skip lunch
-        if (!tempSlots[slotKey(d, h)]) found.push({ dayIdx: d, hour: h });
+        const key = slotKey(d, h);
+        if (tempSlots[key]) continue;        // occupied by an app job
+        if (externalBlocked.has(key)) continue; // occupied by a Google Calendar event
+        found.push({ dayIdx: d, hour: h });
       }
     }
     return found;
