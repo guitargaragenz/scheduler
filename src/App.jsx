@@ -186,7 +186,6 @@ export default function App() {
         Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
       }
       slots.forEach(({ dayIdx: d, hour: h }) => { next[slotKey(d, h)] = job.id; });
-      scheduledSlots = next; // update ref immediately so next drag is never stale
       return next;
     });
     setJobs(prev => prev.map(j =>
