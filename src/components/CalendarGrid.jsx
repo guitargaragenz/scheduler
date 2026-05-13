@@ -59,7 +59,7 @@ function LunchSlot() {
       borderLeft: '3px solid #ef4444',
     }}>
       <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-        LUNCH LOCKED
+        LUNCH 12–1 PM
       </span>
     </div>
   );

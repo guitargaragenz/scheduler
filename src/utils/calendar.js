@@ -3,7 +3,7 @@ export const WORK_HOURS = {
   weekday: { start: 10, end: 18 }, // 10am-6pm Mon-Fri
   saturday: { start: 10, end: 14 }, // 10am-2pm Sat
 };
-export const LUNCH = { start: 12.5, end: 13.75 }; // 12:30-1:45pm
+export const LUNCH = { start: 12, end: 13 }; // 12:00-1:00pm
 
 export function getWeekDays(referenceDate = new Date()) {
   const days = [];
@@ -48,8 +48,8 @@ export function isLunchTime(hour) {
 }
 
 export function isLunchSlot(hour) {
-  // 12:00 slot overlaps lunch (12:30-1:45), 13:00 slot is fully in lunch
-  return hour === 12 || hour === 13;
+  // 12:00-1:00 PM locked
+  return hour === 12;
 }
 
 export function formatHour(h) {
