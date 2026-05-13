@@ -50,16 +50,21 @@ function TimeSlot({ dayIdx, hour, job, externalEvent, isDropping }) {
   );
 }
 
-function LunchSlot() {
+function LunchSlot({ dayIdx }) {
+  // Give lunch a droppable ID so App.jsx can catch and reject it explicitly
+  const { setNodeRef, isOver } = useDroppable({ id: `lunch-${dayIdx}-12`, data: { isLunch: true } });
   return (
-    <div style={{
+    <div ref={setNodeRef} style={{
       height: SLOT_HEIGHT, borderBottom: '1px solid #1e293b',
-      background: 'repeating-linear-gradient(45deg, rgba(239,68,68,0.08) 0px, rgba(239,68,68,0.08) 4px, transparent 4px, transparent 10px)',
+      background: isOver
+        ? 'rgba(239,68,68,0.25)'
+        : 'repeating-linear-gradient(45deg, rgba(239,68,68,0.08) 0px, rgba(239,68,68,0.08) 4px, transparent 4px, transparent 10px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       borderLeft: '3px solid #ef4444',
+      transition: 'background 0.1s',
     }}>
       <span style={{ fontSize: 9, color: '#ef4444', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-        LUNCH 12–1 PM
+        🔒 LUNCH 12–1 PM
       </span>
     </div>
   );
@@ -148,7 +153,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, externalEvents, 
               if (!sat && isLunchSlot(hour)) {
                 return (
                   <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #1e293b' }}>
-                    <LunchSlot />
+                    <LunchSlot dayIdx={dayIdx} />
                   </div>
                 );
               }
