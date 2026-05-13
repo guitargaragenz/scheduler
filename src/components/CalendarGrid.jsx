@@ -31,12 +31,18 @@ function TimeSlot({ dayIdx, hour, job, externalEvent, isDropping }) {
     return (
       <div style={{
         height: SLOT_HEIGHT, borderBottom: '1px solid #1e293b',
-        padding: 4, background: '#1e293b',
+        padding: '3px 6px', background: '#1a2234',
         borderLeft: '3px solid #475569',
+        display: 'flex', alignItems: 'center',
       }}>
-        <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, lineHeight: 1.3 }}>
-          {externalEvent.summary?.slice(0, 40)}
-        </div>
+        {!externalEvent._isSpan && (
+          <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, lineHeight: 1.3, overflow: 'hidden' }}>
+            {externalEvent.summary?.slice(0, 36)}
+          </div>
+        )}
+        {externalEvent._isSpan && (
+          <div style={{ fontSize: 9, color: '#475569', fontStyle: 'italic' }}>↕ cont.</div>
+        )}
       </div>
     );
   }
@@ -80,16 +86,20 @@ export default function CalendarGrid({ weekDays, scheduledJobs, externalEvents, 
     slotJobMap[key] = jobId;
   });
 
-  // Map external events by day+hour
+  // Map external events across ALL their hours so every blocked slot shows as occupied
   const extMap = {};
   if (externalEvents) {
     externalEvents.forEach(ev => {
       const start = new Date(ev.start?.dateTime || ev.start?.date);
+      const end   = new Date(ev.end?.dateTime   || ev.end?.date);
       const dayIdx = weekDays.findIndex(d => d.toDateString() === start.toDateString());
       if (dayIdx < 0) return;
-      const hour = start.getHours();
-      const key = slotKey(dayIdx, hour);
-      extMap[key] = ev;
+      const startH = start.getHours();
+      const endH   = end.getHours() + (end.getMinutes() > 0 ? 1 : 0); // round up partial hours
+      for (let h = startH; h < endH; h++) {
+        const key = slotKey(dayIdx, h);
+        if (!extMap[key]) extMap[key] = { ...ev, _isSpan: h !== startH }; // tag continuation slots
+      }
     });
   }
 
