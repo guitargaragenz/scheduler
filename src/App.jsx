@@ -21,6 +21,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export default function App() {
   const [jobs, setJobs] = useState(() => parseCSV(RAW_CSV));
   const [scheduledSlots, setScheduledSlots] = useState({}); // slotKey -> jobId
+  const scheduledSlotsRef = useRef({});  // always-current mirror for drag handlers
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
   const [dragMode, setDragMode] = useState('regular');
   const [activeJob, setActiveJob] = useState(null);
@@ -79,6 +80,9 @@ export default function App() {
     return () => clearInterval(pollRef.current);
   }, [signedIn, weekDays]);
 
+  // Keep ref in sync so drag handlers always read current slot state
+  useEffect(() => { scheduledSlotsRef.current = scheduledSlots; }, [scheduledSlots]);
+
   const showToast = useCallback((msg) => setToast(msg), []);
   const addChangelog = useCallback((msg) => {
     setChangelog(prev => [...prev, { ts: Date.now(), msg }]);
@@ -122,9 +126,9 @@ export default function App() {
   }
 
   function handleRegularDrop(job, dayIdx, hour, source) {
-    // Build a temp slots map without the job's current position so validation
-    // doesn't block the job from moving to an adjacent or same-area slot
-    const tempSlots = { ...scheduledSlots };
+    // Use ref for current slots — avoids stale closure from async state updates
+    const current = scheduledSlotsRef.current;
+    const tempSlots = { ...current };
     if (source === 'calendar' && job.calendarSlot) {
       const { dayIdx: od, hour: oh } = job.calendarSlot;
       const needed = slotsNeeded(job);
@@ -134,25 +138,31 @@ export default function App() {
     const check = canPlace(dayIdx, hour, job, weekDays, tempSlots);
     if (!check.ok) {
       showToast(`⚠ Can't place here — ${check.reason}`);
-      // Job stays in its original position — nothing was mutated yet
-      return;
+      return; // nothing mutated — job stays put
     }
 
-    // Valid drop — clear old calendar slots then place at new slot
-    if (source === 'calendar' && job.calendarSlot) {
-      const { dayIdx: od, hour: oh } = job.calendarSlot;
-      const needed = slotsNeeded(job);
-      setScheduledSlots(prev => {
-        const next = { ...prev };
+    // Valid — clear old slots then write new ones atomically
+    setScheduledSlots(prev => {
+      const next = { ...prev };
+      if (source === 'calendar' && job.calendarSlot) {
+        const { dayIdx: od, hour: oh } = job.calendarSlot;
+        const needed = slotsNeeded(job);
         for (let h = oh; h < oh + needed; h++) delete next[slotKey(od, h)];
-        return next;
-      });
-    }
-    placeJob(job, dayIdx, hour);
+      }
+      const needed = slotsNeeded(job);
+      for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
+      return next;
+    });
+    setJobs(prev => prev.map(j =>
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
+    ));
+    const d = weekDays[dayIdx];
+    addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${d.toLocaleDateString('en-NZ', { weekday: 'short' })} ${hour}:00`);
   }
 
   function handleUrgentDrop(job, dayIdx, hour, source) {
-    const tempSlots = { ...scheduledSlots };
+    const current = scheduledSlotsRef.current;
+    const tempSlots = { ...current };
     if (source === 'calendar' && job.calendarSlot) {
       const { dayIdx: od, hour: oh } = job.calendarSlot;
       const needed = slotsNeeded(job);
