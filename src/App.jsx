@@ -95,18 +95,18 @@ export default function App() {
   function onDragEnd({ active, over }) {
     setActiveJob(null);
     setIsDragging(false);
-    if (!over) return;
 
     const job = jobs.find(j => j.id === active.id);
     if (!job) return;
     const source = active.data?.current?.source;
     const mode = active.data?.current?.dragMode || dragMode;
 
-    // Dropped on sidebar — unschedule
+    // Dropped outside all droppable zones — leave job exactly where it was
+    if (!over) return;
+
+    // Dropped back on sidebar — unschedule from calendar
     if (over.id === 'sidebar') {
-      if (source === 'calendar') {
-        unscheduleJob(job);
-      }
+      if (source === 'calendar') unscheduleJob(job);
       return;
     }
 
@@ -114,7 +114,31 @@ export default function App() {
     const { dayIdx, hour } = over.data?.current || {};
     if (dayIdx === undefined || hour === undefined) return;
 
-    // If moving from calendar, free old slots first
+    if (mode === 'urgent') {
+      handleUrgentDrop(job, dayIdx, hour, source);
+    } else {
+      handleRegularDrop(job, dayIdx, hour, source);
+    }
+  }
+
+  function handleRegularDrop(job, dayIdx, hour, source) {
+    // Build a temp slots map without the job's current position so validation
+    // doesn't block the job from moving to an adjacent or same-area slot
+    const tempSlots = { ...scheduledSlots };
+    if (source === 'calendar' && job.calendarSlot) {
+      const { dayIdx: od, hour: oh } = job.calendarSlot;
+      const needed = slotsNeeded(job);
+      for (let h = oh; h < oh + needed; h++) delete tempSlots[slotKey(od, h)];
+    }
+
+    const check = canPlace(dayIdx, hour, job, weekDays, tempSlots);
+    if (!check.ok) {
+      showToast(`⚠ Can't place here — ${check.reason}`);
+      // Job stays in its original position — nothing was mutated yet
+      return;
+    }
+
+    // Valid drop — clear old calendar slots then place at new slot
     if (source === 'calendar' && job.calendarSlot) {
       const { dayIdx: od, hour: oh } = job.calendarSlot;
       const needed = slotsNeeded(job);
@@ -124,25 +148,17 @@ export default function App() {
         return next;
       });
     }
-
-    if (mode === 'urgent') {
-      handleUrgentDrop(job, dayIdx, hour);
-    } else {
-      handleRegularDrop(job, dayIdx, hour, source);
-    }
-  }
-
-  function handleRegularDrop(job, dayIdx, hour, source) {
-    const check = canPlace(dayIdx, hour, job, weekDays, scheduledSlots);
-    if (!check.ok) {
-      showToast(`⚠ Can't place here — ${check.reason}`);
-      return;
-    }
     placeJob(job, dayIdx, hour);
   }
 
-  function handleUrgentDrop(job, dayIdx, hour) {
-    const result = scheduleUrgent(job, dayIdx, hour, weekDays, scheduledSlots, {});
+  function handleUrgentDrop(job, dayIdx, hour, source) {
+    const tempSlots = { ...scheduledSlots };
+    if (source === 'calendar' && job.calendarSlot) {
+      const { dayIdx: od, hour: oh } = job.calendarSlot;
+      const needed = slotsNeeded(job);
+      for (let h = oh; h < oh + needed; h++) delete tempSlots[slotKey(od, h)];
+    }
+    const result = scheduleUrgent(job, dayIdx, hour, weekDays, tempSlots, {});
     if (!result) {
       showToast(`⚠ Can't place urgent job — outside work hours`);
       return;
@@ -151,10 +167,16 @@ export default function App() {
     const { moved } = result;
     setScheduledSlots(prev => {
       const next = { ...prev };
-      // Remove moved jobs from their slots
+      // Remove displaced jobs from their slots
       moved.forEach(movedId => {
         Object.keys(next).forEach(k => { if (next[k] === movedId) delete next[k]; });
       });
+      // Clear old slots for job being moved from calendar
+      if (source === 'calendar' && job.calendarSlot) {
+        const { dayIdx: od, hour: oh } = job.calendarSlot;
+        const needed = slotsNeeded(job);
+        for (let h = oh; h < oh + needed; h++) delete next[slotKey(od, h)];
+      }
       return next;
     });
 
