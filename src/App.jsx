@@ -15,6 +15,7 @@ import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobCard from './components/JobCard.jsx';
+import JobDrawer from './components/JobDrawer.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -32,7 +33,20 @@ export default function App() {
   const [externalEvents, setExternalEvents] = useState([]);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | error
   const [isDragging, setIsDragging] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
+  const [highlightedJobId, setHighlightedJobId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const pollRef = useRef(null);
+
+  // Auto-close focus mode once all split cards are scheduled
+  useEffect(() => {
+    if (!highlightedJobId) return;
+    const subtasks = jobs.filter(j => j.parentId === highlightedJobId);
+    if (subtasks.length > 0 && subtasks.every(j => j.scheduled)) {
+      setHighlightedJobId(null);
+      setSidebarOpen(false);
+    }
+  }, [jobs, highlightedJobId]);
 
   // Init Google API
   useEffect(() => {
@@ -263,7 +277,6 @@ export default function App() {
     setJobs(prev => prev.map(j =>
       j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
     ));
-
     const d = weekDays[dayIdx];
     const dayName = d.toLocaleDateString('en-NZ', { weekday: 'short' });
     const msg = displaced.length > 0
@@ -348,6 +361,56 @@ export default function App() {
     setExternalEvents([]);
   }
 
+  function handleSaveDrawer(parentJob, rows) {
+    const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
+
+    if (parentJob.isSubtask) {
+      const row = rows[0];
+      const sess = row.sessions[0];
+      setJobs(prev => prev.map(j => j.id === parentJob.id
+        ? { ...j, hours: Number(sess.hours), sessionNote: sess.note }
+        : j
+      ));
+      return;
+    }
+
+    if (totalCards === 1) {
+      const row = rows[0];
+      const sess = row.sessions[0];
+      setJobs(prev => prev.map(j => j.id === parentJob.id
+        ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note }
+        : j
+      ));
+      return;
+    }
+
+    const subtasks = [];
+    rows.forEach(row => {
+      row.sessions.forEach((sess, si) => {
+        subtasks.push({
+          ...parentJob,
+          id: `${parentJob.id}_${row.bench}_${si}`,
+          bench: row.bench,
+          hours: Number(sess.hours),
+          sessionIndex: si + 1,
+          sessionTotal: row.sessions.length,
+          sessionNote: sess.note || '',
+          parentId: parentJob.id,
+          isSubtask: true,
+          scheduled: false,
+          calendarSlot: null,
+        });
+      });
+    });
+
+    setJobs(prev => [
+      ...prev.map(j => j.id === parentJob.id ? { ...j, isSplit: true } : j),
+      ...subtasks,
+    ]);
+    setHighlightedJobId(parentJob.id);
+    setSidebarOpen(true);
+  }
+
   function handleCsvUpload(csvText) {
     try {
       const newJobs = parseCSV(csvText);
@@ -389,8 +452,16 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>
-            {formatDateRange(weekDays)}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <button
+              onClick={() => setWeekDays(getWeekDays(new Date(weekDays[0].getTime() - 7 * 86400000)))}
+              style={{ background: 'none', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', fontSize: 16, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >‹</button>
+            <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 160, textAlign: 'center' }}>{formatDateRange(weekDays)}</span>
+            <button
+              onClick={() => setWeekDays(getWeekDays(new Date(weekDays[0].getTime() + 7 * 86400000)))}
+              style={{ background: 'none', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', fontSize: 16, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >›</button>
           </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -442,6 +513,11 @@ export default function App() {
             dragMode={dragMode}
             onDragModeChange={setDragMode}
             onCsvUpload={handleCsvUpload}
+            highlightedJobId={highlightedJobId}
+            onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
+            onJobClick={setEditingJob}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(o => !o)}
           />
         </div>
       </div>
@@ -468,6 +544,14 @@ export default function App() {
       </DragOverlay>
 
       <Toast message={toast} onDismiss={() => setToast('')} />
+
+      {editingJob && (
+        <JobDrawer
+          job={editingJob}
+          onClose={() => setEditingJob(null)}
+          onSave={handleSaveDrawer}
+        />
+      )}
 
       {showSettings && (
         <SettingsModal

@@ -1,6 +1,6 @@
 // Work hours config
 export const WORK_HOURS = {
-  weekday: { start: 10, end: 18 }, // 10am-6pm Mon-Fri
+  weekday: { start: 10, end: 19 }, // 10am-7pm Mon-Fri (last bookable slot is 6-7pm)
   saturday: { start: 10, end: 14 }, // 10am-2pm Sat
 };
 export const LUNCH = { start: 12, end: 13 }; // 12:00-1:00pm

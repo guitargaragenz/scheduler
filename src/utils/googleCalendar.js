@@ -68,14 +68,19 @@ export function signOut() {
 export async function listEvents(timeMin, timeMax) {
   if (!isSignedIn()) return [];
   try {
-    const resp = await window.gapi.client.calendar.events.list({
-      calendarId: CALENDAR_ID,
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-    return resp.result.items || [];
+    // Fetch all calendars then merge events from each
+    const calList = await window.gapi.client.calendar.calendarList.list();
+    const calendars = calList.result.items || [];
+    const results = await Promise.all(calendars.map(cal =>
+      window.gapi.client.calendar.events.list({
+        calendarId: cal.id,
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      }).then(r => r.result.items || []).catch(() => [])
+    ));
+    return results.flat();
   } catch (e) {
     console.error('Calendar list error:', e);
     return [];
