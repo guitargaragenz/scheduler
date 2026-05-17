@@ -542,8 +542,11 @@ export default function App() {
   function handleCsvUpload(csvText) {
     try {
       const newJobs = parseCSV(csvText);
+      justSavedAt.current = Date.now();
       setJobs(newJobs);
       setScheduledSlots({});
+      // Save immediately so Firebase has fresh data before any echo arrives
+      if (isFirebaseConfigured()) saveSchedule(newJobs, {});
       showToast(`Loaded ${newJobs.length} jobs from CSV`);
       addChangelog(`CSV uploaded — loaded ${newJobs.length} jobs`);
     } catch (e) {

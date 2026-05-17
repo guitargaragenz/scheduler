@@ -26,15 +26,37 @@ export function hoursRange(h) {
 }
 
 export function parseCSV(csvText) {
-  const lines = csvText.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
+  // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
+  const rows = [];
+  let row = [], field = '', inQuote = false;
+  const text = csvText.trim();
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuote) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQuote = false; }
+      else { field += ch; }
+    } else if (ch === '"') {
+      inQuote = true;
+    } else if (ch === ',') {
+      row.push(field.trim()); field = '';
+    } else if (ch === '\n') {
+      row.push(field.trim()); rows.push(row); row = []; field = '';
+    } else if (ch !== '\r') {
+      field += ch;
+    }
+  }
+  if (field || row.length) { row.push(field.trim()); rows.push(row); }
+  if (rows.length < 2) return [];
+
+  const headers = rows[0];
   const jobs = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const row = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g) || [];
-    const clean = row.map(v => v ? v.replace(/^"|"$/g, '').trim() : '');
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i];
+    if (cells.length < 2) continue;
     const obj = {};
-    headers.forEach((h, idx) => { obj[h] = clean[idx] || ''; });
+    headers.forEach((h, idx) => { obj[h] = cells[idx] || ''; });
 
     const status = obj.Status || '';
     const hours = parseFloat(obj.Hours) || 0;
