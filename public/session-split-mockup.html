@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Session Split Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+  h1 { font-size: 15px; color: #94a3b8; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+  .option { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .option-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #64748b; margin-bottom: 4px; }
+  .option-title { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 16px; }
+
+  /* ── Drawer mockup ── */
+  .drawer { background: #0f172a; border-radius: 8px; border: 1px solid #334155; overflow: hidden; margin-bottom: 14px; }
+  .drawer-header { background: #1e293b; padding: 10px 12px; font-size: 12px; font-weight: 600; color: #94a3b8; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+  .drawer-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .bench-row { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; background: #1e293b; border: 1px solid #334155; }
+  .bench-color { width: 4px; border-radius: 2px; align-self: stretch; flex-shrink: 0; }
+  .bench-name { font-size: 12px; font-weight: 600; flex: 1; }
+  .bench-hrs { font-size: 11px; color: #64748b; }
+  .spinner { display: flex; align-items: center; gap: 4px; background: #0f172a; border: 1px solid #475569; border-radius: 4px; padding: 2px 6px; font-size: 12px; color: #cbd5e1; }
+  .spinner-btn { color: #64748b; cursor: pointer; font-size: 14px; line-height: 1; }
+  .sessions-label { font-size: 10px; color: #64748b; white-space: nowrap; }
+
+  /* session rows for option A expanded */
+  .session-sub { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-left: 12px; }
+  .session-sub-row { display: flex; align-items: center; gap: 6px; }
+  .session-dot { width: 6px; height: 6px; border-radius: 50%; background: #475569; flex-shrink: 0; }
+  .session-hrs-input { background: #0f172a; border: 1px solid #475569; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #cbd5e1; width: 52px; text-align: center; }
+  .session-tag { font-size: 10px; color: #94a3b8; }
+
+  .save-btn { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; align-self: flex-end; }
+
+  /* ── Focus mode banner ── */
+  .focus-banner { background: #14532d; border: 1px solid #166534; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #86efac; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .focus-x { color: #4ade80; font-size: 14px; cursor: pointer; }
+
+  /* ── Job cards ── */
+  .cards { display: flex; flex-direction: column; gap: 6px; }
+  .card { border-radius: 6px; padding: 8px 10px; font-size: 11px; border-left: 4px solid; display: flex; justify-content: space-between; align-items: center; cursor: grab; }
+  .card-title { font-weight: 600; }
+  .card-sub { color: #94a3b8; font-size: 10px; }
+  .card-hrs { font-size: 10px; opacity: .7; }
+  .card-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-top: 6px; margin-bottom: 2px; padding-left: 2px; }
+  .drag-hint { font-size: 10px; color: #64748b; text-align: center; margin-top: 8px; }
+
+  /* colours */
+  .luthier  { border-color: #a78bfa; background: rgba(167,139,250,.08); }
+  .electronics { border-color: #38bdf8; background: rgba(56,189,248,.08); }
+  .refret { border-color: #fb923c; background: rgba(251,146,60,.08); }
+
+  /* option B extras */
+  .expand-btn { font-size: 10px; color: #60a5fa; cursor: pointer; background: none; border: none; padding: 0; }
+  .sub-drawer { background: #0f172a; border-radius: 6px; border: 1px solid #334155; padding: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px; }
+  .sub-drawer-title { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+
+  /* option C extras */
+  .split-sessions-btn { font-size: 10px; color: #60a5fa; border: 1px solid #1d4ed8; border-radius: 4px; padding: 2px 6px; background: rgba(37,99,235,.1); cursor: pointer; white-space: nowrap; }
+  .mini-drawer { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px; margin-top: 6px; }
+  .mini-drawer-title { font-size: 10px; color: #60a5fa; font-weight: 700; margin-bottom: 6px; }
+
+  .divider { border: none; border-top: 1px solid #334155; margin: 4px 0; }
+
+  .badge { display: inline-block; background: #1d4ed8; color: #bfdbfe; font-size: 9px; font-weight: 700; border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+  .badge-green { background: #166534; color: #86efac; }
+</style>
+</head>
+<body>
+<h1>Session Split — Option Comparison</h1>
+<div class="grid">
+
+  <!-- ══════════ OPTION A ══════════ -->
+  <div class="option">
+    <div class="option-label">Option A</div>
+    <div class="option-title">Sessions count per bench row</div>
+
+    <!-- Drawer -->
+    <div class="drawer">
+      <div class="drawer-header">
+        <span>#1042 — Martin D-28 Restoration</span>
+        <span style="color:#64748b;font-size:11px">Edit / Split</span>
+      </div>
+      <div class="drawer-body">
+
+        <div class="bench-row">
+          <div class="bench-color" style="background:#a78bfa"></div>
+          <div>
+            <div class="bench-name">Luthier</div>
+            <div class="bench-hrs">Total hrs</div>
+          </div>
+          <div class="spinner"><span class="spinner-btn">−</span> 6h <span class="spinner-btn">+</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div class="sessions-label">Sessions</div>
+            <div class="spinner"><span class="spinner-btn">−</span> 2 <span class="spinner-btn">+</span></div>
+          </div>
+        </div>
+        <!-- per-session hrs -->
+        <div class="session-sub">
+          <div class="session-sub-row">
+            <div class="session-dot"></div>
+            <span class="session-tag">Session 1</span>
+            <input class="session-hrs-input" value="4h" readonly/>
+          </div>
+          <div class="session-sub-row">
+            <div class="session-dot"></div>
+            <span class="session-tag">Session 2</span>
+            <input class="session-hrs-input" value="2h" readonly/>
+          </div>
+        </div>
+
+        <hr class="divider"/>
+
+        <div class="bench-row">
+          <div class="bench-color" style="background:#38bdf8"></div>
+          <div>
+            <div class="bench-name">Electronics</div>
+            <div class="bench-hrs">Total hrs</div>
+          </div>
+          <div class="spinner"><span class="spinner-btn">−</span> 2h <span class="spinner-btn">+</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div class="sessions-label">Sessions</div>
+            <div class="spinner"><span class="spinner-btn">−</span> 1 <span class="spinner-btn">+</span></div>
+          </div>
+        </div>
+
+        <button class="save-btn">Save splits</button>
+      </div>
+    </div>
+
+    <!-- Focus mode -->
+    <div class="focus-banner">
+      <span>Split into 3 — drag each to schedule</span>
+      <span class="focus-x">×</span>
+    </div>
+    <div class="cards">
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier <span class="badge">1/2</span></div>
+          <div class="card-sub">Martin D-28 · Braces glue-up</div>
+        </div>
+        <div class="card-hrs">4h</div>
+      </div>
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier <span class="badge">2/2</span></div>
+          <div class="card-sub">Martin D-28 · Bridge reglue</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+      <div class="card electronics">
+        <div>
+          <div class="card-title">#1042 Electronics</div>
+          <div class="card-sub">Martin D-28 · Pickup install</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+    </div>
+    <div class="drag-hint">↑ drag each card to its calendar slot</div>
+  </div>
+
+  <!-- ══════════ OPTION B ══════════ -->
+  <div class="option">
+    <div class="option-label">Option B</div>
+    <div class="option-title">Two-level split (bench → sessions)</div>
+
+    <!-- Step 1 drawer -->
+    <div class="drawer">
+      <div class="drawer-header">
+        <span>#1042 — Martin D-28 Restoration</span>
+        <span style="color:#64748b;font-size:11px">Step 1 of 2</span>
+      </div>
+      <div class="drawer-body">
+        <div class="bench-row">
+          <div class="bench-color" style="background:#a78bfa"></div>
+          <div class="bench-name">Luthier</div>
+          <div class="spinner"><span class="spinner-btn">−</span> 6h <span class="spinner-btn">+</span></div>
+        </div>
+        <div class="bench-row">
+          <div class="bench-color" style="background:#38bdf8"></div>
+          <div class="bench-name">Electronics</div>
+          <div class="spinner"><span class="spinner-btn">−</span> 2h <span class="spinner-btn">+</span></div>
+        </div>
+        <button class="save-btn">Next: set sessions →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 drawer -->
+    <div class="drawer">
+      <div class="drawer-header">
+        <span>#1042 — Martin D-28 Restoration</span>
+        <span style="color:#64748b;font-size:11px">Step 2 of 2 — Sessions</span>
+      </div>
+      <div class="drawer-body">
+        <div class="card-group-label">Luthier · 6h</div>
+        <div class="sub-drawer">
+          <div class="sub-drawer-title">Sessions within Luthier</div>
+          <div class="session-sub-row">
+            <div class="session-dot" style="background:#a78bfa"></div>
+            <span class="session-tag">Session 1</span>
+            <input class="session-hrs-input" value="4h" readonly/>
+            <span class="session-tag" style="color:#64748b">Braces</span>
+          </div>
+          <div class="session-sub-row">
+            <div class="session-dot" style="background:#a78bfa"></div>
+            <span class="session-tag">Session 2</span>
+            <input class="session-hrs-input" value="2h" readonly/>
+            <span class="session-tag" style="color:#64748b">Bridge</span>
+          </div>
+          <button class="expand-btn">+ add session</button>
+        </div>
+
+        <div class="card-group-label" style="margin-top:4px">Electronics · 2h</div>
+        <div class="sub-drawer">
+          <div class="sub-drawer-title">Sessions within Electronics</div>
+          <div class="session-sub-row">
+            <div class="session-dot" style="background:#38bdf8"></div>
+            <span class="session-tag">Session 1</span>
+            <input class="session-hrs-input" value="2h" readonly/>
+          </div>
+          <button class="expand-btn">+ add session</button>
+        </div>
+
+        <button class="save-btn">Save all splits</button>
+      </div>
+    </div>
+
+    <!-- Focus mode -->
+    <div class="focus-banner">
+      <span>Split into 3 — drag each to schedule</span>
+      <span class="focus-x">×</span>
+    </div>
+    <div class="cards">
+      <div class="card-group-label">Luthier group</div>
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier · S1</div>
+          <div class="card-sub">Braces glue-up</div>
+        </div>
+        <div class="card-hrs">4h</div>
+      </div>
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier · S2</div>
+          <div class="card-sub">Bridge reglue</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+      <div class="card-group-label">Electronics group</div>
+      <div class="card electronics">
+        <div>
+          <div class="card-title">#1042 Electronics · S1</div>
+          <div class="card-sub">Pickup install</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+    </div>
+    <div class="drag-hint">↑ drag each card to its calendar slot</div>
+  </div>
+
+  <!-- ══════════ OPTION C ══════════ -->
+  <div class="option">
+    <div class="option-label">Option C</div>
+    <div class="option-title">Session split as a separate step (lazy)</div>
+
+    <!-- Step 1: normal bench split drawer -->
+    <div class="drawer">
+      <div class="drawer-header">
+        <span>#1042 — Martin D-28 Restoration</span>
+        <span style="color:#64748b;font-size:11px">Edit / Split</span>
+      </div>
+      <div class="drawer-body">
+        <div class="bench-row">
+          <div class="bench-color" style="background:#a78bfa"></div>
+          <div class="bench-name">Luthier</div>
+          <div class="spinner"><span class="spinner-btn">−</span> 6h <span class="spinner-btn">+</span></div>
+        </div>
+        <div class="bench-row">
+          <div class="bench-color" style="background:#38bdf8"></div>
+          <div class="bench-name">Electronics</div>
+          <div class="spinner"><span class="spinner-btn">−</span> 2h <span class="spinner-btn">+</span></div>
+        </div>
+        <button class="save-btn">Save splits</button>
+      </div>
+    </div>
+
+    <!-- Focus mode with "split sessions" button on relevant card -->
+    <div class="focus-banner">
+      <span>Split into 2 — drag each to schedule</span>
+      <span class="focus-x">×</span>
+    </div>
+    <div class="cards">
+      <div class="card luthier" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+          <div>
+            <div class="card-title">#1042 Luthier</div>
+            <div class="card-sub">Martin D-28 · 6h total</div>
+          </div>
+          <button class="split-sessions-btn">Split sessions</button>
+        </div>
+        <!-- mini-drawer opens inline -->
+        <div class="mini-drawer" style="width:100%">
+          <div class="mini-drawer-title">Split Luthier into sessions</div>
+          <div class="session-sub-row" style="margin-bottom:4px">
+            <div class="session-dot" style="background:#a78bfa"></div>
+            <span class="session-tag">Session 1</span>
+            <input class="session-hrs-input" value="4h" readonly/>
+          </div>
+          <div class="session-sub-row" style="margin-bottom:6px">
+            <div class="session-dot" style="background:#a78bfa"></div>
+            <span class="session-tag">Session 2</span>
+            <input class="session-hrs-input" value="2h" readonly/>
+          </div>
+          <button class="expand-btn">+ add session</button>
+          <button class="save-btn" style="margin-top:6px;padding:4px 10px;font-size:11px">Apply</button>
+        </div>
+      </div>
+
+      <div class="card electronics">
+        <div>
+          <div class="card-title">#1042 Electronics</div>
+          <div class="card-sub">Martin D-28 · Pickup install</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div class="card-hrs">2h</div>
+          <button class="split-sessions-btn">Split sessions</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- After applying -->
+    <div style="margin-top:14px;font-size:10px;color:#64748b;text-align:center;margin-bottom:6px">↓ After applying session split on Luthier</div>
+    <div class="cards">
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier <span class="badge">1/2</span></div>
+          <div class="card-sub">Martin D-28</div>
+        </div>
+        <div class="card-hrs">4h</div>
+      </div>
+      <div class="card luthier">
+        <div>
+          <div class="card-title">#1042 Luthier <span class="badge">2/2</span></div>
+          <div class="card-sub">Martin D-28</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+      <div class="card electronics">
+        <div>
+          <div class="card-title">#1042 Electronics</div>
+          <div class="card-sub">Martin D-28</div>
+        </div>
+        <div class="card-hrs">2h</div>
+      </div>
+    </div>
+    <div class="drag-hint">↑ drag each card to its calendar slot</div>
+  </div>
+
+</div>
+</body>
+</html>
