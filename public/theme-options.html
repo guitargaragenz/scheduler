@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>GGNZ Scheduler — Option A Variations</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; padding: 24px; }
+  h1 { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 6px; }
+  .subtitle { color: #555; font-size: 11px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+
+  .app-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #555; margin-bottom: 6px; }
+  .app-name  { font-size: 12px; font-weight: 700; color: #ccc; margin-bottom: 10px; line-height: 1.4; }
+
+  .app { border-radius: 10px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.7); border: 1px solid rgba(255,255,255,.07); }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg,#22c55e,#16a34a); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; color: #fff; flex-shrink: 0; }
+  .logo-text { font-size: 13px; font-weight: 800; }
+  .logo-sub  { font-size: 10px; opacity: .45; }
+  .btn { padding: 5px 12px; border-radius: 5px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+  .body { display: flex; height: 290px; }
+  .calendar { flex: 1; overflow: hidden; }
+  .cal-header { display: grid; grid-template-columns: 48px repeat(4,1fr); font-size: 10px; font-weight: 700; text-align: center; padding: 6px 0; }
+  .cal-row    { display: grid; grid-template-columns: 48px repeat(4,1fr); height: 34px; }
+  .time-label { font-size: 9px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-weight: 600; }
+  .slot { border-left: 1px solid; border-bottom: 1px solid; }
+  .lunch { display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; letter-spacing: .04em; border-bottom: 1px solid; }
+  .job-in-cal { height: 100%; padding: 3px 6px; }
+  .job-in-cal .jn { font-size: 9px; font-weight: 700; }
+  .job-in-cal .jd { font-size: 8px; opacity: .75; }
+  .after-hours { opacity: .35; }
+
+  .sidebar { width: 200px; border-left: 1px solid; display: flex; flex-direction: column; }
+  .sb-search { padding: 8px 10px; border-bottom: 1px solid; }
+  .sb-search input { width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid; font-size: 11px; outline: none; }
+  .sb-cards  { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+  .card { border-radius: 5px; padding: 7px 9px; border-left: 3px solid; }
+  .card .cn { font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .card .cm { font-size: 10px; margin-top: 2px; font-weight: 600; }
+  .card .cd { font-size: 10px; margin-top: 1px; opacity: .7; }
+  .badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Option A — Calendar background &amp; time label variations</h1>
+<p class="subtitle">Base: High-Contrast Dark · Tweaking: calendar bg brightness &amp; time label visibility</p>
+
+<div class="grid">
+
+  <!-- ── A1: Darkest bg, muted times (current baseline) ── -->
+  <div>
+    <div class="app-label">A1 — Baseline</div>
+    <div class="app-name">Darkest bg · Muted times<br><span style="color:#555;font-size:10px">(what we have now)</span></div>
+    <div class="app" style="background:#18181b">
+      <div class="header" style="background:#09090b;border-bottom:2px solid #3f3f46">
+        <div class="logo"><div class="logo-icon">G</div><div><div class="logo-text" style="color:#fafafa">GGNZ Scheduler</div><div class="logo-sub" style="color:#fafafa">Guitar Garage NZ</div></div></div>
+        <div style="display:flex;gap:6px"><button class="btn" style="background:#16a34a;color:#fff">Sync</button><button class="btn" style="background:#27272a;color:#d4d4d8;border:1px solid #52525b">⚙ Settings</button></div>
+      </div>
+      <div class="body">
+        <div class="calendar" style="background:#18181b">
+          <div class="cal-header" style="background:#09090b;border-bottom:2px solid #3f3f46;color:#71717a">
+            <div></div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div>
+          </div>
+          <div class="cal-row"><div class="time-label" style="color:#52525b">10 AM</div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a;background:#1e3a8a;border-left:3px solid #3b82f6"><div class="job-in-cal"><div class="jn" style="color:#bfdbfe">#693 Electronics</div><div class="jd" style="color:#93c5fd">Fender Passport</div></div></div><div class="slot" style="border-color:#27272a"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#52525b">11 AM</div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#52525b">12 PM</div><div class="lunch" style="background:repeating-linear-gradient(45deg,rgba(239,68,68,.1) 0,rgba(239,68,68,.1) 4px,transparent 4px,transparent 10px);color:#f87171;border-color:#3f3f46;border-left:3px solid #ef4444;grid-column:2/6">🔒 LUNCH 12–1 PM</div></div>
+          <div class="cal-row"><div class="time-label" style="color:#52525b">1 PM</div><div class="slot" style="border-color:#27272a;background:#14532d;border-left:3px solid #22c55e"><div class="job-in-cal"><div class="jn" style="color:#86efac">#1382 Luthier</div><div class="jd" style="color:#86efac">Alegria 25</div></div></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#52525b">2 PM</div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div><div class="slot" style="border-color:#27272a"></div></div>
+          <div class="cal-row after-hours"><div class="time-label" style="color:#52525b">3 PM</div><div class="slot" style="border-color:#27272a;background:#09090b"></div><div class="slot" style="border-color:#27272a;background:#09090b"></div><div class="slot" style="border-color:#27272a;background:#09090b"></div><div class="slot" style="border-color:#27272a;background:#09090b"></div></div>
+        </div>
+        <div class="sidebar" style="background:#09090b;border-color:#3f3f46">
+          <div class="sb-search" style="border-color:#3f3f46"><input style="background:#18181b;border-color:#52525b;color:#fafafa" placeholder="Job #, make, model…"/></div>
+          <div class="sb-cards">
+            <div class="card" style="background:#1e3a8a;border-color:#3b82f6"><div class="cn" style="color:#bfdbfe">#393 <span class="badge" style="background:#2563eb;color:#fff">2.5h</span></div><div class="cm" style="color:#eff6ff">Fender Passport 500</div><div class="cd" style="color:#93c5fd">Electronics</div></div>
+            <div class="card" style="background:#14532d;border-color:#22c55e"><div class="cn" style="color:#86efac">#1448 <span class="badge" style="background:#16a34a;color:#fff">4h</span></div><div class="cm" style="color:#dcfce7">Gibson Hummingbird</div><div class="cd" style="color:#86efac">Luthier</div></div>
+            <div class="card" style="background:#27272a;border-color:#71717a"><div class="cn" style="color:#fafafa">#1175 <span class="badge" style="background:#3f3f46;color:#d4d4d8">6h</span></div><div class="cm" style="color:#e4e4e7">Allen & Heath GL2800</div><div class="cd" style="color:#a1a1aa">Admin</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── A2: Mid bg, bright times ── -->
+  <div>
+    <div class="app-label">A2 — Recommended</div>
+    <div class="app-name">Medium bg · Bright times<br><span style="color:#555;font-size:10px">Calendar lifted to slate, times pop in white</span></div>
+    <div class="app" style="background:#1e293b">
+      <div class="header" style="background:#0f172a;border-bottom:2px solid #334155">
+        <div class="logo"><div class="logo-icon">G</div><div><div class="logo-text" style="color:#f1f5f9">GGNZ Scheduler</div><div class="logo-sub" style="color:#f1f5f9">Guitar Garage NZ</div></div></div>
+        <div style="display:flex;gap:6px"><button class="btn" style="background:#16a34a;color:#fff">Sync</button><button class="btn" style="background:#1e293b;color:#cbd5e1;border:1px solid #475569">⚙ Settings</button></div>
+      </div>
+      <div class="body">
+        <div class="calendar" style="background:#1e293b">
+          <div class="cal-header" style="background:#0f172a;border-bottom:2px solid #334155;color:#94a3b8;font-weight:800">
+            <div></div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div>
+          </div>
+          <div class="cal-row"><div class="time-label" style="color:#e2e8f0">10 AM</div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155;background:#1e3a8a;border-left:3px solid #60a5fa"><div class="job-in-cal"><div class="jn" style="color:#bfdbfe">#693 Electronics</div><div class="jd" style="color:#93c5fd">Fender Passport</div></div></div><div class="slot" style="border-color:#334155"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#e2e8f0">11 AM</div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#e2e8f0">12 PM</div><div class="lunch" style="background:repeating-linear-gradient(45deg,rgba(239,68,68,.13) 0,rgba(239,68,68,.13) 4px,transparent 4px,transparent 10px);color:#fca5a5;border-color:#334155;border-left:3px solid #ef4444;grid-column:2/6">🔒 LUNCH 12–1 PM</div></div>
+          <div class="cal-row"><div class="time-label" style="color:#e2e8f0">1 PM</div><div class="slot" style="border-color:#334155;background:#14532d;border-left:3px solid #4ade80"><div class="job-in-cal"><div class="jn" style="color:#86efac">#1382 Luthier</div><div class="jd" style="color:#86efac">Alegria 25</div></div></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#e2e8f0">2 PM</div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div><div class="slot" style="border-color:#334155"></div></div>
+          <div class="cal-row after-hours"><div class="time-label" style="color:#e2e8f0">3 PM</div><div class="slot" style="border-color:#334155;background:#0f172a"></div><div class="slot" style="border-color:#334155;background:#0f172a"></div><div class="slot" style="border-color:#334155;background:#0f172a"></div><div class="slot" style="border-color:#334155;background:#0f172a"></div></div>
+        </div>
+        <div class="sidebar" style="background:#0f172a;border-color:#334155">
+          <div class="sb-search" style="border-color:#334155"><input style="background:#1e293b;border-color:#475569;color:#f1f5f9" placeholder="Job #, make, model…"/></div>
+          <div class="sb-cards">
+            <div class="card" style="background:#1e3a8a;border-color:#60a5fa"><div class="cn" style="color:#bfdbfe">#393 <span class="badge" style="background:#2563eb;color:#fff">2.5h</span></div><div class="cm" style="color:#eff6ff">Fender Passport 500</div><div class="cd" style="color:#93c5fd">Electronics</div></div>
+            <div class="card" style="background:#14532d;border-color:#4ade80"><div class="cn" style="color:#86efac">#1448 <span class="badge" style="background:#16a34a;color:#fff">4h</span></div><div class="cm" style="color:#dcfce7">Gibson Hummingbird</div><div class="cd" style="color:#86efac">Luthier</div></div>
+            <div class="card" style="background:#334155;border-color:#94a3b8"><div class="cn" style="color:#f1f5f9">#1175 <span class="badge" style="background:#475569;color:#e2e8f0">6h</span></div><div class="cm" style="color:#e2e8f0">Allen & Heath GL2800</div><div class="cd" style="color:#94a3b8">Admin</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── A3: Lightest dark bg, amber times ── -->
+  <div>
+    <div class="app-label">A3</div>
+    <div class="app-name">Lighter bg · Amber time labels<br><span style="color:#555;font-size:10px">Warmest feel — times impossible to miss</span></div>
+    <div class="app" style="background:#262626">
+      <div class="header" style="background:#171717;border-bottom:2px solid #404040">
+        <div class="logo"><div class="logo-icon">G</div><div><div class="logo-text" style="color:#fafafa">GGNZ Scheduler</div><div class="logo-sub" style="color:#fafafa">Guitar Garage NZ</div></div></div>
+        <div style="display:flex;gap:6px"><button class="btn" style="background:#16a34a;color:#fff">Sync</button><button class="btn" style="background:#262626;color:#d4d4d4;border:1px solid #525252">⚙ Settings</button></div>
+      </div>
+      <div class="body">
+        <div class="calendar" style="background:#262626">
+          <div class="cal-header" style="background:#171717;border-bottom:2px solid #404040;color:#a3a3a3;font-weight:800">
+            <div></div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div>
+          </div>
+          <div class="cal-row"><div class="time-label" style="color:#fbbf24">10 AM</div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040;background:#1e3a8a;border-left:3px solid #60a5fa"><div class="job-in-cal"><div class="jn" style="color:#bfdbfe">#693 Electronics</div><div class="jd" style="color:#93c5fd">Fender Passport</div></div></div><div class="slot" style="border-color:#404040"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#fbbf24">11 AM</div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#fbbf24">12 PM</div><div class="lunch" style="background:repeating-linear-gradient(45deg,rgba(239,68,68,.13) 0,rgba(239,68,68,.13) 4px,transparent 4px,transparent 10px);color:#fca5a5;border-color:#404040;border-left:3px solid #ef4444;grid-column:2/6">🔒 LUNCH 12–1 PM</div></div>
+          <div class="cal-row"><div class="time-label" style="color:#fbbf24">1 PM</div><div class="slot" style="border-color:#404040;background:#14532d;border-left:3px solid #4ade80"><div class="job-in-cal"><div class="jn" style="color:#86efac">#1382 Luthier</div><div class="jd" style="color:#86efac">Alegria 25</div></div></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#fbbf24">2 PM</div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div><div class="slot" style="border-color:#404040"></div></div>
+          <div class="cal-row after-hours"><div class="time-label" style="color:#fbbf24">3 PM</div><div class="slot" style="border-color:#404040;background:#171717"></div><div class="slot" style="border-color:#404040;background:#171717"></div><div class="slot" style="border-color:#404040;background:#171717"></div><div class="slot" style="border-color:#404040;background:#171717"></div></div>
+        </div>
+        <div class="sidebar" style="background:#171717;border-color:#404040">
+          <div class="sb-search" style="border-color:#404040"><input style="background:#262626;border-color:#525252;color:#fafafa" placeholder="Job #, make, model…"/></div>
+          <div class="sb-cards">
+            <div class="card" style="background:#1e3a8a;border-color:#60a5fa"><div class="cn" style="color:#bfdbfe">#393 <span class="badge" style="background:#2563eb;color:#fff">2.5h</span></div><div class="cm" style="color:#eff6ff">Fender Passport 500</div><div class="cd" style="color:#93c5fd">Electronics</div></div>
+            <div class="card" style="background:#14532d;border-color:#4ade80"><div class="cn" style="color:#86efac">#1448 <span class="badge" style="background:#16a34a;color:#fff">4h</span></div><div class="cm" style="color:#dcfce7">Gibson Hummingbird</div><div class="cd" style="color:#86efac">Luthier</div></div>
+            <div class="card" style="background:#404040;border-color:#a3a3a3"><div class="cn" style="color:#fafafa">#1175 <span class="badge" style="background:#525252;color:#e5e5e5">6h</span></div><div class="cm" style="color:#e5e5e5">Allen & Heath GL2800</div><div class="cd" style="color:#a3a3a3">Admin</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── A4: Slate blue bg, cyan times ── -->
+  <div>
+    <div class="app-label">A4</div>
+    <div class="app-name">Slate-blue bg · Cyan time labels<br><span style="color:#555;font-size:10px">Coolest look — times stand out without being harsh</span></div>
+    <div class="app" style="background:#1e2a3a">
+      <div class="header" style="background:#111827;border-bottom:2px solid #374151">
+        <div class="logo"><div class="logo-icon">G</div><div><div class="logo-text" style="color:#f9fafb">GGNZ Scheduler</div><div class="logo-sub" style="color:#f9fafb">Guitar Garage NZ</div></div></div>
+        <div style="display:flex;gap:6px"><button class="btn" style="background:#16a34a;color:#fff">Sync</button><button class="btn" style="background:#1f2937;color:#d1d5db;border:1px solid #4b5563">⚙ Settings</button></div>
+      </div>
+      <div class="body">
+        <div class="calendar" style="background:#1e2a3a">
+          <div class="cal-header" style="background:#111827;border-bottom:2px solid #374151;color:#9ca3af;font-weight:800">
+            <div></div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div>
+          </div>
+          <div class="cal-row"><div class="time-label" style="color:#67e8f9">10 AM</div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55;background:#1e3a8a;border-left:3px solid #60a5fa"><div class="job-in-cal"><div class="jn" style="color:#bfdbfe">#693 Electronics</div><div class="jd" style="color:#93c5fd">Fender Passport</div></div></div><div class="slot" style="border-color:#2d3f55"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#67e8f9">11 AM</div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#67e8f9">12 PM</div><div class="lunch" style="background:repeating-linear-gradient(45deg,rgba(239,68,68,.13) 0,rgba(239,68,68,.13) 4px,transparent 4px,transparent 10px);color:#fca5a5;border-color:#2d3f55;border-left:3px solid #ef4444;grid-column:2/6">🔒 LUNCH 12–1 PM</div></div>
+          <div class="cal-row"><div class="time-label" style="color:#67e8f9">1 PM</div><div class="slot" style="border-color:#2d3f55;background:#14532d;border-left:3px solid #4ade80"><div class="job-in-cal"><div class="jn" style="color:#86efac">#1382 Luthier</div><div class="jd" style="color:#86efac">Alegria 25</div></div></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div></div>
+          <div class="cal-row"><div class="time-label" style="color:#67e8f9">2 PM</div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div><div class="slot" style="border-color:#2d3f55"></div></div>
+          <div class="cal-row after-hours"><div class="time-label" style="color:#67e8f9">3 PM</div><div class="slot" style="border-color:#2d3f55;background:#111827"></div><div class="slot" style="border-color:#2d3f55;background:#111827"></div><div class="slot" style="border-color:#2d3f55;background:#111827"></div><div class="slot" style="border-color:#2d3f55;background:#111827"></div></div>
+        </div>
+        <div class="sidebar" style="background:#111827;border-color:#374151">
+          <div class="sb-search" style="border-color:#374151"><input style="background:#1e2a3a;border-color:#4b5563;color:#f9fafb" placeholder="Job #, make, model…"/></div>
+          <div class="sb-cards">
+            <div class="card" style="background:#1e3a8a;border-color:#60a5fa"><div class="cn" style="color:#bfdbfe">#393 <span class="badge" style="background:#2563eb;color:#fff">2.5h</span></div><div class="cm" style="color:#eff6ff">Fender Passport 500</div><div class="cd" style="color:#93c5fd">Electronics</div></div>
+            <div class="card" style="background:#14532d;border-color:#4ade80"><div class="cn" style="color:#86efac">#1448 <span class="badge" style="background:#16a34a;color:#fff">4h</span></div><div class="cm" style="color:#dcfce7">Gibson Hummingbird</div><div class="cd" style="color:#86efac">Luthier</div></div>
+            <div class="card" style="background:#374151;border-color:#9ca3af"><div class="cn" style="color:#f9fafb">#1175 <span class="badge" style="background:#4b5563;color:#f3f4f6">6h</span></div><div class="cm" style="color:#f3f4f6">Allen & Heath GL2800</div><div class="cd" style="color:#9ca3af">Admin</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

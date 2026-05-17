@@ -4,12 +4,13 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { parseCSV, RAW_CSV, BENCH_COLORS } from './data/jobs.js';
-import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours } from './utils/calendar.js';
+import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours, isGapHour, isSaturday, isSunday, isLunchSlot } from './utils/calendar.js';
 import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
 import {
   initGoogleApi, requestAuth, isSignedIn, signOut, listEvents,
-  createEvent, parsePersonalBlocks, isConfigured,
+  createEvent, updateEvent, deleteEvent, parsePersonalBlocks, isConfigured,
 } from './utils/googleCalendar.js';
+import { isFirebaseConfigured, loadSchedule, saveSchedule, subscribeToSchedule } from './utils/firebase.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -17,7 +18,17 @@ import SettingsModal from './components/SettingsModal.jsx';
 import JobCard from './components/JobCard.jsx';
 import JobDrawer from './components/JobDrawer.jsx';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// Returns the slot key for the half-slot immediately after `key`
+function nextHalfSlotKey(key) {
+  const parts = key.split('-');
+  const h = parseInt(parts[3]);
+  const m = parseInt(parts[4]);
+  const nM = m === 0 ? 30 : 0;
+  const nH = m === 0 ? h : h + 1;
+  return `${parts[0]}-${parts[1]}-${parts[2]}-${nH}-${nM}`;
+}
 
 export default function App() {
   const [jobs, setJobs] = useState(() => parseCSV(RAW_CSV));
@@ -36,7 +47,10 @@ export default function App() {
   const [editingJob, setEditingJob] = useState(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(false);
   const pollRef = useRef(null);
+  const saveTimerRef = useRef(null);
+  const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
 
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
@@ -47,6 +61,37 @@ export default function App() {
       setSidebarOpen(false);
     }
   }, [jobs, highlightedJobId]);
+
+  // Load from Firestore on startup, then subscribe to real-time updates from other devices
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    loadSchedule().then(data => {
+      if (data) {
+        if (data.jobs) setJobs(data.jobs);
+        if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
+      }
+      setFirebaseReady(true);
+    });
+
+    const unsub = subscribeToSchedule(data => {
+      // Ignore snapshots triggered by our own saves (echo suppression — 5s window)
+      if (Date.now() - justSavedAt.current < 5000) return;
+      if (data.jobs) setJobs(data.jobs);
+      if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
+    });
+    return () => unsub();
+  }, []);
+
+  // Debounced save to Firestore whenever jobs or scheduledSlots change
+  useEffect(() => {
+    if (!isFirebaseConfigured() || !firebaseReady) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      justSavedAt.current = Date.now();
+      saveSchedule(jobs, scheduledSlots);
+    }, 1500);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [jobs, scheduledSlots, firebaseReady]);
 
   // Init Google API
   useEffect(() => {
@@ -63,7 +108,7 @@ export default function App() {
     const poll = async () => {
       const start = new Date(weekDays[0]);
       start.setHours(0, 0, 0, 0);
-      const end = new Date(weekDays[5]);
+      const end = new Date(weekDays[6]);
       end.setHours(23, 59, 59, 999);
       const events = await listEvents(start, end);
       setExternalEvents(events);
@@ -72,7 +117,7 @@ export default function App() {
       const personalBlocks = parsePersonalBlocks(events, weekDays);
       if (personalBlocks.length > 0) {
         personalBlocks.forEach(({ dayIdx, hour }) => {
-          const key = slotKey(dayIdx, hour);
+          const key = slotKey(weekDays[dayIdx], hour);
           setScheduledSlots(prev => {
             if (prev[key]) {
               const jobId = prev[key];
@@ -134,65 +179,78 @@ export default function App() {
     }
 
     // Dropped on a calendar slot
-    const { dayIdx, hour } = over.data?.current || {};
+    const { dayIdx, hour, minute = 0 } = over.data?.current || {};
     if (dayIdx === undefined || hour === undefined) return;
 
     if (mode === 'urgent') {
-      handleUrgentDrop(job, dayIdx, hour, source);
+      handleUrgentDrop(job, dayIdx, hour, minute, source);
     } else {
-      handleRegularDrop(job, dayIdx, hour, source);
+      handleRegularDrop(job, dayIdx, hour, minute, source);
     }
   }
 
-  // Build a set of slot keys blocked by Google Calendar external events
+  // Build a set of slot keys blocked by Google Calendar external events (both :00 and :30)
   function buildExternalBlockedSlots() {
     const blocked = new Set();
     externalEvents.forEach(ev => {
-      // Skip GGNZ-created events (they're already in scheduledSlots)
       if (ev.summary?.startsWith('#')) return;
       const start = new Date(ev.start?.dateTime || ev.start?.date);
       const end   = new Date(ev.end?.dateTime   || ev.end?.date);
       const dayIdx = weekDays.findIndex(d => d.toDateString() === start.toDateString());
       if (dayIdx < 0) return;
-      for (let h = start.getHours(); h < end.getHours(); h++) {
-        blocked.add(slotKey(dayIdx, h));
+      let h = start.getHours();
+      let m = start.getMinutes() < 30 ? 0 : 30;
+      const endH = end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
+      while (h < endH) {
+        blocked.add(slotKey(weekDays[dayIdx], h, m));
+        if (m === 0) { m = 30; } else { m = 0; h++; }
       }
     });
     return blocked;
   }
 
-  // Find N available 1-hr slots from startDay/startHour onwards, skipping occupied & blocked
-  function findAvailableSlots(startDayIdx, startHour, needed, tempSlots) {
+  // Find N available 30-min slots from startDay/startHour/startMinute onwards
+  function findAvailableSlots(startDayIdx, startHour, startMinute, needed, tempSlots) {
     const externalBlocked = buildExternalBlockedSlots();
     const found = [];
     for (let d = startDayIdx; d < weekDays.length && found.length < needed; d++) {
       const date = weekDays[d];
       const { start, end } = getWorkHours(date);
-      const sat = date.getDay() === 6;
-      const startH = d === startDayIdx ? Math.max(startHour, start) : start;
-      for (let h = startH; h < end && found.length < needed; h++) {
-        if (!sat && h === 12) continue; // skip lunch
-        const key = slotKey(d, h);
-        if (tempSlots[key]) continue;        // occupied by an app job
-        if (externalBlocked.has(key)) continue; // occupied by a Google Calendar event
-        found.push({ dayIdx: d, hour: h });
+      const sat = isSaturday(date);
+      const sun = isSunday(date);
+      const isWeekday = !sat && !sun;
+      for (let h = start; h < end && found.length < needed; h++) {
+        if (isWeekday && isLunchSlot(h)) continue;
+        if (isGapHour(h)) continue;
+        for (const m of [0, 30]) {
+          // Skip slots before the drop point on the first day
+          if (d === startDayIdx && (h < startHour || (h === startHour && m < startMinute))) continue;
+          const key = slotKey(weekDays[d], h, m);
+          if (tempSlots[key]) continue;
+          if (externalBlocked.has(key)) continue;
+          found.push({ dayIdx: d, hour: h, minute: m });
+          if (found.length >= needed) break;
+        }
       }
     }
     return found;
   }
 
-  function handleRegularDrop(job, dayIdx, hour, source) {
-    const current = scheduledSlots;
-    // Round to nearest whole hour — 2.5h → 3 slots, 1.8h → 2 slots
-    const totalHours = Math.round(job.hours);
+  function handleRegularDrop(job, dayIdx, hour, minute, source) {
+    const needed = slotsNeeded(job); // number of 30-min slots
 
-    // Temp slots without job's own current position
-    const tempSlots = { ...current };
+    // Temp map without job's own slots (and orphaned buffer)
+    const tempSlots = { ...scheduledSlots };
     if (source === 'calendar') {
-      Object.keys(tempSlots).forEach(k => { if (tempSlots[k] === job.id) delete tempSlots[k]; });
+      Object.keys(tempSlots).forEach(k => {
+        if (tempSlots[k] === job.id) {
+          const nk = nextHalfSlotKey(k);
+          if (tempSlots[nk] === '__buffer__') delete tempSlots[nk];
+          delete tempSlots[k];
+        }
+      });
     }
 
-    // Validate the drop point isn't a hard-blocked area (lunch/outside hours)
     const date = weekDays[dayIdx];
     const { start, end } = getWorkHours(date);
     if (hour < start || hour >= end) {
@@ -200,29 +258,48 @@ export default function App() {
       return;
     }
 
-    // Find available slots starting from the drop point
-    const slots = findAvailableSlots(dayIdx, hour, totalHours, tempSlots);
-    if (slots.length < totalHours) {
-      showToast(`⚠ Not enough space — only ${slots.length} of ${totalHours} hours free from here to end of week`);
+    const slots = findAvailableSlots(dayIdx, hour, minute, needed, tempSlots);
+    if (slots.length < needed) {
+      showToast(`⚠ Not enough space — only ${slots.length} of ${needed} half-slots free from here`);
       return;
     }
 
-    // Describe placement in a friendly way
-    const firstDay = weekDays[slots[0].dayIdx].toLocaleDateString('en-NZ', { weekday: 'short' });
-    const lastDay  = weekDays[slots[slots.length - 1].dayIdx].toLocaleDateString('en-NZ', { weekday: 'short' });
+    const fmt = ({ dayIdx: d, hour: h, minute: m }) =>
+      `${weekDays[d].toLocaleDateString('en-NZ', { weekday: 'short' })} ${h}:${m === 0 ? '00' : '30'}`;
     const spanDesc = slots[0].dayIdx === slots[slots.length - 1].dayIdx
-      ? `${firstDay} ${slots[0].hour}:00–${slots[slots.length - 1].hour + 1}:00`
-      : `${firstDay} ${slots[0].hour}:00 → ${lastDay} ${slots[slots.length - 1].hour + 1}:00`;
+      ? `${fmt(slots[0])}–${slots[slots.length-1].hour}:${slots[slots.length-1].minute === 0 ? '00' : '30'}`
+      : `${fmt(slots[0])} → ${fmt(slots[slots.length - 1])}`;
 
-    // Atomically clear old slots and write new ones
     setScheduledSlots(prev => {
       const next = { ...prev };
+      // Clear old position (and its buffer)
       if (source === 'calendar') {
-        Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
+        Object.keys(next).forEach(k => {
+          if (next[k] === job.id) {
+            const nk = nextHalfSlotKey(k);
+            if (next[nk] === '__buffer__') delete next[nk];
+            delete next[k];
+          }
+        });
       }
-      slots.forEach(({ dayIdx: d, hour: h }) => { next[slotKey(d, h)] = job.id; });
+      // Place job half-slots
+      slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
+        next[slotKey(weekDays[d], h, m)] = job.id;
+      });
+      // Place 30-min buffer after last slot
+      const last = slots[slots.length - 1];
+      const bufM = last.minute === 0 ? 30 : 0;
+      const bufH = last.minute === 0 ? last.hour : last.hour + 1;
+      const bufDate = weekDays[last.dayIdx];
+      const { end: dayEnd } = getWorkHours(bufDate);
+      const isBufWeekday = !isSaturday(bufDate) && !isSunday(bufDate);
+      if (bufH < dayEnd && !isGapHour(bufH) && !(isBufWeekday && isLunchSlot(bufH))) {
+        const bufKey = slotKey(bufDate, bufH, bufM);
+        if (!next[bufKey]) next[bufKey] = '__buffer__';
+      }
       return next;
     });
+
     setJobs(prev => prev.map(j =>
       j.id === job.id ? { ...j, scheduled: true, calendarSlot: slots[0] } : j
     ));
@@ -230,95 +307,135 @@ export default function App() {
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
   }
 
-  function handleUrgentDrop(job, dayIdx, hour, source) {
-    const current = scheduledSlots;
-    const tempSlots = { ...current };
-    // Remove job's own slots from consideration
-    if (source === 'calendar') {
-      Object.keys(tempSlots).forEach(k => { if (tempSlots[k] === job.id) delete tempSlots[k]; });
-    }
-
+  function handleUrgentDrop(job, dayIdx, hour, minute, source) {
     const date = weekDays[dayIdx];
     const { start, end } = getWorkHours(date);
-    const needed = Math.min(Math.ceil(job.hours), 3); // max 3hr continuous block
-    if (hour < start || hour + needed > end) {
+    const needed = slotsNeeded(job); // 30-min slots
+    if (hour < start || hour >= end) {
       showToast('⚠ Cannot place urgent job — outside work hours');
       return;
     }
 
-    // Collect jobs in the target slots
-    const displaced = [];
-    for (let h = hour; h < hour + needed; h++) {
-      const occupant = tempSlots[slotKey(dayIdx, h)];
-      if (occupant && !displaced.includes(occupant)) displaced.push(occupant);
+    const tempSlots = { ...scheduledSlots };
+    if (source === 'calendar') {
+      Object.keys(tempSlots).forEach(k => { if (tempSlots[k] === job.id) delete tempSlots[k]; });
     }
 
-    // Atomically: clear old, clear displaced, place urgent job
+    // Collect displaced jobs in target half-slots
+    const displaced = [];
+    let ch = hour, cm = minute;
+    for (let i = 0; i < needed; i++) {
+      if (ch >= end || isGapHour(ch)) break;
+      const occupant = tempSlots[slotKey(weekDays[dayIdx], ch, cm)];
+      if (occupant && occupant !== '__buffer__' && !displaced.includes(occupant)) displaced.push(occupant);
+      if (cm === 0) { cm = 30; } else { cm = 0; ch++; }
+    }
+
     setScheduledSlots(prev => {
       const next = { ...prev };
       if (source === 'calendar') {
-        Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
+        Object.keys(next).forEach(k => {
+          if (next[k] === job.id) {
+            const nk = nextHalfSlotKey(k);
+            if (next[nk] === '__buffer__') delete next[nk];
+            delete next[k];
+          }
+        });
       }
       displaced.forEach(bid => {
         Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
       });
-      for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
+      // Place urgent job
+      let ph = hour, pm = minute;
+      for (let i = 0; i < needed; i++) {
+        if (ph >= end || isGapHour(ph)) break;
+        next[slotKey(weekDays[dayIdx], ph, pm)] = job.id;
+        if (pm === 0) { pm = 30; } else { pm = 0; ph++; }
+      }
+      // Buffer after
+      const isBufWeekday = !isSaturday(date) && !isSunday(date);
+      if (ph < end && !isGapHour(ph) && !(isBufWeekday && isLunchSlot(ph))) {
+        const bufKey = slotKey(date, ph, pm);
+        if (!next[bufKey]) next[bufKey] = '__buffer__';
+      }
       return next;
     });
 
-    // Mark displaced jobs as unscheduled (back to sidebar)
     if (displaced.length > 0) {
       setJobs(prev => prev.map(j =>
         displaced.includes(j.id) ? { ...j, scheduled: false, calendarSlot: null } : j
       ));
     }
-
-    // Place the urgent job and mark it scheduled
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour, minute } } : j
     ));
-    const d = weekDays[dayIdx];
-    const dayName = d.toLocaleDateString('en-NZ', { weekday: 'short' });
+
+    const dayName = date.toLocaleDateString('en-NZ', { weekday: 'short' });
+    const timeStr = `${hour}:${minute === 0 ? '00' : '30'}`;
     const msg = displaced.length > 0
-      ? `🚨 #${job.job} forced to ${dayName} ${hour}:00. Moved ${displaced.map(id => `#${id}`).join(', ')} back to sidebar.`
-      : `🚨 #${job.job} scheduled ${dayName} ${hour}:00–${hour + needed}:00`;
+      ? `🚨 #${job.job} forced to ${dayName} ${timeStr}. Moved ${displaced.map(id => `#${id}`).join(', ')} back.`
+      : `🚨 #${job.job} scheduled ${dayName} ${timeStr}`;
     showToast(msg);
     addChangelog(msg);
   }
 
-  function placeJob(job, dayIdx, hour) {
+  function placeJob(job, dayIdx, hour, minute = 0) {
     const needed = slotsNeeded(job);
+    const date = weekDays[dayIdx];
+    const { end } = getWorkHours(date);
     setScheduledSlots(prev => {
       const next = { ...prev };
-      for (let h = hour; h < hour + needed; h++) next[slotKey(dayIdx, h)] = job.id;
+      let h = hour, m = minute;
+      for (let i = 0; i < needed; i++) {
+        next[slotKey(weekDays[dayIdx], h, m)] = job.id;
+        if (m === 0) { m = 30; } else { m = 0; h++; }
+      }
+      const isBufWeekday = !isSaturday(date) && !isSunday(date);
+      if (h < end && !isGapHour(h) && !(isBufWeekday && isLunchSlot(h))) {
+        const bufKey = slotKey(date, h, m);
+        if (!next[bufKey]) next[bufKey] = '__buffer__';
+      }
       return next;
     });
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour } } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: { dayIdx, hour, minute } } : j
     ));
-    const d = weekDays[dayIdx];
-    const dayName = d.toLocaleDateString('en-NZ', { weekday: 'short' });
-    addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${dayName} ${hour}:00`);
+    const dayName = date.toLocaleDateString('en-NZ', { weekday: 'short' });
+    addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${dayName} ${hour}:${minute === 0 ? '00' : '30'}`);
   }
 
   function unscheduleJob(job) {
-    // Clear ALL slots for this job — it may be split across non-consecutive slots
     setScheduledSlots(prev => {
       const next = { ...prev };
-      Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
+      Object.keys(next).forEach(k => {
+        if (next[k] === job.id) {
+          // Also clear the buffer slot that immediately follows this job slot
+          const nk = nextHalfSlotKey(k);
+          if (next[nk] === '__buffer__') delete next[nk];
+          delete next[k];
+        }
+      });
       return next;
     });
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: false, calendarSlot: null } : j
+      j.id === job.id ? { ...j, scheduled: false, calendarSlot: null, gcalEventId: null } : j
     ));
+    if (job.gcalEventId && signedIn) {
+      deleteEvent(job.gcalEventId).catch(e => console.error('deleteEvent failed:', e));
+    }
     addChangelog(`Unscheduled #${job.job} — moved back to sidebar`);
   }
 
-  // Build scheduled job map for CalendarGrid: slotKey -> job object
+  // Build scheduled job map and buffer key set for CalendarGrid
   const scheduledJobObjects = {};
+  const bufferSlotKeys = new Set();
   Object.entries(scheduledSlots).forEach(([key, jobId]) => {
-    const job = jobs.find(j => j.id === jobId);
-    if (job) scheduledJobObjects[key] = job;
+    if (jobId === '__buffer__') {
+      bufferSlotKeys.add(key);
+    } else {
+      const job = jobs.find(j => j.id === jobId);
+      if (job) scheduledJobObjects[key] = job;
+    }
   });
 
   async function handleSync() {
@@ -329,16 +446,27 @@ export default function App() {
     setSyncStatus('syncing');
     const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot);
     let ok = 0;
+    const updatedJobs = [...jobs];
     for (const job of scheduled) {
       const { dayIdx, hour } = job.calendarSlot;
       const date = weekDays[dayIdx];
       try {
-        await createEvent(job, date, hour, slotsNeeded(job));
+        let result;
+        if (job.gcalEventId) {
+          result = await updateEvent(job.gcalEventId, job, date, hour, slotsNeeded(job));
+        } else {
+          result = await createEvent(job, date, hour, slotsNeeded(job));
+        }
+        if (result?.id) {
+          const idx = updatedJobs.findIndex(j => j.id === job.id);
+          if (idx >= 0) updatedJobs[idx] = { ...updatedJobs[idx], gcalEventId: result.id };
+        }
         ok++;
       } catch (e) {
         console.error(e);
       }
     }
+    setJobs(updatedJobs);
     setSyncStatus(ok === scheduled.length ? 'synced' : 'error');
     showToast(`Synced ${ok}/${scheduled.length} jobs to Google Calendar`);
     addChangelog(`Synced ${ok} jobs to Google Calendar`);
@@ -505,8 +633,10 @@ export default function App() {
           <CalendarGrid
             weekDays={weekDays}
             scheduledJobs={scheduledJobObjects}
+            bufferSlotKeys={bufferSlotKeys}
             externalEvents={externalEvents}
             isDragging={isDragging}
+            onJobClick={setEditingJob}
           />
           <Sidebar
             jobs={jobs}
