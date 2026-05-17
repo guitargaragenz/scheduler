@@ -9,20 +9,24 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
 
   // Hide parent jobs that have been split (replaced by subtasks)
   const unscheduled = jobs.filter(j => !j.scheduled && !j.isSplit);
+  const active     = unscheduled.filter(j => j.schedulable !== false && !j.backlog);
+  const backlog    = unscheduled.filter(j => j.schedulable !== false && j.backlog);
+  const onHold     = unscheduled.filter(j => j.schedulable === false);
 
   const isFocusMode = !!highlightedJobId;
 
-  let displayed;
+  let displayed, displayedBacklog, displayedHold;
   if (isFocusMode) {
-    displayed = unscheduled.filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    displayed        = active.filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    displayedBacklog = [];
+    displayedHold    = [];
   } else {
     const q = search.toLowerCase();
-    displayed = q
-      ? unscheduled.filter(j =>
-          [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.blockers]
-            .some(v => String(v || '').toLowerCase().includes(q))
-        )
-      : unscheduled;
+    const match = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
+      .some(v => String(v || '').toLowerCase().includes(q));
+    displayed         = q ? active.filter(match)   : active;
+    displayedBacklog  = q ? backlog.filter(match)  : backlog;
+    displayedHold     = q ? onHold.filter(match)   : onHold;
   }
 
   const focusCount = isFocusMode ? displayed.length : 0;
@@ -130,8 +134,21 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             }}
           >
             {displayed.length === 0 && (
-              <div style={{ color: '#475569', textAlign: 'center', marginTop: 40, fontSize: 14 }}>
-                {isFocusMode ? 'No cards to schedule' : search ? 'No jobs match' : 'No unscheduled jobs'}
+              <div style={{ textAlign: 'center', marginTop: 40, fontSize: 14 }}>
+                {isFocusMode ? (
+                  <span style={{ color: '#475569' }}>No cards to schedule</span>
+                ) : search ? (
+                  <span style={{ color: '#475569' }}>No jobs match</span>
+                ) : jobs.length === 0 ? (
+                  <div>
+                    <div style={{ color: '#64748b', marginBottom: 12 }}>No jobs loaded</div>
+                    <label htmlFor="csv-upload" style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 13, textDecoration: 'underline' }}>
+                      Upload jobs.csv to get started
+                    </label>
+                  </div>
+                ) : (
+                  <span style={{ color: '#475569' }}>No unscheduled jobs</span>
+                )}
               </div>
             )}
             {displayed.map(job => (
@@ -143,6 +160,34 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 onClick={() => onJobClick(job)}
               />
             ))}
+
+            {/* Backlog — schedulable but not in immediate queue */}
+            {!isFocusMode && displayedBacklog.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
+                  BACKLOG ({displayedBacklog.length})
+                </div>
+                {displayedBacklog.map(job => (
+                  <div key={job.id} style={{ opacity: 0.6, pointerEvents: 'none' }}>
+                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* On Hold / Waiting — visible but not draggable */}
+            {!isFocusMode && displayedHold.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
+                  ON HOLD / WAITING ({displayedHold.length})
+                </div>
+                {displayedHold.map(job => (
+                  <div key={job.id} style={{ opacity: 0.45, pointerEvents: 'none' }}>
+                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Footer */}

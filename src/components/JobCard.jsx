@@ -50,7 +50,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
             {job.bench}
           </span>
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.15)', color: '#fbbf24' }}>
-            {job.hours}h
+            {job.hoursRange}h
           </span>
         </div>
       </div>
@@ -71,7 +71,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
           <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
             <span style={{ fontSize: 10, color: '#94a3b8' }}>📅 {job.days}d</span>
             {job.vb && <span style={{ fontSize: 10, color: '#fbbf24' }}>⭐ VB</span>}
-            {job.blockers && <span style={{ fontSize: 10, color: '#f87171' }}>⚠ {job.blockers.slice(0, 20)}</span>}
+            {job.action && <span style={{ fontSize: 10, color: '#f87171' }}>⚠ {job.action.slice(0, 20)}</span>}
           </div>
         </>
       )}
