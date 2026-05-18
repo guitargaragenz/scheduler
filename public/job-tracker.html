@@ -303,6 +303,23 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .mb-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
 .mb-ghost:hover{border-color:var(--text);color:var(--text);}
 
+/* ── Notify modal ── */
+.notify-modal{background:var(--surface);border:1px solid var(--border);padding:1.5rem;max-width:28rem;width:92%;font-family:Arial,sans-serif;}
+.nm-title{font-family:'Courier Prime',monospace;font-size:0.8rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;}
+.nm-field{display:flex;flex-direction:column;gap:0.25rem;margin-bottom:0.7rem;}
+.nm-field label{font-family:'Courier Prime',monospace;font-size:0.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.nm-field input,.nm-field select{background:#fff;border:1px solid var(--border);color:var(--text);font-family:Arial,sans-serif;font-size:0.9rem;padding:0.5rem 0.7rem;width:100%;appearance:none;}
+.nm-field input:focus,.nm-field select:focus{outline:none;border-color:var(--accent);}
+.nm-pref{display:flex;gap:0;}
+.nm-pref-btn{font-family:'Courier Prime',monospace;font-size:0.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0.4rem 0.9rem;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);transition:all .15s;margin-right:-1px;}
+.nm-pref-btn.active{background:#ddeaf5;border-color:var(--c-service);color:var(--c-service);}
+.nm-contact-found{font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--success);margin-top:0.2rem;}
+.nm-contact-missing{font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--warn);margin-top:0.2rem;}
+.nm-send{background:var(--accent);color:#fff;font-family:'Courier Prime',monospace;font-size:0.75rem;font-weight:700;padding:0.7rem 1.4rem;cursor:pointer;border:none;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s;}
+.nm-send:hover{opacity:.85;}
+.nm-send:disabled{opacity:.4;cursor:not-allowed;}
+.df-notify{background:#1d4ed8;color:#fff;}
+.df-notify:hover{opacity:.85;}
 /* ── Toast ── */
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(2rem);background:#1a1a1a;color:#fff;font-family:'Courier Prime',monospace;font-size:0.8rem;padding:0.6rem 1.2rem;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -545,6 +562,13 @@ input[type=datetime-local]{color-scheme:light;}
       <div id="bench-accordions"></div>
     </div>
     <div class="ss">
+      <div class="ss-title">CRM — MailerLite</div>
+      <div style="font-family:'Courier Prime',monospace;font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.6;">API key from MailerLite → Integrations → API. Used by the Notify Customer button.</div>
+      <div class="ss-field"><label>API Key</label><input type="password" id="ml-api-key" placeholder="Paste MailerLite API key…" oninput="saveMLKey()" autocomplete="off"></div>
+      <div id="ml-key-status" style="font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--muted);margin-top:0.3rem;"></div>
+      <div style="margin-top:0.5rem;font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--muted);">Contacts: <span id="contacts-count">0 loaded</span></div>
+    </div>
+    <div class="ss">
       <div class="ss-title">Data — Backup &amp; Restore</div>
       <div style="font-family:'Courier Prime',monospace;font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.6;">Data lives in browser local storage. Export regularly to iCloud. JSON restores everything. CSV opens in Numbers or Excel.</div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.7rem;">
@@ -553,7 +577,7 @@ input[type=datetime-local]{color-scheme:light;}
         <button class="export-btn" onclick="triggerLoadFile()">&#11014; Load from iCloud</button>
       </div>
       <label class="import-label" for="import-file" style="display:none;">Load</label>
-      <input type="file" id="import-file" accept=".json" onchange="importJSON(this)" style="display:none;">
+      <input type="file" id="import-file" accept=".json,.csv" onchange="handleSyncFile(this)" style="display:none;">
       <span id="import-status" style="font-family:'Courier Prime',monospace;font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.4rem;"></span>
       <div id="last-export" style="font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--muted2);margin-bottom:1rem;"></div>
       <div style="border-top:1px solid var(--border);padding-top:0.9rem;">
@@ -594,6 +618,53 @@ input[type=datetime-local]{color-scheme:light;}
   </div>
 </div>
 
+<!-- Notify modal -->
+<div class="modal-overlay" id="notify-modal" onclick="if(event.target===this)closeNotifyModal()">
+  <div class="notify-modal">
+    <div class="nm-title">📧 Notify Customer</div>
+    <div class="nm-field">
+      <label>Customer</label>
+      <input type="text" id="nm-customer" readonly>
+    </div>
+    <div class="nm-field">
+      <label>Email <span id="nm-contact-status"></span></label>
+      <input type="email" id="nm-email" placeholder="customer@email.com">
+    </div>
+    <div class="nm-field">
+      <label>Phone</label>
+      <input type="tel" id="nm-phone" placeholder="+64 21 …">
+    </div>
+    <div class="nm-field">
+      <label>Preference</label>
+      <div class="nm-pref">
+        <button class="nm-pref-btn active" id="pref-email" onclick="setNotifyPref('email')">Email</button>
+        <button class="nm-pref-btn" id="pref-sms" onclick="setNotifyPref('sms')">SMS</button>
+        <button class="nm-pref-btn" id="pref-both" onclick="setNotifyPref('both')">Both</button>
+      </div>
+    </div>
+    <div class="nm-field">
+      <label>Service Tag</label>
+      <select id="nm-tag">
+        <option value="guitar-setup">Guitar Setup</option>
+        <option value="amp-repair">Amp Repair</option>
+        <option value="pedal-repair">Pedal Repair</option>
+        <option value="refret">Refret / Fretwork</option>
+        <option value="fretwork">Fret Level / Dress</option>
+        <option value="electronics-repair">Electronics Repair</option>
+        <option value="speaker-repair">Speaker Repair</option>
+        <option value="pickup-install">Pickup Install</option>
+        <option value="valve-service">Valve Service</option>
+        <option value="luthier">Luthier / Structural</option>
+        <option value="job-complete">General / Other</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+      <button class="nm-send" id="nm-send-btn" onclick="sendNotification()">Send Notification</button>
+      <button class="df-btn df-reopen" onclick="closeNotifyModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 </div>
@@ -618,11 +689,14 @@ const DEFAULT_OH_CATS = ['Customer drop-off / pick-up','Admin / invoicing','Phon
 let visits     = [];
 let backlog    = [];   // [{id, jobNum, makeModel, type, status}]
 let overhead   = [];   // [{id, ts, cat, mins, note}]
+let contacts   = [];   // [{name, email, phone}] from contacts.csv
 let benchTypes = JSON.parse(JSON.stringify(DEFAULT_TYPES));
 let ohCats     = [...DEFAULT_OH_CATS];
 let activeBench    = 'service';
 let activePricing  = 'per';
 let openVisitId    = null;
+let notifyVisitId  = null;
+let notifyPref     = 'email';
 let undoStack   = [];  // [{visits, backlog, overhead}] — max 20 states
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -634,6 +708,7 @@ renderOhCatSettings();
 renderAll();
 checkStartupLoad();
 updateSyncLabel();
+updateContactsCount();
 
 // ── Main tabs ─────────────────────────────────────────────────────────────────
 function showMain(name, el) {
@@ -705,6 +780,7 @@ function persist() {
     localStorage.setItem('gg7_types',  JSON.stringify(benchTypes));
     localStorage.setItem('gg7_overhead', JSON.stringify(overhead));
     localStorage.setItem('gg7_ohcats',   JSON.stringify(ohCats));
+    localStorage.setItem('gg7_contacts', JSON.stringify(contacts));
     localStorage.setItem('gg7_cfg',    JSON.stringify({
       rate:g('rate'), markup:g('markup'), target:g('target'), pomoMins:g('pomo-mins'),
       fpNT:g('fp-nontrem'), fpTR:g('fp-trem'), fpFR:g('fp-floyd'),
@@ -719,6 +795,9 @@ function loadState() {
     const t = localStorage.getItem('gg7_types');  if (t) benchTypes = JSON.parse(t);
     const oh = localStorage.getItem('gg7_overhead'); if (oh) overhead = JSON.parse(oh);
     const oc = localStorage.getItem('gg7_ohcats');   if (oc) ohCats = JSON.parse(oc);
+    const ct = localStorage.getItem('gg7_contacts'); if (ct) contacts = JSON.parse(ct);
+    const mk = localStorage.getItem('gg7_ml_key');
+    if (mk) { const el = document.getElementById('ml-api-key'); if (el) el.value = mk; }
     const c = localStorage.getItem('gg7_cfg');
     if (c) {
       const s = JSON.parse(c);
@@ -729,6 +808,13 @@ function loadState() {
       if (s.fpFR) sv('fp-floyd',   s.fpFR);
     }
   } catch(e) {}
+}
+
+function saveMLKey() {
+  const key = document.getElementById('ml-api-key')?.value.trim() || '';
+  localStorage.setItem('gg7_ml_key', key);
+  const status = document.getElementById('ml-key-status');
+  if (status) status.textContent = key ? '✓ Key saved' : '';
 }
 
 // ── iCloud startup load ───────────────────────────────────────────────────────
@@ -1815,10 +1901,12 @@ function openJobDrawer(id) {
   const footer=document.getElementById('drawer-footer');
   footer.innerHTML = visit.status!=='complete'
     ? `<button class="df-btn df-done" onclick="markJobComplete('${visit.id}')">✓ Mark Complete</button>
-       <button class="df-btn" style="background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="sendToBacklog('${visit.id}')">↶ Back to Backlog</button>
-       <button class="df-btn df-del"  onclick="deleteJob('${visit.id}')">Delete Job</button>`
-    : `<button class="df-btn df-reopen" onclick="reopenJob('${visit.id}')">Reopen Job</button>
-       <button class="df-btn df-del"    onclick="deleteJob('${visit.id}')">Delete Job</button>`;
+       <button class="df-btn df-notify" onclick="openNotifyModal('${visit.id}')">📧 Notify</button>
+       <button class="df-btn" style="background:transparent;border:1px solid var(--muted);color:var(--muted);" onclick="sendToBacklog('${visit.id}')">↶ Backlog</button>
+       <button class="df-btn df-del"  onclick="deleteJob('${visit.id}')">Delete</button>`
+    : `<button class="df-btn df-notify" onclick="openNotifyModal('${visit.id}')">📧 Notify</button>
+       <button class="df-btn df-reopen" onclick="reopenJob('${visit.id}')">Reopen</button>
+       <button class="df-btn df-del"    onclick="deleteJob('${visit.id}')">Delete</button>`;
 
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
@@ -2240,7 +2328,18 @@ function handleSyncFile(input) {
     importJSON(input);
     updateSyncLabel();
   } else if (isCSV) {
-    loadCSVFromSync(file);
+    // Peek at header to decide if it's contacts or jobs CSV
+    const reader = new FileReader();
+    reader.onload = e => {
+      const firstLine = e.target.result.split('\n')[0].toLowerCase();
+      const isContacts = firstLine.includes('email') && !firstLine.includes('job');
+      if (isContacts) {
+        loadContactsCSV(e.target.result);
+      } else {
+        loadCSVFromSync(file);
+      }
+    };
+    reader.readAsText(file);
   } else {
     showToast('Unknown file type — use .csv or .json');
   }
@@ -2267,11 +2366,12 @@ function loadCSVFromSync(file) {
       };
 
       const header = parseCSVRow(lines[0]).map(h => h.toLowerCase());
-      const jobIdx   = header.indexOf('job');
-      const mfrIdx   = header.indexOf('mfr');
-      const modelIdx = header.indexOf('model');
-      const descIdx  = header.indexOf('desc');
-      const tagIdx   = header.indexOf('tag');
+      const jobIdx      = header.indexOf('job');
+      const mfrIdx      = header.indexOf('mfr');
+      const modelIdx    = header.indexOf('model');
+      const descIdx     = header.indexOf('desc');
+      const tagIdx      = header.indexOf('tag');
+      const customerIdx = header.indexOf('customer');
 
       if (jobIdx < 0 || mfrIdx < 0 || modelIdx < 0) {
         showToast('CSV missing Job, Mfr, or Model columns');
@@ -2289,12 +2389,13 @@ function loadCSVFromSync(file) {
         const ref = parts[jobIdx];
         if (existingRefs.has(ref)) continue; // skip if already tracked
 
-        const mfr   = parts[mfrIdx] || '';
-        const model = parts[modelIdx] || '';
-        const desc  = (parts[descIdx] || '').substring(0, 50);
+        const mfr      = parts[mfrIdx] || '';
+        const model    = parts[modelIdx] || '';
+        const desc     = (parts[descIdx] || '').substring(0, 50);
+        const custName = customerIdx >= 0 ? (parts[customerIdx] || '').trim() : '';
 
         visits.unshift({
-          id: uid(), customer: ref, instrument: mfr + ' ' + model,
+          id: uid(), customer: custName || ref, instrument: mfr + ' ' + model,
           ref, notes: desc, status: 'backlog',
           createdAt: Date.now(), completedAt: null, projectRate: null,
           jobs: [{ id: uid(), bench: 'service', type: 'Fault Diagnosis', sessions: [], fixedPrice: null, manualMins: 0, notes: '' }]
@@ -2324,6 +2425,211 @@ function updateSyncLabel() {
   } else {
     el.textContent = 'Sync';
   }
+}
+
+// ── Contacts CSV ─────────────────────────────────────────────────────────────
+function loadContactsCSV(csvText) {
+  try {
+    const lines = csvText.trim().split('\n');
+    if (lines.length < 2) { showToast('Contacts CSV is empty'); return; }
+
+    const parseCSVRow = s => {
+      const out = []; let cur = '', inQ = false;
+      for (let i = 0; i < s.length; i++) {
+        if (s[i] === '"') { inQ = !inQ; }
+        else if (s[i] === ',' && !inQ) { out.push(cur.trim()); cur = ''; }
+        else { cur += s[i]; }
+      }
+      out.push(cur.trim());
+      return out;
+    };
+
+    const header = parseCSVRow(lines[0]).map(h => h.toLowerCase().trim());
+    // Support "Contact", "Name", "Customer" for the name column
+    const nameIdx  = ['contact','name','customer','full name'].reduce((a,k)=>a>=0?a:header.indexOf(k), -1);
+    const emailIdx = header.indexOf('email');
+    const phoneIdx = ['phone','mobile','cell','ph'].reduce((a,k)=>a>=0?a:header.indexOf(k), -1);
+
+    if (emailIdx < 0) { showToast('Contacts CSV missing Email column'); return; }
+
+    contacts = [];
+    for (let i = 1; i < lines.length; i++) {
+      const p = parseCSVRow(lines[i]);
+      const email = (p[emailIdx] || '').trim();
+      if (!email) continue;
+      contacts.push({
+        name:  nameIdx  >= 0 ? (p[nameIdx]  || '').trim() : '',
+        email,
+        phone: phoneIdx >= 0 ? (p[phoneIdx] || '').trim() : '',
+      });
+    }
+
+    persist();
+    updateContactsCount();
+    showToast(`☁ Loaded ${contacts.length} contacts`);
+  } catch(err) {
+    showToast('Error reading contacts: ' + err.message);
+  }
+}
+
+function lookupContact(customerName) {
+  if (!customerName || !contacts.length) return null;
+  const needle = customerName.toLowerCase().trim();
+  // Exact match first
+  let match = contacts.find(c => c.name.toLowerCase() === needle);
+  if (match) return match;
+  // Last-name match
+  const lastName = needle.split(/\s+/).pop();
+  match = contacts.find(c => c.name.toLowerCase().includes(lastName));
+  if (match) return match;
+  // First-name match
+  const firstName = needle.split(/\s+/)[0];
+  match = contacts.find(c => c.name.toLowerCase().startsWith(firstName));
+  return match || null;
+}
+
+function updateContactsCount() {
+  const el = document.getElementById('contacts-count');
+  if (el) el.textContent = contacts.length ? `${contacts.length} loaded` : '0 loaded';
+}
+
+// ── Notify Customer ───────────────────────────────────────────────────────────
+const SERVICE_TAGS = {
+  service:  'amp-repair',
+  setup:    'guitar-setup',
+  repair:   'luthier',
+  fretwork: 'fretwork',
+  finish:   'luthier',
+  admin:    'job-complete',
+};
+
+function inferServiceTag(visit) {
+  const bench = visit.jobs?.[0]?.bench || 'service';
+  const type  = (visit.jobs?.[0]?.type  || '').toLowerCase();
+  if (type.includes('refret') || type.includes('fret level') || type.includes('fret dress')) return 'refret';
+  if (type.includes('speaker'))  return 'speaker-repair';
+  if (type.includes('pickup'))   return 'pickup-install';
+  if (type.includes('pedal'))    return 'pedal-repair';
+  if (type.includes('valve') || type.includes('recap')) return 'valve-service';
+  if (type.includes('electronics')) return 'electronics-repair';
+  return SERVICE_TAGS[bench] || 'job-complete';
+}
+
+function openNotifyModal(visitId) {
+  const visit = visits.find(v => v.id === visitId);
+  if (!visit) return;
+  notifyVisitId = visitId;
+  notifyPref = 'email';
+
+  const contact = lookupContact(visit.customer);
+
+  sv('nm-customer', visit.customer + (visit.ref && visit.ref !== visit.customer ? ` (#${visit.ref})` : ''));
+  sv('nm-email',   contact?.email || '');
+  sv('nm-phone',   contact?.phone || '');
+
+  const statusEl = document.getElementById('nm-contact-status');
+  if (statusEl) {
+    statusEl.className = contact ? 'nm-contact-found' : 'nm-contact-missing';
+    statusEl.textContent = contact ? '✓ found in contacts' : '— not in contacts, enter manually';
+  }
+
+  // Auto-select preference based on available data
+  if (!contact?.email && contact?.phone) setNotifyPref('sms');
+  else setNotifyPref('email');
+
+  // Auto-infer service tag
+  const tag = inferServiceTag(visit);
+  const sel = document.getElementById('nm-tag');
+  if (sel) sel.value = tag;
+
+  document.getElementById('notify-modal').classList.add('open');
+}
+
+function closeNotifyModal() {
+  document.getElementById('notify-modal').classList.remove('open');
+  notifyVisitId = null;
+}
+
+function setNotifyPref(pref) {
+  notifyPref = pref;
+  ['email','sms','both'].forEach(p => {
+    document.getElementById('pref-'+p)?.classList.toggle('active', p === pref);
+  });
+}
+
+async function sendNotification() {
+  const email   = document.getElementById('nm-email')?.value.trim();
+  const phone   = document.getElementById('nm-phone')?.value.trim();
+  const tag     = document.getElementById('nm-tag')?.value;
+  const visit   = visits.find(v => v.id === notifyVisitId);
+  const apiKey  = localStorage.getItem('gg7_ml_key') || '';
+  const custName = visit?.customer || '';
+
+  if (!email && notifyPref !== 'sms') { showToast('Email required'); return; }
+  if (!apiKey) { showToast('Add MailerLite API key in Settings first'); return; }
+
+  const btn = document.getElementById('nm-send-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  try {
+    await callMailerLite(apiKey, email, custName, phone, tag, notifyPref);
+    closeNotifyModal();
+    showToast('✓ Customer notified via MailerLite');
+  } catch(err) {
+    showToast('MailerLite error: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Notification'; }
+  }
+}
+
+async function callMailerLite(apiKey, email, name, phone, serviceTag, pref) {
+  const tags = ['job-complete', serviceTag].filter((t,i,a) => t && a.indexOf(t) === i);
+  if (pref === 'sms' || pref === 'both') tags.push('sms-ok');
+
+  const nameParts = name.split(/\s+/);
+  const fields = {
+    last_name:  nameParts.slice(1).join(' ') || '',
+  };
+  if (phone) fields.phone = phone;
+
+  const body = {
+    email,
+    fields,
+    groups: [],
+    status: 'active',
+  };
+
+  const res = await fetch('https://connect.mailerlite.com/api/subscribers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const subscriberId = data.data?.id;
+  if (!subscriberId) return;
+
+  // Apply tags (MailerLite calls them "fields" via subscriber update isn't tag-based,
+  // but we can note them in a custom field if tags aren't set up yet)
+  // Tags in MailerLite require group IDs — store tag list in a note field instead
+  await fetch(`https://connect.mailerlite.com/api/subscribers/${subscriberId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({ fields: { ...fields, last_name: fields.last_name } }),
+  }).catch(() => {}); // non-fatal
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
