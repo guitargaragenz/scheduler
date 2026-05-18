@@ -67,11 +67,11 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         overflow: 'hidden',
         transition: 'width 0.3s ease',
         display: 'flex', flexDirection: 'column',
-        background: '#1e293b', borderLeft: '1px solid #334155', height: '100%',
+        background: '#0369a1', borderLeft: '1px solid #38bdf8', height: '100%',
       }}>
         <div style={{ width: 300, display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Search / focus banner */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #334155' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #38bdf8' }}>
             {isFocusMode ? (
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -100,8 +100,8 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   placeholder="Job #, make, model, bench…"
                   style={{
                     display: 'block', width: '100%', marginTop: 6, padding: '6px 10px',
-                    background: '#0f172a', border: '1px solid #334155', borderRadius: 6,
-                    color: '#e2e8f0', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                    background: '#025d8f', border: '1px solid #38bdf8', borderRadius: 6,
+                    color: '#e2f4fd', fontSize: 13, outline: 'none', boxSizing: 'border-box',
                   }}
                 />
               </>
@@ -109,12 +109,12 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
           </div>
 
           {/* Drag mode toggle */}
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid #334155', display: 'flex', gap: 8 }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid #38bdf8', display: 'flex', gap: 8 }}>
             <button
               onClick={() => onDragModeChange('regular')}
               style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: dragMode === 'regular' ? '#166534' : '#1e293b',
+                background: dragMode === 'regular' ? '#166534' : '#025d8f',
                 color: dragMode === 'regular' ? '#bbf7d0' : '#94a3b8',
                 outline: dragMode === 'regular' ? '2px solid #22c55e' : '1px solid #334155',
               }}
@@ -123,7 +123,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
               onClick={() => onDragModeChange('urgent')}
               style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: dragMode === 'urgent' ? '#7f1d1d' : '#1e293b',
+                background: dragMode === 'urgent' ? '#7f1d1d' : '#025d8f',
                 color: dragMode === 'urgent' ? '#fca5a5' : '#94a3b8',
                 outline: dragMode === 'urgent' ? '2px solid #ef4444' : '1px solid #334155',
               }}
@@ -173,7 +173,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             {/* Backlog — schedulable, lower priority queue, draggable */}
             {!isFocusMode && displayedBacklog.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #0284c7' }}>
                   BACKLOG ({displayedBacklog.length})
                 </div>
                 {displayedBacklog.map(job => (
@@ -227,7 +227,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             {/* On Hold — truly parked, dimmed */}
             {!isFocusMode && displayedHold.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #0284c7' }}>
                   🔒 ON HOLD ({displayedHold.length})
                 </div>
                 {displayedHold.map(job => (
@@ -240,13 +240,13 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '10px 16px', borderTop: '1px solid #334155' }}>
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #38bdf8' }}>
             <label
               htmlFor="csv-upload"
               style={{
                 display: 'block', textAlign: 'center', padding: '8px 0',
-                background: '#1e3a5f', border: '1px solid #2563eb', borderRadius: 6,
-                color: '#bfdbfe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                background: '#025d8f', border: '1px solid #38bdf8', borderRadius: 6,
+                color: '#e0f2fe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
               }}
             >📂 Upload CSV</label>
             <input
