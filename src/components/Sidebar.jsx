@@ -49,10 +49,10 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         style={{
           position: 'absolute', left: isOpen ? -28 : -28, top: '50%', transform: 'translateY(-50%)',
           width: 28, height: 56, borderRadius: '8px 0 0 8px',
-          background: isFocusMode ? '#166534' : '#0369a1',
-          border: `1px solid ${isFocusMode ? '#22c55e' : '#38bdf8'}`,
+          background: isFocusMode ? '#166534' : '#0f2044',
+          border: `1px solid ${isFocusMode ? '#22c55e' : '#3b82f6'}`,
           borderRight: 'none',
-          color: isFocusMode ? '#86efac' : '#e0f2fe',
+          color: isFocusMode ? '#86efac' : '#bfdbfe',
           fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 10,
         }}
@@ -67,11 +67,11 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         overflow: 'hidden',
         transition: 'width 0.3s ease',
         display: 'flex', flexDirection: 'column',
-        background: '#0369a1', borderLeft: '1px solid #38bdf8', height: '100%',
+        background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100%',
       }}>
         <div style={{ width: 300, display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Search / focus banner */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #38bdf8' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #3b82f6' }}>
             {isFocusMode ? (
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -100,7 +100,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   placeholder="Job #, make, model, bench…"
                   style={{
                     display: 'block', width: '100%', marginTop: 6, padding: '6px 10px',
-                    background: '#025d8f', border: '1px solid #38bdf8', borderRadius: 6,
+                    background: '#0a1a38', border: '1px solid #3b82f6', borderRadius: 6,
                     color: '#e2f4fd', fontSize: 13, outline: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -109,12 +109,12 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
           </div>
 
           {/* Drag mode toggle */}
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid #38bdf8', display: 'flex', gap: 8 }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid #3b82f6', display: 'flex', gap: 8 }}>
             <button
               onClick={() => onDragModeChange('regular')}
               style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: dragMode === 'regular' ? '#166534' : '#025d8f',
+                background: dragMode === 'regular' ? '#166534' : '#0a1a38',
                 color: dragMode === 'regular' ? '#bbf7d0' : '#94a3b8',
                 outline: dragMode === 'regular' ? '2px solid #22c55e' : '1px solid #334155',
               }}
@@ -123,7 +123,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
               onClick={() => onDragModeChange('urgent')}
               style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: dragMode === 'urgent' ? '#7f1d1d' : '#025d8f',
+                background: dragMode === 'urgent' ? '#7f1d1d' : '#0a1a38',
                 color: dragMode === 'urgent' ? '#fca5a5' : '#94a3b8',
                 outline: dragMode === 'urgent' ? '2px solid #ef4444' : '1px solid #334155',
               }}
@@ -240,13 +240,13 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '10px 16px', borderTop: '1px solid #38bdf8' }}>
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #3b82f6' }}>
             <label
               htmlFor="csv-upload"
               style={{
                 display: 'block', textAlign: 'center', padding: '8px 0',
-                background: '#025d8f', border: '1px solid #38bdf8', borderRadius: 6,
-                color: '#e0f2fe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                background: '#0a1a38', border: '1px solid #3b82f6', borderRadius: 6,
+                color: '#bfdbfe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
               }}
             >📂 Upload CSV</label>
             <input
