@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/job-tracker", "destination": "/job-tracker.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
