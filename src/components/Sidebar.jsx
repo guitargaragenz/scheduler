@@ -8,25 +8,34 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
   const { setNodeRef, isOver } = useDroppable({ id: 'sidebar' });
 
   // Hide parent jobs that have been split (replaced by subtasks)
-  const unscheduled = jobs.filter(j => !j.scheduled && !j.isSplit);
-  const active     = unscheduled.filter(j => j.schedulable !== false && !j.backlog);
-  const backlog    = unscheduled.filter(j => j.schedulable !== false && j.backlog);
-  const onHold     = unscheduled.filter(j => j.schedulable === false);
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit);
+  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
+  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
+  const readyToStart  = unscheduled.filter(j => j.readyToStart);
+  const awaiting      = unscheduled.filter(j => j.awaiting);
+  const inTransit     = unscheduled.filter(j => j.inTransit);
+  const onHold        = unscheduled.filter(j => !j.schedulable && !j.awaiting && !j.inTransit);
 
   const isFocusMode = !!highlightedJobId;
 
-  let displayed, displayedBacklog, displayedHold;
+  let displayed, displayedBacklog, displayedReady, displayedAwaiting, displayedTransit, displayedHold;
   if (isFocusMode) {
-    displayed        = active.filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
-    displayedBacklog = [];
-    displayedHold    = [];
+    displayed          = active.filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    displayedBacklog   = [];
+    displayedReady     = [];
+    displayedAwaiting  = [];
+    displayedTransit   = [];
+    displayedHold      = [];
   } else {
     const q = search.toLowerCase();
     const match = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
       .some(v => String(v || '').toLowerCase().includes(q));
-    displayed         = q ? active.filter(match)   : active;
-    displayedBacklog  = q ? backlog.filter(match)  : backlog;
-    displayedHold     = q ? onHold.filter(match)   : onHold;
+    displayed          = q ? active.filter(match)       : active;
+    displayedBacklog   = q ? backlog.filter(match)      : backlog;
+    displayedReady     = q ? readyToStart.filter(match) : readyToStart;
+    displayedAwaiting  = q ? awaiting.filter(match)     : awaiting;
+    displayedTransit   = q ? inTransit.filter(match)    : inTransit;
+    displayedHold      = q ? onHold.filter(match)       : onHold;
   }
 
   const focusCount = isFocusMode ? displayed.length : 0;
@@ -161,28 +170,68 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
               />
             ))}
 
-            {/* Backlog — schedulable but not in immediate queue */}
+            {/* Backlog — schedulable, lower priority queue, draggable */}
             {!isFocusMode && displayedBacklog.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
                   BACKLOG ({displayedBacklog.length})
                 </div>
                 {displayedBacklog.map(job => (
-                  <div key={job.id} style={{ opacity: 0.6, pointerEvents: 'none' }}>
+                  <div key={job.id} style={{ opacity: 0.65 }}>
+                    <JobCard job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Ready to Start — On Hold + BL=Y + GTS: parts arrived, good to go */}
+            {!isFocusMode && displayedReady.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #78350f' }}>
+                  ✅ READY TO START ({displayedReady.length})
+                </div>
+                {displayedReady.map(job => (
+                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
+                ))}
+              </div>
+            )}
+
+            {/* Awaiting — Waiting + INC or CI: pending customer/incubating, locked */}
+            {!isFocusMode && displayedAwaiting.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #312e81' }}>
+                  📞 AWAITING ({displayedAwaiting.length})
+                </div>
+                {displayedAwaiting.map(job => (
+                  <div key={job.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
                     <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
                   </div>
                 ))}
               </div>
             )}
 
-            {/* On Hold / Waiting — visible but not draggable */}
+            {/* In Transit — locked, visible for tracking */}
+            {!isFocusMode && displayedTransit.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#22d3ee', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #164e63' }}>
+                  📦 IN TRANSIT ({displayedTransit.length})
+                </div>
+                {displayedTransit.map(job => (
+                  <div key={job.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
+                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* On Hold — truly parked, dimmed */}
             {!isFocusMode && displayedHold.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #1e293b' }}>
-                  ON HOLD / WAITING ({displayedHold.length})
+                  🔒 ON HOLD ({displayedHold.length})
                 </div>
                 {displayedHold.map(job => (
-                  <div key={job.id} style={{ opacity: 0.45, pointerEvents: 'none' }}>
+                  <div key={job.id} style={{ opacity: 0.35, pointerEvents: 'none' }}>
                     <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
                   </div>
                 ))}

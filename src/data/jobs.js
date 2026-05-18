@@ -1,7 +1,13 @@
 export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL`;
 
-export function inferBench(desc = '', status = '') {
-  if (status === 'Waiting') return 'Admin';
+export function inferBench(desc = '', status = '', action = '') {
+  const act = (action || '').trim().toUpperCase();
+  // In Transit — always Admin (nothing to bench until it arrives)
+  if (status === 'In Transit') return 'Admin';
+  // Waiting — Admin unless Incubating (INC) or Customer Input (CI)
+  // INC/CI: work is defined, just pending — infer bench normally
+  // Anything else (Parts, Tubes, Bias…): need to order → Admin
+  if (status === 'Waiting' && !['INC', 'CI'].includes(act)) return 'Admin';
   const d = desc.toLowerCase();
   if (/refret|fret level|fret dress|fret polish/.test(d)) return 'Fretwork';
   if (/refret|fret|nut|saddle|bridge|crack|brace|reset|neck|pocket|top|lower bout|inlay|binding|finish|restoration/.test(d)) return 'Luthier';
@@ -59,12 +65,23 @@ export function parseCSV(csvText) {
     headers.forEach((h, idx) => { obj[h] = cells[idx] || ''; });
 
     const status = obj.Status || '';
-    const hours = parseFloat(obj.Hours) || 0;
-    const schedulable = ['Active', 'Booked In'].includes(status);
-    if (!schedulable && !['On Hold', 'Waiting', 'To Be Inv'].includes(status)) continue;
+    const act    = (obj.Action || '').trim().toUpperCase();
+    const hours  = parseFloat(obj.Hours) || 0;
+
+    // On Hold + BL=Y + GTS → graduated to schedulable (parts arrived / good to start)
+    const readyToStart = status === 'On Hold' && obj.BL === 'Y' && act === 'GTS';
+    // Waiting + INC or CI → awaiting customer/incubating (visible but locked)
+    const awaiting     = status === 'Waiting' && ['INC', 'CI'].includes(act);
+    // In Transit → visible but locked
+    const inTransit    = status === 'In Transit';
+
+    const schedulable  = ['Active', 'Booked In'].includes(status) || readyToStart;
+
+    const accepted = ['On Hold', 'Waiting', 'To Be Inv', 'In Transit'];
+    if (!schedulable && !accepted.includes(status)) continue;
     if (hours === 0 && schedulable) continue;
 
-    const bench = inferBench(obj.Desc, status);
+    const bench = inferBench(obj.Desc, status, obj.Action);
     jobs.push({
       id: String(obj.Job),
       job: obj.Job,
@@ -72,6 +89,9 @@ export function parseCSV(csvText) {
       model: obj.Model,
       status,
       schedulable,
+      readyToStart,
+      awaiting,
+      inTransit,
       days: parseInt(obj.Days) || 0,
       tag: obj.Tag || inferTag(hours),
       hours,
