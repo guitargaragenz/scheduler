@@ -385,8 +385,13 @@ input[type=datetime-local]{color-scheme:light;}
         <div class="kpi"><div class="kpi-val" id="h-rev">$0</div><div class="kpi-lbl">Week</div></div>
         <div class="kpi"><div class="kpi-val" id="h-rate">—</div><div class="kpi-lbl">$/hr</div></div>
         <div class="kpi"><div class="kpi-val" id="h-open">0</div><div class="kpi-lbl">Open</div></div>
+        <div class="kpi" style="cursor:pointer;" onclick="document.getElementById('sync-file').click()" title="Load CSV or JSON from iCloud">
+          <div class="kpi-val" style="font-size:1.5rem;line-height:1;">☁</div>
+          <div class="kpi-lbl" id="sync-lbl">Sync</div>
+        </div>
       </div>
     </div>
+    <input type="file" id="sync-file" accept=".csv,.json" onchange="handleSyncFile(this)" style="display:none;">
     <div class="main-tabs">
       <button class="main-tab active" onclick="showMain('active',this)">Jobs <span class="tab-badge lit" id="badge-active">0</span></button>
       <button class="main-tab" onclick="showMain('backlog',this)">Backlog <span class="tab-badge" id="badge-backlog">0</span></button>
@@ -628,6 +633,7 @@ buildOhCatSelect();
 renderOhCatSettings();
 renderAll();
 checkStartupLoad();
+updateSyncLabel();
 
 // ── Main tabs ─────────────────────────────────────────────────────────────────
 function showMain(name, el) {
@@ -2222,6 +2228,102 @@ function deleteType(b,i) {
   if(!benchTypes[b].includes('Misc / One-off')) benchTypes[b].push('Misc / One-off');
   persist(); renderTypeList(b);
   if(activeBench===b) selectBench(b);
+}
+
+// ── iCloud Sync ───────────────────────────────────────────────────────────────
+function handleSyncFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const isJSON = file.name.endsWith('.json');
+  const isCSV  = file.name.endsWith('.csv');
+  if (isJSON) {
+    importJSON(input);
+    updateSyncLabel();
+  } else if (isCSV) {
+    loadCSVFromSync(file);
+  } else {
+    showToast('Unknown file type — use .csv or .json');
+  }
+  input.value = '';
+}
+
+function loadCSVFromSync(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const csv = e.target.result;
+      const lines = csv.trim().split('\n');
+      if (!lines.length) { showToast('No data found in CSV'); return; }
+
+      const parseCSVRow = s => {
+        const out = []; let cur = '', inQ = false;
+        for (let i = 0; i < s.length; i++) {
+          if (s[i] === '"') { inQ = !inQ; }
+          else if (s[i] === ',' && !inQ) { out.push(cur.trim()); cur = ''; }
+          else { cur += s[i]; }
+        }
+        out.push(cur.trim());
+        return out;
+      };
+
+      const header = parseCSVRow(lines[0]).map(h => h.toLowerCase());
+      const jobIdx   = header.indexOf('job');
+      const mfrIdx   = header.indexOf('mfr');
+      const modelIdx = header.indexOf('model');
+      const descIdx  = header.indexOf('desc');
+      const tagIdx   = header.indexOf('tag');
+
+      if (jobIdx < 0 || mfrIdx < 0 || modelIdx < 0) {
+        showToast('CSV missing Job, Mfr, or Model columns');
+        return;
+      }
+
+      // Build set of job refs already in visits (any status)
+      const existingRefs = new Set(visits.map(v => v.ref));
+
+      let added = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const parts = parseCSVRow(lines[i]);
+        if (!parts[jobIdx]) continue;
+        if (tagIdx >= 0 && (parts[tagIdx] || '').trim().toUpperCase() === 'SKP') continue;
+        const ref = parts[jobIdx];
+        if (existingRefs.has(ref)) continue; // skip if already tracked
+
+        const mfr   = parts[mfrIdx] || '';
+        const model = parts[modelIdx] || '';
+        const desc  = (parts[descIdx] || '').substring(0, 50);
+
+        visits.unshift({
+          id: uid(), customer: ref, instrument: mfr + ' ' + model,
+          ref, notes: desc, status: 'backlog',
+          createdAt: Date.now(), completedAt: null, projectRate: null,
+          jobs: [{ id: uid(), bench: 'service', type: 'Fault Diagnosis', sessions: [], fixedPrice: null, manualMins: 0, notes: '' }]
+        });
+        added++;
+      }
+
+      persist(); renderAll();
+      localStorage.setItem('gg7_lastLoad', Date.now());
+      updateSyncLabel();
+      showToast(added > 0 ? `☁ Loaded ${added} new jobs from CSV` : '☁ CSV up to date — no new jobs');
+      if (added > 0) showMain('backlog', document.querySelector('.main-tab:nth-child(2)'));
+    } catch(err) {
+      showToast('Error reading CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function updateSyncLabel() {
+  const ts = localStorage.getItem('gg7_lastLoad');
+  const el = document.getElementById('sync-lbl');
+  if (!el) return;
+  if (ts) {
+    const d = new Date(parseInt(ts));
+    el.textContent = d.toLocaleDateString('en-NZ', {day:'numeric', month:'short'});
+  } else {
+    el.textContent = 'Sync';
+  }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
