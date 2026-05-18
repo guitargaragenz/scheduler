@@ -315,6 +315,8 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .nm-pref-btn.active{background:#ddeaf5;border-color:var(--c-service);color:var(--c-service);}
 .nm-contact-found{font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--success);margin-top:0.2rem;}
 .nm-contact-missing{font-family:'Courier Prime',monospace;font-size:0.65rem;color:var(--warn);margin-top:0.2rem;}
+.nm-section{border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.8rem;}
+.nm-section-title{font-family:'Courier Prime',monospace;font-size:0.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:0.7rem;}
 .nm-send{background:var(--accent);color:#fff;font-family:'Courier Prime',monospace;font-size:0.75rem;font-weight:700;padding:0.7rem 1.4rem;cursor:pointer;border:none;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s;}
 .nm-send:hover{opacity:.85;}
 .nm-send:disabled{opacity:.4;cursor:not-allowed;}
@@ -625,53 +627,73 @@ input[type=datetime-local]{color-scheme:light;}
 <!-- Notify modal -->
 <div class="modal-overlay" id="notify-modal" onclick="if(event.target===this)closeNotifyModal()">
   <div class="notify-modal">
-    <div class="nm-title">📧 Notify Customer</div>
+    <div class="nm-title">Notify Customer</div>
+
+    <!-- Contact info -->
     <div class="nm-field">
-      <label>Customer</label>
+      <label>Customer <span id="nm-contact-status"></span></label>
       <input type="text" id="nm-customer" readonly>
     </div>
-    <div class="nm-field">
-      <label>Email <span id="nm-contact-status"></span></label>
-      <input type="email" id="nm-email" placeholder="customer@email.com">
-    </div>
-    <div class="nm-field">
-      <label>Phone</label>
-      <input type="tel" id="nm-phone" placeholder="+64 21 …">
-    </div>
-    <div class="nm-field">
-      <label>Preference</label>
-      <div class="nm-pref">
-        <button class="nm-pref-btn active" id="pref-email" onclick="setNotifyPref('email')">Email</button>
-        <button class="nm-pref-btn" id="pref-sms" onclick="setNotifyPref('sms')">SMS</button>
-        <button class="nm-pref-btn" id="pref-both" onclick="setNotifyPref('both')">Both</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div class="nm-field">
+        <label>Phone</label>
+        <input type="tel" id="nm-phone" placeholder="+64 21 …" oninput="updateSMSPreview()">
+      </div>
+      <div class="nm-field">
+        <label>Email</label>
+        <input type="email" id="nm-email" placeholder="customer@email.com">
       </div>
     </div>
-    <div class="nm-field">
-      <label>Service Tag</label>
-      <select id="nm-tag">
-        <option value="guitar-setup">Guitar Setup</option>
-        <option value="amp-repair">Amp Repair</option>
-        <option value="pedal-repair">Pedal Repair</option>
-        <option value="refret">Refret / Fretwork</option>
-        <option value="fretwork">Fret Level / Dress</option>
-        <option value="electronics-repair">Electronics Repair</option>
-        <option value="speaker-repair">Speaker Repair</option>
-        <option value="pickup-install">Pickup Install</option>
-        <option value="valve-service">Valve Service</option>
-        <option value="luthier">Luthier / Structural</option>
-        <option value="job-complete">General / Other</option>
-      </select>
+
+    <!-- SMS section -->
+    <div class="nm-section">
+      <div class="nm-section-title">📱 SMS — from your phone</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+        <div class="nm-field" style="margin:0;">
+          <label>Price ex-GST ($)</label>
+          <input type="number" id="nm-price-ex" placeholder="0" min="0" oninput="onPriceExInput()">
+        </div>
+        <div class="nm-field" style="margin:0;">
+          <label>Total inc-GST ($)</label>
+          <input type="number" id="nm-price-total" placeholder="0" min="0" oninput="updateSMSPreview()">
+        </div>
+      </div>
+      <div class="nm-field">
+        <label>Message</label>
+        <textarea id="nm-sms-body" rows="6" style="background:#fff;border:1px solid var(--border);color:var(--text);font-family:Arial,sans-serif;font-size:0.85rem;padding:0.5rem 0.7rem;width:100%;resize:vertical;line-height:1.5;"></textarea>
+      </div>
+      <button class="nm-send" style="background:#1d4ed8;width:100%;" onclick="openInMessages()">📱 Open in Messages</button>
     </div>
-    <div style="display:flex;align-items:center;gap:0.7rem;margin-top:0.5rem;margin-bottom:0.9rem;">
-      <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
-        <input type="checkbox" id="nm-dryrun" style="width:auto;">
-        <span style="font-family:'Courier Prime',monospace;font-size:0.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Dry run (preview only)</span>
-      </label>
+
+    <!-- Email section -->
+    <div class="nm-section">
+      <div class="nm-section-title">📧 Email — via MailerLite</div>
+      <div class="nm-field">
+        <label>Service Tag</label>
+        <select id="nm-tag">
+          <option value="guitar-setup">Guitar Setup</option>
+          <option value="amp-repair">Amp Repair</option>
+          <option value="pedal-repair">Pedal Repair</option>
+          <option value="refret">Refret / Fretwork</option>
+          <option value="fretwork">Fret Level / Dress</option>
+          <option value="electronics-repair">Electronics Repair</option>
+          <option value="speaker-repair">Speaker Repair</option>
+          <option value="pickup-install">Pickup Install</option>
+          <option value="valve-service">Valve Service</option>
+          <option value="luthier">Luthier / Structural</option>
+          <option value="job-complete">General / Other</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:0.7rem;">
+        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+          <input type="checkbox" id="nm-dryrun" style="width:auto;">
+          <span style="font-family:'Courier Prime',monospace;font-size:0.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Dry run</span>
+        </label>
+      </div>
+      <button class="nm-send" id="nm-send-btn" style="width:100%;" onclick="sendNotification()">📧 Send via MailerLite</button>
     </div>
-    <div style="display:flex;gap:0.5rem;">
-      <button class="nm-send" id="nm-send-btn" onclick="sendNotification()">Send Notification</button>
-      <button class="df-btn df-reopen" onclick="closeNotifyModal()">Cancel</button>
-    </div>
+
+    <button class="df-btn df-reopen" style="width:100%;margin-top:0.3rem;" onclick="closeNotifyModal()">Cancel</button>
   </div>
 </div>
 
@@ -2561,6 +2583,8 @@ function openNotifyModal(visitId) {
   sv('nm-customer', visit.customer + (visit.ref && visit.ref !== visit.customer ? ` (#${visit.ref})` : ''));
   sv('nm-email',   contact?.email || '');
   sv('nm-phone',   contact?.phone || '');
+  sv('nm-price-ex', '');
+  sv('nm-price-total', '');
 
   const statusEl = document.getElementById('nm-contact-status');
   if (statusEl) {
@@ -2568,16 +2592,47 @@ function openNotifyModal(visitId) {
     statusEl.textContent = contact ? '✓ found in contacts' : '— not in contacts, enter manually';
   }
 
-  // Auto-select preference based on available data
-  if (!contact?.email && contact?.phone) setNotifyPref('sms');
-  else setNotifyPref('email');
-
   // Auto-infer service tag
   const tag = inferServiceTag(visit);
   const sel = document.getElementById('nm-tag');
   if (sel) sel.value = tag;
 
+  updateSMSPreview();
   document.getElementById('notify-modal').classList.add('open');
+}
+
+function onPriceExInput() {
+  const ex = parseFloat(document.getElementById('nm-price-ex')?.value) || 0;
+  if (ex > 0) {
+    const total = Math.round(ex * 1.15);
+    sv('nm-price-total', total);
+  }
+  updateSMSPreview();
+}
+
+function updateSMSPreview() {
+  const visit    = visits.find(v => v.id === notifyVisitId);
+  const fullName = document.getElementById('nm-customer')?.value || '';
+  const firstName = fullName.split(/[\s(]/)[0];
+  const instrument = visit?.instrument || 'your instrument';
+  const ex    = document.getElementById('nm-price-ex')?.value.trim();
+  const total = document.getElementById('nm-price-total')?.value.trim();
+
+  const priceLine = ex
+    ? `The cost is $${ex} +GST (TOTAL $${total || Math.round(parseFloat(ex)*1.15)}). `
+    : 'The cost is $____ +GST (TOTAL $____). ';
+
+  const msg = `Hi ${firstName}, your ${instrument} is finished and good to go. ${priceLine}Just hit the link below and book in at a time and day that suits you to pick it up. Cheers Trevor Guitar Garage NZ https://calendly.com/guitargaragenz/consultation`;
+
+  sv('nm-sms-body', msg);
+}
+
+function openInMessages() {
+  const phone = (document.getElementById('nm-phone')?.value || '').replace(/\s+/g, '');
+  const body  = document.getElementById('nm-sms-body')?.value || '';
+  if (!phone) { showToast('Enter a phone number first'); return; }
+  if (!body)  { showToast('Message is empty'); return; }
+  window.location.href = `sms:${phone}?body=${encodeURIComponent(body)}`;
 }
 
 function closeNotifyModal() {
