@@ -139,7 +139,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
   }
 
   return (
-    <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative', background: '#3d5470' }}>
+    <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative', background: '#3d5470' }}>
       <div style={{ minWidth: 700, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header row */}

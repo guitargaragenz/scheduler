@@ -135,7 +135,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             ref={setNodeRef}
             onClick={e => { if (isFocusMode && e.target === e.currentTarget) onClearHighlight(); }}
             style={{
-              flex: 1, overflowY: 'auto', padding: 12,
+              flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12,
               display: 'flex', flexDirection: 'column', gap: 8,
               background: isOver ? 'rgba(34,197,94,0.05)' : 'transparent',
               transition: 'background 0.15s',
