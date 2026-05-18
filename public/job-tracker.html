@@ -658,7 +658,13 @@ input[type=datetime-local]{color-scheme:light;}
         <option value="job-complete">General / Other</option>
       </select>
     </div>
-    <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+    <div style="display:flex;align-items:center;gap:0.7rem;margin-top:0.5rem;margin-bottom:0.9rem;">
+      <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+        <input type="checkbox" id="nm-dryrun" style="width:auto;">
+        <span style="font-family:'Courier Prime',monospace;font-size:0.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">Dry run (preview only)</span>
+      </label>
+    </div>
+    <div style="display:flex;gap:0.5rem;">
       <button class="nm-send" id="nm-send-btn" onclick="sendNotification()">Send Notification</button>
       <button class="df-btn df-reopen" onclick="closeNotifyModal()">Cancel</button>
     </div>
@@ -2558,14 +2564,22 @@ function setNotifyPref(pref) {
 }
 
 async function sendNotification() {
-  const email   = document.getElementById('nm-email')?.value.trim();
-  const phone   = document.getElementById('nm-phone')?.value.trim();
-  const tag     = document.getElementById('nm-tag')?.value;
-  const visit   = visits.find(v => v.id === notifyVisitId);
-  const apiKey  = localStorage.getItem('gg7_ml_key') || '';
+  const email    = document.getElementById('nm-email')?.value.trim();
+  const phone    = document.getElementById('nm-phone')?.value.trim();
+  const tag      = document.getElementById('nm-tag')?.value;
+  const dryRun   = document.getElementById('nm-dryrun')?.checked;
+  const visit    = visits.find(v => v.id === notifyVisitId);
+  const apiKey   = localStorage.getItem('gg7_ml_key') || '';
   const custName = visit?.customer || '';
 
   if (!email && notifyPref !== 'sms') { showToast('Email required'); return; }
+
+  if (dryRun) {
+    const prefLabel = {email:'Email',sms:'SMS',both:'Email + SMS'}[notifyPref] || notifyPref;
+    alert(`DRY RUN — nothing sent\n\nCustomer: ${custName}\nEmail: ${email || '—'}\nPhone: ${phone || '—'}\nPreference: ${prefLabel}\nTag: job-complete, ${tag}`);
+    return;
+  }
+
   if (!apiKey) { showToast('Add MailerLite API key in Settings first'); return; }
 
   const btn = document.getElementById('nm-send-btn');
