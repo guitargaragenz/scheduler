@@ -139,19 +139,19 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
   }
 
   return (
-    <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative', background: '#1e293b' }}>
+    <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', position: 'relative', background: '#2a3a52' }}>
       <div style={{ minWidth: 700, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header row */}
-        <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 10, background: '#0f172a' }}>
+        <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 10, background: '#1a2540' }}>
           <div style={{ width: TIME_COL_WIDTH, flexShrink: 0 }} />
           {weekDays.map((d, i) => {
             const isWeekend = isSaturday(d) || isSunday(d);
             return (
               <div key={i} style={{
                 flex: 1, padding: '10px 6px', textAlign: 'center',
-                borderLeft: '1px solid #263348', borderBottom: '2px solid #334155',
-                background: isWeekend ? '#1a1f2e' : '#0f172a',
+                borderLeft: '1px solid #2d3e52', borderBottom: '2px solid #3a4f68',
+                background: isWeekend ? '#1f2d44' : '#1a2540',
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? '#94a3b8' : '#e2e8f0', letterSpacing: 0.5 }}>
                   {d.toLocaleDateString('en-NZ', { weekday: 'short' }).toUpperCase()}
@@ -170,7 +170,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
 
             {/* Evening break divider */}
             {hour === 21 && minute === 0 && (
-              <div style={{ display: 'flex', height: 22, background: '#0f172a', borderBottom: '1px solid #263348', borderTop: '1px solid #263348' }}>
+              <div style={{ display: 'flex', height: 22, background: '#1a2540', borderBottom: '1px solid #2d3e52', borderTop: '1px solid #2d3e52' }}>
                 <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, borderRight: '1px solid #263348' }} />
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>— evening —</span>
@@ -187,8 +187,8 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 paddingRight: 8, height: SLOT_HEIGHT,
                 fontSize: minute === 0 ? 10 : 8,
                 color: minute === 0 ? '#e2e8f0' : '#334155',
-                borderBottom: '1px solid #263348',
-                borderRight: '1px solid #263348',
+                borderBottom: '1px solid #2d3e52',
+                borderRight: '1px solid #2d3e52',
               }}>
                 {minute === 0 ? formatHour(hour) : ':30'}
               </div>
@@ -206,10 +206,10 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                   return (
                     <div key={dayIdx} style={{
                       flex: 1, height: SLOT_HEIGHT,
-                      borderLeft: '1px solid #263348', borderBottom: '1px solid #263348',
+                      borderLeft: '1px solid #2d3e52', borderBottom: '1px solid #2d3e52',
                       background: hatched
-                        ? 'repeating-linear-gradient(135deg, #0f172a 0px, #0f172a 4px, transparent 4px, transparent 10px)'
-                        : '#1e293b',
+                        ? 'repeating-linear-gradient(135deg, #1a2540 0px, #1a2540 4px, transparent 4px, transparent 10px)'
+                        : '#2a3a52',
                     }} />
                   );
                 }
@@ -217,7 +217,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 // Lunch (weekdays only)
                 if (!sat && !sun && isLunchSlot(hour)) {
                   return (
-                    <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #263348' }}>
+                    <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #2d3e52' }}>
                       <LunchSlot dayIdx={dayIdx} minute={minute} />
                     </div>
                   );
@@ -228,7 +228,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                   return (
                     <div key={dayIdx} style={{
                       flex: 1, height: SLOT_HEIGHT,
-                      borderLeft: '1px solid #263348', borderBottom: '1px solid #263348',
+                      borderLeft: '1px solid #2d3e52', borderBottom: '1px solid #263348',
                       background: 'repeating-linear-gradient(45deg, rgba(100,116,139,0.12) 0px, rgba(100,116,139,0.12) 2px, transparent 2px, transparent 8px)',
                       borderLeftWidth: 2, borderLeftColor: 'rgba(100,116,139,0.3)',
                     }} />
@@ -248,7 +248,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 }
 
                 return (
-                  <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #263348' }}>
+                  <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #2d3e52' }}>
                     <TimeSlot
                       date={d}
                       dayIdx={dayIdx}

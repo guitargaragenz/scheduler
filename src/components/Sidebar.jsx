@@ -49,10 +49,10 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         style={{
           position: 'absolute', left: isOpen ? -28 : -28, top: '50%', transform: 'translateY(-50%)',
           width: 28, height: 56, borderRadius: '8px 0 0 8px',
-          background: isFocusMode ? '#166534' : '#1e293b',
-          border: `1px solid ${isFocusMode ? '#22c55e' : '#334155'}`,
+          background: isFocusMode ? '#166534' : '#0369a1',
+          border: `1px solid ${isFocusMode ? '#22c55e' : '#38bdf8'}`,
           borderRight: 'none',
-          color: isFocusMode ? '#86efac' : '#64748b',
+          color: isFocusMode ? '#86efac' : '#e0f2fe',
           fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 10,
         }}
