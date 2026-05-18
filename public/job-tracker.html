@@ -2619,10 +2619,10 @@ function updateSMSPreview() {
   const total = document.getElementById('nm-price-total')?.value.trim();
 
   const priceLine = ex
-    ? `The cost is $${ex} +GST (TOTAL $${total || Math.round(parseFloat(ex)*1.15)}). `
-    : 'The cost is $____ +GST (TOTAL $____). ';
+    ? `The cost is $${ex} +GST ($${total || Math.round(parseFloat(ex)*1.15)} incl. GST). `
+    : 'The cost is $[price] +GST ($[total] incl. GST). ';
 
-  const msg = `Hi ${firstName}, your ${instrument} is finished and good to go. ${priceLine}Just hit the link below and book in at a time and day that suits you to pick it up. Cheers Trevor Guitar Garage NZ https://calendly.com/guitargaragenz/consultation`;
+  const msg = `Hi ${firstName}, great news! Your ${instrument} is finished and ready to go. ${priceLine}Book your pickup time below — Cheers Trevor, Guitar Garage NZ\nhttps://calendly.com/guitargaragenz/consultation`;
 
   sv('nm-sms-body', msg);
 }
