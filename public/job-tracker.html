@@ -80,7 +80,7 @@ body{background:var(--bg);color:var(--text);font-family:Arial,sans-serif;font-we
 
 /* ── Visit list ── */
 .job-list{display:flex;flex-direction:column;gap:1px;}
-.job-row{display:flex;align-items:center;gap:0.9rem;padding:0.9rem 1rem;background:var(--surface);border-left:3px solid transparent;transition:background .12s;}
+.job-row{display:flex;align-items:center;gap:0.9rem;padding:0.9rem 1rem;background:var(--surface);border-left:3px solid transparent;transition:background .12s;cursor:pointer;}
 .job-row:hover{background:var(--surface2);}
 .job-row.complete{opacity:.45;border-left-style:dotted;}
 .jr-num{font-family:'Courier Prime',monospace;font-size:0.75rem;color:var(--muted);width:2rem;flex-shrink:0;text-align:right;}
@@ -2042,7 +2042,7 @@ function renderList(type, list) {
     const benches=[...new Set((visit.jobs||[]).map(j=>j.bench))];
     const benchBadges=benches.map(b=>`<span style="font-family:'Courier Prime',monospace;font-size:0.6rem;letter-spacing:.06em;text-transform:uppercase;padding:0.1rem 0.35rem;border:1px solid;color:var(--c-${b});border-color:var(--c-${b})44;">${BENCH_LABELS[b]}</span>`).join('');
 
-    return `<div class="job-row${visit.status==='complete'?' complete':''}" style="border-left-color:var(--c-${firstBench})">
+    return `<div class="job-row${visit.status==='complete'?' complete':''}" style="border-left-color:var(--c-${firstBench})" onclick="openJobDrawer('${visit.id}')">
       <div class="jr-num">#${rowNum}</div>
       <div class="jr-info">
         <div class="jr-name-line">
@@ -2059,11 +2059,10 @@ function renderList(type, list) {
         </div>
       </div>
       <div class="jr-actions">
-        <button class="ja-btn" onclick="openJobDrawer('${visit.id}')">Open</button>
         ${visit.status!=='complete'
-          ?`<button class="ja-btn done" onclick="markJobComplete('${visit.id}')">✓</button>`
-          :`<button class="ja-btn" onclick="reopenJob('${visit.id}')">↩</button>`}
-        <button class="ja-btn del" onclick="deleteJob('${visit.id}')">✕</button>
+          ?`<button class="ja-btn done" onclick="event.stopPropagation();markJobComplete('${visit.id}')">✓</button>`
+          :`<button class="ja-btn" onclick="event.stopPropagation();reopenJob('${visit.id}')">↩</button>`}
+        <button class="ja-btn del" onclick="event.stopPropagation();deleteJob('${visit.id}')">✕</button>
       </div>
     </div>`;
   }).join('');
