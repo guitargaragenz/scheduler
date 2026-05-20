@@ -17,6 +17,8 @@ import Toast from './components/Toast.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import JobCard from './components/JobCard.jsx';
 import JobDrawer from './components/JobDrawer.jsx';
+import PomoDrawer from './components/PomoDrawer.jsx';
+import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -48,6 +50,8 @@ export default function App() {
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [firebaseReady, setFirebaseReady] = useState(false);
+  const [pomoJob, setPomoJob] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
   const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
@@ -542,16 +546,33 @@ export default function App() {
   function handleCsvUpload(csvText) {
     try {
       const newJobs = parseCSV(csvText);
+      // Preserve pomoLog from existing jobs so timer history survives CSV refreshes
+      const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
+      const merged = newJobs.map(j => ({
+        ...j,
+        pomoLog: existingByJobNo[j.job]?.pomoLog || [],
+      }));
       justSavedAt.current = Date.now();
-      setJobs(newJobs);
+      setJobs(merged);
       setScheduledSlots({});
-      // Save immediately so Firebase has fresh data before any echo arrives
-      if (isFirebaseConfigured()) saveSchedule(newJobs, {});
-      showToast(`Loaded ${newJobs.length} jobs from CSV`);
-      addChangelog(`CSV uploaded — loaded ${newJobs.length} jobs`);
+      if (isFirebaseConfigured()) saveSchedule(merged, {});
+      showToast(`Loaded ${merged.length} jobs from CSV`);
+      addChangelog(`CSV uploaded — loaded ${merged.length} jobs`);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
+  }
+
+  function handleOpenPomo(job) {
+    setPomoJob(job);
+  }
+
+  function handleLogPomoSession(jobId, session) {
+    setJobs(prev => prev.map(j => j.id === jobId
+      ? { ...j, pomoLog: [...(j.pomoLog || []), session] }
+      : j
+    ));
+    showToast(`Logged ${session.pomos} pomo${session.pomos !== 1 ? 's' : ''} for #${jobs.find(j => j.id === jobId)?.job ?? jobId}`);
   }
 
   const syncColors = { idle: '#64748b', syncing: '#fbbf24', synced: '#22c55e', error: '#ef4444' };
@@ -596,16 +617,13 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {/* Sync status dot */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Sync status dot — tooltip on hover shows full status */}
+            <div title={signedIn ? 'Calendar connected' : 'Calendar disconnected'} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{
                 width: 8, height: 8, borderRadius: '50%',
                 background: syncColors[syncStatus],
                 boxShadow: syncStatus === 'synced' ? '0 0 6px #22c55e' : 'none',
               }} />
-              <span style={{ fontSize: 11, color: '#64748b' }}>
-                {signedIn ? 'Calendar connected' : 'Calendar disconnected'}
-              </span>
             </div>
 
             <button
@@ -617,6 +635,16 @@ export default function App() {
               }}
             >
               {syncLabels[syncStatus]}
+            </button>
+
+            <button
+              onClick={() => setShowSummary(true)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
+                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Summary
             </button>
 
             <button
@@ -639,7 +667,7 @@ export default function App() {
             bufferSlotKeys={bufferSlotKeys}
             externalEvents={externalEvents}
             isDragging={isDragging}
-            onJobClick={setEditingJob}
+            onJobClick={handleOpenPomo}
           />
           <Sidebar
             jobs={jobs}
@@ -683,6 +711,23 @@ export default function App() {
           job={editingJob}
           onClose={() => setEditingJob(null)}
           onSave={handleSaveDrawer}
+        />
+      )}
+
+      {pomoJob && (
+        <PomoDrawer
+          job={pomoJob}
+          onClose={() => setPomoJob(null)}
+          onLogSession={session => handleLogPomoSession(pomoJob.id, session)}
+        />
+      )}
+
+      {showSummary && (
+        <WeeklySummaryModal
+          jobs={jobs}
+          scheduledSlots={scheduledSlots}
+          weekDays={weekDays}
+          onClose={() => setShowSummary(false)}
         />
       )}
 
