@@ -144,7 +144,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
 
         {/* Header row */}
         <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 10, background: '#2c4460' }}>
-          <div style={{ width: TIME_COL_WIDTH, flexShrink: 0 }} />
+          <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: '#2c4460' }} />
           {weekDays.map((d, i) => {
             const isWeekend = isSaturday(d) || isSunday(d);
             return (
@@ -171,7 +171,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
             {/* Evening break divider */}
             {hour === 21 && minute === 0 && (
               <div style={{ display: 'flex', height: 22, background: '#2c4460', borderBottom: '1px solid #4e6e8a', borderTop: '1px solid #4e6e8a' }}>
-                <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, borderRight: '1px solid #263348' }} />
+                <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 5, background: '#2c4460', borderRight: '1px solid #263348' }} />
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: 9, color: '#64748b', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>— evening —</span>
                 </div>
@@ -179,14 +179,16 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
             )}
 
             <div style={{ display: 'flex' }}>
-              {/* Time label — hour only on :00, subtle line on :30 */}
+              {/* Time label — sticky left so it stays visible on horizontal scroll */}
               <div style={{
                 width: TIME_COL_WIDTH, flexShrink: 0,
+                position: 'sticky', left: 0, zIndex: 5,
                 display: 'flex', alignItems: 'center',
-                justifyContent: minute === 0 ? 'flex-end' : 'flex-end',
+                justifyContent: 'flex-end',
                 paddingRight: 8, height: SLOT_HEIGHT,
                 fontSize: minute === 0 ? 10 : 8,
                 color: minute === 0 ? '#e2e8f0' : '#334155',
+                background: minute === 0 ? '#3d5470' : '#374f67',
                 borderBottom: '1px solid #4e6e8a',
                 borderRight: '1px solid #4e6e8a',
               }}>

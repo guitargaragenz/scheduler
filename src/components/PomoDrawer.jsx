@@ -46,6 +46,10 @@ export default function PomoDrawer({ job, onClose, onLogSession }) {
     pomos: 0,
   });
   const [note, setNote] = useState('');
+  const [showManual, setShowManual] = useState(false);
+  const [manualMins, setManualMins] = useState(25);
+  const [manualDate, setManualDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [manualNote, setManualNote] = useState('');
   const startedAtRef = useRef(null);
   const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
 
@@ -84,6 +88,20 @@ export default function PomoDrawer({ job, onClose, onLogSession }) {
       notes: note.trim(),
     });
     onClose();
+  }
+
+  function handleManualLog() {
+    if (!manualMins || manualMins <= 0) return;
+    onLogSession({
+      startedAt: new Date(manualDate).toISOString(),
+      pomos: 0,
+      mins: Number(manualMins),
+      notes: manualNote.trim(),
+      manual: true,
+    });
+    setShowManual(false);
+    setManualMins(25);
+    setManualNote('');
   }
 
   function handleClose() {
@@ -302,27 +320,100 @@ export default function PomoDrawer({ job, onClose, onLogSession }) {
           </>
         )}
 
-        {/* Past sessions for this job */}
-        {pastSessions.length > 0 && !isDone && (
+        {/* Past sessions + manual log */}
+        {!isDone && (
           <div style={{ marginTop: 18, borderTop: '1px solid #1e293b', paddingTop: 12, textAlign: 'left' }}>
-            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 7 }}>
-              Past sessions
+
+            {/* Header row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+              <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                Past sessions
+              </div>
+              <button
+                onClick={() => setShowManual(v => !v)}
+                style={{
+                  background: 'none', border: 'none', color: showManual ? '#64748b' : '#475569',
+                  fontSize: 10, cursor: 'pointer', padding: 0, letterSpacing: 0.3,
+                }}
+              >
+                {showManual ? 'cancel' : '+ log manually'}
+              </button>
             </div>
-            {pastSessions.map((s, i) => (
+
+            {/* Manual entry form */}
+            {showManual && (
+              <div style={{
+                background: '#1e293b', borderRadius: 8, padding: '10px 12px',
+                marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 9, color: '#475569', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Date</div>
+                    <input
+                      type="date"
+                      value={manualDate}
+                      onChange={e => setManualDate(e.target.value)}
+                      style={{
+                        width: '100%', background: '#0f172a', border: '1px solid #334155',
+                        borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#e2e8f0',
+                        colorScheme: 'dark',
+                      }}
+                    />
+                  </div>
+                  <div style={{ width: 70 }}>
+                    <div style={{ fontSize: 9, color: '#475569', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>Mins</div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={manualMins}
+                      onChange={e => setManualMins(e.target.value)}
+                      style={{
+                        width: '100%', background: '#0f172a', border: '1px solid #334155',
+                        borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#e2e8f0', textAlign: 'center',
+                      }}
+                    />
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Notes (optional)…"
+                  value={manualNote}
+                  onChange={e => setManualNote(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleManualLog()}
+                  style={{
+                    background: '#0f172a', border: '1px solid #334155',
+                    borderRadius: 6, padding: '6px 8px', fontSize: 12, color: '#e2e8f0',
+                  }}
+                />
+                <button onClick={handleManualLog} style={{
+                  background: '#334155', color: '#cbd5e1', border: 'none',
+                  borderRadius: 6, padding: '7px 0', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  Log {manualMins}m
+                </button>
+              </div>
+            )}
+
+            {/* Session list */}
+            {pastSessions.length > 0 ? pastSessions.map((s, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 fontSize: 11, color: '#64748b', padding: '4px 0',
                 borderBottom: i < pastSessions.length - 1 ? '1px solid #1e293b' : 'none',
               }}>
                 <span>{new Date(s.startedAt).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                <span style={{ color: '#f97316', fontWeight: 600 }}>{s.pomos}p · {s.mins}m</span>
+                <span style={{ color: s.manual ? '#94a3b8' : '#f97316', fontWeight: 600 }}>
+                  {s.manual ? `${s.mins}m` : `${s.pomos}p · ${s.mins}m`}
+                </span>
                 {s.notes ? (
-                  <span style={{ color: '#475569', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ color: '#475569', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {s.notes}
                   </span>
                 ) : <span />}
               </div>
-            ))}
+            )) : (
+              <div style={{ fontSize: 11, color: '#334155', fontStyle: 'italic' }}>No sessions logged yet.</div>
+            )}
           </div>
         )}
       </div>
