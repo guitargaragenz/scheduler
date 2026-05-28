@@ -3,9 +3,17 @@ import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS } from '../data/jobs.js';
 
+const HOURS_BUCKETS = [
+  { label: '< 1hr',  key: 'lt1',  test: h => h > 0 && h < 1 },
+  { label: '1–2hr',  key: '1to2', test: h => h >= 1 && h < 2 },
+  { label: '2–4hr',  key: '2to4', test: h => h >= 2 && h < 4 },
+  { label: '4hr+',   key: 'gt4',  test: h => h >= 4 },
+];
+
 export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
+  const [hoursFilter, setHoursFilter] = useState(null);
   const { setNodeRef, isOver } = useDroppable({ id: 'sidebar' });
 
   // Hide parent jobs that have been split (replaced by subtasks)
@@ -32,7 +40,14 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     const matchText  = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
       .some(v => String(v || '').toLowerCase().includes(q));
     const matchBench = j => !benchFilter || j.bench === benchFilter;
-    const match      = j => matchText(j) && matchBench(j);
+    const matchHours = j => {
+      if (!hoursFilter) return true;
+      const bucket = HOURS_BUCKETS.find(b => b.key === hoursFilter);
+      if (!bucket) return true;
+      const h = parseFloat(j.hours);
+      return !isNaN(h) && bucket.test(h);
+    };
+    const match      = j => matchText(j) && matchBench(j) && matchHours(j);
     displayed          = active.filter(match);
     displayedBacklog   = backlog.filter(match);
     displayedReady     = readyToStart.filter(match);
@@ -280,6 +295,42 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <button
                   onClick={() => setBenchFilter(null)}
                   title="Clear filter"
+                  style={{
+                    fontSize: 10, padding: '3px 7px', borderRadius: 3, cursor: 'pointer',
+                    background: 'none', border: '1px solid #475569',
+                    color: '#94a3b8', fontWeight: 600,
+                  }}
+                >✕</button>
+              )}
+            </div>
+
+            {/* Hours filter */}
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 9, color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>⏱</span>
+              {HOURS_BUCKETS.map(bucket => {
+                const isActive = hoursFilter === bucket.key;
+                return (
+                  <button
+                    key={bucket.key}
+                    onClick={() => setHoursFilter(isActive ? null : bucket.key)}
+                    title={isActive ? 'Clear hours filter' : `Show jobs ${bucket.label}`}
+                    style={{
+                      fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer',
+                      background: isActive ? '#0284c7' : '#0a1a38',
+                      border: `1px solid ${isActive ? '#38bdf8' : '#1e4a7a'}`,
+                      color: isActive ? '#fff' : '#7dd3fc',
+                      fontWeight: isActive ? 700 : 500,
+                      boxShadow: isActive ? '0 0 6px #38bdf888' : 'none',
+                      transform: isActive ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'all 0.15s',
+                    }}
+                  >{bucket.label}</button>
+                );
+              })}
+              {hoursFilter && (
+                <button
+                  onClick={() => setHoursFilter(null)}
+                  title="Clear hours filter"
                   style={{
                     fontSize: 10, padding: '3px 7px', borderRadius: 3, cursor: 'pointer',
                     background: 'none', border: '1px solid #475569',
