@@ -5,6 +5,7 @@ import { BENCH_COLORS } from '../data/jobs.js';
 
 export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle }) {
   const [search, setSearch] = useState('');
+  const [benchFilter, setBenchFilter] = useState(null);
   const { setNodeRef, isOver } = useDroppable({ id: 'sidebar' });
 
   // Hide parent jobs that have been split (replaced by subtasks)
@@ -28,14 +29,16 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     displayedHold      = [];
   } else {
     const q = search.toLowerCase();
-    const match = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
+    const matchText  = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
       .some(v => String(v || '').toLowerCase().includes(q));
-    displayed          = q ? active.filter(match)       : active;
-    displayedBacklog   = q ? backlog.filter(match)      : backlog;
-    displayedReady     = q ? readyToStart.filter(match) : readyToStart;
-    displayedAwaiting  = q ? awaiting.filter(match)     : awaiting;
-    displayedTransit   = q ? inTransit.filter(match)    : inTransit;
-    displayedHold      = q ? onHold.filter(match)       : onHold;
+    const matchBench = j => !benchFilter || j.bench === benchFilter;
+    const match      = j => matchText(j) && matchBench(j);
+    displayed          = active.filter(match);
+    displayedBacklog   = backlog.filter(match);
+    displayedReady     = readyToStart.filter(match);
+    displayedAwaiting  = awaiting.filter(match);
+    displayedTransit   = inTransit.filter(match);
+    displayedHold      = onHold.filter(match);
   }
 
   const focusCount = isFocusMode ? displayed.length : 0;
@@ -177,9 +180,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   BACKLOG ({displayedBacklog.length})
                 </div>
                 {displayedBacklog.map(job => (
-                  <div key={job.id} style={{ opacity: 0.65 }}>
-                    <JobCard job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                  </div>
+                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
                 ))}
               </div>
             )}
@@ -203,9 +204,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   📞 AWAITING ({displayedAwaiting.length})
                 </div>
                 {displayedAwaiting.map(job => (
-                  <div key={job.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
-                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
-                  </div>
+                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
                 ))}
               </div>
             )}
@@ -217,9 +216,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   📦 IN TRANSIT ({displayedTransit.length})
                 </div>
                 {displayedTransit.map(job => (
-                  <div key={job.id} style={{ opacity: 0.55, pointerEvents: 'none' }}>
-                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
-                  </div>
+                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
                 ))}
               </div>
             )}
@@ -231,9 +228,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   🔒 ON HOLD ({displayedHold.length})
                 </div>
                 {displayedHold.map(job => (
-                  <div key={job.id} style={{ opacity: 0.35, pointerEvents: 'none' }}>
-                    <JobCard job={job} dragMode={false} isHighlighted={false} onClick={() => {}} />
-                  </div>
+                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
                 ))}
               </div>
             )}
@@ -261,12 +256,37 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
               }}
             />
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {Object.entries(BENCH_COLORS).map(([name, c]) => (
-                <span key={name} style={{
-                  fontSize: 10, padding: '2px 6px', borderRadius: 3,
-                  background: c.bg, border: `1px solid ${c.border}`, color: c.text,
-                }}>{name}</span>
-              ))}
+              {Object.entries(BENCH_COLORS).map(([name, c]) => {
+                const isActive = benchFilter === name;
+                return (
+                  <button
+                    key={name}
+                    onClick={() => setBenchFilter(isActive ? null : name)}
+                    title={isActive ? `Clear ${name} filter` : `Show ${name} jobs only`}
+                    style={{
+                      fontSize: 10, padding: '3px 8px', borderRadius: 3, cursor: 'pointer',
+                      background: isActive ? c.border : c.bg,
+                      border: `1px solid ${c.border}`,
+                      color: isActive ? '#fff' : c.text,
+                      fontWeight: isActive ? 700 : 500,
+                      boxShadow: isActive ? `0 0 6px ${c.border}88` : 'none',
+                      transform: isActive ? 'scale(1.08)' : 'scale(1)',
+                      transition: 'all 0.15s',
+                    }}
+                  >{name}</button>
+                );
+              })}
+              {benchFilter && (
+                <button
+                  onClick={() => setBenchFilter(null)}
+                  title="Clear filter"
+                  style={{
+                    fontSize: 10, padding: '3px 7px', borderRadius: 3, cursor: 'pointer',
+                    background: 'none', border: '1px solid #475569',
+                    color: '#94a3b8', fontWeight: 600,
+                  }}
+                >✕</button>
+              )}
             </div>
           </div>
         </div>

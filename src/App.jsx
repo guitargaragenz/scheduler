@@ -19,6 +19,8 @@ import JobCard from './components/JobCard.jsx';
 import JobDrawer from './components/JobDrawer.jsx';
 import PomoDrawer from './components/PomoDrawer.jsx';
 import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
+import PartsDrawer from './components/PartsDrawer.jsx';
+import HelpDrawer from './components/HelpDrawer.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -52,6 +54,8 @@ export default function App() {
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [pomoJob, setPomoJob] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showParts, setShowParts] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
   const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
@@ -648,6 +652,30 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowParts(p => !p)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
+                background: showParts ? '#1e3a5f' : '#1e293b',
+                color: showParts ? '#93c5fd' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Parts
+            </button>
+
+            <button
+              onClick={() => setShowHelp(h => !h)}
+              style={{
+                padding: '7px 12px', borderRadius: 6, border: '1px solid #334155',
+                background: showHelp ? '#1e3a5f' : '#1e293b',
+                color: showHelp ? '#93c5fd' : '#94a3b8',
+                fontSize: 13, cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              ?
+            </button>
+
+            <button
               onClick={() => setShowSettings(true)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
@@ -740,6 +768,14 @@ export default function App() {
           onSignOut={handleSignOut}
           isConfigured={isConfigured()}
         />
+      )}
+
+      {showParts && (
+        <PartsDrawer onClose={() => setShowParts(false)} />
+      )}
+
+      {showHelp && (
+        <HelpDrawer onClose={() => setShowHelp(false)} />
       )}
     </DndContext>
   );

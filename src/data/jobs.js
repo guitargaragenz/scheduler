@@ -1,18 +1,28 @@
 export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL`;
 
-export function inferBench(desc = '', status = '', action = '') {
+export function inferBench(desc = '', status = '', action = '', model = '', mfr = '') {
   const act = (action || '').trim().toUpperCase();
   // In Transit — always Admin (nothing to bench until it arrives)
   if (status === 'In Transit') return 'Admin';
   // Waiting — Admin unless Incubating (INC) or Customer Input (CI)
-  // INC/CI: work is defined, just pending — infer bench normally
-  // Anything else (Parts, Tubes, Bias…): need to order → Admin
   if (status === 'Waiting' && !['INC', 'CI'].includes(act)) return 'Admin';
-  const d = desc.toLowerCase();
+
+  // Check desc first, then model, then manufacturer
+  const d = (desc + ' ' + model).toLowerCase();
+  const m = mfr.toLowerCase();
+
   if (/refret|fret level|fret dress|fret polish/.test(d)) return 'Fretwork';
-  if (/refret|fret|nut|saddle|bridge|crack|brace|reset|neck|pocket|top|lower bout|inlay|binding|finish|restoration/.test(d)) return 'Luthier';
-  if (/power|output|tube|fuse|amp|recap|blown|no o\/p|doa|caps|opamp|voltage|solder|pcb|speaker|voice chip|calibrat|impedance|mute|phantom|preamp|mains|dc power|wire feed/.test(d)) return 'Electronics';
-  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|jack|pot|switch|trem|saddle screw|string height/.test(d)) return 'Setup';
+  if (/fret|nut|saddle|bridge|crack|brace|reset|neck|pocket|top|lower bout|inlay|binding|finish|restoration|acoustic|classical|archtop/.test(d)) return 'Luthier';
+  if (/power|output|tube|fuse|amp|recap|blown|no o\/p|doa|caps|opamp|voltage|solder|pcb|speaker|voice chip|calibrat|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|head|combo/.test(d)) return 'Electronics';
+  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|jack|pot|switch|trem|saddle screw|string height|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
+
+  // Model-name overrides for brands that make both instruments AND electronics
+  if (/passport|pa\s*\d/.test(d)) return 'Electronics';
+  // Manufacturer fallback — known electronics brands
+  if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise/.test(m)) return 'Electronics';
+  // Known guitar/stringed instrument brands → Setup (luthier work detected above via desc)
+  if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|beesneez|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
+
   return 'Admin';
 }
 
@@ -33,9 +43,10 @@ export function hoursRange(h) {
 
 export function parseCSV(csvText) {
   // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
+  // Lines starting with # are treated as comments (e.g. action key) and skipped
   const rows = [];
   let row = [], field = '', inQuote = false;
-  const text = csvText.trim();
+  const text = csvText.trim().split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n');
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (inQuote) {
@@ -79,9 +90,10 @@ export function parseCSV(csvText) {
 
     const accepted = ['On Hold', 'Waiting', 'To Be Inv', 'In Transit'];
     if (!schedulable && !accepted.includes(status)) continue;
-    if (hours === 0 && schedulable) continue;
+    // Don't drop schedulable jobs just because hours aren't set yet — default to 1h
+    const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
 
-    const bench = inferBench(obj.Desc, status, obj.Action);
+    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr);
     jobs.push({
       id: String(obj.Job),
       job: obj.Job,
@@ -93,9 +105,9 @@ export function parseCSV(csvText) {
       awaiting,
       inTransit,
       days: parseInt(obj.Days) || 0,
-      tag: obj.Tag || inferTag(hours),
-      hours,
-      hoursRange: hoursRange(hours),
+      tag: obj.Tag || inferTag(effectiveHours),
+      hours: effectiveHours,
+      hoursRange: hoursRange(effectiveHours),
       action: obj.Action,
       desc: obj.Desc,
       vb: obj.VB === 'Y',
