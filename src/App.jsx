@@ -287,16 +287,15 @@ export default function App() {
 
     setScheduledSlots(prev => {
       const next = { ...prev };
-      // Clear old position (and its buffer)
-      if (source === 'calendar') {
-        Object.keys(next).forEach(k => {
-          if (next[k] === job.id) {
-            const nk = nextHalfSlotKey(k);
-            if (next[nk] === '__buffer__') delete next[nk];
-            delete next[k];
-          }
-        });
-      }
+      // Always clear ALL existing slots for this job before placing —
+      // handles stale Firestore-loaded slots regardless of drag source
+      Object.keys(next).forEach(k => {
+        if (next[k] === job.id) {
+          const nk = nextHalfSlotKey(k);
+          if (next[nk] === '__buffer__') delete next[nk];
+          delete next[k];
+        }
+      });
       // Place job half-slots
       slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
         next[slotKey(weekDays[d], h, m)] = job.id;
@@ -380,15 +379,14 @@ export default function App() {
 
     setScheduledSlots(prev => {
       const next = { ...prev };
-      if (source === 'calendar') {
-        Object.keys(next).forEach(k => {
-          if (next[k] === job.id) {
-            const nk = nextHalfSlotKey(k);
-            if (next[nk] === '__buffer__') delete next[nk];
-            delete next[k];
-          }
-        });
-      }
+      // Always clear ALL existing slots for this job — handles stale slots from any source
+      Object.keys(next).forEach(k => {
+        if (next[k] === job.id) {
+          const nk = nextHalfSlotKey(k);
+          if (next[nk] === '__buffer__') delete next[nk];
+          delete next[k];
+        }
+      });
       // Remove displaced jobs entirely
       displaced.forEach(bid => {
         Object.keys(next).forEach(k => { if (next[k] === bid) delete next[k]; });
