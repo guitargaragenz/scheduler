@@ -58,6 +58,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
+  const externalEventsRef = useRef([]); // always-current ref — avoids stale closure in drag handlers
   const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
 
   // Auto-close focus mode once all split cards are scheduled
@@ -120,7 +121,10 @@ export default function App() {
       end.setHours(23, 59, 59, 999);
       const events = await listEvents(start, end);
       // Only update if we got real results — guard against API hiccups wiping the display
-      if (events && events.length > 0) setExternalEvents(events);
+      if (events && events.length > 0) {
+        setExternalEvents(events);
+        externalEventsRef.current = events; // keep ref in sync for drag handlers
+      }
 
       // Handle #PERSONAL blocks
       const personalBlocks = parsePersonalBlocks(events, weekDays);
@@ -199,9 +203,10 @@ export default function App() {
   }
 
   // Build a set of slot keys blocked by Google Calendar external events
+  // Uses ref (not state) so drag handlers always get current data, not stale closure
   function buildExternalBlockedSlots() {
     const blocked = new Set();
-    externalEvents.forEach(ev => {
+    externalEventsRef.current.forEach(ev => {
       if (ev.summary?.startsWith('#')) return;
       const start = new Date(ev.start?.dateTime || ev.start?.date);
       const end   = new Date(ev.end?.dateTime   || ev.end?.date);
@@ -736,6 +741,7 @@ export default function App() {
             bufferSlotKeys={bufferSlotKeys}
             externalEvents={externalEvents}
             isDragging={isDragging}
+            activeJobId={activeJob?.id ?? null}
             onJobClick={handleOpenPomo}
           />
           <Sidebar

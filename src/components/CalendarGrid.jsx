@@ -48,14 +48,17 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
         </div>
       );
     }
-    // Continuation bar
+    // Continuation bar — dim when this job is being dragged to match the card opacity
+    const isDraggingThis = activeJobId === job.id;
     return (
       <div ref={setNodeRef} style={{
         height: SLOT_HEIGHT,
         borderBottom: `1px solid ${colors.border}33`,
-        background: `${colors.bg}dd`,
-        borderLeft: `3px solid ${colors.border}`,
+        background: isDraggingThis ? `${colors.bg}66` : `${colors.bg}dd`,
+        borderLeft: `3px solid ${isDraggingThis ? colors.border + '66' : colors.border}`,
         cursor: 'grab',
+        opacity: isDraggingThis ? 0.4 : 1,
+        transition: 'opacity 0.1s',
       }} />
     );
   }
@@ -123,7 +126,7 @@ function LunchSlot({ dayIdx, minute }) {
   );
 }
 
-export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, onJobClick }) {
+export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick }) {
 
   // slotKey -> job object
   const slotJobMap = scheduledJobs;
