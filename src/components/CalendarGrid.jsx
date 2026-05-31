@@ -22,6 +22,7 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
   if (isOver) bg = 'rgba(34,197,94,0.15)';
   else if (isDropping) bg = 'rgba(34,197,94,0.08)';
 
+  // Always attach setNodeRef so every slot is a valid drop target regardless of content
   if (job) {
     const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
     if (isFirstSlot) {
@@ -32,10 +33,22 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
           background: colors.bg, borderLeft: `3px solid ${colors.border}`,
         }}>
           <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact onClick={() => onJobClick(job)} />
+          {/* Show appointment as a subtle overlay so it's not hidden by the job */}
+          {externalEvent && !externalEvent._isSpan && (
+            <div title={(externalEvent.summary || '')} style={{
+              position: 'absolute', top: 1, right: 2,
+              fontSize: 8, color: '#bbf7d0', background: '#15803d',
+              borderRadius: 2, padding: '0 3px', lineHeight: '13px',
+              pointerEvents: 'none', maxWidth: 60,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              📅 {externalEvent._durationMins}m
+            </div>
+          )}
         </div>
       );
     }
-    // Continuation bar — draggable strip
+    // Continuation bar
     return (
       <div ref={setNodeRef} style={{
         height: SLOT_HEIGHT,
@@ -50,7 +63,9 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
   if (externalEvent) {
     const blockH = externalEvent._isSpan ? SLOT_HEIGHT : Math.round(SLOT_HEIGHT / 2);
     return (
-      <div style={{ height: SLOT_HEIGHT, borderBottom: '1px solid #263348', position: 'relative' }}>
+      <div ref={setNodeRef} style={{ height: SLOT_HEIGHT, borderBottom: '1px solid #263348', position: 'relative',
+        background: isOver ? 'rgba(34,197,94,0.15)' : 'transparent', transition: 'background 0.1s',
+      }}>
         <div style={{
           height: blockH, padding: '2px 6px', background: '#65a30d',
           borderLeft: '3px solid #ecfccb',

@@ -119,7 +119,8 @@ export default function App() {
       const end = new Date(weekDays[6]);
       end.setHours(23, 59, 59, 999);
       const events = await listEvents(start, end);
-      setExternalEvents(events);
+      // Only update if we got real results — guard against API hiccups wiping the display
+      if (events && events.length > 0) setExternalEvents(events);
 
       // Handle #PERSONAL blocks
       const personalBlocks = parsePersonalBlocks(events, weekDays);
