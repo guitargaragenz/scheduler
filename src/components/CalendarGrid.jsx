@@ -14,7 +14,7 @@ const ALL_SLOTS = [
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
 ];
 
-function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, onJobClick }) {
+function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick }) {
   const key = slotKey(date, hour, minute);
   const { setNodeRef, isOver } = useDroppable({ id: key, data: { dayIdx, hour, minute } });
 
@@ -278,6 +278,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                       isFirstSlot={isFirstSlot}
                       externalEvent={extMap[key]}
                       isDropping={isDragging}
+                      activeJobId={activeJobId}
                       onJobClick={onJobClick}
                     />
                   </div>
