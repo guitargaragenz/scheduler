@@ -198,7 +198,7 @@ export default function App() {
     }
   }
 
-  // Build a set of slot keys blocked by Google Calendar external events (both :00 and :30)
+  // Build a set of slot keys blocked by Google Calendar external events
   function buildExternalBlockedSlots() {
     const blocked = new Set();
     externalEvents.forEach(ev => {
@@ -209,8 +209,9 @@ export default function App() {
       if (dayIdx < 0) return;
       let h = start.getHours();
       let m = start.getMinutes() < 30 ? 0 : 30;
-      const endH = end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
-      while (h < endH) {
+      // Use exact end minutes — avoids rounding a 10:00–10:15 appt up to block 10:30 as well
+      const endMins = end.getHours() * 60 + end.getMinutes();
+      while (h * 60 + m < endMins) {
         blocked.add(slotKey(weekDays[dayIdx], h, m));
         if (m === 0) { m = 30; } else { m = 0; h++; }
       }
@@ -320,9 +321,28 @@ export default function App() {
     const date = weekDays[dayIdx];
     const { start, end } = getWorkHours(date);
     const needed = slotsNeeded(job); // 30-min slots
+    const isWeekday = !isSaturday(date) && !isSunday(date);
     if (hour < start || hour >= end) {
       showToast('⚠ Cannot place urgent job — outside work hours');
       return;
+    }
+
+    const externalBlocked = buildExternalBlockedSlots();
+
+    // Refuse if any required slot is lunch or an appointment
+    let ch = hour, cm = minute;
+    for (let i = 0; i < needed; i++) {
+      if (ch >= end || isGapHour(ch)) break;
+      if (isWeekday && isLunchSlot(ch)) {
+        showToast('⚠ Urgent job would cover lunch — pick a slot before or after 12–1');
+        return;
+      }
+      const key = slotKey(weekDays[dayIdx], ch, cm);
+      if (externalBlocked.has(key)) {
+        showToast('⚠ Urgent job would cover a calendar appointment — pick another slot');
+        return;
+      }
+      if (cm === 0) { cm = 30; } else { cm = 0; ch++; }
     }
 
     const tempSlots = { ...scheduledSlots };
@@ -332,7 +352,7 @@ export default function App() {
 
     // Collect displaced jobs in target half-slots
     const displaced = [];
-    let ch = hour, cm = minute;
+    ch = hour; cm = minute;
     for (let i = 0; i < needed; i++) {
       if (ch >= end || isGapHour(ch)) break;
       const occupant = tempSlots[slotKey(weekDays[dayIdx], ch, cm)];
@@ -362,8 +382,7 @@ export default function App() {
         if (pm === 0) { pm = 30; } else { pm = 0; ph++; }
       }
       // Buffer after
-      const isBufWeekday = !isSaturday(date) && !isSunday(date);
-      if (ph < end && !isGapHour(ph) && !(isBufWeekday && isLunchSlot(ph))) {
+      if (ph < end && !isGapHour(ph) && !(isWeekday && isLunchSlot(ph))) {
         const bufKey = slotKey(date, ph, pm);
         if (!next[bufKey]) next[bufKey] = '__buffer__';
       }
