@@ -4,7 +4,7 @@ import { BENCH_COLORS } from '../data/jobs.js';
 import JobCard from './JobCard.jsx';
 
 const TIME_COL_WIDTH = 56;
-const SLOT_HEIGHT = 26; // each 30-min half-slot
+const SLOT_HEIGHT = 32; // each 30-min half-slot
 
 // All slots: day hours 10am–6pm (both halves) + evening 9pm–11pm (both halves)
 const DAY_HOURS    = [10,11,12,13,14,15,16,17,18];
@@ -29,7 +29,7 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
       return (
         <div ref={setNodeRef} style={{
           height: SLOT_HEIGHT, borderBottom: '1px solid #263348',
-          padding: '2px 2px', position: 'relative',
+          padding: '2px 2px', position: 'relative', overflow: 'hidden',
           background: colors.bg, borderLeft: `3px solid ${colors.border}`,
         }}>
           <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact onClick={() => onJobClick(job)} />
@@ -243,15 +243,27 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                   );
                 }
 
-                // Buffer slot
+                // Buffer slot — show appointment badge on top if one exists here
                 if (bufferSlotKeys?.has(key)) {
+                  const bufExt = extMap[key];
                   return (
                     <div key={dayIdx} style={{
-                      flex: 1, height: SLOT_HEIGHT,
+                      flex: 1, height: SLOT_HEIGHT, position: 'relative',
                       borderLeft: '1px solid #4e6e8a', borderBottom: '1px solid #263348',
                       background: 'repeating-linear-gradient(45deg, rgba(100,116,139,0.12) 0px, rgba(100,116,139,0.12) 2px, transparent 2px, transparent 8px)',
                       borderLeftWidth: 2, borderLeftColor: 'rgba(100,116,139,0.3)',
-                    }} />
+                    }}>
+                      {bufExt && !bufExt._isSpan && (
+                        <div style={{
+                          position: 'absolute', top: 2, left: 2, right: 2,
+                          fontSize: 9, color: '#bbf7d0', background: '#15803d',
+                          borderRadius: 3, padding: '1px 4px', zIndex: 5,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          📅 {bufExt.summary?.split(' ')[0]} {bufExt._durationMins}m
+                        </div>
+                      )}
+                    </div>
                   );
                 }
 
