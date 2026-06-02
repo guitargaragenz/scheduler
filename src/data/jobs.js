@@ -46,7 +46,7 @@ export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
   // Fret level + setup combo
-  if (job.bench === 'Fretwork' && /level.*setup|setup.*level/.test(d)) {
+  if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
     const luthierHours = 1;
     const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
