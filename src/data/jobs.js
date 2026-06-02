@@ -12,16 +12,17 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const m = mfr.toLowerCase();
 
   if (/refret|fret level|fret dress|fret polish/.test(d)) return 'Fretwork';
-  if (/fret|nut|saddle|bridge|crack|brace|reset|neck|pocket|top|lower bout|inlay|binding|finish|restoration|acoustic|classical|archtop/.test(d)) return 'Luthier';
-  if (/power|output|tube|fuse|amp|recap|blown|no o\/p|doa|caps|opamp|voltage|solder|pcb|speaker|voice chip|calibrat|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|head|combo/.test(d)) return 'Electronics';
-  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|jack|pot|switch|trem|saddle screw|string height|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
+  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
+  if (/bridge|crack|brace|reset|neck|headstock|pocket|top|lower bout|inlay|binding|finish|restoration|acoustic|classical|archtop/.test(d)) return 'Luthier';
+  if (/power|output|tube|fuse|amp|recap|blown|no o\/p|doa|caps|opamp|voltage|solder|pcb|speaker|voice chip|calibrat|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|\bhead\b|combo/.test(d)) return 'Electronics';
+  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|jack|pot|switch|trem|nut|saddle|string height|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
 
   // Model-name overrides for brands that make both instruments AND electronics
   if (/passport|pa\s*\d/.test(d)) return 'Electronics';
   // Manufacturer fallback — known electronics brands
-  if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise/.test(m)) return 'Electronics';
+  if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
   // Known guitar/stringed instrument brands → Setup (luthier work detected above via desc)
-  if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|beesneez|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
+  if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
 
   return 'Admin';
 }
@@ -39,6 +40,43 @@ export function hoursRange(h) {
   const lo = Math.floor(h);
   const hi = Math.ceil(h);
   return lo === hi ? String(h) : `${lo}-${hi}`;
+}
+
+export function createSubtasks(job) {
+  const d = (job.desc || '').toLowerCase();
+
+  // Fret level + setup combo
+  if (job.bench === 'Fretwork' && /level.*setup|setup.*level/.test(d)) {
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const luthierHours = 1;
+    const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
+    const subtasks = [
+      { ...job, id: `${job.id}-L`, bench: 'Fretwork', hours: Math.round(remaining * 0.6 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.6 * 2) / 2), label: 'Level & Polish', parentId: job.id },
+      { ...job, id: `${job.id}-S`, bench: 'Setup',    hours: Math.round(remaining * 0.4 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.4 * 2) / 2), label: 'Setup',          parentId: job.id },
+    ];
+    if (hasLuthier) subtasks.unshift(
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
+    );
+    return subtasks;
+  }
+
+  // Refret — detect if there's also Luthier work in the description
+  if (job.bench === 'Fretwork' && /refret/.test(d)) {
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const luthierHours = 1.5;
+    const baseHours = hasLuthier ? Math.max(job.hours - 1.5 - luthierHours, 0.5) : Math.max(job.hours - 1.5, 0.5);
+    const subtasks = [
+      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2,    hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2),    label: 'Refret',               parentId: job.id },
+      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2,    hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2),    label: 'Level, Crown & Polish', parentId: job.id },
+      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                     hoursRange: hoursRange(1.5),                                     label: 'Setup / Restring',     parentId: job.id },
+    ];
+    if (hasLuthier) subtasks.splice(2, 0,
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
+    );
+    return subtasks;
+  }
+
+  return null;
 }
 
 export function parseCSV(csvText) {
@@ -94,7 +132,7 @@ export function parseCSV(csvText) {
     const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
 
     const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr);
-    jobs.push({
+    const baseJob = {
       id: String(obj.Job),
       job: obj.Job,
       mfr: obj.Mfr,
@@ -115,7 +153,18 @@ export function parseCSV(csvText) {
       bench,
       scheduled: false,
       calendarSlot: null,
-    });
+      parentId: null,
+      subtasks: null,
+      hasSubtasks: false,
+    };
+
+    const subtasks = createSubtasks(baseJob);
+    if (subtasks && subtasks.length > 0) {
+      jobs.push({ ...baseJob, subtasks: subtasks.map(st => st.id), hasSubtasks: true });
+      subtasks.forEach(st => jobs.push({ ...st, scheduled: false, calendarSlot: null }));
+    } else {
+      jobs.push(baseJob);
+    }
   }
 
   return jobs.sort((a, b) => b.days - a.days);

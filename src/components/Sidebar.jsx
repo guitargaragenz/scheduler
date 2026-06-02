@@ -14,10 +14,37 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
+  const [expandedJobs, setExpandedJobs] = useState({});
   const { setNodeRef, isOver } = useDroppable({ id: 'sidebar' });
 
+  const toggleExpand = (jobId) => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
+
+  const renderJob = (job, highlighted = false) => {
+    if (job.parentId) return null; // subtasks rendered under parent
+    const subtaskList = job.hasSubtasks ? jobs.filter(j => job.subtasks?.includes(j.id)) : [];
+    const isExpanded = expandedJobs[job.id];
+    return (
+      <div key={job.id}>
+        <JobCard job={job} dragMode={dragMode} isHighlighted={highlighted} onClick={() => onJobClick(job)} />
+        {job.hasSubtasks && (
+          <div
+            onClick={() => toggleExpand(job.id)}
+            style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}
+          >
+            {isExpanded ? '▼' : '▶'} {subtaskList.length} sub-tasks
+          </div>
+        )}
+        {isExpanded && subtaskList.map(st => (
+          <div key={st.id} style={{ marginLeft: 16, marginTop: 4 }}>
+            <JobCard job={st} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(st)} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   // Hide parent jobs that have been split (replaced by subtasks)
-  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit);
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit && !j.parentId);
   const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
   const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
   const readyToStart  = unscheduled.filter(j => j.readyToStart);
@@ -178,15 +205,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 )}
               </div>
             )}
-            {displayed.map(job => (
-              <JobCard
-                key={job.id}
-                job={job}
-                dragMode={dragMode}
-                isHighlighted={isFocusMode}
-                onClick={() => onJobClick(job)}
-              />
-            ))}
+            {displayed.map(job => renderJob(job, isFocusMode))}
 
             {/* Backlog — schedulable, lower priority queue, draggable */}
             {!isFocusMode && displayedBacklog.length > 0 && (
@@ -194,9 +213,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #0284c7' }}>
                   BACKLOG ({displayedBacklog.length})
                 </div>
-                {displayedBacklog.map(job => (
-                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                ))}
+                {displayedBacklog.map(job => renderJob(job))}
               </div>
             )}
 
@@ -206,9 +223,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #78350f' }}>
                   ✅ READY TO START ({displayedReady.length})
                 </div>
-                {displayedReady.map(job => (
-                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                ))}
+                {displayedReady.map(job => renderJob(job))}
               </div>
             )}
 
@@ -218,9 +233,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #312e81' }}>
                   📞 AWAITING ({displayedAwaiting.length})
                 </div>
-                {displayedAwaiting.map(job => (
-                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                ))}
+                {displayedAwaiting.map(job => renderJob(job))}
               </div>
             )}
 
@@ -230,9 +243,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#22d3ee', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #164e63' }}>
                   📦 IN TRANSIT ({displayedTransit.length})
                 </div>
-                {displayedTransit.map(job => (
-                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                ))}
+                {displayedTransit.map(job => renderJob(job))}
               </div>
             )}
 
@@ -242,9 +253,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #0284c7' }}>
                   🔒 ON HOLD ({displayedHold.length})
                 </div>
-                {displayedHold.map(job => (
-                  <JobCard key={job.id} job={job} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(job)} />
-                ))}
+                {displayedHold.map(job => renderJob(job))}
               </div>
             )}
           </div>

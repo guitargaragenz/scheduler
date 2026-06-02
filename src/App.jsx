@@ -604,8 +604,9 @@ export default function App() {
       setJobs(merged);
       setScheduledSlots({});
       if (isFirebaseConfigured()) saveSchedule(merged, {});
-      showToast(`Loaded ${merged.length} jobs from CSV`);
-      addChangelog(`CSV uploaded — loaded ${merged.length} jobs`);
+      const jobCount = merged.filter(j => !j.parentId).length;
+      showToast(`Loaded ${jobCount} jobs from CSV`);
+      addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
