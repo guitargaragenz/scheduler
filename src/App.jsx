@@ -61,6 +61,10 @@ export default function App() {
   const externalEventsRef = useRef([]); // always-current ref — avoids stale closure in drag handlers
   const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
 
+  // Keep ref in sync with state — ensures drag handlers always see current appointments
+  // even if a drop happens before the first calendar poll completes
+  useEffect(() => { externalEventsRef.current = externalEvents; }, [externalEvents]);
+
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
     if (!highlightedJobId) return;
@@ -604,8 +608,9 @@ export default function App() {
       setJobs(merged);
       setScheduledSlots({});
       if (isFirebaseConfigured()) saveSchedule(merged, {});
-      showToast(`Loaded ${merged.length} jobs from CSV`);
-      addChangelog(`CSV uploaded — loaded ${merged.length} jobs`);
+      const jobCount = merged.filter(j => !j.parentId).length;
+      showToast(`Loaded ${jobCount} jobs from CSV`);
+      addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }

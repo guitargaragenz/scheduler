@@ -42,6 +42,43 @@ export function hoursRange(h) {
   return lo === hi ? String(h) : `${lo}-${hi}`;
 }
 
+export function createSubtasks(job) {
+  const d = (job.desc || '').toLowerCase();
+
+  // Fret level + setup combo
+  if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const luthierHours = 1;
+    const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
+    const subtasks = [
+      { ...job, id: `${job.id}-L`, bench: 'Fretwork', hours: Math.round(remaining * 0.6 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.6 * 2) / 2), label: 'Level & Polish', parentId: job.id },
+      { ...job, id: `${job.id}-S`, bench: 'Setup',    hours: Math.round(remaining * 0.4 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.4 * 2) / 2), label: 'Setup',          parentId: job.id },
+    ];
+    if (hasLuthier) subtasks.unshift(
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
+    );
+    return subtasks;
+  }
+
+  // Refret — detect if there's also Luthier work in the description
+  if (job.bench === 'Fretwork' && /refret/.test(d)) {
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const luthierHours = 1.5;
+    const baseHours = hasLuthier ? Math.max(job.hours - 1.5 - luthierHours, 0.5) : Math.max(job.hours - 1.5, 0.5);
+    const subtasks = [
+      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2,    hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2),    label: 'Refret',               parentId: job.id },
+      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2,    hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2),    label: 'Level, Crown & Polish', parentId: job.id },
+      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                     hoursRange: hoursRange(1.5),                                     label: 'Setup / Restring',     parentId: job.id },
+    ];
+    if (hasLuthier) subtasks.splice(2, 0,
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
+    );
+    return subtasks;
+  }
+
+  return null;
+}
+
 export function parseCSV(csvText) {
   // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
   // Lines starting with # are treated as comments (e.g. action key) and skipped
@@ -95,7 +132,7 @@ export function parseCSV(csvText) {
     const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
 
     const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr);
-    jobs.push({
+    const baseJob = {
       id: String(obj.Job),
       job: obj.Job,
       mfr: obj.Mfr,
@@ -116,7 +153,18 @@ export function parseCSV(csvText) {
       bench,
       scheduled: false,
       calendarSlot: null,
-    });
+      parentId: null,
+      subtasks: null,
+      hasSubtasks: false,
+    };
+
+    const subtasks = createSubtasks(baseJob);
+    if (subtasks && subtasks.length > 0) {
+      jobs.push({ ...baseJob, subtasks: subtasks.map(st => st.id), hasSubtasks: true });
+      subtasks.forEach(st => jobs.push({ ...st, scheduled: false, calendarSlot: null }));
+    } else {
+      jobs.push(baseJob);
+    }
   }
 
   return jobs.sort((a, b) => b.days - a.days);
