@@ -112,9 +112,9 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         overflow: 'hidden',
         transition: 'width 0.3s ease',
         display: 'flex', flexDirection: 'column',
-        background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100%',
+        background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100vh',
       }}>
-        <div style={{ width: 300, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ width: 300, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
           {/* Search / focus banner */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #3b82f6' }}>
             {isFocusMode ? (
@@ -180,7 +180,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             ref={setNodeRef}
             onClick={e => { if (isFocusMode && e.target === e.currentTarget) onClearHighlight(); }}
             style={{
-              flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12,
+              flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 12,
               display: 'flex', flexDirection: 'column', gap: 8,
               background: isOver ? 'rgba(34,197,94,0.05)' : 'transparent',
               transition: 'background 0.15s',
