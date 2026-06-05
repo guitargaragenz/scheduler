@@ -12,10 +12,10 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const m = mfr.toLowerCase();
 
   if (/refret|fret level|fret dress|fret polish/.test(d)) return 'Fretwork';
-  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
-  if (/fret|bridge|crack|brace|reset|neck|headstock|pocket|top|lower bout|inlay|binding|finish|restoration|acoustic|classical|archtop/.test(d)) return 'Luthier';
-  if (/power|output|tube|fuse|amp|recap|blown|no o\/p|doa|caps|opamp|voltage|solder|pcb|speaker|voice chip|calibrat|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|\bhead\b|combo/.test(d)) return 'Electronics';
-  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|jack|pot|switch|trem|nut|saddle|string height|guitar|bass|ukulele|mandolin|banjo/.test(d)) return 'Setup';
+  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
+  if (/bridge|crack|brace|reset|top|lower bout|inlay|binding|finish|restoration|split|lifting|lifted|broken/.test(d)) return 'Luthier';
+  if (/power|output|tube|fuse|amp|recap|blown|doa|caps|opamp|voltage|pcb|speaker|voice chip|calibrate|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|\bhead\b|combo|bias|jack|pot|wiring/.test(d)) return 'Electronics';
+  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|switch|trem|nut|saddle|string height/.test(d)) return 'Setup';
 
   // Model-name overrides for brands that make both instruments AND electronics
   if (/passport|pa\s*\d/.test(d)) return 'Electronics';
