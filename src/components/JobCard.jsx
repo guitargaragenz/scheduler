@@ -56,7 +56,12 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
       </div>
       {!compact && (
         <>
-          <div style={{ fontSize: 12, color: colors.text, marginTop: 2, fontWeight: 600 }}>
+          {job.customer && (
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {job.customer}
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: colors.text, marginTop: job.customer ? 1 : 2, fontWeight: 600 }}>
             {job.mfr} {job.model}
           </div>
           {job.sessionNote ? (

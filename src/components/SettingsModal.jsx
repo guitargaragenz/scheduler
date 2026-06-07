@@ -1,4 +1,102 @@
-export default function SettingsModal({ changelog, onClose, isSignedIn, onSignIn, onSignOut, isConfigured }) {
+import { useState } from 'react';
+
+const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup'];
+
+const BENCH_ACCENT = {
+  Fretwork:    '#a78bfa',
+  Luthier:     '#34d399',
+  Electronics: '#60a5fa',
+  Setup:       '#fbbf24',
+};
+
+function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
+  const [input, setInput] = useState('');
+  const effective = keywords[bench] ?? defaultKeywords[bench] ?? [];
+  const isDefault = !keywords[bench];
+
+  function add() {
+    const val = input.trim().toLowerCase();
+    if (!val || effective.includes(val)) { setInput(''); return; }
+    onChange(bench, [...effective, val]);
+    setInput('');
+  }
+
+  function remove(kw) {
+    onChange(bench, effective.filter(k => k !== kw));
+  }
+
+  function reset() {
+    onChange(bench, null);
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: BENCH_ACCENT[bench],
+          background: BENCH_ACCENT[bench] + '22', borderRadius: 4,
+          padding: '2px 8px', letterSpacing: '0.05em',
+        }}>{bench.toUpperCase()}</span>
+        {!isDefault && (
+          <button onClick={reset} style={{
+            fontSize: 10, color: '#64748b', background: 'none', border: 'none',
+            cursor: 'pointer', padding: '1px 6px', borderRadius: 3,
+            borderColor: '#334155', borderWidth: 1, borderStyle: 'solid',
+          }}>reset to defaults</button>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+        {effective.map(kw => (
+          <span key={kw} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 11, padding: '2px 7px', borderRadius: 4,
+            background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1',
+          }}>
+            {kw}
+            <button onClick={() => remove(kw)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#64748b', fontSize: 12, lineHeight: 1, padding: 0,
+            }}>×</button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && add()}
+          placeholder="add keyword…"
+          style={{
+            flex: 1, fontSize: 12, padding: '4px 8px',
+            background: '#0f172a', border: '1px solid #334155',
+            borderRadius: 5, color: '#e2e8f0', outline: 'none',
+          }}
+        />
+        <button onClick={add} style={{
+          padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
+          borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
+        }}>Add</button>
+      </div>
+    </div>
+  );
+}
+
+export default function SettingsModal({
+  changelog, onClose, isSignedIn, onSignIn, onSignOut, isConfigured,
+  benchKeywords = {}, defaultBenchKeywords = {}, onBenchKeywordsChange,
+}) {
+  const [activeTab, setActiveTab] = useState('keywords');
+
+  function handleKeywordChange(bench, keywords) {
+    if (keywords === null) {
+      const next = { ...benchKeywords };
+      delete next[bench];
+      onBenchKeywordsChange(next);
+    } else {
+      onBenchKeywordsChange({ ...benchKeywords, [bench]: keywords });
+    }
+  }
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)',
@@ -6,64 +104,102 @@ export default function SettingsModal({ changelog, onClose, isSignedIn, onSignIn
     }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
         background: '#1e293b', border: '1px solid #334155', borderRadius: 12,
-        width: 540, maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+        width: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
       }}>
+        {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Settings</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155' }}>
-          <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Google Calendar</h3>
-          {!isConfigured ? (
-            <div style={{ padding: '10px 14px', background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
-              <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>
-                ⚠ Google API credentials not configured. Add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to your .env file.
-              </p>
-              <p style={{ fontSize: 11, color: '#64748b' }}>
-                1. Go to Google Cloud Console → APIs & Services → Credentials<br/>
-                2. Create OAuth 2.0 Client ID (Web application)<br/>
-                3. Add authorized origin: https://guitargaragenz.github.io<br/>
-                4. Create API Key restricted to Calendar API<br/>
-                5. Add to .env.local: VITE_GOOGLE_CLIENT_ID=... VITE_GOOGLE_API_KEY=...
-              </p>
-            </div>
-          ) : isSignedIn ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 13, color: '#22c55e' }}>✓ Connected to guitargaragenz@gmail.com</span>
-              <button onClick={onSignOut} style={{
-                padding: '5px 12px', background: '#7f1d1d', border: '1px solid #ef4444',
-                borderRadius: 6, color: '#fca5a5', fontSize: 12, cursor: 'pointer',
-              }}>Sign Out</button>
-            </div>
-          ) : (
-            <button onClick={onSignIn} style={{
-              padding: '8px 16px', background: '#1e3a5f', border: '1px solid #2563eb',
-              borderRadius: 6, color: '#bfdbfe', fontSize: 13, cursor: 'pointer', fontWeight: 600,
-            }}>
-              Connect Google Calendar
-            </button>
-          )}
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #334155' }}>
+          {['keywords', 'calendar', 'changelog'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              padding: '10px 18px', background: 'none', border: 'none',
+              borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeTab === tab ? '#e2e8f0' : '#64748b',
+              fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
+              cursor: 'pointer', textTransform: 'capitalize',
+            }}>{tab}</button>
+          ))}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Changelog</h3>
-          {changelog.length === 0 ? (
-            <p style={{ color: '#475569', fontSize: 13 }}>No changes yet.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[...changelog].reverse().map((entry, i) => (
-                <div key={i} style={{
-                  padding: '8px 12px', background: '#0f172a', borderRadius: 6,
-                  borderLeft: '3px solid #334155', fontSize: 12, color: '#94a3b8',
-                }}>
-                  <span style={{ color: '#64748b', marginRight: 8 }}>
-                    {new Date(entry.ts).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {entry.msg}
-                </div>
+
+          {activeTab === 'keywords' && (
+            <div>
+              <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
+                Keywords in job descriptions that determine bench assignment. Edit to add your own terms. Changes re-classify all jobs immediately.
+              </p>
+              {BENCHES.map(bench => (
+                <KeywordEditor
+                  key={bench}
+                  bench={bench}
+                  keywords={benchKeywords}
+                  defaultKeywords={defaultBenchKeywords}
+                  onChange={handleKeywordChange}
+                />
               ))}
+            </div>
+          )}
+
+          {activeTab === 'calendar' && (
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Google Calendar</h3>
+              {!isConfigured ? (
+                <div style={{ padding: '10px 14px', background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
+                  <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>
+                    ⚠ Google API credentials not configured. Add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to your .env file.
+                  </p>
+                  <p style={{ fontSize: 11, color: '#64748b' }}>
+                    1. Go to Google Cloud Console → APIs & Services → Credentials<br/>
+                    2. Create OAuth 2.0 Client ID (Web application)<br/>
+                    3. Add authorized origin: https://guitargaragenz.github.io<br/>
+                    4. Create API Key restricted to Calendar API<br/>
+                    5. Add to .env.local: VITE_GOOGLE_CLIENT_ID=... VITE_GOOGLE_API_KEY=...
+                  </p>
+                </div>
+              ) : isSignedIn ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: '#22c55e' }}>✓ Connected to guitargaragenz@gmail.com</span>
+                  <button onClick={onSignOut} style={{
+                    padding: '5px 12px', background: '#7f1d1d', border: '1px solid #ef4444',
+                    borderRadius: 6, color: '#fca5a5', fontSize: 12, cursor: 'pointer',
+                  }}>Sign Out</button>
+                </div>
+              ) : (
+                <button onClick={onSignIn} style={{
+                  padding: '8px 16px', background: '#1e3a5f', border: '1px solid #2563eb',
+                  borderRadius: 6, color: '#bfdbfe', fontSize: 13, cursor: 'pointer', fontWeight: 600,
+                }}>
+                  Connect Google Calendar
+                </button>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'changelog' && (
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Changelog</h3>
+              {changelog.length === 0 ? (
+                <p style={{ color: '#475569', fontSize: 13 }}>No changes yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {[...changelog].reverse().map((entry, i) => (
+                    <div key={i} style={{
+                      padding: '8px 12px', background: '#0f172a', borderRadius: 6,
+                      borderLeft: '3px solid #334155', fontSize: 12, color: '#94a3b8',
+                    }}>
+                      <span style={{ color: '#64748b', marginRight: 8 }}>
+                        {new Date(entry.ts).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {entry.msg}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

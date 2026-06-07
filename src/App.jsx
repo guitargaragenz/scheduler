@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, BENCH_COLORS } from './data/jobs.js';
+import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
 import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours, isGapHour, isSaturday, isSunday, isLunchSlot } from './utils/calendar.js';
 import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
 import {
@@ -35,7 +35,13 @@ function nextHalfSlotKey(key) {
 }
 
 export default function App() {
-  const [jobs, setJobs] = useState(() => parseCSV(RAW_CSV));
+  const [benchKeywords, setBenchKeywords] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; }
+  });
+  const [jobs, setJobs] = useState(() => {
+    const stored = (() => { try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; } })();
+    return parseCSV(RAW_CSV, stored);
+  });
   const [scheduledSlots, setScheduledSlots] = useState({}); // slotKey -> jobId
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
   const [dragMode, setDragMode] = useState('regular');
@@ -597,7 +603,7 @@ export default function App() {
 
   function handleCsvUpload(csvText) {
     try {
-      const newJobs = parseCSV(csvText);
+      const newJobs = parseCSV(csvText, benchKeywords);
       // Preserve pomoLog from existing jobs so timer history survives CSV refreshes
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
       const merged = newJobs.map(j => ({
@@ -854,6 +860,13 @@ export default function App() {
           onSignIn={handleSignIn}
           onSignOut={handleSignOut}
           isConfigured={isConfigured()}
+          benchKeywords={benchKeywords}
+          defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
+          onBenchKeywordsChange={kw => {
+            setBenchKeywords(kw);
+            localStorage.setItem('benchKeywords', JSON.stringify(kw));
+            setJobs(parseCSV(RAW_CSV, kw));
+          }}
         />
       )}
 

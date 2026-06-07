@@ -1,27 +1,31 @@
-export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL`;
+export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Customer`;
 
-export function inferBench(desc = '', status = '', action = '', model = '', mfr = '') {
+export const DEFAULT_BENCH_KEYWORDS = {
+  Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
+  Luthier:     ['bridge', 'crack', 'brace', 'reset', 'top', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', 'split', 'lifting', 'lifted', 'broken'],
+  Electronics: ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
+  Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
+};
+
+export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS) {
   const act = (action || '').trim().toUpperCase();
-  // In Transit — always Admin (nothing to bench until it arrives)
   if (status === 'In Transit') return 'Admin';
-  // Waiting — Admin unless Incubating (INC) or Customer Input (CI)
   if (status === 'Waiting' && !['INC', 'CI'].includes(act)) return 'Admin';
 
-  // Check desc first, then model, then manufacturer
   const d = (desc + ' ' + model).toLowerCase();
   const m = mfr.toLowerCase();
 
-  if (/refret|fret level|fret dress|fret polish/.test(d)) return 'Fretwork';
-  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
-  if (/bridge|crack|brace|reset|top|lower bout|inlay|binding|finish|restoration|split|lifting|lifted|broken/.test(d)) return 'Luthier';
-  if (/power|output|tube|fuse|amp|recap|blown|doa|caps|opamp|voltage|pcb|speaker|voice chip|calibrate|impedance|mute|phantom|preamp|mains|dc power|wire feed|keyboard|synth|mixer|console|interface|desk|rack|valve|\bhead\b|combo|bias|jack|pot|wiring/.test(d)) return 'Electronics';
-  if (/setup|stp|intonation|pups|pickup|wiring|strings|restring|switch|trem|nut|saddle|string height/.test(d)) return 'Setup';
+  const kw = { ...DEFAULT_BENCH_KEYWORDS, ...keywords };
+  const rx = bench => new RegExp(kw[bench].join('|'));
 
-  // Model-name overrides for brands that make both instruments AND electronics
+  if (rx('Fretwork').test(d)) return 'Fretwork';
+  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
+  if (rx('Luthier').test(d)) return 'Luthier';
+  if (rx('Electronics').test(d)) return 'Electronics';
+  if (rx('Setup').test(d)) return 'Setup';
+
   if (/passport|pa\s*\d/.test(d)) return 'Electronics';
-  // Manufacturer fallback — known electronics brands
   if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
-  // Known guitar/stringed instrument brands → Setup (luthier work detected above via desc)
   if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
 
   return 'Admin';
@@ -79,7 +83,7 @@ export function createSubtasks(job) {
   return null;
 }
 
-export function parseCSV(csvText) {
+export function parseCSV(csvText, keywords = {}) {
   // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
   // Lines starting with # are treated as comments (e.g. action key) and skipped
   const rows = [];
@@ -131,7 +135,7 @@ export function parseCSV(csvText) {
     // Don't drop schedulable jobs just because hours aren't set yet — default to 1h
     const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
 
-    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr);
+    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr, keywords);
     const baseJob = {
       id: String(obj.Job),
       job: obj.Job,
@@ -148,6 +152,7 @@ export function parseCSV(csvText) {
       hoursRange: hoursRange(effectiveHours),
       action: obj.Action,
       desc: obj.Desc,
+      customer: obj.Customer || '',
       vb: obj.VB === 'Y',
       backlog: obj.BL === 'Y',
       bench,
