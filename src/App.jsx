@@ -269,8 +269,6 @@ export default function App() {
     if (source === 'calendar') {
       Object.keys(tempSlots).forEach(k => {
         if (tempSlots[k] === job.id) {
-          const nk = nextHalfSlotKey(k);
-          if (tempSlots[nk] === '__buffer__') delete tempSlots[nk];
           delete tempSlots[k];
         }
       });
@@ -301,8 +299,6 @@ export default function App() {
       // handles stale Firestore-loaded slots regardless of drag source
       Object.keys(next).forEach(k => {
         if (next[k] === job.id) {
-          const nk = nextHalfSlotKey(k);
-          if (next[nk] === '__buffer__') delete next[nk];
           delete next[k];
         }
       });
@@ -310,17 +306,6 @@ export default function App() {
       slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
         next[slotKey(weekDays[d], h, m)] = job.id;
       });
-      // Place 30-min buffer after last slot
-      const last = slots[slots.length - 1];
-      const bufM = last.minute === 0 ? 30 : 0;
-      const bufH = last.minute === 0 ? last.hour : last.hour + 1;
-      const bufDate = weekDays[last.dayIdx];
-      const { end: dayEnd } = getWorkHours(bufDate);
-      const isBufWeekday = !isSaturday(bufDate) && !isSunday(bufDate);
-      if (bufH < dayEnd && !isGapHour(bufH) && !(isBufWeekday && isLunchSlot(bufH))) {
-        const bufKey = slotKey(bufDate, bufH, bufM);
-        if (!next[bufKey]) next[bufKey] = '__buffer__';
-      }
       return next;
     });
 
@@ -348,8 +333,6 @@ export default function App() {
     if (source === 'calendar') {
       Object.keys(tempSlots).forEach(k => {
         if (tempSlots[k] === job.id) {
-          const nk = nextHalfSlotKey(k);
-          if (tempSlots[nk] === '__buffer__') delete tempSlots[nk];
           delete tempSlots[k];
         }
       });
@@ -384,7 +367,7 @@ export default function App() {
     const displaced = [];
     slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
       const occupant = tempSlots[slotKey(weekDays[d], h, m)];
-      if (occupant && occupant !== '__buffer__' && !displaced.includes(occupant)) displaced.push(occupant);
+      if (occupant && !displaced.includes(occupant)) displaced.push(occupant);
     });
 
     setScheduledSlots(prev => {
@@ -392,8 +375,6 @@ export default function App() {
       // Always clear ALL existing slots for this job — handles stale slots from any source
       Object.keys(next).forEach(k => {
         if (next[k] === job.id) {
-          const nk = nextHalfSlotKey(k);
-          if (next[nk] === '__buffer__') delete next[nk];
           delete next[k];
         }
       });
@@ -405,17 +386,6 @@ export default function App() {
       slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
         next[slotKey(weekDays[d], h, m)] = job.id;
       });
-      // Buffer after last slot
-      const last = slots[slots.length - 1];
-      const bufM = last.minute === 0 ? 30 : 0;
-      const bufH = last.minute === 0 ? last.hour : last.hour + 1;
-      const bufDate = weekDays[last.dayIdx];
-      const { end: bufDayEnd } = getWorkHours(bufDate);
-      const bufIsWeekday = !isSaturday(bufDate) && !isSunday(bufDate);
-      if (bufH < bufDayEnd && !isGapHour(bufH) && !(bufIsWeekday && isLunchSlot(bufH))) {
-        const bufKey = slotKey(bufDate, bufH, bufM);
-        if (!next[bufKey]) next[bufKey] = '__buffer__';
-      }
       return next;
     });
 
@@ -452,11 +422,6 @@ export default function App() {
         next[slotKey(weekDays[dayIdx], h, m)] = job.id;
         if (m === 0) { m = 30; } else { m = 0; h++; }
       }
-      const isBufWeekday = !isSaturday(date) && !isSunday(date);
-      if (h < end && !isGapHour(h) && !(isBufWeekday && isLunchSlot(h))) {
-        const bufKey = slotKey(date, h, m);
-        if (!next[bufKey]) next[bufKey] = '__buffer__';
-      }
       return next;
     });
     setJobs(prev => prev.map(j =>
@@ -472,8 +437,6 @@ export default function App() {
       Object.keys(next).forEach(k => {
         if (next[k] === job.id) {
           // Also clear the buffer slot that immediately follows this job slot
-          const nk = nextHalfSlotKey(k);
-          if (next[nk] === '__buffer__') delete next[nk];
           delete next[k];
         }
       });
@@ -488,16 +451,11 @@ export default function App() {
     addChangelog(`Unscheduled #${job.job} — moved back to sidebar`);
   }
 
-  // Build scheduled job map and buffer key set for CalendarGrid
+  // Build scheduled job map for CalendarGrid
   const scheduledJobObjects = {};
-  const bufferSlotKeys = new Set();
   Object.entries(scheduledSlots).forEach(([key, jobId]) => {
-    if (jobId === '__buffer__') {
-      bufferSlotKeys.add(key);
-    } else {
-      const job = jobs.find(j => j.id === jobId);
-      if (job) scheduledJobObjects[key] = job;
-    }
+    const job = jobs.find(j => j.id === jobId);
+    if (job) scheduledJobObjects[key] = job;
   });
 
   async function handleSync() {
@@ -784,7 +742,7 @@ export default function App() {
           <CalendarGrid
             weekDays={weekDays}
             scheduledJobs={scheduledJobObjects}
-            bufferSlotKeys={bufferSlotKeys}
+
             externalEvents={externalEvents}
             isDragging={isDragging}
             activeJobId={activeJob?.id ?? null}
