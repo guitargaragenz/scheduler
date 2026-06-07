@@ -14,7 +14,7 @@ const ALL_SLOTS = [
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
 ];
 
-function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, isLastSlot, externalEvent, isDropping, activeJobId, onJobClick }) {
+function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick }) {
   const key = slotKey(date, hour, minute);
   const { setNodeRef, isOver } = useDroppable({ id: key, data: { dayIdx, hour, minute } });
 
@@ -33,13 +33,6 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, isLastSlot, ex
           background: colors.bg, borderLeft: `3px solid ${colors.border}`,
         }}>
           <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact onClick={() => onJobClick(job)} />
-          {isLastSlot && (
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: 10,
-              background: 'repeating-linear-gradient(45deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px, transparent 2px, transparent 6px)',
-              pointerEvents: 'none',
-            }} />
-          )}
           {/* Show appointment as a subtle overlay so it's not hidden by the job */}
           {externalEvent && !externalEvent._isSpan && (
             <div title={(externalEvent.summary || '')} style={{
@@ -66,16 +59,7 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, isLastSlot, ex
         cursor: 'grab',
         opacity: isDraggingThis ? 0.4 : 1,
         transition: 'opacity 0.1s',
-        position: 'relative',
-      }}>
-        {isLastSlot && (
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: 10,
-            background: 'repeating-linear-gradient(45deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px, transparent 2px, transparent 6px)',
-            pointerEvents: 'none',
-          }} />
-        )}
-      </div>
+      }} />
     );
   }
 
@@ -263,7 +247,6 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 // Is this the first / last slot of the job occupying this cell?
                 const job = slotJobMap[key] ?? null;
                 let isFirstSlot = true;
-                let isLastSlot  = true;
                 if (job) {
                   const prevMinute = minute === 30 ? 0 : 30;
                   const prevHour   = minute === 30 ? hour : hour - 1;
@@ -271,10 +254,6 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                     const prevKey = slotKey(d, prevHour, prevMinute);
                     isFirstSlot = slotJobMap[prevKey]?.id !== job.id;
                   }
-                  const nextMinute = minute === 0 ? 30 : 0;
-                  const nextHour   = minute === 0 ? hour : hour + 1;
-                  const nextKey = slotKey(d, nextHour, nextMinute);
-                  isLastSlot = slotJobMap[nextKey]?.id !== job.id;
                 }
 
                 return (
@@ -286,7 +265,6 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                       minute={minute}
                       job={job}
                       isFirstSlot={isFirstSlot}
-                      isLastSlot={isLastSlot}
                       externalEvent={extMap[key]}
                       isDropping={isDragging}
                       activeJobId={activeJobId}
