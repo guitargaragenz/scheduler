@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
   plugins: [react(), partsboxDevProxy(env.PARTSBOX_API_KEY)],
-  base: '/scheduler/',
+  base: '/',
   server: {
     port: 5173,
   },
