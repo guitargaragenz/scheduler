@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
+import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, createSubtasks, hoursRange } from './data/jobs.js';
 import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours, isGapHour, isSaturday, isSunday, isLunchSlot } from './utils/calendar.js';
 import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
 import {
@@ -34,6 +34,32 @@ function nextHalfSlotKey(key) {
   return `${parts[0]}-${parts[1]}-${parts[2]}-${nH}-${nM}`;
 }
 
+
+// Re-expand split subtasks after Firebase load (watcher pushes raw jobs with no subtasks).
+// Preserves scheduled state from existing subtasks where possible.
+function withSplitsExpanded(rawJobs, existingJobs = []) {
+  const existingById = Object.fromEntries(existingJobs.map(j => [j.id, j]));
+  const result = [];
+  for (const job of rawJobs) {
+    if (job.parentId) continue; // drop any stale subtasks — we'll regenerate
+    const subtasks = createSubtasks(job);
+    if (subtasks && subtasks.length > 0) {
+      result.push({ ...job, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
+      for (const st of subtasks) {
+        const prev = existingById[st.id];
+        result.push({
+          ...st,
+          scheduled:    prev?.scheduled    ?? false,
+          calendarSlot: prev?.calendarSlot ?? null,
+          gcalEventId:  prev?.gcalEventId  ?? null,
+        });
+      }
+    } else {
+      result.push(job);
+    }
+  }
+  return result;
+}
 
 export default function App() {
   const [benchKeywords, setBenchKeywords] = useState(() => {
@@ -88,7 +114,7 @@ export default function App() {
     if (!isFirebaseConfigured()) return;
     loadSchedule().then(data => {
       if (data) {
-        if (data.jobs) setJobs(data.jobs);
+        if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev));
         if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
         if (data.updatedAt) setLastSyncedAt(data.updatedAt);
       }
@@ -98,7 +124,7 @@ export default function App() {
     const unsub = subscribeToSchedule(data => {
       // Ignore snapshots triggered by our own saves (echo suppression — 5s window)
       if (Date.now() - justSavedAt.current < 5000) return;
-      if (data.jobs) setJobs(data.jobs);
+      if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev));
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
       if (data.updatedAt) setLastSyncedAt(data.updatedAt);
     });

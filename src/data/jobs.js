@@ -46,6 +46,12 @@ export function hoursRange(h) {
   return lo === hi ? String(h) : `${lo}-${hi}`;
 }
 
+function matchedKeywords(bench, desc) {
+  const d = (desc || '').toLowerCase();
+  const hits = DEFAULT_BENCH_KEYWORDS[bench]?.filter(kw => new RegExp(kw).test(d)) ?? [];
+  return hits.join(', ') || null;
+}
+
 export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
@@ -55,11 +61,11 @@ export function createSubtasks(job) {
     const luthierHours = 1;
     const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
     const subtasks = [
-      { ...job, id: `${job.id}-L`, bench: 'Fretwork', hours: Math.round(remaining * 0.6 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.6 * 2) / 2), label: 'Level & Polish', parentId: job.id },
-      { ...job, id: `${job.id}-S`, bench: 'Setup',    hours: Math.round(remaining * 0.4 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.4 * 2) / 2), label: 'Setup',          parentId: job.id },
+      { ...job, id: `${job.id}-L`, bench: 'Fretwork', hours: Math.round(remaining * 0.6 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.6 * 2) / 2), label: 'Level & Polish', parentId: job.id, splitDesc: matchedKeywords('Fretwork', job.desc) },
+      { ...job, id: `${job.id}-S`, bench: 'Setup',    hours: Math.round(remaining * 0.4 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.4 * 2) / 2), label: 'Setup',          parentId: job.id, splitDesc: matchedKeywords('Setup',    job.desc) },
     ];
     if (hasLuthier) subtasks.unshift(
-      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id, splitDesc: matchedKeywords('Luthier', job.desc) }
     );
     return subtasks;
   }
@@ -72,17 +78,17 @@ export function createSubtasks(job) {
       // 3 cards: single Fretwork (refret+polish combined), Luthier, Setup
       const fwHours = Math.max(job.hours - 1.5 - luthierHours, 0.5);
       return [
-        { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(fwHours * 2) / 2, hoursRange: hoursRange(Math.round(fwHours * 2) / 2), label: 'Refret & Polish', parentId: job.id },
-        { ...job, id: `${job.id}-LU`, bench: 'Luthier',  hours: luthierHours,                hoursRange: hoursRange(luthierHours),                 label: 'Luthier work',   parentId: job.id },
-        { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                         hoursRange: hoursRange(1.5),                           label: 'Setup / Restring', parentId: job.id },
+        { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(fwHours * 2) / 2, hoursRange: hoursRange(Math.round(fwHours * 2) / 2), label: 'Refret & Polish',   parentId: job.id, splitDesc: matchedKeywords('Fretwork', job.desc) },
+        { ...job, id: `${job.id}-LU`, bench: 'Luthier',  hours: luthierHours,                hoursRange: hoursRange(luthierHours),                 label: 'Luthier work',     parentId: job.id, splitDesc: matchedKeywords('Luthier',  job.desc) },
+        { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                         hoursRange: hoursRange(1.5),                           label: 'Setup / Restring', parentId: job.id, splitDesc: matchedKeywords('Setup',    job.desc) },
       ];
     }
     // No Luthier — keep Refret + Level/Polish as separate Fretwork cards
     const baseHours = Math.max(job.hours - 1.5, 0.5);
     return [
-      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2), label: 'Refret',                parentId: job.id },
-      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2), label: 'Level, Crown & Polish', parentId: job.id },
-      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                  hoursRange: hoursRange(1.5),                                  label: 'Setup / Restring',      parentId: job.id },
+      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2), label: 'Refret',                parentId: job.id, splitDesc: matchedKeywords('Fretwork', job.desc) },
+      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2), label: 'Level, Crown & Polish', parentId: job.id, splitDesc: matchedKeywords('Fretwork', job.desc) },
+      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                  hoursRange: hoursRange(1.5),                                  label: 'Setup / Restring',      parentId: job.id, splitDesc: matchedKeywords('Setup',    job.desc) },
     ];
   }
 

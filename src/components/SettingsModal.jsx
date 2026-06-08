@@ -10,6 +10,7 @@ const BENCH_ACCENT = {
 };
 
 function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
+  const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const effective = keywords[bench] ?? defaultKeywords[bench] ?? [];
   const isDefault = !keywords[bench];
@@ -29,54 +30,72 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
     onChange(bench, null);
   }
 
+  const accent = BENCH_ACCENT[bench];
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{
-          fontSize: 11, fontWeight: 700, color: BENCH_ACCENT[bench],
-          background: BENCH_ACCENT[bench] + '22', borderRadius: 4,
-          padding: '2px 8px', letterSpacing: '0.05em',
-        }}>{bench.toUpperCase()}</span>
-        {!isDefault && (
-          <button onClick={reset} style={{
-            fontSize: 10, color: '#64748b', background: 'none', border: 'none',
-            cursor: 'pointer', padding: '1px 6px', borderRadius: 3,
-            borderColor: '#334155', borderWidth: 1, borderStyle: 'solid',
-          }}>reset to defaults</button>
-        )}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
-        {effective.map(kw => (
-          <span key={kw} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 11, padding: '2px 7px', borderRadius: 4,
-            background: '#0f172a', border: '1px solid #334155', color: '#cbd5e1',
-          }}>
-            {kw}
-            <button onClick={() => remove(kw)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: '#64748b', fontSize: 12, lineHeight: 1, padding: 0,
-            }}>×</button>
-          </span>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && add()}
-          placeholder="add keyword…"
-          style={{
-            flex: 1, fontSize: 12, padding: '4px 8px',
-            background: '#0f172a', border: '1px solid #334155',
-            borderRadius: 5, color: '#e2e8f0', outline: 'none',
-          }}
-        />
-        <button onClick={add} style={{
-          padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
-          borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
-        }}>Add</button>
-      </div>
+    <div style={{ marginBottom: 6, borderRadius: 6, border: '1px solid #334155', overflow: 'hidden' }}>
+      {/* Accordion header */}
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 12px', background: '#0f172a', border: 'none', cursor: 'pointer',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: accent,
+            background: accent + '22', borderRadius: 4,
+            padding: '2px 8px', letterSpacing: '0.05em',
+          }}>{bench.toUpperCase()}</span>
+          <span style={{ fontSize: 11, color: '#475569' }}>{effective.length} keywords</span>
+        </div>
+        <span style={{ color: '#475569', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Accordion body */}
+      {open && (
+        <div style={{ padding: '10px 12px', borderTop: '1px solid #1e293b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            {!isDefault && (
+              <button onClick={reset} style={{
+                fontSize: 10, color: '#64748b', background: 'none', border: 'none',
+                cursor: 'pointer', padding: '1px 6px', borderRadius: 3,
+                borderColor: '#334155', borderWidth: 1, borderStyle: 'solid',
+              }}>reset to defaults</button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {effective.map(kw => (
+              <span key={kw} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 11, padding: '2px 7px', borderRadius: 4,
+                background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1',
+              }}>
+                {kw}
+                <button onClick={() => remove(kw)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#64748b', fontSize: 12, lineHeight: 1, padding: 0,
+                }}>×</button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && add()}
+              placeholder="add keyword…"
+              style={{
+                flex: 1, fontSize: 12, padding: '4px 8px',
+                background: '#0f172a', border: '1px solid #334155',
+                borderRadius: 5, color: '#e2e8f0', outline: 'none',
+              }}
+            />
+            <button onClick={add} style={{
+              padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
+              borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
+            }}>Add</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
