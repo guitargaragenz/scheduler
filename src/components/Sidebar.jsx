@@ -10,7 +10,7 @@ const HOURS_BUCKETS = [
   { label: '4hr+',   key: 'gt4',  test: h => h >= 4 },
 ];
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
@@ -260,6 +260,20 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
 
           {/* Footer */}
           <div style={{ padding: '10px 16px', borderTop: '1px solid #3b82f6' }}>
+            {lastSyncedAt && (
+              <div style={{ fontSize: 10, color: '#64748b', textAlign: 'center', marginBottom: 8 }}>
+                ☁ synced {(() => {
+                  const d = new Date(lastSyncedAt);
+                  const now = new Date();
+                  const mins = Math.floor((now - d) / 60000);
+                  if (mins < 1) return 'just now';
+                  if (mins < 60) return `${mins}m ago`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h ago`;
+                  return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+                })()}
+              </div>
+            )}
             <label
               htmlFor="csv-upload"
               style={{

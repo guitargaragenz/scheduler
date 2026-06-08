@@ -34,6 +34,7 @@ function nextHalfSlotKey(key) {
   return `${parts[0]}-${parts[1]}-${parts[2]}-${nH}-${nM}`;
 }
 
+
 export default function App() {
   const [benchKeywords, setBenchKeywords] = useState(() => {
     try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; }
@@ -58,6 +59,7 @@ export default function App() {
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [firebaseReady, setFirebaseReady] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [pomoJob, setPomoJob] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showParts, setShowParts] = useState(false);
@@ -88,6 +90,7 @@ export default function App() {
       if (data) {
         if (data.jobs) setJobs(data.jobs);
         if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
+        if (data.updatedAt) setLastSyncedAt(data.updatedAt);
       }
       setFirebaseReady(true);
     });
@@ -97,6 +100,7 @@ export default function App() {
       if (Date.now() - justSavedAt.current < 5000) return;
       if (data.jobs) setJobs(data.jobs);
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
+      if (data.updatedAt) setLastSyncedAt(data.updatedAt);
     });
     return () => unsub();
   }, []);
@@ -758,6 +762,7 @@ export default function App() {
             onJobClick={setEditingJob}
             isOpen={sidebarOpen}
             onToggle={() => setSidebarOpen(o => !o)}
+            lastSyncedAt={lastSyncedAt}
           />
         </div>
       </div>
