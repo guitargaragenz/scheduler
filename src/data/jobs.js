@@ -51,7 +51,7 @@ export function createSubtasks(job) {
 
   // Fret level + setup combo
   if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
-    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1;
     const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
     const subtasks = [
@@ -66,7 +66,7 @@ export function createSubtasks(job) {
 
   // Refret — detect if there's also Luthier work in the description
   if (job.bench === 'Fretwork' && /refret/.test(d)) {
-    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top/.test(d);
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1.5;
     const baseHours = hasLuthier ? Math.max(job.hours - 1.5 - luthierHours, 0.5) : Math.max(job.hours - 1.5, 0.5);
     const subtasks = [
