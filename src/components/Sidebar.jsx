@@ -44,9 +44,9 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
   };
 
   // Hide parent jobs that have been split (replaced by subtasks)
-  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit && !j.parentId);
-  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
-  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit);
+  const active        = unscheduled.filter(j => !j.parentId && j.schedulable && !j.backlog && !j.readyToStart);
+  const backlog       = unscheduled.filter(j => !j.parentId && j.schedulable && j.backlog && !j.readyToStart);
   const readyToStart  = unscheduled.filter(j => j.readyToStart);
   const awaiting      = unscheduled.filter(j => j.awaiting);
   const inTransit     = unscheduled.filter(j => j.inTransit);
@@ -56,7 +56,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
 
   let displayed, displayedBacklog, displayedReady, displayedAwaiting, displayedTransit, displayedHold;
   if (isFocusMode) {
-    displayed          = active.filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    displayed          = unscheduled.filter(j => j.parentId === highlightedJobId);
     displayedBacklog   = [];
     displayedReady     = [];
     displayedAwaiting  = [];
