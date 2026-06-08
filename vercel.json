@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/job-tracker", "destination": "/job-tracker.html" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/job-tracker", "destination": "/job-tracker.html" }
   ]
 }
