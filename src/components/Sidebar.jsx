@@ -20,7 +20,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
   const toggleExpand = (jobId) => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
 
   const renderJob = (job, highlighted = false) => {
-    if (job.parentId) return null; // subtasks rendered under parent
+    if (job.parentId && !highlighted) return null; // subtasks rendered under parent (except in focus mode)
     const subtaskList = job.hasSubtasks ? jobs.filter(j => job.subtasks?.includes(j.id)) : [];
     const isExpanded = expandedJobs[job.id];
     return (
