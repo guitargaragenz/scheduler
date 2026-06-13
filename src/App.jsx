@@ -22,6 +22,7 @@ import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
+import MobileJobSheet from './components/MobileJobSheet.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -66,6 +67,7 @@ export default function App() {
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
+  const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
   const externalEventsRef = useRef([]); // always-current ref — avoids stale closure in drag handlers
@@ -320,6 +322,10 @@ export default function App() {
     ));
     showToast(`#${job.job} placed — ${spanDesc}`);
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
+  }
+
+  function handleMobileSchedule(job, dayIdx, hour, minute) {
+    handleRegularDrop(job, dayIdx, hour, minute, undefined);
   }
 
   function handleUrgentDrop(job, dayIdx, hour, minute, source) {
@@ -810,11 +816,21 @@ export default function App() {
       <Toast message={toast} onDismiss={() => setToast('')} />
 
       {editingJob && (
-        <JobDrawer
-          job={editingJob}
-          onClose={() => setEditingJob(null)}
-          onSave={handleSaveDrawer}
-        />
+        isMobile ? (
+          <MobileJobSheet
+            job={editingJob}
+            weekDays={weekDays}
+            onSchedule={handleMobileSchedule}
+            onSave={handleSaveDrawer}
+            onClose={() => setEditingJob(null)}
+          />
+        ) : (
+          <JobDrawer
+            job={editingJob}
+            onClose={() => setEditingJob(null)}
+            onSave={handleSaveDrawer}
+          />
+        )
       )}
 
       {pomoJob && (
