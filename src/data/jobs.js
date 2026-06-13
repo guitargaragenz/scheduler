@@ -161,6 +161,7 @@ export function parseCSV(csvText, keywords = {}) {
       customer: obj.Customer || '',
       vb: obj.VB === 'Y',
       backlog: obj.BL === 'Y',
+      project: obj.PJ === 'Y',
       bench,
       scheduled: false,
       calendarSlot: null,

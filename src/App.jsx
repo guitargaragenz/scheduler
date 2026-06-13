@@ -21,6 +21,7 @@ import PomoDrawer from './components/PomoDrawer.jsx';
 import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
+import RunwayPage from './components/RunwayPage.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -64,6 +65,7 @@ export default function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showRunway, setShowRunway] = useState(false);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
   const externalEventsRef = useRef([]); // always-current ref — avoids stale closure in drag handlers
@@ -696,6 +698,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowRunway(r => !r)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showRunway ? '#4f46e5' : '#334155'}`,
+                background: showRunway ? '#1e1b4b' : '#1e293b',
+                color: showRunway ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showRunway ? 700 : 400,
+              }}
+            >
+              Runway
+            </button>
+
+            <button
               onClick={() => setShowSummary(true)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
@@ -743,27 +757,32 @@ export default function App() {
 
         {/* Body */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <CalendarGrid
-            weekDays={weekDays}
-            scheduledJobs={scheduledJobObjects}
-
-            externalEvents={externalEvents}
-            isDragging={isDragging}
-            activeJobId={activeJob?.id ?? null}
-            onJobClick={handleOpenPomo}
-          />
-          <Sidebar
-            jobs={jobs}
-            dragMode={dragMode}
-            onDragModeChange={setDragMode}
-            onCsvUpload={handleCsvUpload}
-            highlightedJobId={highlightedJobId}
-            onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
-            onJobClick={setEditingJob}
-            isOpen={sidebarOpen}
-            onToggle={() => setSidebarOpen(o => !o)}
-            lastSyncedAt={lastSyncedAt}
-          />
+          {showRunway ? (
+            <RunwayPage jobs={jobs} />
+          ) : (
+            <>
+              <CalendarGrid
+                weekDays={weekDays}
+                scheduledJobs={scheduledJobObjects}
+                externalEvents={externalEvents}
+                isDragging={isDragging}
+                activeJobId={activeJob?.id ?? null}
+                onJobClick={handleOpenPomo}
+              />
+              <Sidebar
+                jobs={jobs}
+                dragMode={dragMode}
+                onDragModeChange={setDragMode}
+                onCsvUpload={handleCsvUpload}
+                highlightedJobId={highlightedJobId}
+                onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
+                onJobClick={setEditingJob}
+                isOpen={sidebarOpen}
+                onToggle={() => setSidebarOpen(o => !o)}
+                lastSyncedAt={lastSyncedAt}
+              />
+            </>
+          )}
         </div>
       </div>
 
