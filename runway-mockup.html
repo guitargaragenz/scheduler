@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runway View — Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111827; color: #f9fafb; font-family: system-ui, sans-serif; font-size: 13px; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #f9fafb; }
+  .header .subtitle { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+  .filters { display: flex; gap: 8px; align-items: center; }
+  .filter-btn { background: #1f2937; border: 1px solid #374151; color: #d1d5db; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .filter-btn.active { background: #374151; color: #f9fafb; }
+
+  /* Timeline header */
+  .timeline-header { display: grid; grid-template-columns: 220px 1fr 90px; gap: 0; margin-bottom: 8px; padding: 0 0 6px 0; border-bottom: 1px solid #1f2937; }
+  .th-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 4px; }
+  .th-timeline { display: flex; justify-content: space-between; padding: 0 4px; }
+  .th-timeline span { font-size: 11px; color: #4b5563; }
+  .th-right { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; padding-right: 4px; }
+
+  /* Job rows */
+  .job-row { display: grid; grid-template-columns: 220px 1fr 90px; gap: 0; align-items: center; padding: 6px 0; border-bottom: 1px solid #1a2332; }
+  .job-row:hover { background: #161f2e; border-radius: 6px; }
+
+  .job-info { padding-right: 12px; }
+  .job-name { font-weight: 500; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job-meta { display: flex; gap: 6px; margin-top: 3px; align-items: center; }
+  .bench-pill { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+  .job-customer { font-size: 11px; color: #6b7280; }
+
+  /* Bar track */
+  .bar-track { position: relative; height: 28px; }
+  .track-bg { position: absolute; inset: 0; display: flex; }
+  .track-week { flex: 1; border-right: 1px solid #1f2937; }
+  .track-week:last-child { border-right: none; }
+
+  .bar-wrap { position: absolute; top: 4px; height: 20px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; transition: opacity 0.15s; }
+  .bar-wrap:hover { opacity: 0.85; cursor: pointer; }
+  .bar-fill { position: absolute; inset: 0; }
+  .bar-text { position: relative; font-size: 10px; font-weight: 500; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+
+  /* Staleness overlays */
+  .bar-stale { position: absolute; right: 0; top: 0; bottom: 0; width: 30%; background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 6px); }
+
+  /* Right column */
+  .job-right { text-align: right; padding-right: 4px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .days-badge { font-size: 12px; font-weight: 600; }
+  .days-badge.green  { color: #4ade80; }
+  .days-badge.amber  { color: #fbbf24; }
+  .days-badge.red    { color: #f87171; }
+
+  .blocked-tag { font-size: 10px; font-weight: 700; background: #7f1d1d; color: #fca5a5; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.04em; }
+  .waiting-tag { font-size: 10px; font-weight: 700; background: #1c1917; color: #a8a29e; padding: 1px 5px; border-radius: 4px; }
+  .active-tag  { font-size: 10px; font-weight: 700; background: #14532d; color: #86efac; padding: 1px 5px; border-radius: 4px; }
+
+  /* Today line */
+  .today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(251,191,36,0.5); border-radius: 1px; pointer-events: none; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; margin-top: 24px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9ca3af; }
+  .legend-swatch { width: 20px; height: 10px; border-radius: 3px; }
+  .legend-swatch.stale { background: repeating-linear-gradient(45deg, #374151, #374151 3px, #1f2937 3px, #1f2937 6px); }
+
+  /* Section divider */
+  .section-label { font-size: 11px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.06em; padding: 12px 0 4px 4px; }
+
+  .today-marker { position: absolute; top: -4px; width: 2px; bottom: -4px; background: rgba(251,191,36,0.6); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h1>Runway</h1>
+      <div class="subtitle">Long-running jobs — 13 Jun 2026</div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active">All</button>
+      <button class="filter-btn">Blocked</button>
+      <button class="filter-btn">Luthier</button>
+      <button class="filter-btn">Electronics</button>
+      <button class="filter-btn">Fretwork</button>
+    </div>
+  </div>
+
+  <!-- Timeline scale: 12 weeks back + 2 ahead. Today is at ~86% -->
+  <div class="timeline-header">
+    <div class="th-label">Job</div>
+    <div class="th-timeline">
+      <span>12 wks ago</span>
+      <span>8 wks ago</span>
+      <span>4 wks ago</span>
+      <span>Today</span>
+      <span>+2 wks</span>
+    </div>
+    <div class="th-right">Age / Status</div>
+  </div>
+
+  <!-- BLOCKED SECTION -->
+  <div class="section-label">Blocked / Stuck</div>
+
+  <!-- Job: Martin D-28 restoration — 84 days, Luthier, BLOCKED -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1847 · Martin D-28</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span>
+        <span class="job-customer">Rangi T.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <!-- 84 days out of 98-day window = 86% width, starting at 0 -->
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:0%;width:86%;">
+          <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+          <div class="bar-stale"></div>
+          <div class="bar-text" style="color:#bbf7d0;">Crack repair · neck reset · finish</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">84 days</span>
+      <span class="blocked-tag">BLOCKED</span>
+    </div>
+  </div>
+
+  <!-- Job: Marshall JCM800 — 61 days, Electronics, BLOCKED -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1853 · Marshall JCM800</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span>
+        <span class="job-customer">Dave K.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:23%;width:63%;">
+          <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+          <div class="bar-stale"></div>
+          <div class="bar-text" style="color:#bfdbfe;">Intermittent output · bias issue</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">61 days</span>
+      <span class="blocked-tag">BLOCKED</span>
+    </div>
+  </div>
+
+  <!-- LONG RUNNING SECTION -->
+  <div class="section-label">Long-running · No recent activity</div>
+
+  <!-- Job: Gibson L-5 — 72 days, Luthier, Waiting on parts -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1841 · Gibson L-5</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span>
+        <span class="job-customer">Sarah M.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:10%;width:76%;">
+          <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+          <div class="bar-stale"></div>
+          <div class="bar-text" style="color:#bbf7d0;">Binding restoration · top brace</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">72 days</span>
+      <span class="waiting-tag">WAITING PARTS</span>
+    </div>
+  </div>
+
+  <!-- Job: Fender Deluxe Reverb — 47 days, Electronics -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1861 · Fender Deluxe Reverb</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span>
+        <span class="job-customer">Mike H.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:38%;width:48%;">
+          <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+          <div class="bar-stale" style="width:20%;"></div>
+          <div class="bar-text" style="color:#bfdbfe;">Recap · reverb tank · power tube</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">47 days</span>
+      <span class="waiting-tag">ON HOLD</span>
+    </div>
+  </div>
+
+  <!-- Job: Maton EA80 refret — 38 days, Fretwork -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1866 · Maton EA80</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#4c1d95;color:#ddd6fe;">Fretwork</span>
+        <span class="job-customer">Tama W.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:47%;width:39%;">
+          <div class="bar-fill" style="background:#4c1d95;border:1px solid #7c3aed;"></div>
+          <div class="bar-stale" style="width:15%;"></div>
+          <div class="bar-text" style="color:#ddd6fe;">Refret · level, crown & polish</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">38 days</span>
+      <span class="waiting-tag">ON HOLD</span>
+    </div>
+  </div>
+
+  <!-- ACTIVE SECTION -->
+  <div class="section-label">Active · Recently scheduled</div>
+
+  <!-- Job: Taylor 814ce setup — 22 days, Setup, Active -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1872 · Taylor 814ce</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#7c2d12;color:#fed7aa;">Setup</span>
+        <span class="job-customer">Aroha P.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:63%;width:23%;">
+          <div class="bar-fill" style="background:#7c2d12;border:1px solid #ea580c;"></div>
+          <div class="bar-text" style="color:#fed7aa;">Full setup · nut · saddle</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge green">22 days</span>
+      <span class="active-tag">ACTIVE</span>
+    </div>
+  </div>
+
+  <!-- Job: Ibanez RG refret — 14 days, Fretwork, Active -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1878 · Ibanez RG550</div>
+      <div class="job-meta">
+        <span class="bench-pill" style="background:#4c1d95;color:#ddd6fe;">Fretwork</span>
+        <span class="job-customer">Jordan L.</span>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div style="position:relative;height:100%;">
+        <div class="today-marker" style="left:86%;"></div>
+        <div class="bar-wrap" style="left:74%;width:12%;">
+          <div class="bar-fill" style="background:#4c1d95;border:1px solid #7c3aed;"></div>
+          <div class="bar-text" style="color:#ddd6fe;">Fret level · dress</div>
+        </div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge green">14 days</span>
+      <span class="active-tag">ACTIVE</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:repeating-linear-gradient(45deg,#166534,#166534 3px,#0f3d1f 3px,#0f3d1f 6px);"></div>
+      Hatching = no recent activity
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#4ade80;"></div>
+      Green = &lt;30 days
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#fbbf24;"></div>
+      Amber = 30–60 days
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#f87171;"></div>
+      Red = 60+ days
+    </div>
+    <div class="legend-item">
+      <div style="width:2px;height:14px;background:rgba(251,191,36,0.6);border-radius:1px;"></div>
+      Today marker
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
