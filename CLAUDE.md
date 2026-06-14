@@ -55,6 +55,14 @@ Sessions don't sync across devices — context lives here in CLAUDE.md, not in s
 
 ## Rules
 
+### Never push to GitHub from Micky (or any local device)
+
+All git commits and pushes must be done from a Claude Code session (web or CLI), not from Micky's terminal. Micky's local git clone can be out of sync with GitHub, which caused accidental deletion of 35 app files on 2026-06-14.
+
+**If the user needs to add a file from their Mac to the repo:** paste the content here and Claude will commit and push it from the session.
+
+If the user starts to run git commands on Micky, remind them to stop and let Claude handle it instead.
+
 ### Always confirm scope before bulk or destructive operations
 
 Before performing any action that affects multiple items at once (archiving sessions, deleting files, resetting data, bulk edits, etc.), explicitly state what will be affected and ask the user to confirm the scope.
