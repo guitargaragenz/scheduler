@@ -21,36 +21,25 @@
 - Google Calendar integration, PartsBox integration
 
 ### CSV pipeline
-- **Automated:** Drop Multitrack PDF into `~/Desktop/SCHEDULER/DropBox/` → `start_watcher.command` detects it → runs PDF parser → updates `jobs.csv` → runs `sheet_to_csv.command` → pushes to Firebase
+- **Automated:** Drop Multitrack PDF into `~/Desktop/SCHEDULER_old/DropBox/` → `start_watcher.command` detects it → runs PDF parser → updates `jobs.csv` → runs `sheet_to_csv.command` → pushes to Firebase
 - **Sheet poller:** `start_watcher.command` also polls Google Sheet every 2 min — if Sheet is edited directly, auto-syncs without a PDF drop
 - **Manual:** Can also run `sheet_to_csv.command` directly to force a sync
+- All scripts live in `~/Desktop/SCHEDULER_old/` (iCloud)
+- Master scripts are in the GitHub repo at `scripts/` — always download via curl (iCloud serves a plist stub if you drag-drop):
+  ```
+  curl -L "https://raw.githubusercontent.com/guitargaragenz/scheduler/main/scripts/sheet_to_csv.command" -o ~/Library/Mobile\ Documents/com\~apple\~CloudDocs/Desktop/SCHEDULER_old/sheet_to_csv.command && chmod +x ~/Library/Mobile\ Documents/com\~apple\~CloudDocs/Desktop/SCHEDULER_old/sheet_to_csv.command
+  ```
 - CSV columns (from PDF): `Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL`
 - Manual fields (from Google Sheet, not PDF): `Tag, Hours, Action, VB, BL, PJ`
 - `PJ=Y` flags a job as a long-running project → appears on Runway page
 - Re-uploading CSV preserves Pomodoro logs
 
-### Action codes (from CSV — what a job is waiting on / next step)
-| Code | Meaning |
-|---|---|
-| `GTS` | Good To Start — ready to schedule |
-| `INC` | Incubating — letting it sit, subconscious processing |
-| `CI` | Customer In — waiting for customer input |
-| `RS-C` | Research via Claude |
-| `RS` | Research |
-| `Parts` | Waiting on parts |
-| `DG` | Diagnose |
-
-### Job types
-- **Quick jobs** — 1–8 hrs, live in weekly calendar scheduler
-- **Long-running jobs** — weeks/months, can get lost when deprioritised (fires, mental blocks)
-
 ### Shipped — Runway view
 Long-running job timeline page, merged to main 2026-06-14.
 - Runway button in header toggles the page
-- Jobs flagged with `PJ=Y` in Google Sheet / CSV appear here
+- Jobs flagged with `PJ=Y` in Google Sheet appear here — fully working as of 2026-06-14
 - Sections: Needs Input (CI, Parts) / Needs Thinking (INC, RS, RS-C, DG) / Ready to Schedule (GTS)
 - Age colours: green <30 days, amber 30–60, red 60+
-- **TODO (Micky):** Add `PJ` column to Google Sheet, replace `sheet_to_csv.command` with updated version, run it
 
 ### Shipped — Mobile tap-to-schedule
 Bottom sheet for iPhone (any touch/narrow device), merged to main 2026-06-14.
@@ -59,7 +48,6 @@ Bottom sheet for iPhone (any touch/narrow device), merged to main 2026-06-14.
 - Bench & Split tab: change bench, adjust hours, add splits
 - Desktop users still get the existing JobDrawer
 - **TODO:** UI polish pass (pending user feedback)
-
 ### Claude Code session note
 Sessions don't sync across devices — context lives here in CLAUDE.md, not in session history.
 
