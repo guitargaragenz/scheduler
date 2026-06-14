@@ -1,5 +1,13 @@
 # Guitar Garage NZ — Scheduler Project
 
+## Starting a New Session
+
+1. **Micky / Moby** — open terminal, `cd` into the scheduler project folder, run `claude`. The repo context is automatic.
+2. **iPhone** — go to `claude.ai/code`, start a new session, select `guitargaragenz/scheduler` from the repo list.
+3. **All devices** — CLAUDE.md loads automatically. No need to re-explain the project — just pick up where you left off.
+
+---
+
 ## Project Context
 
 ### Devices
@@ -32,17 +40,21 @@
 - **Quick jobs** — 1–8 hrs, live in weekly calendar scheduler
 - **Long-running jobs** — weeks/months, can get lost when deprioritised (fires, mental blocks)
 
-### Work in progress — Runway view
-A new page for long-running jobs as a horizontal timeline.
-- Branch: `claude/ggnz-scheduler-files-vq0sv8`, PR #1
-- Mockup done: `runway-mockup.html`
-- Design decisions made:
-  - Bars start at intake date (`FirstSeen` / `Days` field), today marker on right
-  - Age colours: green <30 days, amber 30–60, red 60+
-  - Hatching on bars with no recent calendar activity
-  - Action field surfaces as the "blocker" label on each bar (no separate dependency field needed)
-  - Sections grouped by Action: Needs Input (CI, Parts) / Needs Thinking (INC, RS, RS-C, DG) / Ready (GTS)
-- Next steps: update mockup with Action-based sections, then build into React app
+### Shipped — Runway view
+Long-running job timeline page, merged to main 2026-06-14.
+- Runway button in header toggles the page
+- Jobs flagged with `PJ=Y` in Google Sheet / CSV appear here
+- Sections: Needs Input (CI, Parts) / Needs Thinking (INC, RS, RS-C, DG) / Ready to Schedule (GTS)
+- Age colours: green <30 days, amber 30–60, red 60+
+- **TODO (Micky):** Add `PJ` column to Google Sheet, replace `sheet_to_csv.command` with updated version, run it
+
+### Shipped — Mobile tap-to-schedule
+Bottom sheet for iPhone (any touch/narrow device), merged to main 2026-06-14.
+- Tap a job card in the sidebar → sheet slides up
+- Schedule tab: pick day + time → Place on Calendar
+- Bench & Split tab: change bench, adjust hours, add splits
+- Desktop users still get the existing JobDrawer
+- **TODO:** UI polish pass (pending user feedback)
 
 ### Claude Code session note
 Sessions don't sync across devices — context lives here in CLAUDE.md, not in session history.
