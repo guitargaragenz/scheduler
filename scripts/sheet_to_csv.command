@@ -22,11 +22,11 @@ TOKEN_FILE  = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~ap
 CONFIG_FILE = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/sheets_config.json'))
 CSV_FILE    = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/jobs.csv'))
 
-MANUAL_FIELDS = ['FirstSeen', 'Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']
+MANUAL_FIELDS = ['FirstSeen', 'Days', 'Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']
 
 print("─────────────────────────────────────────────")
 print("  Google Sheet → jobs.csv sync")
-print("  Updates: FirstSeen, Tag, Hours, Action, VB, BL, PJ")
+print("  Updates: FirstSeen, Days, Tag, Hours, Action, VB, BL, PJ")
 print("─────────────────────────────────────────────")
 
 # ── Load Google Sheet ─────────────────────────────────────────────────────────
@@ -54,6 +54,7 @@ def col(name):
 job_col        = col('Job')
 customer_col   = col('Customer')
 firstseen_col  = col('FirstSeen')
+days_col       = col('Days')
 tag_col        = col('Tag')
 hours_col      = col('Hours')
 action_col     = col('Action')
@@ -73,6 +74,7 @@ for row in data_rows:
         continue
     sheet_data[job_num] = {
         'FirstSeen': row[firstseen_col].strip() if firstseen_col is not None else '',
+        'Days':      row[days_col].strip()      if days_col      is not None else '',
         'Tag':       row[tag_col].strip()       if tag_col       is not None else '',
         'Hours':     row[hours_col].strip()     if hours_col     is not None else '',
         'Action':    row[action_col].strip()    if action_col    is not None else '',
