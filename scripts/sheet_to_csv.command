@@ -22,11 +22,11 @@ TOKEN_FILE  = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~ap
 CONFIG_FILE = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/sheets_config.json'))
 CSV_FILE    = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/jobs.csv'))
 
-MANUAL_FIELDS = ['Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']
+MANUAL_FIELDS = ['FirstSeen', 'Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']
 
 print("─────────────────────────────────────────────")
 print("  Google Sheet → jobs.csv sync")
-print("  Updates: Tag, Hours, Action, VB, BL only")
+print("  Updates: FirstSeen, Tag, Hours, Action, VB, BL, PJ")
 print("─────────────────────────────────────────────")
 
 # ── Load Google Sheet ─────────────────────────────────────────────────────────
@@ -51,14 +51,15 @@ def col(name):
     except ValueError:
         return None
 
-job_col      = col('Job')
-customer_col = col('Customer')
-tag_col      = col('Tag')
-hours_col    = col('Hours')
-action_col   = col('Action')
-vb_col       = col('VB')
-bl_col       = col('BL')
-pj_col       = col('PJ')
+job_col        = col('Job')
+customer_col   = col('Customer')
+firstseen_col  = col('FirstSeen')
+tag_col        = col('Tag')
+hours_col      = col('Hours')
+action_col     = col('Action')
+vb_col         = col('VB')
+bl_col         = col('BL')
+pj_col         = col('PJ')
 
 if job_col is None:
     print("ERROR: Can't find 'Job' column in sheet header.")
@@ -71,12 +72,13 @@ for row in data_rows:
     if not job_num:
         continue
     sheet_data[job_num] = {
-        'Tag':    row[tag_col].strip()    if tag_col    is not None else '',
-        'Hours':  row[hours_col].strip()  if hours_col  is not None else '',
-        'Action': row[action_col].strip() if action_col is not None else '',
-        'VB':     row[vb_col].strip()     if vb_col     is not None else '',
-        'BL':     row[bl_col].strip()     if bl_col     is not None else '',
-        'PJ':     row[pj_col].strip()     if pj_col     is not None else '',
+        'FirstSeen': row[firstseen_col].strip() if firstseen_col is not None else '',
+        'Tag':       row[tag_col].strip()       if tag_col       is not None else '',
+        'Hours':     row[hours_col].strip()     if hours_col     is not None else '',
+        'Action':    row[action_col].strip()    if action_col    is not None else '',
+        'VB':        row[vb_col].strip()        if vb_col        is not None else '',
+        'BL':        row[bl_col].strip()        if bl_col        is not None else '',
+        'PJ':        row[pj_col].strip()        if pj_col        is not None else '',
     }
 
 print(f"Sheet: {len(sheet_data)} jobs loaded")
