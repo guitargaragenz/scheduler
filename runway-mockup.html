@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runway View — Mockup v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111827; color: #f9fafb; font-family: system-ui, sans-serif; font-size: 13px; }
+
+  .page { max-width: 1140px; margin: 0 auto; padding: 24px 20px; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .subtitle { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+  .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .filter-btn { background: #1f2937; border: 1px solid #374151; color: #d1d5db; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .filter-btn.active { background: #374151; color: #f9fafb; border-color: #6b7280; }
+
+  /* Timeline header */
+  .timeline-header { display: grid; grid-template-columns: 230px 1fr 110px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #1f2937; }
+  .th-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; padding-left: 4px; }
+  .th-timeline { display: flex; justify-content: space-between; padding: 0 4px; }
+  .th-timeline span { font-size: 11px; color: #4b5563; }
+  .th-right { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; text-align: right; }
+
+  /* Job rows */
+  .job-row { display: grid; grid-template-columns: 230px 1fr 110px; align-items: center; padding: 5px 0; border-bottom: 1px solid #161f2e; }
+  .job-row:hover { background: #161f2e; border-radius: 6px; }
+
+  .job-info { padding-right: 12px; }
+  .job-name { font-weight: 500; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  .job-sub  { font-size: 11px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .job-meta { display: flex; gap: 5px; margin-top: 3px; align-items: center; }
+  .bench-pill { font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+
+  /* Bar track */
+  .bar-track { position: relative; height: 30px; }
+  .bar-wrap { position: absolute; top: 5px; height: 20px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; min-width: 4px; }
+  .bar-fill { position: absolute; inset: 0; }
+  .bar-text { position: relative; font-size: 10px; font-weight: 500; padding: 0 6px; white-space: nowrap; overflow: hidden; }
+  .bar-stale { position: absolute; right: 0; top: 0; bottom: 0; width: 35%; background: repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.3) 3px, rgba(0,0,0,0.3) 6px); }
+
+  /* Today marker */
+  .today-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(251,191,36,0.55); border-radius: 1px; pointer-events: none; }
+
+  /* Right column */
+  .job-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .days-badge { font-size: 12px; font-weight: 700; }
+  .days-badge.green  { color: #4ade80; }
+  .days-badge.amber  { color: #fbbf24; }
+  .days-badge.red    { color: #f87171; }
+
+  .action-tag { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; letter-spacing: 0.03em; white-space: nowrap; }
+  .tag-ci      { background: #1c1917; color: #a8a29e; border: 1px solid #44403c; }
+  .tag-parts   { background: #172554; color: #93c5fd; border: 1px solid #1e40af; }
+  .tag-inc     { background: #1a1a2e; color: #a78bfa; border: 1px solid #4c1d95; }
+  .tag-rs      { background: #1a2a1a; color: #86efac; border: 1px solid #166534; }
+  .tag-rsc     { background: #1a2a1a; color: #86efac; border: 1px solid #166534; }
+  .tag-dg      { background: #2d1515; color: #fca5a5; border: 1px solid #7f1d1d; }
+  .tag-gts     { background: #14532d; color: #86efac; border: 1px solid #15803d; }
+  .tag-other   { background: #1f2937; color: #9ca3af; border: 1px solid #374151; }
+
+  /* Section label */
+  .section-label { font-size: 11px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.07em; padding: 14px 0 4px 4px; border-top: 1px solid #1f2937; margin-top: 4px; display: flex; align-items: center; gap: 8px; }
+  .section-label:first-of-type { border-top: none; margin-top: 0; }
+  .section-count { background: #1f2937; color: #6b7280; font-size: 10px; padding: 1px 6px; border-radius: 10px; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; margin-top: 28px; flex-wrap: wrap; border-top: 1px solid #1f2937; padding-top: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #9ca3af; }
+  .legend-swatch { width: 18px; height: 10px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h1>Runway</h1>
+      <div class="subtitle">Long-running jobs · 13 Jun 2026 · 30 jobs</div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active">All</button>
+      <button class="filter-btn">CI</button>
+      <button class="filter-btn">Parts</button>
+      <button class="filter-btn">INC</button>
+      <button class="filter-btn">RS / RS-C</button>
+      <button class="filter-btn">DG</button>
+      <button class="filter-btn">GTS</button>
+    </div>
+  </div>
+
+  <!--
+    Timeline window: 3200 days (oldest job) → today
+    Today = right edge (100%). Bar left% = (days_ago / max_days) mapped to track.
+    We show the last 400 days for readability. Max visible = 400 days.
+    For very old jobs the bar starts at 0 and fills the track.
+    today_x = 94% (leaving room for label)
+  -->
+
+  <div class="timeline-header">
+    <div class="th-label">Job / Customer</div>
+    <div class="th-timeline">
+      <span>400+ days</span>
+      <span>300 days</span>
+      <span>200 days</span>
+      <span>100 days</span>
+      <span>Today</span>
+    </div>
+    <div class="th-right">Age · Action</div>
+  </div>
+
+  <!-- ═══ NEEDS INPUT ═══════════════════════════════════════════════════ -->
+  <div class="section-label">Needs Input <span class="section-count">CI · Parts</span></div>
+
+  <!-- #592 Sheep as Chips / Trident Trimix 70s — 2451 days, CI -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#592 · Trident Trimix 70s</div>
+      <div class="job-sub">Sheep as Chips Ltd · Gain lower than standard</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">2451 days · Trident Trimix 70s series</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">2451 days</span>
+      <span class="action-tag tag-ci">CI</span>
+    </div>
+  </div>
+
+  <!-- #1268 Chris Doms / BossWeld M100 — 536 days, CI -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1268 · BossWeld M100</div>
+      <div class="job-sub">Chris Doms · Wire feed runs high</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#374151;color:#e5e7eb;">Admin</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#374151;border:1px solid #6b7280;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#e5e7eb;">536 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">536 days</span>
+      <span class="action-tag tag-ci">CI</span>
+    </div>
+  </div>
+
+  <!-- #1604 Toi Ohomai / Dynaudio Air 15 — 121 days, CI -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1604 · Dynaudio Air 15</div>
+      <div class="job-sub">Toi Ohomai · Not communicating with slave devices</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:61%;width:33%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">121 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">121 days</span>
+      <span class="action-tag tag-ci">CI</span>
+    </div>
+  </div>
+
+  <!-- #1616 Damon Oates / Solar Flying Vee — 100 days, CI -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1616 · Solar Flying Vee</div>
+      <div class="job-sub">Damon Oates · Install bridge pup, remove neck pup</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#7c2d12;color:#fed7aa;">Setup</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:67%;width:27%;">
+        <div class="bar-fill" style="background:#7c2d12;border:1px solid #ea580c;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#fed7aa;">100 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">100 days</span>
+      <span class="action-tag tag-ci">CI</span>
+    </div>
+  </div>
+
+  <!-- #1582 Jason Crawford / Roland Juno 106 — 223 days, Parts -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1582 · Roland Juno 106</div>
+      <div class="job-sub">Jason Crawford · Replace voice chips, calibrate board</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:37%;width:57%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">223 days · Voice chips</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">223 days</span>
+      <span class="action-tag tag-parts">Parts</span>
+    </div>
+  </div>
+
+  <!-- #1626 Griffin Beach / Taylor 114CE — 90 days, Parts -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1626 · Taylor 114CE</div>
+      <div class="job-sub">Griffin Beach · Poss neck reset, migrated pickguard</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:69%;width:25%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bbf7d0;">90 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">90 days</span>
+      <span class="action-tag tag-parts">Parts</span>
+    </div>
+  </div>
+
+  <!-- #1649 Theo Zentgraf / Casio CDP-S100 — 46 days, Parts -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1649 · Casio CDP-S100</div>
+      <div class="job-sub">Theo Zentgraf · Source replacement power supply</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:81%;width:13%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-text" style="color:#bfdbfe;">46d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">46 days</span>
+      <span class="action-tag tag-parts">Parts</span>
+    </div>
+  </div>
+
+  <!-- ═══ NEEDS THINKING ════════════════════════════════════════════════ -->
+  <div class="section-label">Needs Thinking <span class="section-count">INC · RS · RS-C · DG</span></div>
+
+  <!-- #393 Toi Ohomai / Fender Passport 500 Pro — 2169 days, INC -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#393 · Fender Passport 500 Pro</div>
+      <div class="job-sub">Toi Ohomai · Blows fuses 10A</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">2169 days · INC</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">2169 days</span>
+      <span class="action-tag tag-inc">INC</span>
+    </div>
+  </div>
+
+  <!-- #1345 Missy Kennedy / Hughes & Kettner Switchblade — 440 days, INC -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1345 · H&K Switchblade 100</div>
+      <div class="job-sub">Missy Kennedy · Blown anode fuse, suspect bad tubes</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">440 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">440 days</span>
+      <span class="action-tag tag-inc">INC</span>
+    </div>
+  </div>
+
+  <!-- #1411 James Curtis / Fender Squier — 351 days, INC -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1411 · Fender Squier</div>
+      <div class="job-sub">James Curtis · Setup, twisted neck, trem posts</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#7c2d12;color:#fed7aa;">Setup</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#7c2d12;border:1px solid #ea580c;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#fed7aa;">351 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">351 days</span>
+      <span class="action-tag tag-inc">INC</span>
+    </div>
+  </div>
+
+  <!-- #97 Audio Solutionz / DB Tech Opera 405D — 3108 days, RS-C -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#97 · DB Tech Opera 405D</div>
+      <div class="job-sub">Audio Solutionz · No power after high voltage spike</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">3108 days · RS-C</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">3108 days</span>
+      <span class="action-tag tag-rsc">RS-C</span>
+    </div>
+  </div>
+
+  <!-- #875 Audio Solutionz / RCF ART312A — 1205 days, RS-C -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#875 · RCF ART312A</div>
+      <div class="job-sub">Audio Solutionz · No output after moving, suspect handling</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">1205 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">1205 days</span>
+      <span class="action-tag tag-rsc">RS-C</span>
+    </div>
+  </div>
+
+  <!-- #1609 Paul Jones / QTX Sound — 113 days, DG -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1609 · QTX Sound 2.1 Live Set</div>
+      <div class="job-sub">Paul Jones · Only 2 inputs working</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:63%;width:31%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">113d · DG</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">113 days</span>
+      <span class="action-tag tag-dg">DG</span>
+    </div>
+  </div>
+
+  <!-- #1647 Pete Hobdell / Marshall Haze 40 — 47 days, TX rewind -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1647 · Marshall Haze 40</div>
+      <div class="job-sub">Pete Hobdell · Loud bang, no output</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:81%;width:13%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-text" style="color:#bfdbfe;">47d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">47 days</span>
+      <span class="action-tag tag-other">TX rewind</span>
+    </div>
+  </div>
+
+  <!-- #1632 Bailey Stevens / Hofner 455/S — 78 days, Bronze frets -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1632 · Hofner 455/S</div>
+      <div class="job-sub">Bailey Stevens · Partial refret, phos bronze, lower bridge</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#4c1d95;color:#ddd6fe;">Fretwork</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:72%;width:22%;">
+        <div class="bar-fill" style="background:#4c1d95;border:1px solid #7c3aed;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#ddd6fe;">78d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">78 days</span>
+      <span class="action-tag tag-other">Bronze frets</span>
+    </div>
+  </div>
+
+  <!-- ═══ GTS — READY TO SCHEDULE ══════════════════════════════════════ -->
+  <div class="section-label">Ready to Schedule <span class="section-count">GTS</span></div>
+
+  <!-- #1175 Julian Henry / Allen & Heath GL2800 — 683 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1175 · Allen & Heath GL2800</div>
+      <div class="job-sub">Julian Henry · Appears dead, check Lance tech notes</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">683 days · GTS</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">683 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1448 Annette Papuni / Gibson Hummingbird — 302 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1448 · Gibson Hummingbird Pro</div>
+      <div class="job-sub">Annette Papuni · Broken neck, setup · 3yrs storage</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:0%;width:94%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bbf7d0;">302 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">302 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1520 Pete Johanson / Ampeg SVT 6 Pro — 206 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1520 · Ampeg SVT 6 Pro</div>
+      <div class="job-sub">Pete Johanson · Powers up, no output, replace fuse</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#1e3a5f;color:#bfdbfe;">Electronics</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:37%;width:57%;">
+        <div class="bar-fill" style="background:#1e3a5f;border:1px solid #2563eb;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bfdbfe;">206 days · GTS</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">206 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1586 John McGovern / Yamaha Dynamic 040 — 150 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1586 · Yamaha Dynamic 040</div>
+      <div class="job-sub">John McGovern · Cracked top ×3, stiff tuners</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:56%;width:38%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bbf7d0;">150 days</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">150 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1621 Tony Robson / Aria Diamond — 95 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1621 · Aria Diamond 1202T</div>
+      <div class="job-sub">Tony Robson · Restoration: neck pocket, refret, bone nut</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#4c1d95;color:#ddd6fe;">Fretwork</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:68%;width:26%;">
+        <div class="bar-fill" style="background:#4c1d95;border:1px solid #7c3aed;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#ddd6fe;">95d · GTS</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">95 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1628 Nick Newman / Martin 000-16 GT — 87 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1628 · Martin 000-16 GT</div>
+      <div class="job-sub">Nick Newman · Top crack, pup fallen</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:70%;width:24%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-stale"></div>
+        <div class="bar-text" style="color:#bbf7d0;">87d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge red">87 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1637 Tawera Simpson-Rangi / Martin DCPA5 — 71 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1637 · Martin DCPA5</div>
+      <div class="job-sub">Tawera Simpson-Rangi · Loose brace, crack in body</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:73%;width:21%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-text" style="color:#bbf7d0;">71d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">71 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- #1635 Adam Barrett / Epiphone Les Paul Ultra — 71 days, Undo glue -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1635 · Epiphone Les Paul Ultra</div>
+      <div class="job-sub">Adam Barrett · Broken neck, fret level, bone nut</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:73%;width:21%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+        <div class="bar-text" style="color:#bbf7d0;">71d</div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge amber">71 days</span>
+      <span class="action-tag tag-other">Undo glue</span>
+    </div>
+  </div>
+
+  <!-- #1659 Anthony Mills / Maton EM225C — 20 days, GTS -->
+  <div class="job-row">
+    <div class="job-info">
+      <div class="job-name">#1659 · Maton EM225C</div>
+      <div class="job-sub">Anthony Mills · Lifted bridge, partial refret · Quote first</div>
+      <div class="job-meta"><span class="bench-pill" style="background:#166534;color:#bbf7d0;">Luthier</span></div>
+    </div>
+    <div class="bar-track">
+      <div class="today-marker" style="left:94%;"></div>
+      <div class="bar-wrap" style="left:88%;width:6%;">
+        <div class="bar-fill" style="background:#166534;border:1px solid #15803d;"></div>
+      </div>
+    </div>
+    <div class="job-right">
+      <span class="days-badge green">20 days</span>
+      <span class="action-tag tag-gts">GTS</span>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#4ade80;"></div> &lt;30 days</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fbbf24;"></div> 30–60 days</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f87171;"></div> 60+ days</div>
+    <div class="legend-item">
+      <div style="width:18px;height:10px;background:repeating-linear-gradient(45deg,#374151,#374151 3px,#1f2937 3px,#1f2937 6px);border-radius:2px;"></div>
+      No recent activity
+    </div>
+    <div class="legend-item"><div style="width:2px;height:14px;background:rgba(251,191,36,0.6);border-radius:1px;"></div> Today</div>
+    <div class="legend-item"><span class="action-tag tag-ci" style="font-size:10px;">CI</span> Customer input</div>
+    <div class="legend-item"><span class="action-tag tag-parts" style="font-size:10px;">Parts</span> Waiting parts</div>
+    <div class="legend-item"><span class="action-tag tag-inc" style="font-size:10px;">INC</span> Incubating</div>
+    <div class="legend-item"><span class="action-tag tag-rsc" style="font-size:10px;">RS-C</span> Research via Claude</div>
+    <div class="legend-item"><span class="action-tag tag-dg" style="font-size:10px;">DG</span> Diagnose</div>
+    <div class="legend-item"><span class="action-tag tag-gts" style="font-size:10px;">GTS</span> Good to start</div>
+  </div>
+
+</div>
+</body>
+</html>
