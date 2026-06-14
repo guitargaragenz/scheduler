@@ -21,9 +21,13 @@
 - Google Calendar integration, PartsBox integration
 
 ### CSV pipeline
-- Multitrack PDF → `pdf_jobs_to_csv.command` script (Micky desktop) → `jobs.csv` → upload via sidebar in app
-- CSV columns: `Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL`
-- Re-uploading CSV preserves Pomodoro logs and manual fields
+- **Automated:** Drop Multitrack PDF into `~/Desktop/SCHEDULER/DropBox/` → `start_watcher.command` detects it → runs PDF parser → updates `jobs.csv` → runs `sheet_to_csv.command` → pushes to Firebase
+- **Sheet poller:** `start_watcher.command` also polls Google Sheet every 2 min — if Sheet is edited directly, auto-syncs without a PDF drop
+- **Manual:** Can also run `sheet_to_csv.command` directly to force a sync
+- CSV columns (from PDF): `Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL`
+- Manual fields (from Google Sheet, not PDF): `Tag, Hours, Action, VB, BL, PJ`
+- `PJ=Y` flags a job as a long-running project → appears on Runway page
+- Re-uploading CSV preserves Pomodoro logs
 
 ### Action codes (from CSV — what a job is waiting on / next step)
 | Code | Meaning |
