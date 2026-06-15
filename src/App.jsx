@@ -72,10 +72,13 @@ export default function App() {
   const saveTimerRef = useRef(null);
   const externalEventsRef = useRef([]); // always-current ref — avoids stale closure in drag handlers
   const justSavedAt = useRef(0); // timestamp of our last save — used to suppress echo snapshots
+  const scheduledSlotsRef = useRef({});
+  const jobsRef = useRef([]);
 
-  // Keep ref in sync with state — ensures drag handlers always see current appointments
-  // even if a drop happens before the first calendar poll completes
+  // Keep refs in sync with state so poll closure always sees current values
   useEffect(() => { externalEventsRef.current = externalEvents; }, [externalEvents]);
+  useEffect(() => { scheduledSlotsRef.current = scheduledSlots; }, [scheduledSlots]);
+  useEffect(() => { jobsRef.current = jobs; }, [jobs]);
 
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
@@ -144,24 +147,65 @@ export default function App() {
         externalEventsRef.current = events; // keep ref in sync for drag handlers
       }
 
-      // Handle #PERSONAL blocks
-      const personalBlocks = parsePersonalBlocks(events, weekDays);
-      if (personalBlocks.length > 0) {
-        personalBlocks.forEach(({ dayIdx, hour }) => {
-          const key = slotKey(weekDays[dayIdx], hour);
-          setScheduledSlots(prev => {
-            if (prev[key]) {
-              const jobId = prev[key];
-              const next = { ...prev };
-              delete next[key];
-              addChangelog(`Auto-moved job #${jobId} to accommodate #PERSONAL event`);
-              showToast(`Job #${jobId} moved — #PERSONAL block detected`);
-              setJobs(js => js.map(j => j.id === jobId ? { ...j, scheduled: false, calendarSlot: null } : j));
-              return next;
-            }
-            return prev;
+      // Bump any scheduled jobs that conflict with GCal appointments
+      // Build the full blocked-slot set from the freshly-fetched events
+      const appointmentBlocked = new Set();
+      (events || []).forEach(ev => {
+        if (ev.summary?.startsWith('#')) return; // scheduler-owned events
+        const evStart = new Date(ev.start?.dateTime || ev.start?.date);
+        const evEnd   = new Date(ev.end?.dateTime   || ev.end?.date);
+        const dayIdx  = weekDays.findIndex(d => d.toDateString() === evStart.toDateString());
+        if (dayIdx < 0) return;
+        let h = evStart.getHours();
+        let m = evStart.getMinutes() < 30 ? 0 : 30;
+        const endMins = evEnd.getHours() * 60 + evEnd.getMinutes();
+        while (h * 60 + m < endMins) {
+          appointmentBlocked.add(slotKey(weekDays[dayIdx], h, m));
+          if (m === 0) { m = 30; } else { m = 0; h++; }
+        }
+      });
+
+      if (appointmentBlocked.size > 0) {
+        // Use refs so we have current state without stale closure values
+        const currentSlots = { ...scheduledSlotsRef.current };
+        const currentJobs  = jobsRef.current;
+
+        const conflicts = Object.entries(currentSlots).filter(([key]) => appointmentBlocked.has(key));
+        if (conflicts.length > 0) {
+          const nextSlots = { ...currentSlots };
+          const jobMap    = Object.fromEntries(currentJobs.map(j => [j.id, j]));
+          const updatedJobs = { ...jobMap };
+
+          // Evict conflicting slots first so findAvailableSlots sees them as free
+          const bumped = new Set();
+          conflicts.forEach(([key, jobId]) => {
+            delete nextSlots[key];
+            bumped.add(jobId);
           });
-        });
+
+          bumped.forEach(jobId => {
+            const job = jobMap[jobId];
+            if (!job) return;
+            const needed = slotsNeeded(job);
+            const newSlots = findAvailableSlots(0, 0, 0, needed, nextSlots);
+            if (newSlots.length >= needed) {
+              newSlots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
+                nextSlots[slotKey(weekDays[d], h, m)] = jobId;
+              });
+              const { hour: fh, minute: fm, dayIdx: fd } = newSlots[0];
+              const newDay = weekDays[fd].toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric' });
+              addChangelog(`Job #${job.job} bumped by appointment → moved to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`);
+              showToast(`Job #${job.job} bumped → rescheduled to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`);
+            } else {
+              updatedJobs[jobId] = { ...job, scheduled: false, calendarSlot: null };
+              addChangelog(`Job #${job.job} bumped by appointment — no room this week, reschedule manually`);
+              showToast(`Job #${job.job} bumped by appointment — no room left this week`);
+            }
+          });
+
+          setScheduledSlots(nextSlots);
+          setJobs(currentJobs.map(j => updatedJobs[j.id] || j));
+        }
       }
     };
     poll();
@@ -579,11 +623,17 @@ export default function App() {
       const merged = newJobs.map(j => ({
         ...j,
         pomoLog: existingByJobNo[j.job]?.pomoLog || [],
+        scheduled: existingByJobNo[j.job]?.scheduled || false,
+        calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
       }));
+      const newJobIds = new Set(merged.map(j => j.id));
+      const preservedSlots = Object.fromEntries(
+        Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
+      );
       justSavedAt.current = Date.now();
       setJobs(merged);
-      setScheduledSlots({});
-      if (isFirebaseConfigured()) saveSchedule(merged, {});
+      setScheduledSlots(preservedSlots);
+      if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
       const jobCount = merged.filter(j => !j.parentId).length;
       showToast(`Loaded ${jobCount} jobs from CSV`);
       addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
