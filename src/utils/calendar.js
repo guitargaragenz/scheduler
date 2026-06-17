@@ -1,8 +1,8 @@
 // Work hours config
 export const WORK_HOURS = {
   weekday:  { start: 10, end: 23 }, // 10am–6pm + 9pm–11pm Mon–Fri
-  saturday: { start: 10, end: 14 }, // 10am–2pm Sat
-  sunday:   { start: 10, end: 16 }, // 10am–4pm Sun
+  saturday: { start: 10, end: 23 }, // 10am–11pm Sat (extended for catch-up)
+  sunday:   { start: 10, end: 23 }, // 10am–11pm Sun (extended for catch-up)
 };
 
 // Hours that exist in the weekday work range but are not bookable (the gap 7pm-9pm)
