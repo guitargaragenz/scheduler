@@ -23,6 +23,7 @@ import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
+import ParkingLotPage from './components/ParkingLotPage.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -67,6 +68,7 @@ export default function App() {
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
+  const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -766,6 +768,22 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => {
+                const next = !showParkingLot;
+                setShowParkingLot(next);
+                window.history.replaceState(null, '', next ? '#parking-lot' : '#');
+              }}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showParkingLot ? '#4f46e5' : '#334155'}`,
+                background: showParkingLot ? '#1e1b4b' : '#1e293b',
+                color: showParkingLot ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showParkingLot ? 700 : 400,
+              }}
+            >
+              Parking Lot
+            </button>
+
+            <button
               onClick={() => setShowSummary(true)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
@@ -813,7 +831,12 @@ export default function App() {
 
         {/* Body */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {showRunway ? (
+          {showParkingLot ? (
+            <ParkingLotPage onBack={() => {
+              setShowParkingLot(false);
+              window.history.replaceState(null, '', '#');
+            }} />
+          ) : showRunway ? (
             <RunwayPage jobs={jobs} />
           ) : (
             <>
