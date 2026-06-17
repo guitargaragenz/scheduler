@@ -873,12 +873,15 @@ export default function App() {
             onSchedule={handleMobileSchedule}
             onSave={handleSaveDrawer}
             onClose={() => setEditingJob(null)}
+            onRemove={unscheduleJob}
           />
         ) : (
           <JobDrawer
             job={editingJob}
             onClose={() => setEditingJob(null)}
             onSave={handleSaveDrawer}
+            weekDays={weekDays}
+            onSchedule={handleMobileSchedule}
           />
         )
       )}

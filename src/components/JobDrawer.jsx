@@ -3,13 +3,21 @@ import { createPortal } from 'react-dom';
 import { BENCH_COLORS } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Admin'];
+const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function fromTimeValue(val) {
+  const [h, m] = (val || '09:00').split(':').map(Number);
+  return { hour: h, minute: m };
+}
 
 function initRows(job) {
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, onClose, onSave }) {
+export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSchedule }) {
   const [rows, setRows] = useState(() => initRows(job));
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [timeVal, setTimeVal] = useState('09:00');
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -202,6 +210,51 @@ export default function JobDrawer({ job, onClose, onSave }) {
             >
               + Add bench
             </button>
+          )}
+
+          {onSchedule && weekDays.length > 0 && (
+            <div style={{ borderTop: '1px solid #334155', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>Schedule</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                {weekDays.map((day, i) => {
+                  const today = new Date();
+                  const isToday = day.toDateString() === today.toDateString();
+                  const isPast = day < today && !isToday;
+                  const isSelected = selectedDay === i;
+                  return (
+                    <button key={i} onClick={() => setSelectedDay(i)} style={{
+                      flex: 1, minWidth: 36, padding: '5px 4px', borderRadius: 6, border: 'none',
+                      background: isSelected ? '#2563eb' : isToday ? '#1e3a5f' : '#0f172a',
+                      color: isSelected ? '#fff' : isPast ? '#334155' : isToday ? '#93c5fd' : '#94a3b8',
+                      outline: isToday && !isSelected ? '1px solid #2563eb' : 'none',
+                      cursor: isPast ? 'default' : 'pointer', fontSize: 10, fontWeight: 600,
+                    }}>
+                      <div>{DAYS_SHORT[i]}</div>
+                      <div>{day.getDate()}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="time" value={timeVal}
+                  onChange={e => setTimeVal(e.target.value)}
+                  style={{
+                    background: '#0f172a', border: '1px solid #475569', borderRadius: 4,
+                    padding: '4px 8px', fontSize: 12, color: '#cbd5e1',
+                  }}
+                />
+                <button
+                  onClick={() => { const { hour, minute } = fromTimeValue(timeVal); onSchedule(job, selectedDay, hour, minute); onClose(); }}
+                  style={{
+                    flex: 1, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6,
+                    padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Place on Calendar
+                </button>
+              </div>
+            </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>

@@ -14,7 +14,7 @@ function fromTimeValue(val) {
   return { hour: h, minute: m };
 }
 
-export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onClose }) {
+export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onClose, onRemove }) {
   const [tab, setTab] = useState('schedule');
 
   // Schedule tab state
@@ -229,6 +229,20 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
               >
                 Place on Calendar
               </button>
+
+              {job.scheduled && onRemove && (
+                <button
+                  onClick={() => { onRemove(job); close(); }}
+                  style={{
+                    width: '100%', padding: '12px 0',
+                    background: 'transparent', color: '#f87171',
+                    border: '1px solid #f8717144', borderRadius: 10,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Remove from Calendar
+                </button>
+              )}
             </div>
           )}
 

@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { BENCH_COLORS } from '../data/jobs.js';
 
 const BENCH_ORDER = ['Electronics', 'Setup', 'Luthier', 'Fretwork', 'Admin'];
@@ -11,7 +11,7 @@ function getWeekDatePrefix(date) {
   return `${y}-${mo}-${dy}`;
 }
 
-function computeSummary(jobs, scheduledSlots, weekDays) {
+function computeSummary(jobs, scheduledSlots, weekDays, hourlyRate) {
   // Find job IDs scheduled this week
   const weekPrefixes = new Set(weekDays.map(getWeekDatePrefix));
   const scheduledThisWeek = new Set();
@@ -31,6 +31,7 @@ function computeSummary(jobs, scheduledSlots, weekDays) {
 
     if (scheduledThisWeek.has(job.id)) {
       summary[bench].planned += job.hours || 0;
+      summary[bench].revenue = (summary[bench].revenue || 0) + (job.price != null ? job.price : (job.hours || 0) * (hourlyRate || 0));
     }
 
     (job.pomoLog || []).forEach(s => {
@@ -45,9 +46,11 @@ function computeSummary(jobs, scheduledSlots, weekDays) {
   return summary;
 }
 
-export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onClose }) {
+export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onClose, hourlyRate = 85, weeklyRevenueTarget = 1500, onTargetChange }) {
   const modalRef = useRef(null);
-  const summary = computeSummary(jobs, scheduledSlots, weekDays);
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [targetInput, setTargetInput] = useState(String(weeklyRevenueTarget));
+  const summary = computeSummary(jobs, scheduledSlots, weekDays, hourlyRate);
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -66,6 +69,8 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
   const totalPlanned = benches.reduce((s, b) => s + summary[b].planned, 0);
   const totalActualMins = benches.reduce((s, b) => s + summary[b].actualMins, 0);
   const totalPomos = benches.reduce((s, b) => s + summary[b].actualPomos, 0);
+  const totalRevenue = benches.reduce((s, b) => s + (summary[b].revenue || 0), 0);
+  const revenueProgress = weeklyRevenueTarget > 0 ? Math.min(totalRevenue / weeklyRevenueTarget, 1) : 0;
 
   const weekLabel = weekDays.length > 0
     ? `${weekDays[0].toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })} – ${weekDays[6].toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -174,6 +179,45 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
             </>
           )}
         </div>
+
+        {/* Revenue panel */}
+        {totalRevenue > 0 && (
+          <div style={{ margin: '0 20px 16px', padding: '12px 16px', background: '#0f172a', borderRadius: 10, border: '1px solid #1e293b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Est. Revenue</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: revenueProgress >= 1 ? '#22c55e' : '#f1f5f9' }}>
+                ${Math.round(totalRevenue).toLocaleString()}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{ height: 5, background: '#1e293b', borderRadius: 3, marginBottom: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${revenueProgress * 100}%`, background: revenueProgress >= 1 ? '#22c55e' : '#3b82f6', borderRadius: 3, transition: 'width 0.3s' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#475569' }}>
+                {revenueProgress >= 1 ? '🎯 Target hit!' : `${Math.round(revenueProgress * 100)}% of target`}
+              </span>
+              {editingTarget ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#475569' }}>$</span>
+                  <input
+                    autoFocus
+                    type="number"
+                    value={targetInput}
+                    onChange={e => setTargetInput(e.target.value)}
+                    onBlur={() => { const n = parseFloat(targetInput); if (!isNaN(n) && n >= 0) { onTargetChange?.(n); } setEditingTarget(false); }}
+                    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setEditingTarget(false); }}
+                    style={{ width: 80, fontSize: 12, padding: '2px 6px', background: '#1e293b', border: '1px solid #334155', borderRadius: 4, color: '#e2e8f0', outline: 'none' }}
+                  />
+                </div>
+              ) : (
+                <button onClick={() => { setTargetInput(String(weeklyRevenueTarget)); setEditingTarget(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#475569' }}>
+                  target ${weeklyRevenueTarget.toLocaleString()} ✏
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div style={{ padding: '0 20px 16px', fontSize: 11, color: '#334155' }}>
           Tap a scheduled job on the calendar to start a pomo timer.

@@ -70,7 +70,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
             </div>
           ) : (
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2, lineHeight: 1.3 }}>
-              {job.desc?.slice(0, 60)}{job.desc?.length > 60 ? '…' : ''}
+              {(job.splitDesc ?? job.desc)?.slice(0, 60)}{(job.splitDesc ?? job.desc)?.length > 60 ? '…' : ''}
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
