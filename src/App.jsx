@@ -403,25 +403,21 @@ export default function App() {
       ? `${fmt(slots[0])}–${slots[slots.length-1].hour}:${slots[slots.length-1].minute === 0 ? '00' : '30'}`
       : `${fmt(slots[0])} → ${fmt(slots[slots.length - 1])}`;
 
-    setScheduledSlots(prev => {
-      const next = { ...prev };
-      // Always clear ALL existing slots for this job before placing —
-      // handles stale Firestore-loaded slots regardless of drag source
-      Object.keys(next).forEach(k => {
-        if (next[k] === job.id) {
-          delete next[k];
-        }
-      });
-      // Place job half-slots
-      slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
-        next[slotKey(weekDays[d], h, m)] = job.id;
-      });
-      return next;
+    // Compute new state synchronously so we can save immediately (no debounce risk)
+    const newSlots = { ...scheduledSlots };
+    Object.keys(newSlots).forEach(k => { if (newSlots[k] === job.id) delete newSlots[k]; });
+    slots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
+      newSlots[slotKey(weekDays[d], h, m)] = job.id;
     });
-
-    setJobs(prev => prev.map(j =>
+    const newJobs = jobs.map(j =>
       j.id === job.id ? { ...j, scheduled: true, calendarSlot: slots[0] } : j
-    ));
+    );
+
+    setScheduledSlots(newSlots);
+    setJobs(newJobs);
+    justSavedAt.current = Date.now();
+    saveSchedule(newJobs, newSlots); // save immediately — don't rely on debounce
+
     showToast(`#${job.job} placed — ${spanDesc}`);
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
   }
