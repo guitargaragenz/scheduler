@@ -25,14 +25,24 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
   // Always attach setNodeRef so every slot is a valid drop target regardless of content
   if (job) {
     const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+    const isDone = !!job.done;
     if (isFirstSlot) {
       return (
         <div ref={setNodeRef} style={{
           height: SLOT_HEIGHT, borderBottom: '1px solid #263348',
           padding: '2px 2px', position: 'relative', overflow: 'hidden',
-          background: colors.bg, borderLeft: `3px solid ${colors.border}`,
+          background: colors.bg, borderLeft: `3px solid ${isDone ? '#22c55e' : colors.border}`,
+          opacity: isDone ? 0.5 : 1,
         }}>
           <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact onClick={() => onJobClick(job)} />
+          {isDone && (
+            <div style={{
+              position: 'absolute', top: 1, right: 2,
+              fontSize: 9, color: '#fff', background: '#16a34a',
+              borderRadius: 2, padding: '0 3px', lineHeight: '14px',
+              pointerEvents: 'none',
+            }}>✓ done</div>
+          )}
           {/* Show appointment as a subtle overlay so it's not hidden by the job */}
           {externalEvent && !externalEvent._isSpan && (
             <div title={(externalEvent.summary || '')} style={{
@@ -48,16 +58,16 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
         </div>
       );
     }
-    // Continuation bar — dim when this job is being dragged to match the card opacity
+    // Continuation bar — dim when this job is being dragged or done
     const isDraggingThis = activeJobId === job.id;
     return (
       <div ref={setNodeRef} style={{
         height: SLOT_HEIGHT,
         borderBottom: `1px solid ${colors.border}33`,
         background: isDraggingThis ? `${colors.bg}66` : `${colors.bg}dd`,
-        borderLeft: `3px solid ${isDraggingThis ? colors.border + '66' : colors.border}`,
-        cursor: 'grab',
-        opacity: isDraggingThis ? 0.4 : 1,
+        borderLeft: `3px solid ${isDone ? '#22c55e' : (isDraggingThis ? colors.border + '66' : colors.border)}`,
+        cursor: isDone ? 'default' : 'grab',
+        opacity: isDone ? 0.4 : isDraggingThis ? 0.4 : 1,
         transition: 'opacity 0.1s',
       }} />
     );

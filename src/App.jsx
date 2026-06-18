@@ -657,15 +657,10 @@ export default function App() {
     const newDoneIds = [...doneJobIds, String(job.id)];
     setCompletedJobs(newRecords);
     setDoneJobIds(newDoneIds);
-    setJobs(prev => prev.filter(j => j.id !== job.id && j.parentId !== job.id));
-    setScheduledSlots(prev => {
-      const next = { ...prev };
-      Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
-      return next;
-    });
-    if (job.gcalEventId && signedIn) deleteEvent(job.gcalEventId).catch(() => {});
+    // Mark done in-place — job stays on calendar for reference
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
     if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
-    setEditingJob(null);
+    setPomoJob(null);
     showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
   }
 
@@ -680,12 +675,15 @@ export default function App() {
         scheduled: existingByJobNo[j.job]?.scheduled || false,
         calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
       }));
-      const newJobIds = new Set(merged.map(j => j.id));
+      // Keep done jobs so they remain visible on calendar
+      const doneJobs = jobs.filter(j => j.done);
+      const allJobs = [...merged, ...doneJobs];
+      const newJobIds = new Set(allJobs.map(j => j.id));
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
       );
       justSavedAt.current = Date.now();
-      setJobs(merged);
+      setJobs(allJobs);
       setScheduledSlots(preservedSlots);
       if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
       const jobCount = merged.filter(j => !j.parentId).length;
