@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
+import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, createSubtasks } from './data/jobs.js';
 import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours, isGapHour, isSaturday, isSunday, isLunchSlot } from './utils/calendar.js';
 import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
 import {
@@ -26,6 +26,34 @@ import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// Re-expand split subtasks after Firebase load so hard refresh doesn't wipe them.
+// Splits are derived from createSubtasks() on each job — not stored as raw Firebase entries.
+// knownSlots: the scheduledSlots map, used to correctly mark splits as scheduled on first load.
+function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
+  const existingById = Object.fromEntries(existingJobs.map(j => [j.id, j]));
+  const scheduledIds = new Set(Object.values(knownSlots));
+  const result = [];
+  for (const job of rawJobs) {
+    if (job.parentId) continue; // drop stale subtasks — regenerate below
+    const subtasks = createSubtasks(job);
+    if (subtasks && subtasks.length > 0) {
+      result.push({ ...job, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
+      for (const st of subtasks) {
+        const prev = existingById[st.id];
+        result.push({
+          ...st,
+          scheduled:    prev?.scheduled    ?? scheduledIds.has(st.id),
+          calendarSlot: prev?.calendarSlot ?? null,
+          gcalEventId:  prev?.gcalEventId  ?? null,
+        });
+      }
+    } else {
+      result.push(job);
+    }
+  }
+  return result;
+}
 
 // Returns the slot key for the half-slot immediately after `key`
 function nextHalfSlotKey(key) {
@@ -114,7 +142,7 @@ export default function App() {
     if (!isFirebaseConfigured()) return;
     loadSchedule().then(data => {
       if (data) {
-        if (data.jobs) setJobs(data.jobs);
+        if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
         if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
         if (data.updatedAt) setLastSyncedAt(data.updatedAt);
       }
@@ -124,7 +152,7 @@ export default function App() {
     const unsub = subscribeToSchedule(data => {
       // Ignore snapshots triggered by our own saves (echo suppression — 5s window)
       if (Date.now() - justSavedAt.current < 5000) return;
-      if (data.jobs) setJobs(data.jobs);
+      if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
       if (data.updatedAt) setLastSyncedAt(data.updatedAt);
     });
@@ -343,6 +371,7 @@ export default function App() {
   }
 
   function handleRegularDrop(job, dayIdx, hour, minute, source) {
+    justSavedAt.current = Date.now(); // suppress Firebase echo while we place this job
     const needed = slotsNeeded(job); // number of 30-min slots
 
     // Temp map without job's own slots (and orphaned buffer)

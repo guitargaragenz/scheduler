@@ -20,7 +20,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
   const toggleExpand = (jobId) => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
 
   const renderJob = (job, highlighted = false) => {
-    if (job.parentId && !highlighted && isFocusMode) return null;
+    if (job.parentId && !highlighted) return null; // subtasks shown via expand or focus mode only
     const subtaskList = job.hasSubtasks ? jobs.filter(j => job.subtasks?.includes(j.id)) : [];
     const isExpanded = expandedJobs[job.id];
     return (
@@ -43,9 +43,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     );
   };
 
-  // Hide parent jobs that have been split (isSplit flag) or have unscheduled children (old-format splits)
-  const hasSplitChildren = (j) => jobs.some(s => s.parentId === j.id && !s.scheduled);
-  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit && !hasSplitChildren(j));
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit);
   const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
   const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
   const readyToStart  = unscheduled.filter(j => j.readyToStart);
