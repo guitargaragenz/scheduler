@@ -82,6 +82,18 @@ export default function App() {
   useEffect(() => { scheduledSlotsRef.current = scheduledSlots; }, [scheduledSlots]);
   useEffect(() => { jobsRef.current = jobs; }, [jobs]);
 
+  // Deep-link: ?job=XXXX opens that job's drawer on load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobNum = params.get('job');
+    if (!jobNum) return;
+    const found = jobs.find(j => String(j.job) === String(jobNum));
+    if (found) {
+      setEditingJob(found);
+      setSidebarOpen(true);
+    }
+  }, []);
+
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
     if (!highlightedJobId) return;
