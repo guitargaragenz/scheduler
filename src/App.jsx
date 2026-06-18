@@ -10,7 +10,7 @@ import {
   initGoogleApi, requestAuth, isSignedIn, signOut, listEvents,
   createEvent, updateEvent, deleteEvent, parsePersonalBlocks, isConfigured,
 } from './utils/googleCalendar.js';
-import { isFirebaseConfigured, loadSchedule, saveSchedule, subscribeToSchedule } from './utils/firebase.js';
+import { isFirebaseConfigured, loadSchedule, saveSchedule, subscribeToSchedule, saveCompletedJobs, subscribeToCompletedJobs } from './utils/firebase.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -69,6 +69,9 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
+  const [completedJobs, setCompletedJobs] = useState([]);
+  const [doneJobIds, setDoneJobIds] = useState([]);
+  const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -124,6 +127,16 @@ export default function App() {
       if (data.jobs) setJobs(data.jobs);
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
       if (data.updatedAt) setLastSyncedAt(data.updatedAt);
+    });
+    return () => unsub();
+  }, []);
+
+  // Subscribe to completed jobs / done IDs
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    const unsub = subscribeToCompletedJobs(data => {
+      setCompletedJobs(data.records || []);
+      setDoneJobIds(data.doneJobIds || []);
     });
     return () => unsub();
   }, []);
@@ -631,9 +644,34 @@ export default function App() {
     setSidebarOpen(true);
   }
 
+  function handleMarkDone(job, amount) {
+    const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
+    const record = {
+      id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
+      bench: job.bench, hours: job.hours, customer: job.customer || '',
+      invoiceAmount: Number(amount) || 0,
+      completedAt: new Date().toISOString(),
+      weekKey,
+    };
+    const newRecords = [...completedJobs, record];
+    const newDoneIds = [...doneJobIds, String(job.id)];
+    setCompletedJobs(newRecords);
+    setDoneJobIds(newDoneIds);
+    setJobs(prev => prev.filter(j => j.id !== job.id && j.parentId !== job.id));
+    setScheduledSlots(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
+      return next;
+    });
+    if (job.gcalEventId && signedIn) deleteEvent(job.gcalEventId).catch(() => {});
+    if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
+    setEditingJob(null);
+    showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
+  }
+
   function handleCsvUpload(csvText) {
     try {
-      const newJobs = parseCSV(csvText, benchKeywords);
+      const newJobs = parseCSV(csvText, benchKeywords).filter(j => !doneJobIds.includes(String(j.id)));
       // Preserve pomoLog from existing jobs so timer history survives CSV refreshes
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
       const merged = newJobs.map(j => ({
@@ -673,6 +711,11 @@ export default function App() {
   const syncColors = { idle: '#64748b', syncing: '#fbbf24', synced: '#22c55e', error: '#ef4444' };
   const syncLabels = { idle: 'Sync', syncing: 'Syncing…', synced: 'Synced ✓', error: 'Sync Error' };
 
+  const currentWeekKey = weekDays[0]?.toISOString().slice(0, 10);
+  const weekRevenue = completedJobs.filter(r => r.weekKey === currentWeekKey).reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0);
+  const revenueRatio = weeklyTarget > 0 ? weekRevenue / weeklyTarget : 0;
+  const revenueColor = revenueRatio >= 0.8 ? '#4ade80' : revenueRatio >= 0.5 ? '#fbbf24' : '#f87171';
+
   return (
     <DndContext
       sensors={sensors}
@@ -697,6 +740,27 @@ export default function App() {
               <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', letterSpacing: -0.3 }}>GGNZ Scheduler</div>
               <div style={{ fontSize: 11, color: '#64748b' }}>Guitar Garage NZ Ltd</div>
             </div>
+          </div>
+
+          {/* Revenue strip */}
+          <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              <span style={{ color: revenueColor }}>${weekRevenue.toLocaleString()}</span>
+              <span style={{ color: '#334155' }}> / </span>
+              <span
+                style={{ color: '#475569', cursor: 'pointer' }}
+                title="Click to change weekly target"
+                onClick={() => {
+                  const v = window.prompt('Weekly revenue target ($):', weeklyTarget);
+                  if (v !== null && !isNaN(Number(v))) {
+                    const t = Number(v);
+                    setWeeklyTarget(t);
+                    localStorage.setItem('weeklyTarget', t);
+                  }
+                }}
+              >${weeklyTarget.toLocaleString()}</span>
+            </div>
+            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: '.08em' }}>week revenue</div>
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
@@ -911,6 +975,7 @@ export default function App() {
             onSave={handleSaveDrawer}
             onClose={() => setEditingJob(null)}
             onRemove={unscheduleJob}
+            onMarkDone={handleMarkDone}
           />
         ) : (
           <JobDrawer
@@ -919,6 +984,7 @@ export default function App() {
             onSave={handleSaveDrawer}
             weekDays={weekDays}
             onSchedule={handleMobileSchedule}
+            onMarkDone={handleMarkDone}
           />
         )
       )}

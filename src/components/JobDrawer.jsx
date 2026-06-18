@@ -14,10 +14,11 @@ function initRows(job) {
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSchedule }) {
+export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSchedule, onMarkDone }) {
   const [rows, setRows] = useState(() => initRows(job));
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
+  const [doneAmount, setDoneAmount] = useState('');
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -271,6 +272,36 @@ export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSched
               {isSubtaskEdit || totalCards === 1 ? 'Update' : 'Save splits'}
             </button>
           </div>
+
+          {onMarkDone && !job.parentId && (
+            <div style={{ borderTop: '1px solid #1e293b', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Mark as Done</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#475569', fontSize: 14 }}>$</span>
+                <input
+                  type="number"
+                  placeholder="Invoice amount"
+                  value={doneAmount}
+                  onChange={e => setDoneAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doneAmount && onMarkDone(job, doneAmount)}
+                  style={{
+                    flex: 1, background: '#0f172a', border: '1px solid #334155', borderRadius: 6,
+                    padding: '7px 10px', fontSize: 13, color: '#f1f5f9',
+                  }}
+                />
+                <button
+                  onClick={() => doneAmount && onMarkDone(job, doneAmount)}
+                  style={{
+                    background: doneAmount ? '#14532d' : '#1e293b',
+                    color: doneAmount ? '#4ade80' : '#334155',
+                    border: `1px solid ${doneAmount ? '#166534' : '#1e293b'}`,
+                    borderRadius: 6, padding: '7px 14px', fontSize: 12, fontWeight: 700,
+                    cursor: doneAmount ? 'pointer' : 'default',
+                  }}
+                >Done ✓</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>,

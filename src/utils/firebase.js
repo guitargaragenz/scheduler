@@ -80,6 +80,27 @@ export function subscribeToParkingLot(callback) {
   }
 }
 
+const COMPLETED_JOBS_DOC = () => doc(getDb(), 'ggnz', 'completedJobs');
+
+export async function saveCompletedJobs(records, doneJobIds) {
+  try {
+    await setDoc(COMPLETED_JOBS_DOC(), { records, doneJobIds, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore completed jobs save error:', e);
+  }
+}
+
+export function subscribeToCompletedJobs(callback) {
+  try {
+    return onSnapshot(COMPLETED_JOBS_DOC(), snap => {
+      callback(snap.exists() ? snap.data() : { records: [], doneJobIds: [] });
+    });
+  } catch (e) {
+    console.error('Firestore completed jobs subscribe error:', e);
+    return () => {};
+  }
+}
+
 // Subscribe to real-time updates from other devices
 // Returns an unsubscribe function
 export function subscribeToSchedule(callback) {
