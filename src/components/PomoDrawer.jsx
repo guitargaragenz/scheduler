@@ -36,7 +36,7 @@ function reducer(state, action) {
   }
 }
 
-export default function PomoDrawer({ job, onClose, onLogSession }) {
+export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone }) {
   const [workMins, setWorkMins] = useState(DEFAULT_WORK_MINS);
   const workSecs = workMins * 60;
 
@@ -50,6 +50,7 @@ export default function PomoDrawer({ job, onClose, onLogSession }) {
   const [manualMins, setManualMins] = useState(25);
   const [manualDate, setManualDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [manualNote, setManualNote] = useState('');
+  const [doneAmount, setDoneAmount] = useState('');
   const startedAtRef = useRef(null);
   const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
 
@@ -318,6 +319,41 @@ export default function PomoDrawer({ job, onClose, onLogSession }) {
               </button>
             </div>
           </>
+        )}
+
+        {/* Mark job as done */}
+        {onMarkDone && !job.parentId && (isIdle || isDone) && (
+          <div style={{ marginTop: 14, borderTop: '1px solid #1e293b', paddingTop: 12 }}>
+            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, textAlign: 'left' }}>
+              Job done? Invoice amount
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', flex: 1, background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '0 10px' }}>
+                <span style={{ color: '#475569', fontSize: 14, marginRight: 4 }}>$</span>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={doneAmount}
+                  onChange={e => setDoneAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doneAmount && onMarkDone(job, doneAmount)}
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    fontSize: 15, fontWeight: 700, color: '#f1f5f9', width: 0,
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => doneAmount && onMarkDone(job, doneAmount)}
+                style={{
+                  background: doneAmount ? '#14532d' : '#1e293b',
+                  color: doneAmount ? '#4ade80' : '#334155',
+                  border: `1px solid ${doneAmount ? '#166534' : '#1e293b'}`,
+                  borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700,
+                  cursor: doneAmount ? 'pointer' : 'default', whiteSpace: 'nowrap',
+                }}
+              >Done ✓</button>
+            </div>
+          </div>
         )}
 
         {/* Past sessions + manual log */}

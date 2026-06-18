@@ -975,7 +975,6 @@ export default function App() {
             onSave={handleSaveDrawer}
             onClose={() => setEditingJob(null)}
             onRemove={unscheduleJob}
-            onMarkDone={handleMarkDone}
           />
         ) : (
           <JobDrawer
@@ -984,7 +983,6 @@ export default function App() {
             onSave={handleSaveDrawer}
             weekDays={weekDays}
             onSchedule={handleMobileSchedule}
-            onMarkDone={handleMarkDone}
           />
         )
       )}
@@ -994,6 +992,7 @@ export default function App() {
           job={pomoJob}
           onClose={() => setPomoJob(null)}
           onLogSession={session => handleLogPomoSession(pomoJob.id, session)}
+          onMarkDone={handleMarkDone}
         />
       )}
 

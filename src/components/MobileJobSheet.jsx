@@ -14,7 +14,7 @@ function fromTimeValue(val) {
   return { hour: h, minute: m };
 }
 
-export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onClose, onRemove, onMarkDone }) {
+export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onClose, onRemove }) {
   const [tab, setTab] = useState('schedule');
 
   // Schedule tab state
@@ -23,9 +23,6 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
 
   // Bench/split tab state
   const [rows, setRows] = useState([{ bench: job.bench, sessions: [{ hours: job.hours, note: '' }] }]);
-
-  // Done tab state
-  const [doneAmount, setDoneAmount] = useState('');
 
   // Slide-up animation
   const [visible, setVisible] = useState(false);
@@ -137,7 +134,6 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
             {[
               { id: 'schedule', label: 'Schedule' },
               { id: 'bench',    label: 'Bench & Split' },
-              ...(onMarkDone && !job.parentId ? [{ id: 'done', label: 'Done ✓' }] : []),
             ].map(t => (
               <button
                 key={t.id}
@@ -355,41 +351,6 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
           )}
         </div>
 
-          {/* ── DONE TAB ── */}
-          {tab === 'done' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ fontSize: 13, color: '#64748b' }}>Enter the invoice amount to archive this job.</div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: '#0f172a', borderRadius: 10, padding: '12px 16px',
-                border: '1px solid #334155',
-              }}>
-                <span style={{ fontSize: 28, color: '#475569', fontWeight: 700 }}>$</span>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={doneAmount}
-                  onChange={e => setDoneAmount(e.target.value)}
-                  style={{
-                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                    fontSize: 36, fontWeight: 700, color: '#f1f5f9', colorScheme: 'dark',
-                  }}
-                  autoFocus
-                />
-              </div>
-              <button
-                onClick={() => { if (doneAmount) { onMarkDone(job, doneAmount); close(); } }}
-                style={{
-                  width: '100%', padding: '16px 0',
-                  background: doneAmount ? '#14532d' : '#1e293b',
-                  color: doneAmount ? '#4ade80' : '#475569',
-                  border: 'none', borderRadius: 10,
-                  fontSize: 16, fontWeight: 700,
-                  cursor: doneAmount ? 'pointer' : 'default',
-                }}
-              >Mark Done ✓</button>
-            </div>
-          )}
 
         {/* Bottom safe area spacer */}
         <div style={{ height: 'env(safe-area-inset-bottom, 12px)', flexShrink: 0 }} />
