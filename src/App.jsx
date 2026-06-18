@@ -83,16 +83,18 @@ export default function App() {
   useEffect(() => { jobsRef.current = jobs; }, [jobs]);
 
   // Deep-link: ?job=XXXX opens that job's drawer on load
+  // Uses a ref so it fires once jobs are confirmed loaded (CSV or Firebase)
+  const deepLinkJobNum = useRef(new URLSearchParams(window.location.search).get('job'));
+  const deepLinkApplied = useRef(false);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const jobNum = params.get('job');
-    if (!jobNum) return;
-    const found = jobs.find(j => String(j.job) === String(jobNum));
+    if (deepLinkApplied.current || !deepLinkJobNum.current || jobs.length === 0) return;
+    const found = jobs.find(j => String(j.job) === deepLinkJobNum.current || j.id === deepLinkJobNum.current);
     if (found) {
+      deepLinkApplied.current = true;
       setEditingJob(found);
       setSidebarOpen(true);
     }
-  }, []);
+  }, [jobs]);
 
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
