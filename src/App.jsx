@@ -235,11 +235,13 @@ export default function App() {
           const jobMap    = Object.fromEntries(currentJobs.map(j => [j.id, j]));
           const updatedJobs = { ...jobMap };
 
-          // Evict conflicting slots first so findAvailableSlots sees them as free
+          // Mark which jobs need bumping
           const bumped = new Set();
-          conflicts.forEach(([key, jobId]) => {
-            delete nextSlots[key];
-            bumped.add(jobId);
+          conflicts.forEach(([, jobId]) => bumped.add(jobId));
+
+          // Clear ALL slots for each bumped job so findAvailableSlots sees them as free
+          bumped.forEach(jobId => {
+            Object.keys(nextSlots).forEach(k => { if (nextSlots[k] === jobId) delete nextSlots[k]; });
           });
 
           bumped.forEach(jobId => {
