@@ -59,9 +59,9 @@ export function createSubtasks(job) {
 
   // Fret level + setup combo — detect by desc keywords, not bench assignment.
   // Covers jobs moved to Luthier bench via the drawer.
-  // Fallback: Fretwork bench + "level" + "setup" without explicit "fret" prefix.
+  // Fallback: Fretwork or Luthier bench + "level" + "setup" without explicit "fret" prefix.
   const isFretLevelSetup = (hasFretLevel && hasSetupWork && !isRefret) ||
-    (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d) && !isRefret);
+    ((job.bench === 'Fretwork' || job.bench === 'Luthier') && /\blevel\b/.test(d) && hasSetupWork && !isRefret);
 
   if (isFretLevelSetup) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
