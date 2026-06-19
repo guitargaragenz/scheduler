@@ -587,9 +587,9 @@ export default function App() {
       try {
         let result;
         if (job.gcalEventId) {
-          result = await updateEvent(job.gcalEventId, job, date, hour, slotsNeeded(job));
+          result = await updateEvent(job.gcalEventId, job, date, hour, slotsNeeded(job) * 0.5);
         } else {
-          result = await createEvent(job, date, hour, slotsNeeded(job));
+          result = await createEvent(job, date, hour, slotsNeeded(job) * 0.5);
         }
         if (result?.id) {
           const idx = updatedJobs.findIndex(j => j.id === job.id);
