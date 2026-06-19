@@ -662,7 +662,10 @@ export default function App() {
     });
 
     setJobs(prev => [
-      ...prev.map(j => j.id === parentJob.id ? { ...j, isSplit: true } : j),
+      ...prev.map(j => j.id === parentJob.id
+        ? { ...j, hasSubtasks: true, subtasks: subtasks.map(s => s.id), isSplit: false }
+        : j
+      ),
       ...subtasks,
     ]);
     setHighlightedJobId(parentJob.id);
@@ -691,7 +694,10 @@ export default function App() {
 
   function handleCsvUpload(csvText) {
     try {
-      const newJobs = parseCSV(csvText, benchKeywords).filter(j => !doneJobIds.includes(String(j.id)));
+      const parsed = parseCSV(csvText, benchKeywords);
+      const skipped = parsed.filter(j => doneJobIds.includes(String(j.id)));
+      if (skipped.length) console.warn('[CSV] Skipped as done:', skipped.map(j => `#${j.job} ${j.mfr} ${j.model}`));
+      const newJobs = parsed.filter(j => !doneJobIds.includes(String(j.id)));
       // Preserve pomoLog from existing jobs so timer history survives CSV refreshes
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
       const merged = newJobs.map(j => ({
@@ -707,10 +713,19 @@ export default function App() {
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
       );
+      // Rescue limbo jobs: scheduled=true but no slot means they're invisible on cal + sidebar
+      const scheduledJobIds = new Set(Object.values(preservedSlots));
+      allJobs.forEach(j => {
+        if (j.scheduled && !scheduledJobIds.has(j.id)) {
+          console.warn(`[CSV] Rescued limbo job #${j.job} ${j.mfr} ${j.model} — scheduled flag cleared`);
+          j.scheduled = false;
+          j.calendarSlot = null;
+        }
+      });
       justSavedAt.current = Date.now();
       setJobs(allJobs);
       setScheduledSlots(preservedSlots);
-      if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
+      if (isFirebaseConfigured()) saveSchedule(allJobs, preservedSlots);
       const jobCount = merged.filter(j => !j.parentId).length;
       showToast(`Loaded ${jobCount} jobs from CSV`);
       addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
