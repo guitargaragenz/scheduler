@@ -213,6 +213,7 @@ export default function App() {
         if (ev.summary?.startsWith('#')) return; // scheduler-owned events
         const evStart = new Date(ev.start?.dateTime || ev.start?.date);
         const evEnd   = new Date(ev.end?.dateTime   || ev.end?.date);
+        if ((evEnd - evStart) < 30 * 60 * 1000) return; // ignore appointments under 30 min
         const dayIdx  = weekDays.findIndex(d => d.toDateString() === evStart.toDateString());
         if (dayIdx < 0) return;
         let h = evStart.getHours();
