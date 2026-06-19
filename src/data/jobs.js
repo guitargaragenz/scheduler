@@ -2,7 +2,7 @@ export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Cu
 
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish', 'level', 'crown', 'polish'],
-  Luthier:     ['bridge', 'crack', 'brace', 'reset', 'top', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', 'split', 'lifting', 'lifted', 'broken'],
+  Luthier:     ['bridge', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken'],
   Electronics: ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
@@ -50,7 +50,7 @@ export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
   const hasFretLevel = /fret.?level|fret.?dress/.test(d);
-  const hasSetupWork = /\bsetup\b|\bstp\b/.test(d);
+  const hasSetupWork = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
   const isRefret     = /refret/.test(d);
 
   // Fret level + setup combo — detect by desc keywords, not bench assignment.
