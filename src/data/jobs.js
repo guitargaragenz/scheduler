@@ -16,7 +16,11 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const m = mfr.toLowerCase();
 
   const kw = { ...DEFAULT_BENCH_KEYWORDS, ...keywords };
-  const rx = bench => new RegExp(kw[bench].join('|'));
+  const rx = bench => {
+    const list = kw[bench] || [];
+    if (list.length === 0) return { test: () => false };
+    return new RegExp(list.join('|'));
+  };
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
@@ -49,8 +53,17 @@ export function hoursRange(h) {
 export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
-  // Fret level + setup combo
-  if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
+  const hasFretLevel = /fret.?level|fret.?dress/.test(d);
+  const hasSetupWork = /\bsetup\b|\bstp\b/.test(d);
+  const isRefret     = /refret/.test(d);
+
+  // Fret level + setup combo — detect by desc keywords, not bench assignment.
+  // Covers jobs moved to Luthier bench via the drawer.
+  // Fallback: Fretwork bench + "level" + "setup" without explicit "fret" prefix.
+  const isFretLevelSetup = (hasFretLevel && hasSetupWork && !isRefret) ||
+    (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d) && !isRefret);
+
+  if (isFretLevelSetup) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1;
     const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
@@ -64,8 +77,8 @@ export function createSubtasks(job) {
     return subtasks;
   }
 
-  // Refret — detect if there's also Luthier work in the description
-  if (job.bench === 'Fretwork' && /refret/.test(d)) {
+  // Refret — detect by desc keyword (bench-independent)
+  if (isRefret) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1.5;
     if (hasLuthier) {

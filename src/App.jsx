@@ -31,12 +31,26 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Re-expand split subtasks after Firebase load so hard refresh doesn't wipe them.
 // Splits are derived from createSubtasks() on each job — not stored as raw Firebase entries.
 // knownSlots: the scheduledSlots map, used to correctly mark splits as scheduled on first load.
-function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
+// existingSubtasksByJob: map of job.job -> subtask array for jobs with manualSplits=true,
+//   allowing manual drawer splits to survive a CSV import.
+function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}, existingSubtasksByJob = {}) {
   const existingById = Object.fromEntries(existingJobs.map(j => [j.id, j]));
   const scheduledIds = new Set(Object.values(knownSlots));
   const result = [];
   for (const job of rawJobs) {
     if (job.parentId) continue; // drop stale subtasks — regenerate below
+
+    // If this job has manually-configured splits (set via the drawer), restore them verbatim
+    // rather than running createSubtasks() which would regenerate auto splits only.
+    if (job.manualSplits && existingSubtasksByJob[job.job]?.length > 0) {
+      const manualSts = existingSubtasksByJob[job.job];
+      result.push({ ...job, hasSubtasks: true, subtasks: manualSts.map(s => s.id) });
+      for (const st of manualSts) {
+        result.push({ ...st });
+      }
+      continue;
+    }
+
     const subtasks = createSubtasks(job);
     if (subtasks && subtasks.length > 0) {
       result.push({ ...job, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
@@ -668,7 +682,7 @@ export default function App() {
 
     setJobs(prev => [
       ...prev.map(j => j.id === parentJob.id
-        ? { ...j, hasSubtasks: true, subtasks: subtasks.map(s => s.id), isSplit: false }
+        ? { ...j, hasSubtasks: true, subtasks: subtasks.map(s => s.id), isSplit: false, manualSplits: true }
         : j
       ),
       ...subtasks,
@@ -705,14 +719,23 @@ export default function App() {
       const newJobs = parsed.filter(j => !doneJobIds.includes(String(j.id)));
       // Preserve pomoLog from existing jobs so timer history survives CSV refreshes
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
+      // Build a map of job.job -> subtask array for jobs with manual splits,
+      // so withSplitsExpanded can restore them verbatim instead of auto-regenerating.
+      const existingSubtasksByJob = {};
+      jobs.forEach(j => {
+        if (j.manualSplits && j.subtasks?.length > 0) {
+          existingSubtasksByJob[j.job] = jobs.filter(s => j.subtasks.includes(s.id));
+        }
+      });
       const merged = newJobs.map(j => ({
         ...j,
         pomoLog: existingByJobNo[j.job]?.pomoLog || [],
         scheduled: existingByJobNo[j.job]?.scheduled || false,
         calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
+        manualSplits: existingByJobNo[j.job]?.manualSplits || false,
       }));
       // Re-expand splits so split cards and their slots survive the CSV refresh
-      const mergedWithSplits = withSplitsExpanded(merged, jobs, scheduledSlots);
+      const mergedWithSplits = withSplitsExpanded(merged, jobs, scheduledSlots, existingSubtasksByJob);
       // Keep done jobs so they remain visible on calendar
       const doneJobs = jobs.filter(j => j.done);
       const allJobs = [...mergedWithSplits, ...doneJobs];
