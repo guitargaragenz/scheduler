@@ -769,26 +769,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Revenue strip */}
-          <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
-            <div style={{ fontSize: 13, fontWeight: 700 }}>
-              <span style={{ color: revenueColor }}>${weekRevenue.toLocaleString()}</span>
-              <span style={{ color: '#334155' }}> / </span>
-              <span
-                style={{ color: '#475569', cursor: 'pointer' }}
-                title="Click to change weekly target"
-                onClick={() => {
-                  const v = window.prompt('Weekly revenue target ($):', weeklyTarget);
-                  if (v !== null && !isNaN(Number(v))) {
-                    const t = Number(v);
-                    setWeeklyTarget(t);
-                    localStorage.setItem('weeklyTarget', t);
-                  }
-                }}
-              >${weeklyTarget.toLocaleString()}</span>
-            </div>
-            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: '.08em' }}>week revenue</div>
-          </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <button
