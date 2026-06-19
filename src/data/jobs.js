@@ -1,7 +1,7 @@
 export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Customer`;
 
 export const DEFAULT_BENCH_KEYWORDS = {
-  Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
+  Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish', 'level', 'crown', 'polish'],
   Luthier:     ['bridge', 'crack', 'brace', 'reset', 'top', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', 'split', 'lifting', 'lifted', 'broken'],
   Electronics: ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
@@ -28,11 +28,7 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
 
-  if (/passport|pa\s*\d/.test(d)) return 'Electronics';
-  if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
-  if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
-
-  return 'Admin';
+  return 'Unassigned';
 }
 
 export function inferTag(h) {
@@ -211,4 +207,5 @@ export const BENCH_COLORS = {
   Setup:       { bg: '#7c2d12', border: '#ea580c', text: '#fed7aa' },
   Fretwork:    { bg: '#4c1d95', border: '#7c3aed', text: '#ddd6fe' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
+  Unassigned:  { bg: '#713f12', border: '#ca8a04', text: '#fef08a' },
 };
