@@ -711,9 +711,11 @@ export default function App() {
         scheduled: existingByJobNo[j.job]?.scheduled || false,
         calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
       }));
+      // Re-expand splits so split cards and their slots survive the CSV refresh
+      const mergedWithSplits = withSplitsExpanded(merged, jobs, scheduledSlots);
       // Keep done jobs so they remain visible on calendar
       const doneJobs = jobs.filter(j => j.done);
-      const allJobs = [...merged, ...doneJobs];
+      const allJobs = [...mergedWithSplits, ...doneJobs];
       const newJobIds = new Set(allJobs.map(j => j.id));
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
