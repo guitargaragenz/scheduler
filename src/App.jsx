@@ -49,7 +49,7 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
         });
       }
     } else {
-      result.push(job);
+      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
     }
   }
   return result;
