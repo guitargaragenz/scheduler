@@ -64,7 +64,10 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}, existin
         });
       }
     } else {
-      result.push(job);
+      // Clear stale hasSubtasks/subtasks/manualSplits flags that may have come from Firebase.
+      // Without this, a job that previously had splits but now generates none (e.g. manualSplits
+      // with no matching existingSubtasksByJob entry) shows a ghost "▶ 0 sub-tasks" button.
+      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
     }
   }
   return result;
