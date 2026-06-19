@@ -2,7 +2,7 @@ export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Cu
 
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
-  Luthier:     ['bridge', 'crack', 'brace', 'reset', 'top', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', 'split', 'lifting', 'lifted', 'broken'],
+  Luthier:     ['bridge', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken'],
   Electronics: ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
@@ -48,6 +48,18 @@ export function hoursRange(h) {
 
 export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
+
+  const hasSetupWork = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
+
+  // Luthier bench job that also needs setup work → Luthier + Setup split cards
+  if (job.bench === 'Luthier' && hasSetupWork) {
+    const setupHours = 1.5;
+    const luthierHours = Math.max(job.hours - setupHours, 0.5);
+    return [
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: Math.round(luthierHours * 2) / 2, hoursRange: hoursRange(Math.round(luthierHours * 2) / 2), label: 'Luthier work', parentId: job.id },
+      { ...job, id: `${job.id}-S`,  bench: 'Setup',   hours: setupHours,                        hoursRange: hoursRange(setupHours),                        label: 'Setup',        parentId: job.id },
+    ];
+  }
 
   // Fret level + setup combo
   if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
