@@ -24,6 +24,7 @@ import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
+import JournalPage from './components/JournalPage.jsx';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -96,6 +97,7 @@ export default function App() {
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
@@ -900,6 +902,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowJournal(j => !j)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJournal ? '#0f766e' : '#334155'}`,
+                background: showJournal ? '#042f2e' : '#1e293b',
+                color: showJournal ? '#5eead4' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showJournal ? 700 : 400,
+              }}
+            >
+              Journal
+            </button>
+
+            <button
               onClick={() => setShowSummary(true)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
@@ -947,7 +961,9 @@ export default function App() {
 
         {/* Body */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {showParkingLot ? (
+          {showJournal ? (
+            <JournalPage onBack={() => setShowJournal(false)} />
+          ) : showParkingLot ? (
             <ParkingLotPage onBack={() => {
               setShowParkingLot(false);
               window.history.replaceState(null, '', '#');

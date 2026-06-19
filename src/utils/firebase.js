@@ -101,6 +101,38 @@ export function subscribeToCompletedJobs(callback) {
   }
 }
 
+const JOURNAL_DOC = () => doc(getDb(), 'ggnz', 'journal');
+
+export async function loadJournal() {
+  try {
+    const snap = await getDoc(JOURNAL_DOC());
+    if (!snap.exists()) return [];
+    return snap.data().entries || [];
+  } catch (e) {
+    console.error('Firestore journal load error:', e);
+    return [];
+  }
+}
+
+export async function saveJournal(entries) {
+  try {
+    await setDoc(JOURNAL_DOC(), { entries, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore journal save error:', e);
+  }
+}
+
+export function subscribeToJournal(callback) {
+  try {
+    return onSnapshot(JOURNAL_DOC(), snap => {
+      if (snap.exists()) callback(snap.data().entries || []);
+    });
+  } catch (e) {
+    console.error('Firestore journal subscribe error:', e);
+    return () => {};
+  }
+}
+
 // Subscribe to real-time updates from other devices
 // Returns an unsubscribe function
 export function subscribeToSchedule(callback) {
