@@ -26,7 +26,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     return (
       <div key={job.id}>
         <JobCard job={job} dragMode={dragMode} isHighlighted={highlighted} onClick={() => onJobClick(job)} />
-        {job.hasSubtasks && subtaskList.length > 0 && (
+        {job.hasSubtasks && (
           <div
             onClick={() => toggleExpand(job.id)}
             style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}

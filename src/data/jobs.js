@@ -16,11 +16,7 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const m = mfr.toLowerCase();
 
   const kw = { ...DEFAULT_BENCH_KEYWORDS, ...keywords };
-  const rx = bench => {
-    const list = kw[bench] || [];
-    if (list.length === 0) return { test: () => false };
-    return new RegExp(list.join('|'));
-  };
+  const rx = bench => new RegExp(kw[bench].join('|'));
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
@@ -53,14 +49,8 @@ export function hoursRange(h) {
 export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
-  // Fret level + setup combo — detect by desc keywords so splits generate even if
-  // the job was reassigned to a different bench via the drawer.
-  const hasFretLevel = /fret.?level|fret.?dress/.test(d);
-  const hasSetupWork = /\bsetup\b|\bstp\b/.test(d);
-  // Also match Fretwork bench + "level" + "setup" without an explicit "fret" prefix in desc
-  const isFretLevelJob = (hasFretLevel && hasSetupWork)
-    || (job.bench === 'Fretwork' && hasSetupWork && /level/.test(d) && !/refret/.test(d));
-  if (isFretLevelJob) {
+  // Fret level + setup combo
+  if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1;
     const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;

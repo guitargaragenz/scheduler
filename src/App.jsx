@@ -67,15 +67,7 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}, existin
         });
       }
     } else {
-      // Cross-check scheduled flag against actual slots — if the job claims scheduled
-      // but has no slot entry (e.g. slots were cleared without updating the flag),
-      // reset to unscheduled so the job doesn't become a limbo ghost.
-      const inSlots = scheduledIds.has(job.id);
-      if (job.scheduled && !inSlots) {
-        result.push({ ...job, scheduled: false, calendarSlot: null });
-      } else {
-        result.push(job);
-      }
+      result.push(job);
     }
   }
   return result;
