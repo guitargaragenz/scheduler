@@ -55,6 +55,30 @@ Sessions don't sync across devices — context lives here in CLAUDE.md, not in s
 
 ## Rules
 
+### Production Protocol — Zero-Touch-Main
+
+This is a live production system. Every job on the calendar is a real customer and real revenue. A data wipe costs thousands. Treat every change accordingly.
+
+**Staging branch first — always.**
+All fixes go to the `staging` branch first. Nothing merges to `main` until it passes Dev 2 review AND a live smoke test. No exceptions, no shortcuts.
+
+**Dev 2 must test, not just read code.**
+Dev 2 must run the app, perform a hard refresh, and confirm scheduled jobs survive before signing off. Code review alone is not sufficient.
+
+**Hard refresh is mandatory after every deploy.**
+Any fix touching `withSplitsExpanded`, Firebase load, or job state must be verified: place a job → hard refresh → confirm it's still there.
+
+**Firebase is sacred.**
+Any fix that could write to Firebase requires explicit Dev 2 sign-off: "this cannot corrupt Firebase data." Timing risks (async load order, debounced saves) must be called out and resolved before merge — not discovered in production.
+
+**Rollback is pre-planned.**
+Before merging anything, identify the exact revert command. If something breaks, rollback happens in under 60 seconds.
+
+**Claude pushes back harder.**
+If a fix touches Firebase timing, job state on load, or anything that writes back to Firestore — Claude flags the risk explicitly before agents review it. Do not rely solely on agents to catch this class of bug.
+
+---
+
 ### Never push to GitHub from Micky (or any local device)
 
 All git commits and pushes must be done from a Claude Code session (web or CLI), not from Micky's terminal. Micky's local git clone can be out of sync with GitHub, which caused accidental deletion of 35 app files on 2026-06-14.
