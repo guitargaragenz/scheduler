@@ -77,6 +77,16 @@ export function createSubtasks(job) {
     return subtasks;
   }
 
+  // Luthier bench job that also needs setup work → Luthier + Setup cards
+  if (job.bench === 'Luthier' && hasSetupWork && !isFretLevelSetup) {
+    const setupHours = 1.5;
+    const luthierHours = Math.max(job.hours - setupHours, 0.5);
+    return [
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: Math.round(luthierHours * 2) / 2, hoursRange: hoursRange(Math.round(luthierHours * 2) / 2), label: 'Luthier work', parentId: job.id },
+      { ...job, id: `${job.id}-S`,  bench: 'Setup',   hours: setupHours,                        hoursRange: hoursRange(setupHours),                        label: 'Setup',        parentId: job.id },
+    ];
+  }
+
   // Refret — detect by desc keyword (bench-independent)
   if (isRefret) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
