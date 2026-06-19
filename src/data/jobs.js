@@ -53,6 +53,10 @@ export function createSubtasks(job) {
   const hasSetupWork = /\bsetup\b|\bstp\b/.test(d);
   const isRefret     = /refret/.test(d);
 
+  if (['job_1448','job_1626'].includes(job.id)) {
+    console.log('[DEBUG createSubtasks]', job.id, { bench: job.bench, hasFretLevel, hasSetupWork, isRefret, desc: d.slice(0,60) });
+  }
+
   // Fret level + setup combo — detect by desc keywords, not bench assignment.
   // Covers jobs moved to Luthier bench via the drawer.
   // Fallback: Fretwork or Luthier bench + "level" + "setup" without explicit "fret" prefix.
