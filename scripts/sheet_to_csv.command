@@ -265,7 +265,14 @@ skipped = []
 for obj in rows:
     status = obj.get('Status', '')
     act    = (obj.get('Action', '') or '').strip().upper()
-    hours  = float(obj.get('Hours') or 0) or 0.0
+    raw_hours = str(obj.get('Hours') or '').strip()
+    if '-' in raw_hours:
+        parts = raw_hours.split('-')
+        try: hours = (float(parts[0]) + float(parts[1])) / 2
+        except: hours = 0.0
+    else:
+        try: hours = float(raw_hours) if raw_hours else 0.0
+        except: hours = 0.0
     days   = obj.get('Days', '').strip()
     ready_to_start = status == 'On Hold' and obj.get('BL') == 'Y' and act == 'GTS'
     awaiting       = status == 'Waiting' and act in ('INC', 'CI')
