@@ -209,5 +209,6 @@ export const BENCH_COLORS = {
   Electronics: { bg: '#1e3a5f', border: '#2563eb', text: '#bfdbfe' },
   Setup:       { bg: '#7c2d12', border: '#ea580c', text: '#fed7aa' },
   Fretwork:    { bg: '#4c1d95', border: '#7c3aed', text: '#ddd6fe' },
+  Wiring:      { bg: '#134e4a', border: '#0d9488', text: '#99f6e4' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
 };
