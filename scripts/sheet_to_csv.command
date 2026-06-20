@@ -137,22 +137,28 @@ if new_rows:
 else:
     print("No new jobs to add to Sheet.")
 
-# ── Backfill Customer for existing Sheet rows that are missing it ──────────────
-if customer_col is not None:
-    csv_customer_map = {str(r.get('Job','')).strip(): r.get('Customer','') for r in csv_rows}
-    updates = []
-    for i, row in enumerate(data_rows, start=2):
-        job = str(row[job_col]).strip() if job_col is not None else ''
-        if not job: continue
-        current = row[customer_col].strip() if customer_col < len(row) else ''
-        if not current and csv_customer_map.get(job):
-            col_letter = chr(65 + customer_col)
-            updates.append({'range': f'{col_letter}{i}', 'values': [[csv_customer_map[job]]]})
-    if updates:
-        ws.batch_update(updates)
-        print(f"Backfilled Customer for {len(updates)} Sheet rows.")
-    else:
-        print("Customer column already populated.")
+# ── Push PDF-owned fields back to existing Sheet rows ─────────────────────────
+PDF_FIELDS = ['Customer', 'Mfr', 'Model', 'Status', 'Desc']
+csv_map = {str(r.get('Job', '')).strip(): r for r in csv_rows}
+pdf_updates = []
+for i, row in enumerate(data_rows, start=2):
+    job = str(row[job_col]).strip() if job_col is not None else ''
+    if not job or job not in csv_map:
+        continue
+    for field in PDF_FIELDS:
+        col_idx = col(field)
+        if col_idx is None:
+            continue
+        sheet_val = row[col_idx].strip() if col_idx < len(row) else ''
+        csv_val = str(csv_map[job].get(field, '')).strip()
+        if csv_val and csv_val != sheet_val:
+            col_letter = chr(65 + col_idx)
+            pdf_updates.append({'range': f'{col_letter}{i}', 'values': [[csv_val]]})
+if pdf_updates:
+    ws.batch_update(pdf_updates)
+    print(f"Updated {len(pdf_updates)} PDF-field cell(s) on Sheet.")
+else:
+    print("Sheet PDF fields already up to date.")
 
 # ── Write CSV ─────────────────────────────────────────────────────────────────
 with open(CSV_FILE, 'w', newline='', encoding='utf-8') as f:
