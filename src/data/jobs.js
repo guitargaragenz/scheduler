@@ -97,6 +97,17 @@ export function createSubtasks(job) {
     ];
   }
 
+  // Setup bench job that also needs wiring/electronics work → Setup + Wiring split cards
+  const hasWiringWork = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
+  const hasSetupKeyword = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
+  if (job.bench === 'Setup' && hasWiringWork && hasSetupKeyword) {
+    const half = Math.round(job.hours / 2 * 2) / 2 || 0.5;
+    return [
+      { ...job, id: `${job.id}-ST`, bench: 'Setup',  hours: half, hoursRange: hoursRange(half), label: 'Setup',  parentId: job.id },
+      { ...job, id: `${job.id}-WR`, bench: 'Wiring', hours: half, hoursRange: hoursRange(half), label: 'Wiring', parentId: job.id },
+    ];
+  }
+
   return null;
 }
 
