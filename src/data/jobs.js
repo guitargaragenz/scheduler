@@ -19,7 +19,6 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const rx = bench => new RegExp(kw[bench].join('|'));
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
-  if (/(noise|pot|jack|switch|wiring|trem|pickup)/.test(d) && /setup|stp|restring|strings/.test(d)) return 'Setup';
   if (rx('Luthier').test(d)) return 'Luthier';
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';

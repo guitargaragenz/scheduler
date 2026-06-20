@@ -233,7 +233,6 @@ def infer_bench(desc, status, action, model, mfr):
     m = mfr.lower()
     def rx(bench): return re.compile('|'.join(DEFAULT_KEYWORDS[bench]))
     if rx('Fretwork').search(d): return 'Fretwork'
-    if re.search(r'noise|pot|jack|switch|wiring|trem|pickup', d) and re.search(r'setup|stp|restring|strings', d): return 'Setup'
     if rx('Luthier').search(d): return 'Luthier'
     if rx('Electronics').search(d): return 'Electronics'
     if rx('Setup').search(d): return 'Setup'
