@@ -3,7 +3,7 @@ import { BENCH_COLORS } from '../data/jobs.js';
 import { BENCH_COLOR_ID } from '../utils/googleCalendar.js';
 
 const DRAWER_WIDTH = 360;
-const BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Admin'];
+const BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
 const COLOR_ID_TO_BENCH = { '10': 'Luthier', '9': 'Electronics', '6': 'Setup', '3': 'Fretwork', '2': 'Luthier' };
 

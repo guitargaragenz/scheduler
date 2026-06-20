@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup'];
+const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup', 'Wiring'];
 
 const BENCH_ACCENT = {
   Fretwork:    '#a78bfa',

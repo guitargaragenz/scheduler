@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS } from '../data/jobs.js';
 
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function fromTimeValue(val) {

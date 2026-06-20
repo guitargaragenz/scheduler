@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { detectBenches, BENCH_COLORS } from '../data/jobs.js';
 
 const DRAWER_WIDTH = 360;
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
 export default function SplitDrawer({ job, onClose, onConfirm, onDrawerMouseEnter, onDrawerMouseLeave }) {
   const [displayJob, setDisplayJob] = useState(null);
