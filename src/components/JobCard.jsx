@@ -32,8 +32,35 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} onClick={onClick}>
+      {compact ? (
+        /* Calendar card: Mfr + Model primary, job number as small tag */
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 11, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {job.mfr} {job.model}
+              {job.sessionIndex && job.sessionTotal > 1 && (
+                <span style={{
+                  marginLeft: 5, fontSize: 9, fontWeight: 700,
+                  background: '#1d4ed8', color: '#bfdbfe',
+                  borderRadius: 4, padding: '1px 4px',
+                }}>
+                  {job.sessionIndex}/{job.sessionTotal}
+                </span>
+              )}
+            </div>
+            {(job.splitDesc ?? job.desc) && (
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(job.splitDesc ?? job.desc)?.slice(0, 40)}{(job.splitDesc ?? job.desc)?.length > 40 ? '…' : ''}
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.6)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            #{job.job}
+          </span>
+        </div>
+      ) : (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontWeight: 700, fontSize: compact ? 11 : 12, color: colors.text }}>
+        <span style={{ fontWeight: 700, fontSize: 12, color: colors.text }}>
           #{job.job}
           {job.sessionIndex && job.sessionTotal > 1 && (
             <span style={{
@@ -54,6 +81,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
           </span>
         </div>
       </div>
+      )}
       {!compact && (
         <>
           {job.customer && (

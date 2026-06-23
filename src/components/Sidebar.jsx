@@ -21,7 +21,17 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
 
   const renderJob = (job, highlighted = false) => {
     if (job.parentId && !highlighted) return null; // subtasks shown via expand or focus mode only
-    const subtaskList = job.hasSubtasks ? jobs.filter(j => job.subtasks?.includes(j.id)) : [];
+    // Only show unscheduled subtasks
+    const subtaskList = job.hasSubtasks
+      ? jobs.filter(j => job.subtasks?.includes(j.id) && !j.scheduled)
+      : [];
+    // If all subtasks are scheduled, hide the parent too (unless it's a focus-mode highlight)
+    if (!highlighted && job.hasSubtasks && job.subtasks?.length > 0) {
+      const allSubtasksScheduled = jobs
+        .filter(j => job.subtasks.includes(j.id))
+        .every(j => j.scheduled);
+      if (allSubtasksScheduled) return null;
+    }
     const isExpanded = expandedJobs[job.id];
     return (
       <div key={job.id}>
