@@ -121,11 +121,23 @@ with pdfplumber.open(jobs_pdf_path) as pdf:
                     col_job = 4 if len(row) >= 5 else len(row) - 1
                 if len(row) <= col_job: continue
                 job_cell = str(row[col_job] or '').strip()
+                # If expected col_job isn't a digit, try the last cell — some pages have
+                # an extra blank column inserted (e.g. 6-col rows where job is at index 5)
+                if (not re.match(r'^\d+$', job_cell) or int(job_cell) == 0) and len(row) > col_job + 1:
+                    last_cell = str(row[-1] or '').strip()
+                    if re.match(r'^\d+$', last_cell) and int(last_cell) > 0:
+                        job_cell = last_cell
                 if not re.match(r'^\d+$', job_cell) or int(job_cell) == 0: continue
                 customer = cell0.replace('\n', ' ').strip()
                 mfr      = str(row[1] or '').replace('\n', ' ').strip() if len(row) > 1 else ''
-                model    = str(row[2] or '').replace('\n', ' ').strip() if len(row) > 2 else ''
-                status   = str(row[3] or '').strip()                    if len(row) > 3 else ''
+                # Model is between Mfr and Status; skip any blank middle columns
+                non_empty_model = ''
+                for ci in range(2, len(row) - 2):
+                    v = str(row[ci] or '').replace('\n', ' ').strip()
+                    if v:
+                        non_empty_model = v
+                model    = non_empty_model if non_empty_model else (str(row[2] or '').replace('\n', ' ').strip() if len(row) > 2 else '')
+                status   = str(row[-2] or '').strip()                   if len(row) > 2 else ''
                 current_job = job_cell
                 pdf_jobs[job_cell] = {'Customer': customer, 'Mfr': mfr, 'Model': model, 'Status': status}
 
