@@ -79,7 +79,19 @@ export default function App() {
   const [dragMode, setDragMode] = useState('regular');
   const [activeJob, setActiveJob] = useState(null);
   const [toast, setToast] = useState('');
-  const [changelog, setChangelog] = useState([]);
+  const [changelog] = useState([
+    { date: '2026-06-23', note: 'Fix: calendar bookings wiped by watcher on network error — script now aborts instead of overwriting with empty slots' },
+    { date: '2026-06-21', note: 'Add Wiring bench (teal) — Setup jobs with pickup/wiring work split into Setup + Wiring cards' },
+    { date: '2026-06-21', note: 'Fix Luthier hierarchy — Luthier now always beats Setup/Electronics keywords' },
+    { date: '2026-06-21', note: 'Fix bridge pup false positive — "bridge pickup/pup" no longer triggers Luthier bench' },
+    { date: '2026-06-21', note: 'Fix: Google Sheet now receives Multitrack PDF field updates (Desc, Customer, Mfr, Model, Status) on every sync' },
+    { date: '2026-06-21', note: 'Add reauth_google.command — renew Google OAuth token without re-entering credentials' },
+    { date: '2026-06-14', note: 'Ship Runway view — long-running project timeline (PJ=Y jobs), with age colours and status sections' },
+    { date: '2026-06-14', note: 'Ship mobile tap-to-schedule — bottom sheet for iPhone: pick day/time, change bench, add splits' },
+    { date: '2026-06-13', note: 'Add Setup+Luthier split cards — Luthier jobs with restring/setup work auto-split into two bench cards' },
+    { date: '2026-06-13', note: 'Add Fretwork+Setup and Refret+Setup split cards' },
+    { date: '2026-06-13', note: 'Add GCal conflict detection — warns when a scheduled slot overlaps a Google Calendar appointment' },
+  ]);
   const [showSettings, setShowSettings] = useState(false);
   const [googleInited, setGoogleInited] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -100,6 +112,7 @@ export default function App() {
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
+  const [hourlyRate, setHourlyRate] = useState(() => Number(localStorage.getItem('hourlyRate') || 85));
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const pollRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -1027,6 +1040,10 @@ export default function App() {
             localStorage.setItem('benchKeywords', JSON.stringify(kw));
             setJobs(parseCSV(RAW_CSV, kw));
           }}
+          hourlyRate={hourlyRate}
+          onHourlyRateChange={n => { setHourlyRate(n); localStorage.setItem('hourlyRate', String(n)); }}
+          weeklyRevenueTarget={weeklyTarget}
+          onWeeklyTargetChange={n => { setWeeklyTarget(n); localStorage.setItem('weeklyTarget', String(n)); }}
         />
       )}
 
