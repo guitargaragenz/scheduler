@@ -331,9 +331,11 @@ except urllib.error.HTTPError as e:
     if e.code == 404:
         print("No existing Firestore doc — will create fresh")
     else:
-        print(f"WARNING: Could not fetch existing slots ({e.code}) — proceeding with empty slots")
+        print(f"ERROR: Could not fetch existing slots ({e.code}) — aborting to protect calendar bookings")
+        import sys; sys.exit(1)
 except Exception as e:
-    print(f"WARNING: Could not fetch existing slots ({e}) — proceeding with empty slots")
+    print(f"ERROR: Could not fetch existing slots ({e}) — aborting to protect calendar bookings")
+    import sys; sys.exit(1)
 
 # ── Serialise to Firestore REST format ─────────────────────────────────────────
 def to_fs(val):
