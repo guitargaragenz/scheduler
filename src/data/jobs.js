@@ -88,12 +88,11 @@ export function createSubtasks(job) {
         { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                         hoursRange: hoursRange(1.5),                           label: 'Setup / Restring', parentId: job.id },
       ];
     }
-    // No Luthier — keep Refret + Level/Polish as separate Fretwork cards
-    const baseHours = Math.max(job.hours - 1.5, 0.5);
+    // No Luthier — Refret & Polish combined into one card + Setup
+    const fwHours = Math.max(job.hours - 1.5, 0.5);
     return [
-      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2), label: 'Refret',                parentId: job.id },
-      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2), label: 'Level, Crown & Polish', parentId: job.id },
-      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                  hoursRange: hoursRange(1.5),                                  label: 'Setup / Restring',      parentId: job.id },
+      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(fwHours * 2) / 2, hoursRange: hoursRange(Math.round(fwHours * 2) / 2), label: 'Refret & Polish', parentId: job.id },
+      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                          hoursRange: hoursRange(1.5),                          label: 'Setup / Restring', parentId: job.id },
     ];
   }
 
