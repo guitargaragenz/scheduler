@@ -48,65 +48,70 @@ export function hoursRange(h) {
 export function createSubtasks(job) {
   const d = (job.desc || '').toLowerCase();
 
-  const hasSetupWork = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
-
-  // Luthier bench job that also needs setup work → Luthier + Setup split cards
-  if (job.bench === 'Luthier' && hasSetupWork) {
+  // ── Luthier bench ──────────────────────────────────────────────────────────
+  if (job.bench === 'Luthier') {
+    const hasSetup = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
+    if (!hasSetup) return null;
     const setupHours = 1.5;
-    const luthierHours = Math.max(job.hours - setupHours, 0.5);
+    const luthierHours = Math.max(Math.round((job.hours - setupHours) * 2) / 2, 0.5);
     return [
-      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: Math.round(luthierHours * 2) / 2, hoursRange: hoursRange(Math.round(luthierHours * 2) / 2), label: 'Luthier work', parentId: job.id },
-      { ...job, id: `${job.id}-S`,  bench: 'Setup',   hours: setupHours,                        hoursRange: hoursRange(setupHours),                        label: 'Setup',        parentId: job.id },
+      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id },
+      { ...job, id: `${job.id}-S`,  bench: 'Setup',   hours: setupHours,   hoursRange: hoursRange(setupHours),   label: 'Setup',        parentId: job.id },
     ];
   }
 
-  // Fret level + setup combo
-  if (job.bench === 'Fretwork' && /level.*(setup|stp)|(setup|stp).*level/.test(d)) {
-    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
-    const luthierHours = 1;
-    const remaining = hasLuthier ? Math.max(job.hours - luthierHours, 1) : job.hours;
-    const subtasks = [
-      { ...job, id: `${job.id}-L`, bench: 'Fretwork', hours: Math.round(remaining * 0.6 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.6 * 2) / 2), label: 'Level & Polish', parentId: job.id },
-      { ...job, id: `${job.id}-S`, bench: 'Setup',    hours: Math.round(remaining * 0.4 * 2) / 2, hoursRange: hoursRange(Math.round(remaining * 0.4 * 2) / 2), label: 'Setup',          parentId: job.id },
-    ];
-    if (hasLuthier) subtasks.unshift(
-      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id }
-    );
-    return subtasks;
-  }
-
-  // Refret — detect if there's also Luthier work in the description
-  if (job.bench === 'Fretwork' && /refret/.test(d)) {
-    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
-    const luthierHours = 1.5;
-    if (hasLuthier) {
-      // 4 cards: Refret, LCP, Luthier, Setup
-      const remaining = Math.max(job.hours - 1.5 - luthierHours, 1);
-      return [
-        { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.max(Math.round(remaining * 0.8 * 2) / 2, 0.5), hoursRange: hoursRange(Math.max(Math.round(remaining * 0.8 * 2) / 2, 0.5)), label: 'Refret',                parentId: job.id },
-        { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.max(Math.round(remaining * 0.2 * 2) / 2, 0.5), hoursRange: hoursRange(Math.max(Math.round(remaining * 0.2 * 2) / 2, 0.5)), label: 'Level, Crown & Polish', parentId: job.id },
-        { ...job, id: `${job.id}-LU`, bench: 'Luthier',  hours: luthierHours,                                        hoursRange: hoursRange(luthierHours),                                         label: 'Luthier work',           parentId: job.id },
-        { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                                 hoursRange: hoursRange(1.5),                                                  label: 'Setup / Restring',       parentId: job.id },
-      ];
-    }
-    // No Luthier — 3 cards: Refret, Level/Crown/Polish, Setup
-    const baseHours = Math.max(job.hours - 1.5, 0.5);
-    return [
-      { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(baseHours * 0.8 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.8 * 2) / 2), label: 'Refret',                parentId: job.id },
-      { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.round(baseHours * 0.2 * 2) / 2, hoursRange: hoursRange(Math.round(baseHours * 0.2 * 2) / 2), label: 'Level, Crown & Polish', parentId: job.id },
-      { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                  hoursRange: hoursRange(1.5),                                  label: 'Setup / Restring',      parentId: job.id },
-    ];
-  }
-
-  // Setup bench job that also needs wiring/electronics work → Setup + Wiring split cards
-  const hasWiringWork = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
-  const hasSetupKeyword = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
-  if (job.bench === 'Setup' && hasWiringWork && hasSetupKeyword) {
-    const half = Math.round(job.hours / 2 * 2) / 2 || 0.5;
+  // ── Setup bench ────────────────────────────────────────────────────────────
+  if (job.bench === 'Setup') {
+    const hasWiring  = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
+    const hasSetup   = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
+    if (!hasWiring || !hasSetup) return null;
+    const half = Math.max(Math.round(job.hours / 2 * 2) / 2, 0.5);
     return [
       { ...job, id: `${job.id}-ST`, bench: 'Setup',  hours: half, hoursRange: hoursRange(half), label: 'Setup',  parentId: job.id },
       { ...job, id: `${job.id}-WR`, bench: 'Wiring', hours: half, hoursRange: hoursRange(half), label: 'Wiring', parentId: job.id },
     ];
+  }
+
+  // ── Fretwork bench — additive card logic ───────────────────────────────────
+  if (job.bench === 'Fretwork') {
+    const hasRefret  = /refret/.test(d);
+    const hasLevel   = !hasRefret && /fret level|fret dress|fret polish/.test(d);
+    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
+    const hasSetup   = /\bsetup\b|\bstp\b|\brestring\b|\bstrings\b/.test(d);
+
+    // Must have at least one fretwork keyword to build any cards
+    if (!hasRefret && !hasLevel) return null;
+
+    // Fixed-hour cards
+    const luthierHours = 1.5;
+    const setupHours   = 1.5;
+
+    // Fretwork hours = total minus any fixed cards
+    const deduct = (hasLuthier ? luthierHours : 0) + (hasSetup ? setupHours : 0);
+    const fretworkHours = Math.max(job.hours - deduct, 1);
+
+    const cards = [];
+
+    if (hasRefret) {
+      const refretHours = Math.max(Math.round(fretworkHours * 0.8 * 2) / 2, 0.5);
+      const lcpHours    = Math.max(Math.round(fretworkHours * 0.2 * 2) / 2, 0.5);
+      cards.push({ ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: refretHours, hoursRange: hoursRange(refretHours), label: 'Refret',                parentId: job.id });
+      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: lcpHours,    hoursRange: hoursRange(lcpHours),    label: 'Level, Crown & Polish', parentId: job.id });
+    } else {
+      // Level / dress / polish only — single fretwork card
+      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: fretworkHours, hoursRange: hoursRange(fretworkHours), label: 'Level, Crown & Polish', parentId: job.id });
+    }
+
+    if (hasLuthier) {
+      cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work',     parentId: job.id });
+    }
+
+    if (hasSetup) {
+      cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup', hours: setupHours, hoursRange: hoursRange(setupHours), label: 'Setup / Restring', parentId: job.id });
+    }
+
+    // Only split if 2+ cards
+    return cards.length >= 2 ? cards : null;
   }
 
   return null;
