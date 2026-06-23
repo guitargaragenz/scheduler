@@ -80,12 +80,13 @@ export function createSubtasks(job) {
     const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
     const luthierHours = 1.5;
     if (hasLuthier) {
-      // 3 cards: single Fretwork (refret+polish combined), Luthier, Setup
-      const fwHours = Math.max(job.hours - 1.5 - luthierHours, 0.5);
+      // 4 cards: Refret, LCP, Luthier, Setup
+      const remaining = Math.max(job.hours - 1.5 - luthierHours, 1);
       return [
-        { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.round(fwHours * 2) / 2, hoursRange: hoursRange(Math.round(fwHours * 2) / 2), label: 'Refret & Polish', parentId: job.id },
-        { ...job, id: `${job.id}-LU`, bench: 'Luthier',  hours: luthierHours,                hoursRange: hoursRange(luthierHours),                 label: 'Luthier work',   parentId: job.id },
-        { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                         hoursRange: hoursRange(1.5),                           label: 'Setup / Restring', parentId: job.id },
+        { ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: Math.max(Math.round(remaining * 0.8 * 2) / 2, 0.5), hoursRange: hoursRange(Math.max(Math.round(remaining * 0.8 * 2) / 2, 0.5)), label: 'Refret',                parentId: job.id },
+        { ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: Math.max(Math.round(remaining * 0.2 * 2) / 2, 0.5), hoursRange: hoursRange(Math.max(Math.round(remaining * 0.2 * 2) / 2, 0.5)), label: 'Level, Crown & Polish', parentId: job.id },
+        { ...job, id: `${job.id}-LU`, bench: 'Luthier',  hours: luthierHours,                                        hoursRange: hoursRange(luthierHours),                                         label: 'Luthier work',           parentId: job.id },
+        { ...job, id: `${job.id}-SU`, bench: 'Setup',    hours: 1.5,                                                 hoursRange: hoursRange(1.5),                                                  label: 'Setup / Restring',       parentId: job.id },
       ];
     }
     // No Luthier — 3 cards: Refret, Level/Crown/Polish, Setup
