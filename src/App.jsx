@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core';
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, createSubtasks } from './data/jobs.js';
 import { getWeekDays, formatDateRange, slotKey, dayLabel, getWorkHours, isGapHour, isSaturday, isSunday, isLunchSlot } from './utils/calendar.js';
-import { canPlace, scheduleUrgent, slotsNeeded } from './utils/scheduler.js';
+import { canPlace, scheduleUrgent, slotsNeeded, findAvailableSlots, nextHalfSlotKey } from './utils/scheduler.js';
 import {
   initGoogleApi, requestAuth, isSignedIn, signOut, listEvents,
   createEvent, updateEvent, deleteEvent, parsePersonalBlocks, isConfigured,
@@ -54,17 +54,6 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
   }
   return result;
 }
-
-// Returns the slot key for the half-slot immediately after `key`
-function nextHalfSlotKey(key) {
-  const parts = key.split('-');
-  const h = parseInt(parts[3]);
-  const m = parseInt(parts[4]);
-  const nM = m === 0 ? 30 : 0;
-  const nH = m === 0 ? h : h + 1;
-  return `${parts[0]}-${parts[1]}-${parts[2]}-${nH}-${nM}`;
-}
-
 
 export default function App() {
   const [benchKeywords, setBenchKeywords] = useState(() => {
@@ -257,7 +246,7 @@ export default function App() {
             const job = jobMap[jobId];
             if (!job) return;
             const needed = slotsNeeded(job);
-            const newSlots = findAvailableSlots(0, 0, 0, needed, nextSlots);
+            const newSlots = findAvailableSlots(0, 0, 0, needed, nextSlots, weekDays, appointmentBlocked);
             if (newSlots.length >= needed) {
               newSlots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
                 nextSlots[slotKey(weekDays[d], h, m)] = jobId;
@@ -356,33 +345,6 @@ export default function App() {
     return blocked;
   }
 
-  // Find N available 30-min slots from startDay/startHour/startMinute onwards
-  function findAvailableSlots(startDayIdx, startHour, startMinute, needed, tempSlots) {
-    const externalBlocked = buildExternalBlockedSlots();
-    const found = [];
-    for (let d = startDayIdx; d < weekDays.length && found.length < needed; d++) {
-      const date = weekDays[d];
-      const { start, end } = getWorkHours(date);
-      const sat = isSaturday(date);
-      const sun = isSunday(date);
-      const isWeekday = !sat && !sun;
-      for (let h = start; h < end && found.length < needed; h++) {
-        if (isWeekday && isLunchSlot(h)) continue;
-        if (isGapHour(h)) continue;
-        for (const m of [0, 30]) {
-          // Skip slots before the drop point on the first day
-          if (d === startDayIdx && (h < startHour || (h === startHour && m < startMinute))) continue;
-          const key = slotKey(weekDays[d], h, m);
-          if (tempSlots[key]) continue;
-          if (externalBlocked.has(key)) continue;
-          found.push({ dayIdx: d, hour: h, minute: m });
-          if (found.length >= needed) break;
-        }
-      }
-    }
-    return found;
-  }
-
   function handleRegularDrop(job, dayIdx, hour, minute, source) {
     justSavedAt.current = Date.now(); // suppress Firebase echo while we place this job
     const needed = slotsNeeded(job); // number of 30-min slots
@@ -404,7 +366,7 @@ export default function App() {
       return;
     }
 
-    const slots = findAvailableSlots(dayIdx, hour, minute, needed, tempSlots);
+    const slots = findAvailableSlots(dayIdx, hour, minute, needed, tempSlots, weekDays, buildExternalBlockedSlots());
     if (slots.length < needed) {
       showToast(`⚠ Not enough space — only ${slots.length} of ${needed} half-slots free from here`);
       return;
