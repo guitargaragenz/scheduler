@@ -13,14 +13,21 @@ log "═════════════════════════
 exec > >(tee -a "$LOG") 2>&1
 
 python3 << 'EOF'
-import json, csv, pathlib, os, warnings
+import json, csv, pathlib, os, sys, warnings
 warnings.filterwarnings('ignore')
 import gspread
 from google.oauth2.credentials import Credentials
+import google.auth.exceptions
 
 TOKEN_FILE  = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Guitar Garage NZ/Admin/CRM/token.json'))
+CREDS_FILE  = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Guitar Garage NZ/Admin/CRM/credentials.json'))
 CONFIG_FILE = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/sheets_config.json'))
 CSV_FILE    = pathlib.Path(os.path.expanduser('~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/jobs.csv'))
+
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive',
+]
 
 MANUAL_FIELDS = ['FirstSeen', 'Days', 'Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']
 
@@ -29,12 +36,33 @@ print("  Google Sheet → jobs.csv sync")
 print("  Updates: FirstSeen, Days, Tag, Hours, Action, VB, BL, PJ")
 print("─────────────────────────────────────────────")
 
+def do_reauth():
+    """Run the OAuth browser flow, save new token, return fresh Credentials."""
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    print("⚠️  Google OAuth token expired — opening browser for re-authentication...")
+    flow = InstalledAppFlow.from_client_secrets_file(str(CREDS_FILE), SCOPES)
+    new_creds = flow.run_local_server(port=0)
+    TOKEN_FILE.write_text(new_creds.to_json())
+    print("✓ New token saved. Retrying Sheet sync...")
+    return new_creds
+
+def open_sheet(creds):
+    gc = gspread.authorize(creds)
+    config = json.load(open(CONFIG_FILE))
+    sh = gc.open_by_key(config['sheet_id'])
+    return sh.get_worksheet(0)
+
 # ── Load Google Sheet ─────────────────────────────────────────────────────────
-config = json.load(open(CONFIG_FILE))
-creds  = Credentials.from_authorized_user_file(str(TOKEN_FILE))
-gc     = gspread.authorize(creds)
-sh     = gc.open_by_key(config['sheet_id'])
-ws     = sh.get_worksheet(0)
+try:
+    creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))
+    ws = open_sheet(creds)
+except (google.auth.exceptions.RefreshError, google.auth.exceptions.TransportError):
+    try:
+        creds = do_reauth()
+        ws = open_sheet(creds)
+    except Exception as e:
+        print(f"ERROR: Re-authentication failed: {e}")
+        sys.exit(1)
 
 all_rows = ws.get_all_values()
 if not all_rows:
