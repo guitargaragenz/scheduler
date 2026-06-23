@@ -79,7 +79,7 @@ export default function App() {
   const [dragMode, setDragMode] = useState('regular');
   const [activeJob, setActiveJob] = useState(null);
   const [toast, setToast] = useState('');
-  const [changelog] = useState([
+  const [changelog, setChangelog] = useState([
     { date: '2026-06-23', note: 'Fix: calendar bookings wiped by watcher on network error — script now aborts instead of overwriting with empty slots' },
     { date: '2026-06-21', note: 'Add Wiring bench (teal) — Setup jobs with pickup/wiring work split into Setup + Wiring cards' },
     { date: '2026-06-21', note: 'Fix Luthier hierarchy — Luthier now always beats Setup/Electronics keywords' },
