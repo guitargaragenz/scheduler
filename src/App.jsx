@@ -6,7 +6,7 @@ import {
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
 import { getWeekDays, formatDateRange } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
-import { isFirebaseConfigured } from './utils/firebase.js';
+import { isFirebaseConfigured, loadConflictLog, clearConflictLog } from './utils/firebase.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -20,6 +20,7 @@ import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
+import ConflictBanner from './components/ConflictBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
@@ -68,6 +69,7 @@ export default function App() {
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
   const [hourlyRate, setHourlyRate] = useState(() => Number(localStorage.getItem('hourlyRate') || 85));
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
+  const [conflictEvents, setConflictEvents] = useState([]);
 
   // Shared refs — written by multiple hooks; must live here to avoid split ownership
   const justSavedAt = useRef(0);
@@ -77,6 +79,14 @@ export default function App() {
 
   useEffect(() => { scheduledSlotsRef.current = scheduledSlots; }, [scheduledSlots]);
   useEffect(() => { jobsRef.current = jobs; }, [jobs]);
+
+  // Load unread conflict bump events on startup
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+    loadConflictLog().then(events => {
+      if (events.length > 0) setConflictEvents(events);
+    });
+  }, []);
 
   const showToast = useCallback((msg) => setToast(msg), []);
   const addChangelog = useCallback((msg) => {
@@ -378,6 +388,14 @@ export default function App() {
           </div>
         ) : null}
       </DragOverlay>
+
+      <ConflictBanner
+        events={conflictEvents}
+        onDismiss={() => {
+          setConflictEvents([]);
+          if (isFirebaseConfigured()) clearConflictLog();
+        }}
+      />
 
       <Toast message={toast} onDismiss={() => setToast('')} />
 

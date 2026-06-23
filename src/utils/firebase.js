@@ -101,6 +101,41 @@ export function subscribeToCompletedJobs(callback) {
   }
 }
 
+const CONFLICT_LOG_DOC = () => doc(getDb(), 'ggnz', 'conflictLog');
+
+// Append bump events to the durable conflict log.
+// events: array of { ts, jobNum, mfr, model, oldSlot, newSlot|null }
+export async function appendConflictLog(events) {
+  try {
+    const snap = await getDoc(CONFLICT_LOG_DOC());
+    const existing = snap.exists() ? (snap.data().events || []) : [];
+    await setDoc(CONFLICT_LOG_DOC(), {
+      events: [...existing, ...events],
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Firestore conflict log save error:', e);
+  }
+}
+
+export async function loadConflictLog() {
+  try {
+    const snap = await getDoc(CONFLICT_LOG_DOC());
+    return snap.exists() ? (snap.data().events || []) : [];
+  } catch (e) {
+    console.error('Firestore conflict log load error:', e);
+    return [];
+  }
+}
+
+export async function clearConflictLog() {
+  try {
+    await setDoc(CONFLICT_LOG_DOC(), { events: [], updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore conflict log clear error:', e);
+  }
+}
+
 // Subscribe to real-time updates from other devices
 // Returns an unsubscribe function
 export function subscribeToSchedule(callback) {

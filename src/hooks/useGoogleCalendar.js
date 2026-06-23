@@ -5,6 +5,7 @@ import {
 } from '../utils/googleCalendar.js';
 import { slotKey } from '../utils/calendar.js';
 import { findAvailableSlots, slotsNeeded } from '../utils/scheduler.js';
+import { isFirebaseConfigured, appendConflictLog } from '../utils/firebase.js';
 
 export function useGoogleCalendar({
   weekDays,
@@ -102,6 +103,7 @@ export function useGoogleCalendar({
             bumped.add(jobId);
           });
 
+          const bumpLogEntries = [];
           bumped.forEach(jobId => {
             const job = jobMap[jobId];
             if (!job) return;
@@ -113,14 +115,21 @@ export function useGoogleCalendar({
               });
               const { hour: fh, minute: fm, dayIdx: fd } = newSlots[0];
               const newDay = weekDays[fd].toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric' });
-              addChangelog(`Job #${job.job} bumped by appointment → moved to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`);
+              const msg = `#${job.job} ${job.mfr} ${job.model} bumped by GCal appointment → moved to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`;
+              addChangelog(msg);
               showToast(`Job #${job.job} bumped → rescheduled to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`);
+              bumpLogEntries.push({ ts: new Date().toISOString(), jobNum: job.job, mfr: job.mfr, model: job.model, newSlot: `${newDay} ${fh}:${String(fm).padStart(2,'0')}`, unscheduled: false });
             } else {
               updatedJobs[jobId] = { ...job, scheduled: false, calendarSlot: null };
-              addChangelog(`Job #${job.job} bumped by appointment — no room this week, reschedule manually`);
+              const msg = `#${job.job} ${job.mfr} ${job.model} bumped by GCal appointment — no room this week, reschedule manually`;
+              addChangelog(msg);
               showToast(`Job #${job.job} bumped by appointment — no room left this week`);
+              bumpLogEntries.push({ ts: new Date().toISOString(), jobNum: job.job, mfr: job.mfr, model: job.model, newSlot: null, unscheduled: true });
             }
           });
+          if (bumpLogEntries.length > 0 && isFirebaseConfigured()) {
+            appendConflictLog(bumpLogEntries);
+          }
 
           setScheduledSlots(nextSlots);
           setJobs(currentJobs.map(j => updatedJobs[j.id] || j));
