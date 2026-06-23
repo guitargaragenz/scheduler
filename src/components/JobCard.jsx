@@ -48,11 +48,21 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
                 </span>
               )}
             </div>
-            {(job.label || job.splitDesc || job.desc) && (
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: job.label ? 'italic' : 'normal' }}>
-                {job.label
-                  ? job.label
-                  : (() => { const t = job.splitDesc ?? job.desc; return t?.slice(0, 40) + (t?.length > 40 ? '…' : ''); })()
+            {(job.note || job.label || job.splitDesc || job.desc) && (
+              <div style={{
+                fontSize: 9,
+                color: job.note ? '#fbbf24' : 'rgba(255,255,255,0.5)',
+                marginTop: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontStyle: job.note ? 'italic' : 'normal',
+              }}>
+                {job.note
+                  ? job.note
+                  : job.label
+                    ? job.label
+                    : (() => { const t = job.splitDesc ?? job.desc; return t?.slice(0, 40) + (t?.length > 40 ? '…' : ''); })()
                 }
               </div>
             )}
