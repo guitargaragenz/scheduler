@@ -247,9 +247,9 @@ export default function SettingsModal({
                       borderLeft: '3px solid #334155', fontSize: 12, color: '#94a3b8',
                     }}>
                       <span style={{ color: '#64748b', marginRight: 8 }}>
-                        {new Date(entry.ts).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' })}
+                        {entry.date || new Date(entry.ts).toLocaleDateString('en-NZ')}
                       </span>
-                      {entry.msg}
+                      {entry.note || entry.msg}
                     </div>
                   ))}
                 </div>
