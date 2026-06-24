@@ -92,10 +92,12 @@ export function createSubtasks(job, benchHours = {}) {
     // Tightened: use specific phrases instead of bare 'broken', 'finish', 'top', 'split'
     const hasLuthier = /restoration|neck pocket|\bcrack\b|brace|\breset\b|binding|refinish|headstock|inlay|lower bout|\btop\b|bridge(?!\s*pup|\s*pickup)|lifting|lifted|broken neck|broken headstock|broken brace/.test(d);
     const hasSetup   = /\bsetup\b|\bstp\b|\brestring\b|\bstrings\b/.test(d);
+    const hasWiring  = /\brewire\b|\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
 
     if (!hasRefret && !hasLevel) return null;
 
-    const deduct = (hasLuthier ? fixedLuthier : 0) + (hasSetup ? fixedSetup : 0);
+    const fixedWiring = benchHours.Wiring || 1.5;
+    const deduct = (hasLuthier ? fixedLuthier : 0) + (hasSetup ? fixedSetup : 0) + (hasWiring ? fixedWiring : 0);
     const fretworkHours = Math.max(job.hours - deduct, 1);
 
     const cards = [];
@@ -110,6 +112,7 @@ export function createSubtasks(job, benchHours = {}) {
     }
 
     if (hasLuthier) cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: fixedLuthier, hoursRange: hoursRange(fixedLuthier), label: 'Luthier work',     parentId: job.id });
+    if (hasWiring)  cards.push({ ...job, id: `${job.id}-WR`, bench: 'Wiring',    hours: fixedWiring,  hoursRange: hoursRange(fixedWiring),  label: 'Wiring',           parentId: job.id });
     if (hasSetup)   cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup',     hours: fixedSetup,   hoursRange: hoursRange(fixedSetup),   label: 'Setup / Restring', parentId: job.id });
 
     return cards.length >= 2 ? cards : null;
