@@ -203,6 +203,10 @@ export default function App() {
               onClick={() => setWeekDays(getWeekDays(new Date(weekDays[0].getTime() + 7 * 86400000)))}
               style={{ background: 'none', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', fontSize: 16, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >›</button>
+            <button
+              onClick={() => setWeekDays(getWeekDays())}
+              style={{ background: 'none', border: '1px solid #2563eb', borderRadius: 6, color: '#60a5fa', fontSize: 11, fontWeight: 600, padding: '0 8px', height: 28, cursor: 'pointer' }}
+            >Today</button>
           </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

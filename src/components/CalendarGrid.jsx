@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { formatHour, isLunchSlot, isSaturday, isSunday, isGapHour, getWorkHours, slotKey } from '../utils/calendar.js';
 import { BENCH_COLORS } from '../data/jobs.js';
@@ -139,6 +140,21 @@ function LunchSlot({ dayIdx, minute }) {
 
 export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick }) {
 
+  const scrollRef = useRef(null);
+  const todayStr = new Date().toDateString();
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const now = new Date();
+    const currentHour = now.getHours();
+    // Scroll to 1 hour before current time so current slot is visible with context
+    const targetHour = Math.max(currentHour - 1, 10);
+    const slotIndex = DAY_HOURS.indexOf(targetHour);
+    if (slotIndex >= 0) {
+      scrollRef.current.scrollTop = slotIndex * SLOT_HEIGHT * 2;
+    }
+  }, []);
+
   // slotKey -> job object
   const slotJobMap = scheduledJobs;
 
@@ -168,7 +184,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
   }
 
   return (
-    <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative', background: '#3d5470' }}>
+    <div ref={scrollRef} style={{ flex: 1, overflowX: 'auto', overflowY: 'auto', WebkitOverflowScrolling: 'touch', position: 'relative', background: '#3d5470' }}>
       <div style={{ minWidth: 700, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
         {/* Header row */}
@@ -176,16 +192,17 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
           <div style={{ width: TIME_COL_WIDTH, flexShrink: 0, position: 'sticky', left: 0, zIndex: 11, background: '#2c4460' }} />
           {weekDays.map((d, i) => {
             const isWeekend = isSaturday(d) || isSunday(d);
+            const isToday = d.toDateString() === todayStr;
             return (
               <div key={i} style={{
                 flex: 1, padding: '10px 6px', textAlign: 'center',
-                borderLeft: '1px solid #4e6e8a', borderBottom: '2px solid #4e6e8a',
-                background: isWeekend ? '#334e68' : '#2c4460',
+                borderLeft: '1px solid #4e6e8a', borderBottom: `2px solid ${isToday ? '#3b82f6' : '#4e6e8a'}`,
+                background: isToday ? '#1e3a5f' : isWeekend ? '#334e68' : '#2c4460',
               }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? '#94a3b8' : '#e2e8f0', letterSpacing: 0.5 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: isToday ? '#60a5fa' : isWeekend ? '#94a3b8' : '#e2e8f0', letterSpacing: 0.5 }}>
                   {d.toLocaleDateString('en-NZ', { weekday: 'short' }).toUpperCase()}
                 </div>
-                <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: isToday ? '#93c5fd' : '#94a3b8', marginTop: 2 }}>
                   {d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
                 </div>
               </div>
