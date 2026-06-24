@@ -12,6 +12,7 @@ export function useJobs({
   setCompletedJobs,
   setDoneJobIds,
   benchKeywords,
+  benchHours,
   justSavedAt,
   setPomoJob,
   setHighlightedJobId,
@@ -90,7 +91,7 @@ export function useJobs({
 
   function handleCsvUpload(csvText) {
     try {
-      const newJobs = parseCSV(csvText, benchKeywords).filter(j => !doneJobIds.includes(String(j.id)));
+      const newJobs = parseCSV(csvText, benchKeywords, benchHours).filter(j => !doneJobIds.includes(String(j.id)));
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
       const merged = newJobs.map(j => ({
         ...j,

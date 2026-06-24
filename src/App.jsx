@@ -33,7 +33,8 @@ export default function App() {
   });
   const [jobs, setJobs] = useState(() => {
     const stored = (() => { try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; } })();
-    return parseCSV(RAW_CSV, stored);
+    const storedBH = (() => { try { return JSON.parse(localStorage.getItem('benchHours') || 'null') || {}; } catch { return {}; } })();
+    return parseCSV(RAW_CSV, stored, storedBH);
   });
   const [scheduledSlots, setScheduledSlots] = useState({});
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
@@ -68,6 +69,9 @@ export default function App() {
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
   const [hourlyRate, setHourlyRate] = useState(() => Number(localStorage.getItem('hourlyRate') || 85));
+  const [benchHours, setBenchHours] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('benchHours') || 'null') || {}; } catch { return {}; }
+  });
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const [conflictEvents, setConflictEvents] = useState([]);
 
@@ -118,7 +122,7 @@ export default function App() {
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
     doneJobIds, completedJobs, setCompletedJobs, setDoneJobIds,
-    benchKeywords, justSavedAt,
+    benchKeywords, benchHours, justSavedAt,
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
   });
@@ -451,12 +455,14 @@ export default function App() {
           onBenchKeywordsChange={kw => {
             setBenchKeywords(kw);
             localStorage.setItem('benchKeywords', JSON.stringify(kw));
-            setJobs(parseCSV(RAW_CSV, kw));
+            setJobs(parseCSV(RAW_CSV, kw, benchHours));
           }}
           hourlyRate={hourlyRate}
           onHourlyRateChange={n => { setHourlyRate(n); localStorage.setItem('hourlyRate', String(n)); }}
           weeklyRevenueTarget={weeklyTarget}
           onWeeklyTargetChange={n => { setWeeklyTarget(n); localStorage.setItem('weeklyTarget', String(n)); }}
+          benchHours={benchHours}
+          onBenchHoursChange={bh => { setBenchHours(bh); localStorage.setItem('benchHours', JSON.stringify(bh)); }}
         />
       )}
 

@@ -2,9 +2,9 @@ export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Cu
 
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
-  Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'finish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken'],
-  Electronics: ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
-  Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
+  Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
+  Electronics: ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
+  Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
 
 export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS) {
@@ -45,25 +45,38 @@ export function hoursRange(h) {
   return lo === hi ? String(h) : `${lo}-${hi}`;
 }
 
-export function createSubtasks(job) {
+export function createSubtasks(job, benchHours = {}) {
   const d = (job.desc || '').toLowerCase();
+
+  // Default fixed hours — overridden by Settings benchHours
+  const fixedLuthier  = benchHours.Luthier   || 1.5;
+  const fixedSetup    = benchHours.Setup      || 1.5;
+  const fixedFinish   = benchHours.Finishing  || 1.5;
 
   // ── Luthier bench ──────────────────────────────────────────────────────────
   if (job.bench === 'Luthier') {
-    const hasSetup = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
-    if (!hasSetup) return null;
-    const setupHours = 1.5;
-    const luthierHours = Math.max(Math.round((job.hours - setupHours) * 2) / 2, 0.5);
-    return [
-      { ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id },
-      { ...job, id: `${job.id}-S`,  bench: 'Setup',   hours: setupHours,   hoursRange: hoursRange(setupHours),   label: 'Setup',        parentId: job.id },
-    ];
+    const hasSetup    = /\bsetup\b|\bstp\b|\brestring\b/.test(d);
+    const hasFinish   = /refinish|\bfinish\b/.test(d);
+
+    if (!hasSetup && !hasFinish) return null;
+
+    const cards = [];
+    let deduct = 0;
+    if (hasSetup)  deduct += fixedSetup;
+    if (hasFinish) deduct += fixedFinish;
+    const luthierHours = Math.max(Math.round((job.hours - deduct) * 2) / 2, 0.5);
+
+    cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id });
+    if (hasFinish) cards.push({ ...job, id: `${job.id}-FN`, bench: 'Finishing', hours: fixedFinish, hoursRange: hoursRange(fixedFinish), label: 'Finishing',    parentId: job.id });
+    if (hasSetup)  cards.push({ ...job, id: `${job.id}-S`,  bench: 'Setup',     hours: fixedSetup,  hoursRange: hoursRange(fixedSetup),  label: 'Setup',        parentId: job.id });
+
+    return cards.length >= 2 ? cards : null;
   }
 
   // ── Setup bench ────────────────────────────────────────────────────────────
   if (job.bench === 'Setup') {
-    const hasWiring  = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
-    const hasSetup   = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
+    const hasWiring = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
+    const hasSetup  = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
     if (!hasWiring || !hasSetup) return null;
     const half = Math.max(Math.round(job.hours / 2 * 2) / 2, 0.5);
     return [
@@ -76,48 +89,36 @@ export function createSubtasks(job) {
   if (job.bench === 'Fretwork') {
     const hasRefret  = /refret/.test(d);
     const hasLevel   = !hasRefret && /fret level|fret dress|fret polish/.test(d);
-    const hasLuthier = /restoration|neck pocket|crack|brace|reset|binding|finish|headstock|inlay|lower bout|top|bridge|lifting|lifted|broken|split/.test(d);
+    // Tightened: use specific phrases instead of bare 'broken', 'finish', 'top', 'split'
+    const hasLuthier = /restoration|neck pocket|\bcrack\b|brace|\breset\b|binding|refinish|headstock|inlay|lower bout|\btop\b|bridge(?!\s*pup|\s*pickup)|lifting|lifted|broken neck|broken headstock|broken brace/.test(d);
     const hasSetup   = /\bsetup\b|\bstp\b|\brestring\b|\bstrings\b/.test(d);
 
-    // Must have at least one fretwork keyword to build any cards
     if (!hasRefret && !hasLevel) return null;
 
-    // Fixed-hour cards
-    const luthierHours = 1.5;
-    const setupHours   = 1.5;
-
-    // Fretwork hours = total minus any fixed cards
-    const deduct = (hasLuthier ? luthierHours : 0) + (hasSetup ? setupHours : 0);
+    const deduct = (hasLuthier ? fixedLuthier : 0) + (hasSetup ? fixedSetup : 0);
     const fretworkHours = Math.max(job.hours - deduct, 1);
 
     const cards = [];
 
     if (hasRefret) {
-      const refretHours = Math.max(Math.round(fretworkHours * 0.8 * 2) / 2, 0.5);
-      const lcpHours    = Math.max(Math.round(fretworkHours * 0.2 * 2) / 2, 0.5);
-      cards.push({ ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: refretHours, hoursRange: hoursRange(refretHours), label: 'Refret',                parentId: job.id });
-      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: lcpHours,    hoursRange: hoursRange(lcpHours),    label: 'Level, Crown & Polish', parentId: job.id });
+      // 50/50 split between Refret and Level/Crown/Polish
+      const half = Math.max(Math.round(fretworkHours / 2 * 2) / 2, 0.5);
+      cards.push({ ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Refret',                parentId: job.id });
+      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Level, Crown & Polish', parentId: job.id });
     } else {
-      // Level / dress / polish only — single fretwork card
       cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: fretworkHours, hoursRange: hoursRange(fretworkHours), label: 'Level, Crown & Polish', parentId: job.id });
     }
 
-    if (hasLuthier) {
-      cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier', hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work',     parentId: job.id });
-    }
+    if (hasLuthier) cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: fixedLuthier, hoursRange: hoursRange(fixedLuthier), label: 'Luthier work',     parentId: job.id });
+    if (hasSetup)   cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup',     hours: fixedSetup,   hoursRange: hoursRange(fixedSetup),   label: 'Setup / Restring', parentId: job.id });
 
-    if (hasSetup) {
-      cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup', hours: setupHours, hoursRange: hoursRange(setupHours), label: 'Setup / Restring', parentId: job.id });
-    }
-
-    // Only split if 2+ cards
     return cards.length >= 2 ? cards : null;
   }
 
   return null;
 }
 
-export function parseCSV(csvText, keywords = {}) {
+export function parseCSV(csvText, keywords = {}, benchHours = {}) {
   // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
   // Lines starting with # are treated as comments (e.g. action key) and skipped
   const rows = [];
@@ -198,7 +199,7 @@ export function parseCSV(csvText, keywords = {}) {
       hasSubtasks: false,
     };
 
-    const subtasks = createSubtasks(baseJob);
+    const subtasks = createSubtasks(baseJob, benchHours);
     if (subtasks && subtasks.length > 0) {
       jobs.push({ ...baseJob, subtasks: subtasks.map(st => st.id), hasSubtasks: true });
       subtasks.forEach(st => jobs.push({ ...st, scheduled: false, calendarSlot: null }));
@@ -216,5 +217,6 @@ export const BENCH_COLORS = {
   Setup:       { bg: '#7c2d12', border: '#ea580c', text: '#fed7aa' },
   Fretwork:    { bg: '#4c1d95', border: '#7c3aed', text: '#ddd6fe' },
   Wiring:      { bg: '#134e4a', border: '#0d9488', text: '#99f6e4' },
+  Finishing:   { bg: '#92400e', border: '#d97706', text: '#fef3c7' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
 };

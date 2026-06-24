@@ -100,15 +100,21 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
   );
 }
 
+const BENCH_HOUR_DEFAULTS = { Luthier: 1.5, Setup: 1.5, Finishing: 1.5 };
+
 export default function SettingsModal({
   changelog, onClose, isSignedIn, onSignIn, onSignOut, isConfigured,
   benchKeywords = {}, defaultBenchKeywords = {}, onBenchKeywordsChange,
   hourlyRate = 85, onHourlyRateChange,
   weeklyRevenueTarget = 1500, onWeeklyTargetChange,
+  benchHours = {}, onBenchHoursChange,
 }) {
   const [activeTab, setActiveTab] = useState('keywords');
   const [rateInput, setRateInput] = useState(String(hourlyRate));
   const [targetInput, setTargetInput] = useState(String(weeklyRevenueTarget));
+  const [benchHourInputs, setBenchHourInputs] = useState(
+    Object.fromEntries(Object.entries(BENCH_HOUR_DEFAULTS).map(([b, def]) => [b, String(benchHours[b] ?? def)]))
+  );
 
   function handleKeywordChange(bench, keywords) {
     if (keywords === null) {
@@ -196,6 +202,36 @@ export default function SettingsModal({
                   </div>
                 </div>
               ))}
+
+              <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #334155' }}>
+                <p style={{ fontSize: 12, color: '#64748b', marginBottom: 14, lineHeight: 1.5 }}>
+                  Default hours for split sub-cards. Used as the fixed allocation when a job auto-splits.
+                </p>
+                {Object.entries(BENCH_HOUR_DEFAULTS).map(([bench, def]) => (
+                  <div key={bench} style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>{bench} sub-card hours</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="number"
+                        min="0.5"
+                        step="0.5"
+                        value={benchHourInputs[bench]}
+                        onChange={e => setBenchHourInputs(prev => ({ ...prev, [bench]: e.target.value }))}
+                        onBlur={() => {
+                          const n = parseFloat(benchHourInputs[bench]);
+                          if (!isNaN(n) && n >= 0.5) onBenchHoursChange({ ...benchHours, [bench]: n });
+                        }}
+                        style={{
+                          width: 80, fontSize: 13, padding: '6px 10px',
+                          background: '#0f172a', border: '1px solid #334155',
+                          borderRadius: 6, color: '#e2e8f0', outline: 'none',
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: '#475569' }}>default {def}h</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
