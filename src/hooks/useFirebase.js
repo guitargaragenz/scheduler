@@ -3,13 +3,39 @@ import { isFirebaseConfigured, loadSchedule, saveSchedule, subscribeToSchedule, 
 import { createSubtasks } from '../data/jobs.js';
 
 // Re-expand split subtasks after Firebase load so hard refresh doesn't wipe them.
-// Splits are derived from createSubtasks() on each job — not stored as raw Firebase entries.
+// Manual splits (isSplit: true, drawer-created) are stored in Firebase and restored directly.
+// Auto-splits are re-derived from createSubtasks() since they're not stored as separate entries.
 function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
   const existingById = Object.fromEntries(existingJobs.map(j => [j.id, j]));
   const scheduledIds = new Set(Object.values(knownSlots));
+
+  // Collect stored sub-tasks (parentId set) keyed by parentId
+  const storedSubtasksByParent = {};
+  for (const job of rawJobs) {
+    if (!job.parentId) continue;
+    if (!storedSubtasksByParent[job.parentId]) storedSubtasksByParent[job.parentId] = [];
+    storedSubtasksByParent[job.parentId].push(job);
+  }
+
   const result = [];
   for (const job of rawJobs) {
     if (job.parentId) continue;
+
+    // Manual splits — restore stored sub-tasks from Firebase directly
+    if (job.isSplit && storedSubtasksByParent[job.id]?.length > 0) {
+      result.push(job);
+      for (const st of storedSubtasksByParent[job.id]) {
+        result.push({
+          ...st,
+          scheduled:    scheduledIds.has(st.id),
+          calendarSlot: st.calendarSlot ?? null,
+          gcalEventId:  st.gcalEventId  ?? null,
+        });
+      }
+      continue;
+    }
+
+    // Auto-splits — regenerate from createSubtasks()
     const subtasks = createSubtasks(job);
     if (subtasks && subtasks.length > 0) {
       result.push({ ...job, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
