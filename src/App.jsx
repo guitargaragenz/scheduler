@@ -20,11 +20,14 @@ import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
+import DailyLogPage from './components/DailyLogPage.jsx';
+import CloseDayModal from './components/CloseDayModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
 import { useJobs } from './hooks/useJobs.js';
+import { useDailyLog } from './hooks/useDailyLog.js';
 
 export default function App() {
   // --- Core state ---
@@ -65,6 +68,8 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
+  const [showDailyLog, setShowDailyLog] = useState(false);
+  const [showCloseDay, setShowCloseDay] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
@@ -118,6 +123,8 @@ export default function App() {
     weekDays, externalEventsRef, justSavedAt,
     signedIn: gcal.signedIn, showToast, addChangelog,
   });
+
+  const { todayLog, addBullet, toggleDone, closeDay } = useDailyLog();
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
@@ -279,6 +286,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowDailyLog(d => !d)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showDailyLog ? '#065f46' : '#334155'}`,
+                background: showDailyLog ? '#022c22' : '#1e293b',
+                color: showDailyLog ? '#6ee7b7' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showDailyLog ? 700 : 400,
+              }}
+            >
+              Daily Log
+            </button>
+
+            <button
               onClick={() => {
                 const next = !showParkingLot;
                 setShowParkingLot(next);
@@ -349,6 +368,14 @@ export default function App() {
             }} />
           ) : showRunway ? (
             <RunwayPage jobs={jobs} />
+          ) : showDailyLog ? (
+            <DailyLogPage
+              jobs={jobs}
+              todayLog={todayLog}
+              onAddBullet={addBullet}
+              onToggleDone={toggleDone}
+              onRequestCloseDay={() => setShowCloseDay(true)}
+            />
           ) : (
             <>
               <CalendarGrid
@@ -476,6 +503,16 @@ export default function App() {
 
       {showHelp && (
         <HelpDrawer onClose={() => setShowHelp(false)} />
+      )}
+
+      {showCloseDay && (
+        <CloseDayModal
+          bullets={(todayLog?.bullets || []).filter(b => !b.done)}
+          onClose={migrations => {
+            closeDay(migrations);
+            setShowCloseDay(false);
+          }}
+        />
       )}
     </DndContext>
   );
