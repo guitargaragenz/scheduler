@@ -186,6 +186,7 @@ export default function App() {
         <header style={{
           padding: '10px 20px', background: '#1e293b', borderBottom: '1px solid #334155',
           display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+          overflowX: 'auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
