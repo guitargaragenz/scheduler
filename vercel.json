@@ -1,5 +1,4 @@
 {
-  "toolbar": { "dashboard": { "enabled": false } },
   "rewrites": [
     { "source": "/job-tracker", "destination": "/job-tracker.html" }
   ]
