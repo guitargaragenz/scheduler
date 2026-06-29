@@ -47,7 +47,35 @@ Bottom sheet for iPhone (any touch/narrow device), merged to main 2026-06-14.
 - Schedule tab: pick day + time → Place on Calendar
 - Bench & Split tab: change bench, adjust hours, add splits
 - Desktop users still get the existing JobDrawer
-- **TODO:** UI polish pass (pending user feedback)
+
+### Shipped — Daily Log (bullet journal tracker)
+Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2 open, not yet merged to main.
+- Daily Log button in header → full-page bullet journal for today
+- Add job bullets (tap job in Today section → opens MobileJobSheet/JobDrawer)
+- Add free-text notes
+- Swipe left on a bullet → remove (send back to bench); swipe right → mark done
+- Scheduled time badge shown in job sheet header (📅 Mon 30 Jun · 9 AM)
+- `formatSlotDisplay` has type guard for non-string calendarSlot values (Firebase safety)
+
+### Shipped — Mobile Jobs page
+Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2.
+- Jobs button in header (mobile only) → full-screen job list
+- Bench filter chips: Fretwork → Luthier → Setup → Wiring → Electronics → Admin
+- Shows top-level jobs only (same as sidebar — split jobs show "N splits" badge)
+- Tap any schedulable job → opens MobileJobSheet
+- Schedulable jobs on top; Waiting/On Hold section below (dimmed)
+
+### Bench classification fixes (in PR #2)
+- `setup + pot` → Setup bench (then auto-splits into Setup + Wiring), not Electronics
+- `scratchy` added to Electronics keywords
+- Priority rule in `inferBench`: setup/stp/restring keywords short-circuit before Electronics check
+
+### Key data structure notes
+- `job.hasSubtasks` — auto-split parent (Fretwork refret, Luthier+setup, etc.)
+- `job.isSplit` — manually-split parent (user edited via drawer)
+- `job.parentId` — subtask child (both auto and manual); children inherit `hasSubtasks: true` via spread in `withSplitsExpanded` — don't filter on `!hasSubtasks` to find children, use `!parentId` for parents
+- `job.calendarSlot` — string `"YYYY-MM-DD-H-M"` or null; guard with `typeof slot === 'string'`
+
 ### Claude Code session note
 Sessions don't sync across devices — context lives here in CLAUDE.md, not in session history.
 
