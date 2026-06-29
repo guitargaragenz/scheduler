@@ -70,3 +70,76 @@ Before performing any action that affects multiple items at once (archiving sess
 Example: if asked to "clean up duplicates", list what counts as a duplicate and confirm before touching anything.
 
 This rule exists because bulk session archiving was done when only duplicate removal was requested (2026-05-23).
+
+---
+
+## Architecture — File Boundaries and Ownership
+
+This section exists so Claude can orient instantly in a new session. Each file has a single clear owner. Do not blur these lines.
+
+### `src/data/jobs.js` — Job data layer (pure, no React)
+- **`parseCSV()`** — RFC-4180 parser → produces the canonical job array
+- **`inferBench()`** — regex-based bench assignment from desc/status/action/mfr
+- **`createSubtasks()`** — splits jobs into sub-cards (Luthier/Setup/Fretwork combos)
+- **`BENCH_COLORS`** — single source of truth for bench hex colours: `{ bg, border, text }`
+- **`slotsNeeded()` does NOT live here** — it lives in `scheduler.js`
+- Job shape: `{ id, job, mfr, model, status, bench, hours, scheduled, calendarSlot, gcalEventId, parentId, subtasks, hasSubtasks, ... }`
+- Subtask IDs follow the pattern: `${parentId}-LU`, `-ST`, `-WR`, `-FN`, `-R`, `-LC`
+
+### `src/utils/scheduler.js` — Slot math (pure, no React)
+- **`slotsNeeded(job)`** — returns **slot count** (not hours). 1 hr = 2 slots. Hard cap: `MAX_CONTINUOUS_SLOTS = 6` (3 hrs).
+- **Critical invariant:** `durationHours = slotsNeeded(job) / 2` — always divide by 2 when converting slots → hours for GCal or display.
+- **`findAvailableSlots()`** — finds N free 30-min slots from a given start, respecting lunch, gap hours, weekends, external blocks.
+- **`scheduleUrgent()`** — places a job at a specific slot, returns displaced job IDs.
+
+### `src/utils/calendar.js` — Calendar helpers (pure, no React)
+- `slotKey(date, hour, minute)` — canonical string key for a 30-min slot. Used everywhere as the scheduledSlots map key.
+- `getWorkHours(date)`, `isLunchSlot()`, `isSaturday()`, `isSunday()`, `isGapHour()` — time boundary rules.
+
+### `src/utils/googleCalendar.js` — Google Calendar API wrapper
+- **Auth:** `initGoogleApi()`, `requestAuth()`, `isSignedIn()`, `signOut()`
+- **Events:** `createEvent()` (insert), `updateEvent()` (PUT), `deleteEvent()`, `listEvents()`
+- **Colour:** Uses `BENCH_COLORS` from `jobs.js`. Sends `colorRgbFormat: true` as both a query param AND inside the resource body. `color: { background: hex, foreground: hex }`.
+- **Duration:** `end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000)` — millisecond math handles decimal hours (1.5hr, 0.5hr etc). Never use `setHours()` for this.
+- **Insert vs update:** Jobs with `gcalEventId` → `events.update`; new jobs → `events.insert`. The `gcalEventId` is stored back on the job object after first sync.
+
+### `src/hooks/useGoogleCalendar.js` — GCal React hook
+- Orchestrates: auth state, 30s polling, conflict bumping, `handleSync()`
+- **`handleSync()`** iterates scheduled jobs → calls `updateEvent` or `createEvent` → stores returned `gcalEventId`
+- Duration calculation lives here: `const durationHours = slotsNeeded(job) / 2`
+- Polling detects external GCal appointments and bumps conflicting scheduled jobs automatically
+
+### `src/utils/firebase.js` — Firebase read/write
+- Syncs `scheduledSlots` and job state across devices in real time
+- `appendConflictLog()` — writes bump events to Firestore for audit trail
+
+### `src/App.jsx` — Main app shell (needs splitting — see parking-lot.md)
+- Holds top-level state: `jobs`, `scheduledSlots`, `weekDays`, settings, pomodoro
+- Passes refs (`scheduledSlotsRef`, `jobsRef`) to hooks so callbacks always see current state without stale closures
+
+---
+
+## Key Patterns Claude Uses
+
+### Reading before editing
+Always read the actual file before editing — never assume from context. File shape drifts.
+
+### Tracing the call chain
+When debugging, trace: `useGoogleCalendar.js` → `googleCalendar.js` → `gapi` → network request. Console interceptors on `gapi.client.calendar.events.update/insert` expose the exact payload sent to the API.
+
+### "My change isn't showing" checklist
+1. Hard refresh first: **Cmd + Shift + R** in Arc/Chrome (Vite content-hashes bundles; browser may serve stale).
+2. Confirm Vercel deployed (check vercel.com or wait 60s after push).
+3. Check if interceptor shows the old or new payload.
+
+### Slot ↔ hours conversion
+`slotsNeeded()` = hours × 2, capped at 6. Always divide by 2 before passing to anything that expects hours (GCal duration, display labels, etc.).
+
+### Bench colour source of truth
+`BENCH_COLORS` in `src/data/jobs.js` is the single source. GCal colours, card colours, and Runway colours all derive from here. Never define bench colours elsewhere.
+
+### Sub-task identity
+Sub-tasks carry the parent's `job` number but a suffixed `id`. They have their own `bench` value (different from parent). When syncing to GCal, sub-tasks must have their `bench` field set — check this if `colorId` falls back to the default.
+
+### Git discipline
+All commits and pushes go through Claude — never from Micky's terminal. Always `git add <specific file>`, never `git add -A`. Commit messages explain the why. Never `--no-verify` or `--amend` a pushed commit.
