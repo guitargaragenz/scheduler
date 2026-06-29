@@ -1,3 +1,5 @@
+import { BENCH_COLORS } from '../data/jobs.js';
+
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
 const CALENDAR_ID = 'guitargaragenz@gmail.com';
@@ -134,15 +136,10 @@ export async function listEvents(timeMin, timeMax) {
   }
 }
 
-const BENCH_COLOR_ID = {
-  Luthier:     '2',  // Sage
-  Electronics: '9',  // Blueberry
-  Setup:       '6',  // Tangerine
-  Fretwork:    '3',  // Grape
-  Wiring:      '7',  // Peacock
-  Finishing:   '5',  // Banana
-  Admin:       '8',  // Graphite
-};
+function benchColor(bench) {
+  const c = BENCH_COLORS[bench] || BENCH_COLORS.Admin;
+  return { background: c.bg, foreground: c.text };
+}
 
 export async function createEvent(job, date, hour, durationHours) {
   if (!isSignedIn()) return null;
@@ -154,14 +151,17 @@ export async function createEvent(job, date, hour, durationHours) {
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
     description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
-    colorId: BENCH_COLOR_ID[job.bench] || '8',
+    colorRgbFormat: true,
+    color: benchColor(job.bench),
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
   };
 
   try {
     await ensureCalendarApi();
-    const resp = await window.gapi.client.calendar.events.insert({ calendarId: CALENDAR_ID, resource: event });
+    const resp = await window.gapi.client.calendar.events.insert({
+      calendarId: CALENDAR_ID, colorRgbFormat: true, resource: event,
+    });
     return resp.result;
   } catch (e) {
     console.error('Create event error:', e);
@@ -179,7 +179,8 @@ export async function updateEvent(eventId, job, date, hour, durationHours) {
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
     description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
-    colorId: BENCH_COLOR_ID[job.bench] || '8',
+    colorRgbFormat: true,
+    color: benchColor(job.bench),
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
   };
@@ -187,7 +188,7 @@ export async function updateEvent(eventId, job, date, hour, durationHours) {
   try {
     await ensureCalendarApi();
     const resp = await window.gapi.client.calendar.events.update({
-      calendarId: CALENDAR_ID, eventId, resource: event
+      calendarId: CALENDAR_ID, eventId, colorRgbFormat: true, resource: event,
     });
     return resp.result;
   } catch (e) {
