@@ -141,6 +141,39 @@ export function useGoogleCalendar({
     return () => clearInterval(pollRef.current);
   }, [signedIn, weekDays]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Groups a job's scheduled slots into contiguous time blocks (split around lunch etc).
+  // Returns [{date, hour, minute, durationHours}] — one entry per continuous block.
+  function getJobBlocks(jobId) {
+    const slots = Object.entries(scheduledSlots)
+      .filter(([, id]) => id === jobId)
+      .map(([key]) => {
+        const parts = key.split('-');
+        const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        const h = Number(parts[3]);
+        const m = Number(parts[4]);
+        const ts = date.getTime() + h * 3600000 + m * 60000;
+        return { date, hour: h, minute: m, ts };
+      })
+      .sort((a, b) => a.ts - b.ts);
+
+    if (!slots.length) return [];
+
+    const blocks = [];
+    let start = slots[0];
+    let count = 1;
+    for (let i = 1; i < slots.length; i++) {
+      if (slots[i].ts - slots[i - 1].ts === 1800000) {
+        count++;
+      } else {
+        blocks.push({ date: start.date, hour: start.hour, minute: start.minute, durationHours: count * 0.5 });
+        start = slots[i];
+        count = 1;
+      }
+    }
+    blocks.push({ date: start.date, hour: start.hour, minute: start.minute, durationHours: count * 0.5 });
+    return blocks;
+  }
+
   async function handleSync() {
     if (!signedIn) {
       showToast('⚠ Not connected to Google Calendar. Open Settings to connect.');
@@ -151,19 +184,32 @@ export function useGoogleCalendar({
     let ok = 0;
     const updatedJobs = [...jobs];
     for (const job of scheduled) {
-      const { dayIdx, hour } = job.calendarSlot;
-      const date = weekDays[dayIdx];
       try {
-        let result;
-        const durationHours = slotsNeeded(job) / 2;
-        if (job.gcalEventId) {
-          result = await updateEvent(job.gcalEventId, job, date, hour, durationHours);
-        } else {
-          result = await createEvent(job, date, hour, durationHours);
+        const blocks = getJobBlocks(job.id);
+        if (!blocks.length) continue;
+
+        // Existing event IDs in order — support old single gcalEventId and new array
+        const existingIds = job.gcalEventIds?.length
+          ? job.gcalEventIds
+          : job.gcalEventId ? [job.gcalEventId] : [];
+
+        const newIds = [];
+        for (let i = 0; i < blocks.length; i++) {
+          const { date, hour, durationHours } = blocks[i];
+          const result = existingIds[i]
+            ? await updateEvent(existingIds[i], job, date, hour, durationHours)
+            : await createEvent(job, date, hour, durationHours);
+          if (result?.id) newIds.push(result.id);
         }
-        if (result?.id) {
-          const idx = updatedJobs.findIndex(j => j.id === job.id);
-          if (idx >= 0) updatedJobs[idx] = { ...updatedJobs[idx], gcalEventId: result.id };
+
+        // Delete any GCal events from blocks that no longer exist
+        for (let i = blocks.length; i < existingIds.length; i++) {
+          await deleteEvent(existingIds[i]).catch(() => {});
+        }
+
+        const idx = updatedJobs.findIndex(j => j.id === job.id);
+        if (idx >= 0) {
+          updatedJobs[idx] = { ...updatedJobs[idx], gcalEventIds: newIds, gcalEventId: newIds[0] || null };
         }
         ok++;
       } catch (e) {

@@ -30,6 +30,7 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
           scheduled:    scheduledIds.has(st.id),
           calendarSlot: st.calendarSlot ?? null,
           gcalEventId:  st.gcalEventId  ?? null,
+          gcalEventIds: st.gcalEventIds ?? [],
         });
       }
       continue;
@@ -46,6 +47,7 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
           scheduled:    prev?.scheduled    ?? scheduledIds.has(st.id),
           calendarSlot: prev?.calendarSlot ?? null,
           gcalEventId:  prev?.gcalEventId  ?? null,
+          gcalEventIds: prev?.gcalEventIds ?? [],
         });
       }
     } else {

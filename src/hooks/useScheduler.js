@@ -211,10 +211,11 @@ export function useScheduler({
       return next;
     });
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: false, calendarSlot: null, gcalEventId: null } : j
+      j.id === job.id ? { ...j, scheduled: false, calendarSlot: null, gcalEventId: null, gcalEventIds: [] } : j
     ));
-    if (job.gcalEventId && signedIn) {
-      deleteEvent(job.gcalEventId).catch(e => console.error('deleteEvent failed:', e));
+    const idsToDelete = job.gcalEventIds?.length ? job.gcalEventIds : job.gcalEventId ? [job.gcalEventId] : [];
+    if (signedIn) {
+      idsToDelete.forEach(id => deleteEvent(id).catch(e => console.error('deleteEvent failed:', e)));
     }
     addChangelog(`Unscheduled #${job.job} — moved back to sidebar`);
   }
