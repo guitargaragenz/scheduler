@@ -5,6 +5,7 @@ const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'A
 
 export default function JobsPage({ jobs, onJobClick }) {
   const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
   const [expandedJobs, setExpandedJobs] = useState({});
 
   const toggleExpand = (jobId) => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
@@ -16,7 +17,18 @@ export default function JobsPage({ jobs, onJobClick }) {
   // Which benches actually have top-level jobs
   const activeBenches = ['All', ...BENCH_ORDER.filter(b => topLevel.some(j => j.bench === b))];
 
-  const filtered = filter === 'All' ? topLevel : topLevel.filter(j => j.bench === filter);
+  const q = search.trim().toLowerCase();
+  const searched = q
+    ? topLevel.filter(j =>
+        String(j.job).includes(q) ||
+        (j.customer || '').toLowerCase().includes(q) ||
+        (j.mfr || '').toLowerCase().includes(q) ||
+        (j.model || '').toLowerCase().includes(q) ||
+        (j.desc || '').toLowerCase().includes(q)
+      )
+    : topLevel;
+
+  const filtered = filter === 'All' ? searched : searched.filter(j => j.bench === filter);
 
   const schedulable = filtered.filter(j => j.schedulable);
   const locked      = filtered.filter(j => !j.schedulable);
@@ -82,6 +94,34 @@ export default function JobsPage({ jobs, onJobClick }) {
               >{b}</button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Search */}
+      <div style={{ flexShrink: 0, padding: '0 16px 12px', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: '#475569' }}>🔍</span>
+          <input
+            type="text"
+            placeholder="Search jobs…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: '#1e293b', border: '1px solid #334155',
+              borderRadius: 10, padding: '10px 36px 10px 36px',
+              color: '#f1f5f9', fontSize: 14, outline: 'none',
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: '#475569', fontSize: 16, cursor: 'pointer', padding: 2,
+              }}
+            >✕</button>
+          )}
         </div>
       </div>
 
