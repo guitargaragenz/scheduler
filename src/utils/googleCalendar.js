@@ -144,10 +144,10 @@ const BENCH_COLOR_ID = {
   Admin:       '8',  // Graphite
 };
 
-export async function createEvent(job, date, hour, durationHours) {
+export async function createEvent(job, date, hour, durationHours, minute = 0) {
   if (!isSignedIn()) return null;
   const start = new Date(date);
-  start.setHours(hour, 0, 0, 0);
+  start.setHours(hour, minute, 0, 0);
   const end = new Date(start);
   end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000);
 
@@ -169,10 +169,10 @@ export async function createEvent(job, date, hour, durationHours) {
   }
 }
 
-export async function updateEvent(eventId, job, date, hour, durationHours) {
+export async function updateEvent(eventId, job, date, hour, durationHours, minute = 0) {
   if (!isSignedIn()) return null;
   const start = new Date(date);
-  start.setHours(hour, 0, 0, 0);
+  start.setHours(hour, minute, 0, 0);
   const end = new Date(start);
   end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000);
 

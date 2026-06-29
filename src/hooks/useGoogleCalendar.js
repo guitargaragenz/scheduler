@@ -195,10 +195,10 @@ export function useGoogleCalendar({
 
         const newIds = [];
         for (let i = 0; i < blocks.length; i++) {
-          const { date, hour, durationHours } = blocks[i];
+          const { date, hour, minute, durationHours } = blocks[i];
           const result = existingIds[i]
-            ? await updateEvent(existingIds[i], job, date, hour, durationHours)
-            : await createEvent(job, date, hour, durationHours);
+            ? await updateEvent(existingIds[i], job, date, hour, durationHours, minute)
+            : await createEvent(job, date, hour, durationHours, minute);
           if (result?.id) newIds.push(result.id);
         }
 
