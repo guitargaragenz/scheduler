@@ -3,7 +3,7 @@ export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Cu
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
   Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
-  Electronics: ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
+  Electronics: ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring', 'scratchy'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
 
@@ -20,6 +20,9 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (rx('Luthier').test(d)) return 'Luthier';
+  // "setup", "stp", or "restring" take priority over Electronics keywords like "pot" —
+  // the Setup split logic in createSubtasks will then separate the wiring component out
+  if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return 'Setup';
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
 
@@ -75,8 +78,8 @@ export function createSubtasks(job, benchHours = {}) {
 
   // ── Setup bench ────────────────────────────────────────────────────────────
   if (job.bench === 'Setup') {
-    const hasWiring = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b/.test(d);
-    const hasSetup  = /\bsetup\b|\bstp\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
+    const hasWiring = /\bpickup\b|\bpups?\b|\bwiring\b|\bswitch\b|\bpot\b|\bjack\b|\bscratchy\b/.test(d);
+    const hasSetup  = /\bsetup\b|\bstp\b|\brestring\b|\bstrings?\b|\bnut\b|\bsaddle\b|\bintonation\b|\bstring height\b|\btrem\b/.test(d);
     if (!hasWiring || !hasSetup) return null;
     const half = Math.max(Math.round(job.hours / 2 * 2) / 2, 0.5);
     return [

@@ -20,11 +20,15 @@ import HelpDrawer from './components/HelpDrawer.jsx';
 import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
+import DailyLogPage from './components/DailyLogPage.jsx';
+import JobsPage from './components/JobsPage.jsx';
+import CloseDayModal from './components/CloseDayModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
 import { useJobs } from './hooks/useJobs.js';
+import { useDailyLog } from './hooks/useDailyLog.js';
 
 export default function App() {
   // --- Core state ---
@@ -65,6 +69,9 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
+  const [showDailyLog, setShowDailyLog] = useState(false);
+  const [showJobs, setShowJobs] = useState(false);
+  const [showCloseDay, setShowCloseDay] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
@@ -118,6 +125,8 @@ export default function App() {
     weekDays, externalEventsRef, justSavedAt,
     signedIn: gcal.signedIn, showToast, addChangelog,
   });
+
+  const { todayLog, addBullet, removeBullet, toggleDone, closeDay } = useDailyLog();
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
@@ -179,6 +188,7 @@ export default function App() {
         <header style={{
           padding: '10px 20px', background: '#1e293b', borderBottom: '1px solid #334155',
           display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+          overflowX: 'auto',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -266,6 +276,20 @@ export default function App() {
               {syncLabels[gcal.syncStatus]}
             </button>
 
+            {isMobile && (
+              <button
+                onClick={() => setShowJobs(j => !j)}
+                style={{
+                  padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobs ? '#0369a1' : '#334155'}`,
+                  background: showJobs ? '#0c4a6e' : '#1e293b',
+                  color: showJobs ? '#7dd3fc' : '#94a3b8',
+                  fontSize: 12, cursor: 'pointer', fontWeight: showJobs ? 700 : 400,
+                }}
+              >
+                Jobs
+              </button>
+            )}
+
             <button
               onClick={() => setShowRunway(r => !r)}
               style={{
@@ -276,6 +300,18 @@ export default function App() {
               }}
             >
               Runway
+            </button>
+
+            <button
+              onClick={() => setShowDailyLog(d => !d)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showDailyLog ? '#065f46' : '#334155'}`,
+                background: showDailyLog ? '#022c22' : '#1e293b',
+                color: showDailyLog ? '#6ee7b7' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showDailyLog ? 700 : 400,
+              }}
+            >
+              Daily Log
             </button>
 
             <button
@@ -347,8 +383,26 @@ export default function App() {
               setShowParkingLot(false);
               window.history.replaceState(null, '', '#');
             }} />
+          ) : showJobs ? (
+            <JobsPage
+              jobs={jobs}
+              onJobClick={job => { setEditingJob(job); }}
+            />
           ) : showRunway ? (
             <RunwayPage jobs={jobs} />
+          ) : showDailyLog ? (
+            <DailyLogPage
+              jobs={jobs}
+              todayLog={todayLog}
+              onAddBullet={addBullet}
+              onToggleDone={toggleDone}
+              onRemoveBullet={removeBullet}
+              onBulletJobClick={jobId => {
+                const j = jobs.find(job => job.id === jobId);
+                if (j) setEditingJob(j);
+              }}
+              onRequestCloseDay={() => setShowCloseDay(true)}
+            />
           ) : (
             <>
               <CalendarGrid
@@ -476,6 +530,16 @@ export default function App() {
 
       {showHelp && (
         <HelpDrawer onClose={() => setShowHelp(false)} />
+      )}
+
+      {showCloseDay && (
+        <CloseDayModal
+          bullets={(todayLog?.bullets || []).filter(b => !b.done)}
+          onClose={migrations => {
+            closeDay(migrations);
+            setShowCloseDay(false);
+          }}
+        />
       )}
     </DndContext>
   );

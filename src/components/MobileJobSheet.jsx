@@ -7,6 +7,19 @@ const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
+function formatSlotDisplay(slot) {
+  if (!slot || typeof slot !== 'string') return null;
+  const parts = slot.split('-').map(Number);
+  if (parts.length < 5 || parts.some(isNaN)) return null;
+  const [y, mo, d, h, m] = parts;
+  const date = new Date(y, mo - 1, d);
+  const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const mins = m === 0 ? '' : `:${pad(m)}`;
+  return `${dayStr} · ${hour12}${mins} ${ampm}`;
+}
+
 function toTimeValue(h, m) { return `${pad(h)}:${pad(m)}`; }
 
 function fromTimeValue(val) {
@@ -122,6 +135,17 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, lineHeight: 1.4 }}>
                 {job.customer}{job.desc ? ` · ${job.desc.slice(0, 60)}` : ''}
               </div>
+              {job.calendarSlot && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  marginTop: 6, padding: '3px 8px', borderRadius: 6,
+                  background: '#0f172a', border: '1px solid #2563eb',
+                  fontSize: 11, color: '#93c5fd', fontWeight: 600,
+                }}>
+                  <span style={{ fontSize: 10 }}>📅</span>
+                  {formatSlotDisplay(job.calendarSlot)}
+                </div>
+              )}
             </div>
             <button
               onClick={close}
