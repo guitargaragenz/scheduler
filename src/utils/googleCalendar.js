@@ -134,6 +134,16 @@ export async function listEvents(timeMin, timeMax) {
   }
 }
 
+const BENCH_COLOR_ID = {
+  Luthier:     '2',  // Sage
+  Electronics: '9',  // Blueberry
+  Setup:       '6',  // Tangerine
+  Fretwork:    '3',  // Grape
+  Wiring:      '7',  // Peacock
+  Finishing:   '5',  // Banana
+  Admin:       '8',  // Graphite
+};
+
 export async function createEvent(job, date, hour, durationHours) {
   if (!isSignedIn()) return null;
   const start = new Date(date);
@@ -144,7 +154,7 @@ export async function createEvent(job, date, hour, durationHours) {
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
     description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
-    colorId: '8',
+    colorId: BENCH_COLOR_ID[job.bench] || '8',
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
   };
@@ -169,7 +179,7 @@ export async function updateEvent(eventId, job, date, hour, durationHours) {
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
     description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
-    colorId: '8',
+    colorId: BENCH_COLOR_ID[job.bench] || '8',
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
   };
