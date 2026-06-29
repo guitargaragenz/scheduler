@@ -48,59 +48,132 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   })();
   const isJob = !!bullet.jobId;
 
+  const [offsetX, setOffsetX] = useState(0);
+  const [springing, setSpringing] = useState(false);
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
+  const dirLocked = useRef(null); // 'h' | 'v' | null
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    dirLocked.current = null;
+    setSpringing(false);
+  }
+
+  function handleTouchMove(e) {
+    if (locked || touchStartX.current === null) return;
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (!dirLocked.current) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+        dirLocked.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      }
+    }
+    if (dirLocked.current !== 'h') return;
+    e.preventDefault();
+    setOffsetX(Math.max(-110, Math.min(110, dx)));
+  }
+
+  function handleTouchEnd() {
+    const THRESHOLD = 72;
+    if (dirLocked.current === 'h') {
+      if (offsetX < -THRESHOLD) { onRemove(bullet.id); return; }
+      if (offsetX > THRESHOLD)  { onToggle(bullet.id); }
+    }
+    setSpringing(true);
+    setOffsetX(0);
+    touchStartX.current = null;
+  }
+
+  const swipeProgress = Math.abs(offsetX) / 72;
+  const revealOpacity = Math.min(1, swipeProgress * 1.2);
+  const isLeft  = offsetX < -20;
+  const isRight = offsetX > 20;
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-      padding: '8px 0', borderBottom: '1px solid #1e293b',
-    }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #1e293b' }}>
+      {/* Swipe reveal layer */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center',
+        justifyContent: isLeft ? 'flex-end' : 'flex-start',
+        padding: '0 18px',
+        background: isLeft
+          ? `rgba(185,28,28,${revealOpacity * 0.85})`
+          : isRight
+          ? `rgba(22,163,74,${revealOpacity * 0.85})`
+          : 'transparent',
+        color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+        transition: springing ? 'background 0.2s' : 'none',
+        pointerEvents: 'none',
+      }}>
+        {isLeft && offsetX < -36 ? '✕  remove' : isRight && offsetX > 36 ? '✓  done' : ''}
+      </div>
+
+      {/* Row content */}
       <div
-        onClick={() => !locked && onToggle(bullet.id)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: done ? '#334155' : (isJob ? '#58a6ff' : '#64748b'),
-          flexShrink: 0, marginTop: 6, cursor: locked ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: '8px 0',
+          background: '#0f172a',
+          transform: `translateX(${offsetX}px)`,
+          transition: springing ? 'transform 0.25s ease' : 'none',
+          willChange: 'transform',
         }}
-      />
-      <div
-        onClick={() => {
-          if (locked) return;
-          if (isJob && onOpenJob) onOpenJob(bullet.jobId);
-          else onToggle(bullet.id);
-        }}
-        style={{ flex: 1, cursor: locked ? 'default' : 'pointer' }}
       >
-        <div style={{
-          fontSize: 13, lineHeight: 1.4,
-          color: done ? '#475569' : '#e2e8f0',
-          textDecoration: done ? 'line-through' : 'none',
-        }}>
-          {bullet.text}
-          {isJob && !done && (
-            <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
+        <div
+          onClick={() => !locked && onToggle(bullet.id)}
+          style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: done ? '#334155' : (isJob ? '#58a6ff' : '#64748b'),
+            flexShrink: 0, marginTop: 6, cursor: locked ? 'default' : 'pointer',
+          }}
+        />
+        <div
+          onClick={() => {
+            if (locked) return;
+            if (isJob && onOpenJob) onOpenJob(bullet.jobId);
+            else onToggle(bullet.id);
+          }}
+          style={{ flex: 1, cursor: locked ? 'default' : 'pointer' }}
+        >
+          <div style={{
+            fontSize: 13, lineHeight: 1.4,
+            color: done ? '#475569' : '#e2e8f0',
+            textDecoration: done ? 'line-through' : 'none',
+          }}>
+            {bullet.text}
+            {isJob && !done && (
+              <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
+            )}
+          </div>
+          {meta && (
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+              {[meta.bench, meta.hoursRange ? `${meta.hoursRange}h` : null, meta.action]
+                .filter(Boolean).join(' · ')}
+            </div>
           )}
         </div>
-        {meta && (
-          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-            {[meta.bench, meta.hoursRange ? `${meta.hoursRange}h` : null, meta.action]
-              .filter(Boolean).join(' · ')}
-          </div>
-        )}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <span
-          onClick={() => !locked && onToggle(bullet.id)}
-          style={{ fontSize: 12, color: done ? '#238636' : '#475569', cursor: locked ? 'default' : 'pointer' }}
-        >
-          {done ? '✓' : '○'}
-        </span>
-        {!locked && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <span
-            onClick={() => onRemove(bullet.id)}
-            style={{ fontSize: 11, color: '#475569', cursor: 'pointer', padding: '1px 3px' }}
+            onClick={() => !locked && onToggle(bullet.id)}
+            style={{ fontSize: 12, color: done ? '#238636' : '#475569', cursor: locked ? 'default' : 'pointer' }}
           >
-            ✕
+            {done ? '✓' : '○'}
           </span>
-        )}
+          {!locked && (
+            <span
+              onClick={() => onRemove(bullet.id)}
+              style={{ fontSize: 11, color: '#475569', cursor: 'pointer', padding: '1px 3px' }}
+            >
+              ✕
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
