@@ -6,10 +6,13 @@ const BENCH_ORDER = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'A
 export default function JobsPage({ jobs, onJobClick }) {
   const [filter, setFilter] = useState('All');
 
-  // Only show leaf jobs (not parent containers that have been split into subtasks)
-  const leaves = jobs.filter(j => !j.hasSubtasks);
+  // Show individual cards only — exclude:
+  //   hasSubtasks: auto-split parents (their children are the real cards)
+  //   isSplit: manually-split parents (user saved splits via the drawer)
+  // Subtask children (parentId set) pass through since they lack both flags.
+  const leaves = jobs.filter(j => !j.hasSubtasks && !j.isSplit);
 
-  // Which benches actually have jobs
+  // Which benches actually have visible jobs
   const activeBenches = ['All', ...BENCH_ORDER.filter(b => leaves.some(j => j.bench === b))];
 
   const filtered = filter === 'All' ? leaves : leaves.filter(j => j.bench === filter);
