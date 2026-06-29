@@ -13,8 +13,10 @@ function fromTimeValue(val) {
 }
 
 function formatSlotDisplay(slot) {
-  if (!slot) return null;
-  const [y, mo, d, h, m] = slot.split('-').map(Number);
+  if (!slot || typeof slot !== 'string') return null;
+  const parts = slot.split('-').map(Number);
+  if (parts.length < 5 || parts.some(isNaN)) return null;
+  const [y, mo, d, h, m] = parts;
   const date = new Date(y, mo - 1, d);
   const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
   const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;

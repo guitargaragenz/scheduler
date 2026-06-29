@@ -8,8 +8,9 @@ const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function formatSlotDisplay(slot) {
-  if (!slot) return null;
+  if (!slot || typeof slot !== 'string') return null;
   const parts = slot.split('-').map(Number);
+  if (parts.length < 5 || parts.some(isNaN)) return null;
   const [y, mo, d, h, m] = parts;
   const date = new Date(y, mo - 1, d);
   const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
