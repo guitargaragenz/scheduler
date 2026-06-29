@@ -155,10 +155,11 @@ export function useGoogleCalendar({
       const date = weekDays[dayIdx];
       try {
         let result;
+        const durationHours = slotsNeeded(job) / 2;
         if (job.gcalEventId) {
-          result = await updateEvent(job.gcalEventId, job, date, hour, slotsNeeded(job));
+          result = await updateEvent(job.gcalEventId, job, date, hour, durationHours);
         } else {
-          result = await createEvent(job, date, hour, slotsNeeded(job));
+          result = await createEvent(job, date, hour, durationHours);
         }
         if (result?.id) {
           const idx = updatedJobs.findIndex(j => j.id === job.id);

@@ -139,7 +139,7 @@ export async function createEvent(job, date, hour, durationHours) {
   const start = new Date(date);
   start.setHours(hour, 0, 0, 0);
   const end = new Date(start);
-  end.setHours(hour + Math.min(durationHours, 3), 0, 0, 0);
+  end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000);
 
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
@@ -164,7 +164,7 @@ export async function updateEvent(eventId, job, date, hour, durationHours) {
   const start = new Date(date);
   start.setHours(hour, 0, 0, 0);
   const end = new Date(start);
-  end.setHours(hour + Math.min(durationHours, 3), 0, 0, 0);
+  end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000);
 
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
