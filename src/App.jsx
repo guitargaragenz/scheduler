@@ -376,6 +376,10 @@ export default function App() {
               onAddBullet={addBullet}
               onToggleDone={toggleDone}
               onRemoveBullet={removeBullet}
+              onBulletJobClick={jobId => {
+                const j = jobs.find(job => job.id === jobId);
+                if (j) setEditingJob(j);
+              }}
               onRequestCloseDay={() => setShowCloseDay(true)}
             />
           ) : (

@@ -40,7 +40,7 @@ function Tag({ label, style: extraStyle }) {
   );
 }
 
-function BulletRow({ bullet, locked, onToggle, onRemove, jobs }) {
+function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   const done = bullet.done;
   const meta = bullet.meta || (() => {
     const job = jobs?.find(j => j.id === bullet.jobId);
@@ -62,7 +62,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, jobs }) {
         }}
       />
       <div
-        onClick={() => !locked && onToggle(bullet.id)}
+        onClick={() => {
+          if (locked) return;
+          if (isJob && onOpenJob) onOpenJob(bullet.jobId);
+          else onToggle(bullet.id);
+        }}
         style={{ flex: 1, cursor: locked ? 'default' : 'pointer' }}
       >
         <div style={{
@@ -71,6 +75,9 @@ function BulletRow({ bullet, locked, onToggle, onRemove, jobs }) {
           textDecoration: done ? 'line-through' : 'none',
         }}>
           {bullet.text}
+          {isJob && !done && (
+            <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
+          )}
         </div>
         {meta && (
           <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
@@ -80,7 +87,10 @@ function BulletRow({ bullet, locked, onToggle, onRemove, jobs }) {
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <span style={{ fontSize: 12, color: done ? '#238636' : '#475569' }}>
+        <span
+          onClick={() => !locked && onToggle(bullet.id)}
+          style={{ fontSize: 12, color: done ? '#238636' : '#475569', cursor: locked ? 'default' : 'pointer' }}
+        >
           {done ? '✓' : '○'}
         </span>
         {!locked && (
@@ -172,7 +182,7 @@ function LogJobCard({ job, pulled, onPull, jobs }) {
   );
 }
 
-export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone, onRemoveBullet, onRequestCloseDay }) {
+export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay }) {
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
@@ -279,6 +289,7 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
                   locked={locked}
                   onToggle={onToggleDone}
                   onRemove={onRemoveBullet}
+                  onOpenJob={onBulletJobClick}
                   jobs={jobs}
                 />
               ))
