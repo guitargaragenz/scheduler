@@ -71,7 +71,7 @@ export function useDailyLog() {
     });
   }
 
-  function addBullet(text, jobId = null) {
+  function addBullet(text, jobId = null, meta = null) {
     const key = todayKey();
     updateLogs(prev => {
       const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
@@ -86,12 +86,25 @@ export function useDailyLog() {
               id: crypto.randomUUID(),
               text,
               jobId,
+              meta,
               done: false,
               createdAt: new Date().toISOString(),
               migration: null,
             },
           ],
         },
+      };
+    });
+  }
+
+  function removeBullet(bulletId) {
+    const key = todayKey();
+    updateLogs(prev => {
+      const day = prev[key];
+      if (!day || day.locked) return prev;
+      return {
+        ...prev,
+        [key]: { ...day, bullets: day.bullets.filter(b => b.id !== bulletId) },
       };
     });
   }
@@ -162,6 +175,7 @@ export function useDailyLog() {
     todayLog: logs[key] ?? null,
     loading,
     addBullet,
+    removeBullet,
     toggleDone,
     closeDay,
   };

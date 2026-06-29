@@ -124,7 +124,7 @@ export default function App() {
     signedIn: gcal.signedIn, showToast, addChangelog,
   });
 
-  const { todayLog, addBullet, toggleDone, closeDay } = useDailyLog();
+  const { todayLog, addBullet, removeBullet, toggleDone, closeDay } = useDailyLog();
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
@@ -374,6 +374,7 @@ export default function App() {
               todayLog={todayLog}
               onAddBullet={addBullet}
               onToggleDone={toggleDone}
+              onRemoveBullet={removeBullet}
               onRequestCloseDay={() => setShowCloseDay(true)}
             />
           ) : (
