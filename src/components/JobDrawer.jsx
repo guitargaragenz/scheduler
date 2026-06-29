@@ -5,9 +5,22 @@ import { BENCH_COLORS } from '../data/jobs.js';
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+function pad(n) { return String(n).padStart(2, '0'); }
+
 function fromTimeValue(val) {
   const [h, m] = (val || '09:00').split(':').map(Number);
   return { hour: h, minute: m };
+}
+
+function formatSlotDisplay(slot) {
+  if (!slot) return null;
+  const [y, mo, d, h, m] = slot.split('-').map(Number);
+  const date = new Date(y, mo - 1, d);
+  const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const mins = m === 0 ? '' : `:${pad(m)}`;
+  return `${dayStr} · ${hour12}${mins} ${ampm}`;
 }
 
 function initRows(job) {
@@ -112,6 +125,17 @@ export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSched
             <div style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9' }}>#{job.job}</div>
             <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{job.mfr} {job.model}</div>
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, lineHeight: 1.4 }}>{job.desc}</div>
+            {job.calendarSlot && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                marginTop: 6, padding: '3px 8px', borderRadius: 6,
+                background: '#0f172a', border: '1px solid #2563eb',
+                fontSize: 11, color: '#93c5fd', fontWeight: 600,
+              }}>
+                <span style={{ fontSize: 10 }}>📅</span>
+                {formatSlotDisplay(job.calendarSlot)}
+              </div>
+            )}
           </div>
           <button onClick={onClose} style={{
             background: 'none', border: 'none', color: '#64748b', fontSize: 22,
