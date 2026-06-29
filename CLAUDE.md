@@ -49,7 +49,7 @@ Bottom sheet for iPhone (any touch/narrow device), merged to main 2026-06-14.
 - Desktop users still get the existing JobDrawer
 
 ### Shipped — Daily Log (bullet journal tracker)
-Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2 open, not yet merged to main.
+Merged to main 2026-06-29.
 - Daily Log button in header → full-page bullet journal for today
 - Add job bullets (tap job in Today section → opens MobileJobSheet/JobDrawer)
 - Add free-text notes
@@ -58,7 +58,7 @@ Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2 open, not yet mer
 - `formatSlotDisplay` has type guard for non-string calendarSlot values (Firebase safety)
 
 ### Shipped — Mobile Jobs page
-Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2.
+Merged to main 2026-06-29.
 - Jobs button in header (mobile only) → full-screen job list
 - Bench filter chips: Fretwork → Luthier → Setup → Wiring → Electronics → Admin
 - Shows top-level jobs only; split parent rows have a ▶ N sub-tasks toggle (tap to expand/collapse)
@@ -66,7 +66,7 @@ Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2.
 - Tap parent row → MobileJobSheet for parent; tap subtask → MobileJobSheet for subtask
 - Schedulable jobs on top; Waiting/On Hold section below (dimmed)
 
-### Bench classification fixes (in PR #2)
+### Bench classification fixes (merged 2026-06-29)
 - `setup + pot` → Setup bench (then auto-splits into Setup + Wiring), not Electronics
 - `scratchy` added to Electronics keywords
 - Priority rule in `inferBench`: setup/stp/restring keywords short-circuit before Electronics check
@@ -79,7 +79,7 @@ Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2.
 - **Critical gotcha**: `withSplitsExpanded` (in `useFirebase.js`) regenerates auto-split children via `{ ...parentJob, id: 'X-R', bench: 'Fretwork', parentId: job.id }`. Because it spreads the parent, every auto-split child INHERITS `hasSubtasks: true`. Never use `!job.hasSubtasks` to identify top-level jobs — use `!job.parentId` instead.
 - To get subtasks for a job: auto-splits → `jobs.filter(j => job.subtasks.includes(j.id))`; manual splits → `jobs.filter(j => j.parentId === job.id)`
 
-### Mobile-only components (PR #2, branch `claude/bullet-journal-tracker-split-3vwxi0`)
+### Mobile-only components (merged to main 2026-06-29)
 - `isMobile` is computed in `App.jsx` as `window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768`
 - Mobile gets: Jobs page button in header, Daily Log button in header, MobileJobSheet (bottom sheet) instead of JobDrawer
 - `src/components/JobsPage.jsx` — full-screen job list (mobile only); rendered when `showJobs` state is true in App.jsx
