@@ -65,6 +65,14 @@ Branch: `claude/bullet-journal-tracker-split-3vwxi0` — PR #2.
 - Tap any schedulable job → opens MobileJobSheet
 - Schedulable jobs on top; Waiting/On Hold section below (dimmed)
 
+### TODO — Jobs page: expand splits like the sidebar
+**Next session priority.** Currently split jobs just show a "2 splits" badge. The user wants it to work exactly like the Sidebar:
+- Parent job row shows with a "▶ 2 sub-tasks" toggle (tap to expand/collapse)
+- Expanded: indented subtask cards appear below the parent, each with its own bench colour
+- Tapping the PARENT row opens MobileJobSheet for the parent job
+- Tapping a SUBTASK row opens MobileJobSheet for that subtask
+- See `Sidebar.jsx` `renderJob()` function for the exact expand/collapse pattern to replicate on mobile
+
 ### Bench classification fixes (in PR #2)
 - `setup + pot` → Setup bench (then auto-splits into Setup + Wiring), not Electronics
 - `scratchy` added to Electronics keywords
