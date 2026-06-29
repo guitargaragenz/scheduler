@@ -12,8 +12,18 @@ function fromTimeValue(val) {
   return { hour: h, minute: m };
 }
 
-function formatSlotDisplay(slot) {
-  if (!slot || typeof slot !== 'string') return null;
+function formatSlotDisplay(slot, weekDays = []) {
+  if (!slot) return null;
+  if (typeof slot === 'object') {
+    const { dayIdx, hour: h, minute: m = 0 } = slot;
+    const date = weekDays[dayIdx];
+    if (!date) return null;
+    const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const mins = m === 0 ? '' : `:${pad(m)}`;
+    return `${dayStr} · ${hour12}${mins} ${ampm}`;
+  }
   const parts = slot.split('-').map(Number);
   if (parts.length < 5 || parts.some(isNaN)) return null;
   const [y, mo, d, h, m] = parts;
@@ -135,7 +145,7 @@ export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSched
                 fontSize: 11, color: '#93c5fd', fontWeight: 600,
               }}>
                 <span style={{ fontSize: 10 }}>📅</span>
-                {formatSlotDisplay(job.calendarSlot)}
+                {formatSlotDisplay(job.calendarSlot, weekDays)}
               </div>
             )}
           </div>

@@ -106,11 +106,24 @@ export function useJobs({
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
       );
+      const jobCount = merged.filter(j => !j.parentId).length;
+
+      // Safety guard — if CSV wipes >50% of scheduled slots, warn and abort the save.
+      // This catches ID drift from bench reclassification silently clearing the schedule.
+      const prevCount = Object.keys(scheduledSlots).length;
+      const nextCount = Object.keys(preservedSlots).length;
+      if (prevCount > 0 && nextCount < prevCount * 0.5) {
+        showToast(`⚠ CSV upload would clear ${prevCount - nextCount} scheduled slots — schedule preserved. Check job IDs.`);
+        setJobs(allJobs);
+        if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
+        addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);
+        return;
+      }
+
       justSavedAt.current = Date.now();
       setJobs(allJobs);
       setScheduledSlots(preservedSlots);
       if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
-      const jobCount = merged.filter(j => !j.parentId).length;
       showToast(`Loaded ${jobCount} jobs from CSV`);
       addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
     } catch (e) {
