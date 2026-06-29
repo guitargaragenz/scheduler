@@ -21,6 +21,7 @@ import RunwayPage from './components/RunwayPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
+import JobsPage from './components/JobsPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
@@ -69,6 +70,7 @@ export default function App() {
   const [showRunway, setShowRunway] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
   const [showDailyLog, setShowDailyLog] = useState(false);
+  const [showJobs, setShowJobs] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
@@ -274,6 +276,20 @@ export default function App() {
               {syncLabels[gcal.syncStatus]}
             </button>
 
+            {isMobile && (
+              <button
+                onClick={() => setShowJobs(j => !j)}
+                style={{
+                  padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobs ? '#0369a1' : '#334155'}`,
+                  background: showJobs ? '#0c4a6e' : '#1e293b',
+                  color: showJobs ? '#7dd3fc' : '#94a3b8',
+                  fontSize: 12, cursor: 'pointer', fontWeight: showJobs ? 700 : 400,
+                }}
+              >
+                Jobs
+              </button>
+            )}
+
             <button
               onClick={() => setShowRunway(r => !r)}
               style={{
@@ -367,6 +383,11 @@ export default function App() {
               setShowParkingLot(false);
               window.history.replaceState(null, '', '#');
             }} />
+          ) : showJobs ? (
+            <JobsPage
+              jobs={jobs}
+              onJobClick={job => { setEditingJob(job); }}
+            />
           ) : showRunway ? (
             <RunwayPage jobs={jobs} />
           ) : showDailyLog ? (
