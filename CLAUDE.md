@@ -99,7 +99,7 @@ This section exists so Claude can orient instantly in a new session. Each file h
 ### `src/utils/googleCalendar.js` — Google Calendar API wrapper
 - **Auth:** `initGoogleApi()`, `requestAuth()`, `isSignedIn()`, `signOut()`
 - **Events:** `createEvent()` (insert), `updateEvent()` (PUT), `deleteEvent()`, `listEvents()`
-- **Colour:** Uses `BENCH_COLORS` from `jobs.js`. Sends `colorRgbFormat: true` as both a query param AND inside the resource body. `color: { background: hex, foreground: hex }`.
+- **Colour:** Uses `BENCH_COLOR_ID` map (colorId strings `'1'`–`'11'`). GCal event API does NOT support custom hex — `colorRgbFormat` is calendar-level only, not event-level. Do not attempt hex again.
 - **Duration:** `end.setTime(start.getTime() + Math.min(durationHours, 3) * 60 * 60 * 1000)` — millisecond math handles decimal hours (1.5hr, 0.5hr etc). Never use `setHours()` for this.
 - **Insert vs update:** Jobs with `gcalEventId` → `events.update`; new jobs → `events.insert`. The `gcalEventId` is stored back on the job object after first sync.
 
