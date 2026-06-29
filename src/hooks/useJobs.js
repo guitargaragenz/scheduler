@@ -58,6 +58,7 @@ export function useJobs({
           isSubtask: true,
           scheduled: false,
           calendarSlot: null,
+          gcalEventId: null,
         });
       });
     });

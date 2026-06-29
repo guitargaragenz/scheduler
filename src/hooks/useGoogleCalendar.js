@@ -147,7 +147,7 @@ export function useGoogleCalendar({
       return;
     }
     setSyncStatus('syncing');
-    const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot);
+    const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot && !j.isSplit);
     let ok = 0;
     const updatedJobs = [...jobs];
     for (const job of scheduled) {
