@@ -1,27 +1,28 @@
 import { useState } from 'react';
 import { BENCH_COLORS } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
+const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'Admin'];
 
 export default function JobsPage({ jobs, onJobClick }) {
   const [filter, setFilter] = useState('All');
 
-  // Show individual cards only.
-  // Subtask children (parentId set) always show — they ARE the real cards.
-  // Auto-split parents (hasSubtasks: true, no parentId) and manual-split parents
-  // (isSplit: true, no parentId) are excluded; they're just containers.
-  // Note: auto-split children inherit hasSubtasks: true via spread in withSplitsExpanded,
-  // so we must check parentId rather than relying on !hasSubtasks.
-  const leaves = jobs.filter(j => j.parentId || (!j.hasSubtasks && !j.isSplit));
+  // Show top-level jobs only (no subtask children as separate rows).
+  // Subtask children have parentId set — they're accessible via the parent's sheet.
+  const topLevel = jobs.filter(j => !j.parentId);
 
-  // Which benches actually have visible jobs
-  const activeBenches = ['All', ...BENCH_ORDER.filter(b => leaves.some(j => j.bench === b))];
+  // Which benches actually have top-level jobs
+  const activeBenches = ['All', ...BENCH_ORDER.filter(b => topLevel.some(j => j.bench === b))];
 
-  const filtered = filter === 'All' ? leaves : leaves.filter(j => j.bench === filter);
+  const filtered = filter === 'All' ? topLevel : topLevel.filter(j => j.bench === filter);
 
-  // Split into schedulable and locked
   const schedulable = filtered.filter(j => j.schedulable);
   const locked      = filtered.filter(j => !j.schedulable);
+
+  function splitCount(job) {
+    if (job.hasSubtasks && Array.isArray(job.subtasks)) return job.subtasks.length;
+    if (job.isSplit) return jobs.filter(j => j.parentId === job.id).length;
+    return 0;
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0f172a' }}>
@@ -64,7 +65,9 @@ export default function JobsPage({ jobs, onJobClick }) {
 
         {schedulable.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {schedulable.map(job => <JobRow key={job.id} job={job} onTap={onJobClick} />)}
+            {schedulable.map(job => (
+              <JobRow key={job.id} job={job} splits={splitCount(job)} onTap={onJobClick} />
+            ))}
           </div>
         )}
 
@@ -77,7 +80,9 @@ export default function JobsPage({ jobs, onJobClick }) {
               Waiting / On Hold
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {locked.map(job => <JobRow key={job.id} job={job} onTap={null} />)}
+              {locked.map(job => (
+                <JobRow key={job.id} job={job} splits={splitCount(job)} onTap={null} />
+              ))}
             </div>
           </>
         )}
@@ -86,7 +91,7 @@ export default function JobsPage({ jobs, onJobClick }) {
   );
 }
 
-function JobRow({ job, onTap }) {
+function JobRow({ job, splits, onTap }) {
   const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
 
   return (
@@ -120,6 +125,12 @@ function JobRow({ job, onTap }) {
                 color: '#93c5fd', borderRadius: 4, padding: '2px 5px', fontWeight: 600,
               }}>📅</span>
             )}
+            {splits > 0 && (
+              <span style={{
+                fontSize: 11, color: '#94a3b8', background: '#0f172a',
+                border: '1px solid #334155', borderRadius: 4, padding: '2px 7px', fontWeight: 600,
+              }}>{splits} splits</span>
+            )}
             <span style={{
               fontSize: 12, fontWeight: 700, color: colors.text,
               background: colors.bg, border: `1px solid ${colors.border}55`,
@@ -130,7 +141,6 @@ function JobRow({ job, onTap }) {
 
         <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
           {job.mfr} {job.model}
-          {job.label && <span style={{ color: colors.text, opacity: 0.8, marginLeft: 6 }}>· {job.label}</span>}
         </div>
 
         {job.desc && (
