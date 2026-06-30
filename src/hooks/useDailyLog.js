@@ -102,9 +102,22 @@ export function useDailyLog() {
     updateLogs(prev => {
       const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
       if (day.locked) return prev;
-      const existingJobIds = new Set(day.bullets.map(b => String(b.jobId)).filter(Boolean));
+
+      // Build a set of all job identifiers being seeded (both job.job and job.id)
+      // so we can strip out stale bullets with either format before re-inserting.
+      const seedIds = new Set(
+        scheduledJobs.flatMap(job => [String(job.job), String(job.id)].filter(Boolean))
+      );
+      const nonJobBullets = day.bullets.filter(
+        b => !b.jobId || !seedIds.has(String(b.jobId))
+      );
+
+      // Only seed jobs not already marked done in today's log
+      const doneJobIds = new Set(
+        day.bullets.filter(b => b.done && b.jobId).map(b => String(b.jobId))
+      );
       const newBullets = scheduledJobs
-        .filter(job => !existingJobIds.has(String(job.job)))
+        .filter(job => !doneJobIds.has(String(job.job)) && !doneJobIds.has(String(job.id)))
         .map(job => ({
           id: crypto.randomUUID(),
           text: `${job.customer ? job.customer + ' — ' : ''}${job.mfr} ${job.model}`,
@@ -114,10 +127,10 @@ export function useDailyLog() {
           createdAt: new Date().toISOString(),
           migration: null,
         }));
-      if (!newBullets.length) return prev;
+
       return {
         ...prev,
-        [key]: { ...day, bullets: [...newBullets, ...day.bullets] },
+        [key]: { ...day, bullets: [...newBullets, ...nonJobBullets] },
       };
     });
   }
