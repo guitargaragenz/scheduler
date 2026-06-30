@@ -94,9 +94,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
     touchStartX.current = null;
   }
 
+  const exGst = invoiceAmount ? (parseFloat(invoiceAmount) / 1.15).toFixed(2) : null;
+
   function confirmMarkDone() {
     const job = jobs?.find(j => j.id === bullet.jobId);
-    if (job && onMarkDone) onMarkDone(job, invoiceAmount);
+    if (job && onMarkDone) onMarkDone(job, exGst ?? 0);
     setInvoiceMode(false);
     setInvoiceAmount('');
   }
@@ -111,27 +113,34 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
     {invoiceMode && (
       <div style={{
         background: '#0f2d1f', border: '1px solid #166534', borderRadius: 8,
-        margin: '4px 8px 6px', padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'center',
+        margin: '4px 8px 6px', padding: '10px 12px',
       }}>
-        <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, flexShrink: 0 }}>Invoice $</span>
-        <input
-          type="number" min="0" step="1"
-          placeholder="0"
-          value={invoiceAmount}
-          onChange={e => setInvoiceAmount(e.target.value)}
-          autoFocus
-          style={{
-            flex: 1, background: '#052e16', border: '1px solid #166534', borderRadius: 6,
-            padding: '6px 10px', fontSize: 14, color: '#f1f5f9', outline: 'none',
-          }}
-        />
-        <button onClick={confirmMarkDone} style={{
-          background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6,
-          padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-        }}>Done</button>
-        <button onClick={() => { setInvoiceMode(false); setInvoiceAmount(''); }} style={{
-          background: 'none', border: 'none', color: '#64748b', fontSize: 16, cursor: 'pointer', padding: '0 2px',
-        }}>✕</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, flexShrink: 0 }}>Invoice $</span>
+          <input
+            type="number" min="0" step="1"
+            placeholder="0"
+            value={invoiceAmount}
+            onChange={e => setInvoiceAmount(e.target.value)}
+            autoFocus
+            style={{
+              flex: 1, background: '#052e16', border: '1px solid #166534', borderRadius: 6,
+              padding: '6px 10px', fontSize: 14, color: '#f1f5f9', outline: 'none',
+            }}
+          />
+          <button onClick={confirmMarkDone} style={{
+            background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6,
+            padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}>Done</button>
+          <button onClick={() => { setInvoiceMode(false); setInvoiceAmount(''); }} style={{
+            background: 'none', border: 'none', color: '#64748b', fontSize: 16, cursor: 'pointer', padding: '0 2px',
+          }}>✕</button>
+        </div>
+        {exGst && (
+          <div style={{ fontSize: 11, color: '#4ade80', marginTop: 6, paddingLeft: 2 }}>
+            Income ex-GST: <strong>${exGst}</strong>
+          </div>
+        )}
       </div>
     )}
     <div style={{ position: 'relative', overflow: 'hidden' }}>
