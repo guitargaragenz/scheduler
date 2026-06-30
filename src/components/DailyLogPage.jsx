@@ -42,11 +42,9 @@ function Tag({ label, style: extraStyle }) {
 
 function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, jobs }) {
   const done = bullet.done;
-  const meta = bullet.meta || (() => {
-    const job = jobs?.find(j => j.id === bullet.jobId);
-    return job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null;
-  })();
-  const isJob = !!bullet.jobId;
+  const job = jobs?.find(j => j.id === bullet.jobId) ?? null;
+  const meta = bullet.meta || (job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null);
+  const isJob = !!bullet.jobId || !!job;
   const [invoiceMode, setInvoiceMode] = useState(false);
   const [invoiceAmount, setInvoiceAmount] = useState('');
 
@@ -97,7 +95,6 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
   const exGst = invoiceAmount ? (parseFloat(invoiceAmount) / 1.15).toFixed(2) : null;
 
   function confirmMarkDone() {
-    const job = jobs?.find(j => j.id === bullet.jobId);
     if (job && onMarkDone) onMarkDone(job, exGst ?? 0);
     setInvoiceMode(false);
     setInvoiceAmount('');
