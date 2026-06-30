@@ -329,7 +329,7 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
   }
 
   function handleBulletMarkDone(jobId, amount) {
-    const j = jobs.find(job => job.id === jobId);
+    const j = jobs.find(job => String(job.id) === String(jobId));
     if (j && onMarkDone) onMarkDone(j, amount);
   }
 
