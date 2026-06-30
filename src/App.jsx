@@ -519,6 +519,17 @@ export default function App() {
               it is safe to upload and the slots will be cleared. Otherwise investigate first.
             </div>
             <button
+              onClick={() => {
+                jobOps.commitCsvUpload(csvDriftReport.allJobs, csvDriftReport.preservedSlots, csvDriftReport.merged);
+                setCsvDriftReport(null);
+              }}
+              style={{
+                background: '#b91c1c', color: '#fff', border: 'none',
+                borderRadius: 10, padding: '12px 0', fontSize: 14,
+                fontWeight: 700, cursor: 'pointer',
+              }}
+            >Upload anyway — clear these slots</button>
+            <button
               onClick={() => setCsvDriftReport(null)}
               style={{
                 background: '#334155', color: '#f1f5f9', border: 'none',

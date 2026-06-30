@@ -95,7 +95,17 @@ export function useJobs({
     }
   }
 
-  function handleCsvUpload(csvText) {
+  function commitCsvUpload(allJobs, preservedSlots, merged) {
+    const jobCount = merged.filter(j => !j.parentId).length;
+    justSavedAt.current = Date.now();
+    setJobs(allJobs);
+    setScheduledSlots(preservedSlots);
+    if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
+    showToast(`Loaded ${jobCount} jobs from CSV`);
+    addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
+  }
+
+  function handleCsvUpload(csvText, force = false) {
     try {
       const newJobs = parseCSV(csvText, benchKeywords, benchHours).filter(j => !doneJobIds.includes(String(j.id)));
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
@@ -117,11 +127,17 @@ export function useJobs({
       // This catches ID drift from bench reclassification silently clearing the schedule.
       const prevCount = Object.keys(scheduledSlots).length;
       const nextCount = Object.keys(preservedSlots).length;
-      if (prevCount > 0 && nextCount < prevCount * 0.5) {
+      if (!force && prevCount > 0 && nextCount < prevCount * 0.5) {
         const lostIds = [...new Set(
           Object.values(scheduledSlots).filter(id => !newJobIds.has(id))
         )].sort();
-        if (setCsvDriftReport) setCsvDriftReport({ lost: prevCount - nextCount, missingIds: lostIds });
+        if (setCsvDriftReport) setCsvDriftReport({
+          lost: prevCount - nextCount,
+          missingIds: lostIds,
+          allJobs,
+          preservedSlots,
+          merged,
+        });
         showToast(`⚠ CSV would clear ${prevCount - nextCount} slots — tap for details`);
         setJobs(allJobs);
         if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
@@ -129,12 +145,7 @@ export function useJobs({
         return;
       }
 
-      justSavedAt.current = Date.now();
-      setJobs(allJobs);
-      setScheduledSlots(preservedSlots);
-      if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
-      showToast(`Loaded ${jobCount} jobs from CSV`);
-      addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
+      commitCsvUpload(allJobs, preservedSlots, merged);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
@@ -157,6 +168,7 @@ export function useJobs({
     handleSaveDrawer,
     handleMarkDone,
     handleCsvUpload,
+    commitCsvUpload,
     handleOpenPomo,
     handleLogPomoSession,
   };
