@@ -97,6 +97,31 @@ export function useDailyLog() {
     });
   }
 
+  function seedScheduledJobs(scheduledJobs) {
+    const key = todayKey();
+    updateLogs(prev => {
+      const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
+      if (day.locked) return prev;
+      const existingJobIds = new Set(day.bullets.map(b => b.jobId).filter(Boolean));
+      const newBullets = scheduledJobs
+        .filter(job => !existingJobIds.has(job.id))
+        .map(job => ({
+          id: crypto.randomUUID(),
+          text: `${job.customer ? job.customer + ' — ' : ''}${job.mfr} ${job.model}`,
+          jobId: job.id,
+          meta: { bench: job.bench, hoursRange: job.hoursRange, action: job.action },
+          done: false,
+          createdAt: new Date().toISOString(),
+          migration: null,
+        }));
+      if (!newBullets.length) return prev;
+      return {
+        ...prev,
+        [key]: { ...day, bullets: [...newBullets, ...day.bullets] },
+      };
+    });
+  }
+
   function removeBullet(bulletId) {
     const key = todayKey();
     updateLogs(prev => {
@@ -175,6 +200,7 @@ export function useDailyLog() {
     todayLog: logs[key] ?? null,
     loading,
     addBullet,
+    seedScheduledJobs,
     removeBullet,
     toggleDone,
     closeDay,

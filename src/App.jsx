@@ -126,7 +126,32 @@ export default function App() {
     signedIn: gcal.signedIn, showToast, addChangelog,
   });
 
-  const { todayLog, addBullet, removeBullet, toggleDone, closeDay } = useDailyLog();
+  const { todayLog, addBullet, seedScheduledJobs, removeBullet, toggleDone, closeDay } = useDailyLog();
+
+  // Seed today's scheduled jobs into the Daily Log when it opens, in time order
+  useEffect(() => {
+    if (!showDailyLog) return;
+    const todayStr = new Date().toDateString();
+    const todaySlots = Object.entries(scheduledSlots)
+      .filter(([key]) => {
+        const p = key.split('-');
+        return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).toDateString() === todayStr;
+      })
+      .sort(([a], [b]) => {
+        const pa = a.split('-').map(Number);
+        const pb = b.split('-').map(Number);
+        return (pa[3] * 60 + pa[4]) - (pb[3] * 60 + pb[4]);
+      });
+    const seen = new Set();
+    const orderedJobs = [];
+    for (const [, jobId] of todaySlots) {
+      if (seen.has(jobId)) continue;
+      seen.add(jobId);
+      const job = jobs.find(j => j.id === jobId);
+      if (job) orderedJobs.push(job);
+    }
+    if (orderedJobs.length) seedScheduledJobs(orderedJobs);
+  }, [showDailyLog]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
