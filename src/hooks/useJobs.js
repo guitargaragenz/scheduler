@@ -117,7 +117,12 @@ export function useJobs({
       const prevCount = Object.keys(scheduledSlots).length;
       const nextCount = Object.keys(preservedSlots).length;
       if (prevCount > 0 && nextCount < prevCount * 0.5) {
-        showToast(`⚠ CSV upload would clear ${prevCount - nextCount} scheduled slots — schedule preserved. Check job IDs.`);
+        const lostIds = [...new Set(
+          Object.values(scheduledSlots).filter(id => !newJobIds.has(id))
+        )];
+        console.warn('[CSV guard] Slots would be lost. Missing job IDs:', lostIds);
+        console.warn('[CSV guard] New job IDs from CSV:', [...newJobIds].sort());
+        showToast(`⚠ CSV would clear ${prevCount - nextCount} slots — aborted. Open console to see which IDs.`);
         setJobs(allJobs);
         if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
         addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);
