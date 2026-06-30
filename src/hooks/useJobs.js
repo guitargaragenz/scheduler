@@ -19,6 +19,7 @@ export function useJobs({
   setSidebarOpen,
   showToast,
   addChangelog,
+  setCsvDriftReport,
 }) {
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
@@ -119,10 +120,9 @@ export function useJobs({
       if (prevCount > 0 && nextCount < prevCount * 0.5) {
         const lostIds = [...new Set(
           Object.values(scheduledSlots).filter(id => !newJobIds.has(id))
-        )];
-        console.warn('[CSV guard] Slots would be lost. Missing job IDs:', lostIds);
-        console.warn('[CSV guard] New job IDs from CSV:', [...newJobIds].sort());
-        showToast(`⚠ CSV would clear ${prevCount - nextCount} slots — aborted. Open console to see which IDs.`);
+        )].sort();
+        if (setCsvDriftReport) setCsvDriftReport({ lost: prevCount - nextCount, missingIds: lostIds });
+        showToast(`⚠ CSV would clear ${prevCount - nextCount} slots — tap for details`);
         setJobs(allJobs);
         if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
         addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);

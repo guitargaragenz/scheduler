@@ -81,6 +81,7 @@ export default function App() {
   });
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const [conflictEvents, setConflictEvents] = useState([]);
+  const [csvDriftReport, setCsvDriftReport] = useState(null);
 
   // Shared refs — written by multiple hooks; must live here to avoid split ownership
   const justSavedAt = useRef(0);
@@ -158,7 +159,7 @@ export default function App() {
     doneJobIds, completedJobs, setCompletedJobs, setDoneJobIds,
     benchKeywords, benchHours, justSavedAt,
     setPomoJob, setHighlightedJobId, setSidebarOpen,
-    showToast, addChangelog,
+    showToast, addChangelog, setCsvDriftReport,
   });
 
   // Deep-link: ?job=XXXX opens that job's drawer on load
@@ -486,6 +487,48 @@ export default function App() {
       />
 
       <Toast message={toast} onDismiss={() => setToast('')} />
+
+      {csvDriftReport && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#1e293b', borderRadius: '16px 16px 0 0',
+            padding: '20px 20px 32px', width: '100%', maxWidth: 480,
+            maxHeight: '70vh', display: 'flex', flexDirection: 'column', gap: 12,
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#fbbf24' }}>
+              ⚠ CSV Drift — schedule preserved
+            </div>
+            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+              {csvDriftReport.lost} slot{csvDriftReport.lost !== 1 ? 's' : ''} would be wiped.
+              These job IDs are in your schedule but missing from the new CSV:
+            </div>
+            <div style={{
+              flex: 1, overflowY: 'auto',
+              background: '#0f172a', borderRadius: 8, padding: '10px 12px',
+              fontFamily: 'monospace', fontSize: 12, color: '#f87171',
+              lineHeight: 1.8,
+            }}>
+              {csvDriftReport.missingIds.map(id => <div key={id}>{id}</div>)}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
+              If these IDs no longer exist (e.g. bench reclassified, subtask suffix changed),
+              it is safe to upload and the slots will be cleared. Otherwise investigate first.
+            </div>
+            <button
+              onClick={() => setCsvDriftReport(null)}
+              style={{
+                background: '#334155', color: '#f1f5f9', border: 'none',
+                borderRadius: 10, padding: '12px 0', fontSize: 14,
+                fontWeight: 600, cursor: 'pointer',
+              }}
+            >Dismiss</button>
+          </div>
+        </div>
+      )}
 
       {editingJob && (
         isMobile ? (
