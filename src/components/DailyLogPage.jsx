@@ -95,7 +95,7 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
   const exGst = invoiceAmount ? (parseFloat(invoiceAmount) / 1.15).toFixed(2) : null;
 
   function confirmMarkDone() {
-    if (job && onMarkDone) onMarkDone(job, exGst ?? 0);
+    if (bullet.jobId && onMarkDone) onMarkDone(bullet.jobId, exGst ?? 0);
     setInvoiceMode(false);
     setInvoiceAmount('');
   }
@@ -328,6 +328,11 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
     }
   }
 
+  function handleBulletMarkDone(jobId, amount) {
+    const j = jobs.find(job => job.id === jobId);
+    if (j && onMarkDone) onMarkDone(j, amount);
+  }
+
   function handlePull(job) {
     const text = `${job.customer ? job.customer + ' — ' : ''}${job.mfr} ${job.model}`;
     const meta = { bench: job.bench, hoursRange: job.hoursRange, action: job.action };
@@ -412,7 +417,7 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
                   onToggle={onToggleDone}
                   onRemove={onRemoveBullet}
                   onOpenJob={onBulletJobClick}
-                  onMarkDone={onMarkDone}
+                  onMarkDone={handleBulletMarkDone}
                   jobs={jobs}
                 />
               ))
