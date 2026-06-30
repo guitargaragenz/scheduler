@@ -329,13 +329,9 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
   }
 
   function handleBulletMarkDone(jobId, amount) {
-    const j = jobs.find(job => String(job.id) === String(jobId));
-    if (j && onMarkDone) {
-      onMarkDone(j, amount);
-    } else {
-      const ids = jobs.slice(0, 3).map(job => String(job.id)).join(', ');
-      alert(`debug: jobId=${jobId} found=${!!j} onMarkDone=${!!onMarkDone} sample=${ids}`);
-    }
+    const j = jobs.find(job => String(job.id) === String(jobId))
+           || jobs.find(job => String(job.job) === String(jobId));
+    if (j && onMarkDone) onMarkDone(j, amount);
   }
 
   function handlePull(job) {
