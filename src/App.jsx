@@ -151,7 +151,7 @@ export default function App() {
       const job = jobs.find(j => j.id === jobId);
       if (job) orderedJobs.push(job);
     }
-    if (orderedJobs.length) seedScheduledJobs(orderedJobs);
+    seedScheduledJobs(orderedJobs, new Set(jobs.map(j => String(j.job))));
   }, [showDailyLog]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jobOps = useJobs({

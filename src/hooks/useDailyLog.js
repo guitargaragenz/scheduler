@@ -97,7 +97,7 @@ export function useDailyLog() {
     });
   }
 
-  function seedScheduledJobs(scheduledJobs) {
+  function seedScheduledJobs(scheduledJobs, allJobIds = null) {
     const key = todayKey();
     updateLogs(prev => {
       const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
@@ -108,9 +108,13 @@ export function useDailyLog() {
       const seedIds = new Set(
         scheduledJobs.flatMap(job => [String(job.job), String(job.id)].filter(Boolean))
       );
-      const nonJobBullets = day.bullets.filter(
-        b => !b.jobId || !seedIds.has(String(b.jobId))
-      );
+      const nonJobBullets = day.bullets.filter(b => {
+        if (!b.jobId) return true;
+        if (seedIds.has(String(b.jobId))) return false;
+        // Strip bullets for jobs that no longer exist in the jobs array
+        if (allJobIds && !allJobIds.has(String(b.jobId))) return false;
+        return true;
+      });
 
       // Only seed jobs not already marked done in today's log
       const doneJobIds = new Set(

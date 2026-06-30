@@ -95,7 +95,7 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
   const exGst = invoiceAmount ? (parseFloat(invoiceAmount) / 1.15).toFixed(2) : null;
 
   function confirmMarkDone() {
-    if (bullet.jobId && onMarkDone) onMarkDone(bullet.jobId, exGst ?? 0);
+    if (bullet.jobId && onMarkDone) onMarkDone(bullet.jobId, bullet.id, exGst ?? 0);
     setInvoiceMode(false);
     setInvoiceAmount('');
   }
@@ -328,13 +328,14 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
     }
   }
 
-  function handleBulletMarkDone(jobId, amount) {
+  function handleBulletMarkDone(jobId, bulletId, amount) {
     const j = jobs.find(job => String(job.id) === String(jobId))
            || jobs.find(job => String(job.job) === String(jobId));
     if (j && onMarkDone) {
       onMarkDone(j, amount);
     } else {
-      alert(`Mark done failed — jobId: ${jobId}, jobs sample: ${jobs.slice(0,3).map(j=>j.id+'/'+j.job).join(', ')}`);
+      // Job no longer in array (removed from CSV) — just toggle the bullet done
+      onToggleDone(bulletId);
     }
   }
 
@@ -576,7 +577,7 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
               locked={locked}
               onToggle={onToggleDone}
               onRemove={onRemoveBullet}
-              onMarkDone={onMarkDone}
+              onMarkDone={handleBulletMarkDone}
               jobs={jobs}
             />
           ))
