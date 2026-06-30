@@ -19,7 +19,6 @@ export function useJobs({
   setSidebarOpen,
   showToast,
   addChangelog,
-  setCsvDriftReport,
 }) {
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
@@ -73,39 +72,25 @@ export function useJobs({
   }
 
   function handleMarkDone(job, amount) {
-    try {
-      const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
-      const record = {
-        id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
-        bench: job.bench, hours: job.hours, customer: job.customer || '',
-        invoiceAmount: Number(amount) || 0,
-        completedAt: new Date().toISOString(),
-        weekKey,
-      };
-      const newRecords = [...completedJobs, record];
-      const newDoneIds = [...doneJobIds, String(job.id)];
-      setCompletedJobs(newRecords);
-      setDoneJobIds(newDoneIds);
-      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
-      if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds).catch(() => {});
-      setPomoJob(null);
-      showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
-    } catch (e) {
-      showToast(`⚠ mark done error: ${e.message}`);
-    }
+    const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
+    const record = {
+      id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
+      bench: job.bench, hours: job.hours, customer: job.customer || '',
+      invoiceAmount: Number(amount) || 0,
+      completedAt: new Date().toISOString(),
+      weekKey,
+    };
+    const newRecords = [...completedJobs, record];
+    const newDoneIds = [...doneJobIds, String(job.id)];
+    setCompletedJobs(newRecords);
+    setDoneJobIds(newDoneIds);
+    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
+    if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
+    setPomoJob(null);
+    showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
   }
 
-  function commitCsvUpload(allJobs, preservedSlots, merged) {
-    const jobCount = merged.filter(j => !j.parentId).length;
-    justSavedAt.current = Date.now();
-    setJobs(allJobs);
-    setScheduledSlots(preservedSlots);
-    if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
-    showToast(`Loaded ${jobCount} jobs from CSV`);
-    addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
-  }
-
-  function handleCsvUpload(csvText, force = false) {
+  function handleCsvUpload(csvText) {
     try {
       const newJobs = parseCSV(csvText, benchKeywords, benchHours).filter(j => !doneJobIds.includes(String(j.id)));
       const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
@@ -127,26 +112,20 @@ export function useJobs({
       // This catches ID drift from bench reclassification silently clearing the schedule.
       const prevCount = Object.keys(scheduledSlots).length;
       const nextCount = Object.keys(preservedSlots).length;
-      if (!force && prevCount > 0 && nextCount < prevCount * 0.5) {
-        const lostIds = [...new Set(
-          Object.values(scheduledSlots).filter(id => !newJobIds.has(id))
-        )].sort();
-        if (setCsvDriftReport) setCsvDriftReport({
-          lost: prevCount - nextCount,
-          missingIds: lostIds,
-          jobCount,
-          allJobs,
-          preservedSlots,
-          merged,
-        });
-        showToast(`⚠ CSV would clear ${prevCount - nextCount} slots — tap for details`);
+      if (prevCount > 0 && nextCount < prevCount * 0.5) {
+        showToast(`⚠ CSV upload would clear ${prevCount - nextCount} scheduled slots — schedule preserved. Check job IDs.`);
         setJobs(allJobs);
         if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
         addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);
         return;
       }
 
-      commitCsvUpload(allJobs, preservedSlots, merged);
+      justSavedAt.current = Date.now();
+      setJobs(allJobs);
+      setScheduledSlots(preservedSlots);
+      if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
+      showToast(`Loaded ${jobCount} jobs from CSV`);
+      addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
@@ -169,7 +148,6 @@ export function useJobs({
     handleSaveDrawer,
     handleMarkDone,
     handleCsvUpload,
-    commitCsvUpload,
     handleOpenPomo,
     handleLogPomoSession,
   };

@@ -40,19 +40,19 @@ function Tag({ label, style: extraStyle }) {
   );
 }
 
-function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, jobs }) {
+function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   const done = bullet.done;
-  const job = jobs?.find(j => j.id === bullet.jobId) ?? null;
-  const meta = bullet.meta || (job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null);
-  const isJob = !!bullet.jobId || !!job;
-  const [invoiceMode, setInvoiceMode] = useState(false);
-  const [invoiceAmount, setInvoiceAmount] = useState('');
+  const meta = bullet.meta || (() => {
+    const job = jobs?.find(j => j.id === bullet.jobId);
+    return job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null;
+  })();
+  const isJob = !!bullet.jobId;
 
   const [offsetX, setOffsetX] = useState(0);
   const [springing, setSpringing] = useState(false);
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
-  const dirLocked = useRef(null);
+  const dirLocked = useRef(null); // 'h' | 'v' | null
 
   function handleTouchStart(e) {
     touchStartX.current = e.touches[0].clientX;
@@ -79,25 +79,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
     const THRESHOLD = 72;
     if (dirLocked.current === 'h') {
       if (offsetX < -THRESHOLD) { onRemove(bullet.id); return; }
-      if (offsetX > THRESHOLD) {
-        if (isJob && onMarkDone && !done) {
-          setInvoiceMode(true);
-        } else {
-          onToggle(bullet.id);
-        }
-      }
+      if (offsetX > THRESHOLD)  { onToggle(bullet.id); }
     }
     setSpringing(true);
     setOffsetX(0);
     touchStartX.current = null;
-  }
-
-  const exGst = invoiceAmount ? (parseFloat(invoiceAmount) / 1.15).toFixed(2) : null;
-
-  function confirmMarkDone() {
-    if (bullet.jobId && onMarkDone) onMarkDone(bullet.jobId, bullet.id, exGst ?? 0);
-    setInvoiceMode(false);
-    setInvoiceAmount('');
   }
 
   const swipeProgress = Math.abs(offsetX) / 72;
@@ -106,41 +92,7 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
   const isRight = offsetX > 20;
 
   return (
-    <div style={{ borderBottom: '1px solid #1e293b' }}>
-    {invoiceMode && (
-      <div style={{
-        background: '#0f2d1f', border: '1px solid #166534', borderRadius: 8,
-        margin: '4px 8px 6px', padding: '10px 12px',
-      }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700, flexShrink: 0 }}>Invoice $</span>
-          <input
-            type="number" min="0" step="1"
-            placeholder="0"
-            value={invoiceAmount}
-            onChange={e => setInvoiceAmount(e.target.value)}
-            autoFocus
-            style={{
-              flex: 1, background: '#052e16', border: '1px solid #166534', borderRadius: 6,
-              padding: '6px 10px', fontSize: 14, color: '#f1f5f9', outline: 'none',
-            }}
-          />
-          <button onClick={confirmMarkDone} style={{
-            background: '#16a34a', color: '#fff', border: 'none', borderRadius: 6,
-            padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-          }}>Done</button>
-          <button onClick={() => { setInvoiceMode(false); setInvoiceAmount(''); }} style={{
-            background: 'none', border: 'none', color: '#64748b', fontSize: 16, cursor: 'pointer', padding: '0 2px',
-          }}>✕</button>
-        </div>
-        {exGst && (
-          <div style={{ fontSize: 11, color: '#4ade80', marginTop: 6, paddingLeft: 2 }}>
-            Income ex-GST: <strong>${exGst}</strong>
-          </div>
-        )}
-      </div>
-    )}
-    <div style={{ position: 'relative', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #1e293b' }}>
       {/* Swipe reveal layer */}
       <div style={{
         position: 'absolute', inset: 0,
@@ -224,7 +176,6 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, onMarkDone, 
         </div>
       </div>
     </div>
-    </div>
   );
 }
 
@@ -304,7 +255,7 @@ function LogJobCard({ job, pulled, onPull, jobs }) {
   );
 }
 
-export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onMarkDone, onRequestCloseDay }) {
+export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay }) {
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
@@ -325,17 +276,6 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
     if (e.key === 'Enter' && input.trim()) {
       onAddBullet(input.trim(), null, null);
       setInput('');
-    }
-  }
-
-  function handleBulletMarkDone(jobId, bulletId, amount) {
-    const j = jobs.find(job => String(job.id) === String(jobId))
-           || jobs.find(job => String(job.job) === String(jobId));
-    if (j && onMarkDone) {
-      onMarkDone(j, amount);
-    } else {
-      // Job no longer in array (removed from CSV) — just toggle the bullet done
-      onToggleDone(bulletId);
     }
   }
 
@@ -423,7 +363,6 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
                   onToggle={onToggleDone}
                   onRemove={onRemoveBullet}
                   onOpenJob={onBulletJobClick}
-                  onMarkDone={handleBulletMarkDone}
                   jobs={jobs}
                 />
               ))
@@ -577,7 +516,6 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
               locked={locked}
               onToggle={onToggleDone}
               onRemove={onRemoveBullet}
-              onMarkDone={handleBulletMarkDone}
               jobs={jobs}
             />
           ))

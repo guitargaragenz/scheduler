@@ -81,7 +81,6 @@ export default function App() {
   });
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const [conflictEvents, setConflictEvents] = useState([]);
-  const [csvDriftReport, setCsvDriftReport] = useState(null);
 
   // Shared refs — written by multiple hooks; must live here to avoid split ownership
   const justSavedAt = useRef(0);
@@ -127,39 +126,14 @@ export default function App() {
     signedIn: gcal.signedIn, showToast, addChangelog,
   });
 
-  const { todayLog, addBullet, seedScheduledJobs, removeBullet, toggleDone, closeDay } = useDailyLog();
-
-  // Seed today's scheduled jobs into the Daily Log when it opens, in time order
-  useEffect(() => {
-    if (!showDailyLog) return;
-    const todayStr = new Date().toDateString();
-    const todaySlots = Object.entries(scheduledSlots)
-      .filter(([key]) => {
-        const p = key.split('-');
-        return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).toDateString() === todayStr;
-      })
-      .sort(([a], [b]) => {
-        const pa = a.split('-').map(Number);
-        const pb = b.split('-').map(Number);
-        return (pa[3] * 60 + pa[4]) - (pb[3] * 60 + pb[4]);
-      });
-    const seen = new Set();
-    const orderedJobs = [];
-    for (const [, jobId] of todaySlots) {
-      if (seen.has(jobId)) continue;
-      seen.add(jobId);
-      const job = jobs.find(j => j.id === jobId);
-      if (job) orderedJobs.push(job);
-    }
-    seedScheduledJobs(orderedJobs, new Set(jobs.map(j => String(j.job))));
-  }, [showDailyLog]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { todayLog, addBullet, removeBullet, toggleDone, closeDay } = useDailyLog();
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
     doneJobIds, completedJobs, setCompletedJobs, setDoneJobIds,
     benchKeywords, benchHours, justSavedAt,
     setPomoJob, setHighlightedJobId, setSidebarOpen,
-    showToast, addChangelog, setCsvDriftReport,
+    showToast, addChangelog,
   });
 
   // Deep-link: ?job=XXXX opens that job's drawer on load
@@ -423,7 +397,6 @@ export default function App() {
               onAddBullet={addBullet}
               onToggleDone={toggleDone}
               onRemoveBullet={removeBullet}
-              onMarkDone={jobOps.handleMarkDone}
               onBulletJobClick={jobId => {
                 const j = jobs.find(job => job.id === jobId);
                 if (j) setEditingJob(j);
@@ -487,59 +460,6 @@ export default function App() {
       />
 
       <Toast message={toast} onDismiss={() => setToast('')} />
-
-      {csvDriftReport && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 3000,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        }}>
-          <div style={{
-            background: '#1e293b', borderRadius: '16px 16px 0 0',
-            padding: '20px 20px 32px', width: '100%', maxWidth: 480,
-            maxHeight: '70vh', display: 'flex', flexDirection: 'column', gap: 12,
-          }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#fbbf24' }}>
-              ⚠ CSV Drift — schedule preserved
-            </div>
-            <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
-              <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{csvDriftReport.jobCount} jobs</span> in CSV &nbsp;·&nbsp; {csvDriftReport.lost} slot{csvDriftReport.lost !== 1 ? 's' : ''} would be wiped.
-              These job IDs are in your schedule but missing from the new CSV:
-            </div>
-            <div style={{
-              flex: 1, overflowY: 'auto',
-              background: '#0f172a', borderRadius: 8, padding: '10px 12px',
-              fontFamily: 'monospace', fontSize: 12, color: '#f87171',
-              lineHeight: 1.8,
-            }}>
-              {csvDriftReport.missingIds.map(id => <div key={id}>{id}</div>)}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
-              If these IDs no longer exist (e.g. bench reclassified, subtask suffix changed),
-              it is safe to upload and the slots will be cleared. Otherwise investigate first.
-            </div>
-            <button
-              onClick={() => {
-                jobOps.commitCsvUpload(csvDriftReport.allJobs, csvDriftReport.preservedSlots, csvDriftReport.merged);
-                setCsvDriftReport(null);
-              }}
-              style={{
-                background: '#b91c1c', color: '#fff', border: 'none',
-                borderRadius: 10, padding: '12px 0', fontSize: 14,
-                fontWeight: 700, cursor: 'pointer',
-              }}
-            >Upload anyway — clear these slots</button>
-            <button
-              onClick={() => setCsvDriftReport(null)}
-              style={{
-                background: '#334155', color: '#f1f5f9', border: 'none',
-                borderRadius: 10, padding: '12px 0', fontSize: 14,
-                fontWeight: 600, cursor: 'pointer',
-              }}
-            >Dismiss</button>
-          </div>
-        </div>
-      )}
 
       {editingJob && (
         isMobile ? (
