@@ -134,6 +134,7 @@ export function useJobs({
         if (setCsvDriftReport) setCsvDriftReport({
           lost: prevCount - nextCount,
           missingIds: lostIds,
+          jobCount,
           allJobs,
           preservedSlots,
           merged,

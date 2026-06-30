@@ -503,7 +503,7 @@ export default function App() {
               ⚠ CSV Drift — schedule preserved
             </div>
             <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
-              {csvDriftReport.lost} slot{csvDriftReport.lost !== 1 ? 's' : ''} would be wiped.
+              <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{csvDriftReport.jobCount} jobs</span> in CSV &nbsp;·&nbsp; {csvDriftReport.lost} slot{csvDriftReport.lost !== 1 ? 's' : ''} would be wiped.
               These job IDs are in your schedule but missing from the new CSV:
             </div>
             <div style={{
