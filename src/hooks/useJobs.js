@@ -72,22 +72,26 @@ export function useJobs({
   }
 
   function handleMarkDone(job, amount) {
-    const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
-    const record = {
-      id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
-      bench: job.bench, hours: job.hours, customer: job.customer || '',
-      invoiceAmount: Number(amount) || 0,
-      completedAt: new Date().toISOString(),
-      weekKey,
-    };
-    const newRecords = [...completedJobs, record];
-    const newDoneIds = [...doneJobIds, String(job.id)];
-    setCompletedJobs(newRecords);
-    setDoneJobIds(newDoneIds);
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
-    if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
-    setPomoJob(null);
-    showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
+    try {
+      const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
+      const record = {
+        id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
+        bench: job.bench, hours: job.hours, customer: job.customer || '',
+        invoiceAmount: Number(amount) || 0,
+        completedAt: new Date().toISOString(),
+        weekKey,
+      };
+      const newRecords = [...completedJobs, record];
+      const newDoneIds = [...doneJobIds, String(job.id)];
+      setCompletedJobs(newRecords);
+      setDoneJobIds(newDoneIds);
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
+      if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds).catch(() => {});
+      setPomoJob(null);
+      showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
+    } catch (e) {
+      showToast(`⚠ mark done error: ${e.message}`);
+    }
   }
 
   function handleCsvUpload(csvText) {
