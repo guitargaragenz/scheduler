@@ -331,7 +331,11 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
   function handleBulletMarkDone(jobId, amount) {
     const j = jobs.find(job => String(job.id) === String(jobId))
            || jobs.find(job => String(job.job) === String(jobId));
-    if (j && onMarkDone) onMarkDone(j, amount);
+    if (j && onMarkDone) {
+      onMarkDone(j, amount);
+    } else {
+      alert(`Mark done failed — jobId: ${jobId}, jobs sample: ${jobs.slice(0,3).map(j=>j.id+'/'+j.job).join(', ')}`);
+    }
   }
 
   function handlePull(job) {
