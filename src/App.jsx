@@ -422,6 +422,7 @@ export default function App() {
               onAddBullet={addBullet}
               onToggleDone={toggleDone}
               onRemoveBullet={removeBullet}
+              onMarkDone={jobOps.handleMarkDone}
               onBulletJobClick={jobId => {
                 const j = jobs.find(job => job.id === jobId);
                 if (j) setEditingJob(j);
