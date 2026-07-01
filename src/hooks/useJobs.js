@@ -100,8 +100,41 @@ export function useJobs({
         scheduled: existingByJobNo[j.job]?.scheduled || false,
         calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
       }));
+
+      // Carry forward manually-split jobs (JobDrawer splits) — parseCSV() has no
+      // knowledge of these; without this they silently vanish on every CSV upload,
+      // taking their scheduledSlots with them (drift-guard false positive).
+      const manualSplitsByParentId = {};
+      jobs.filter(j => j.isSubtask === true && j.parentId).forEach(j => {
+        (manualSplitsByParentId[j.parentId] ||= []).push(j);
+      });
+
+      const autoSplitParentIds = new Set(merged.filter(j => j.parentId).map(j => j.parentId));
+      let collisionCount = 0;
+      const carriedSplits = [];
+
+      merged.forEach(parent => {
+        if (parent.parentId) return; // only top-level jobs can own manual splits
+        const splits = manualSplitsByParentId[parent.id];
+        if (!splits || splits.length === 0) return;
+
+        if (autoSplitParentIds.has(parent.id)) {
+          // Bench reclassification now also produces an auto-split for this parent —
+          // keep the existing manual split (deliberate user intent), skip the duplicate.
+          collisionCount++;
+          return;
+        }
+
+        parent.isSplit = true;
+        carriedSplits.push(...splits.map(s => ({ ...s, parentId: parent.id })));
+      });
+
+      if (collisionCount > 0) {
+        showToast(`⚠ ${collisionCount} job${collisionCount > 1 ? 's' : ''} reclassified — kept existing manual split, skipped duplicate auto-split`);
+      }
+
       const doneJobs = jobs.filter(j => j.done);
-      const allJobs = [...merged, ...doneJobs];
+      const allJobs = [...merged, ...carriedSplits, ...doneJobs];
       const newJobIds = new Set(allJobs.map(j => j.id));
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
@@ -115,7 +148,7 @@ export function useJobs({
       if (prevCount > 0 && nextCount < prevCount * 0.5) {
         showToast(`⚠ CSV upload would clear ${prevCount - nextCount} scheduled slots — schedule preserved. Check job IDs.`);
         setJobs(allJobs);
-        if (isFirebaseConfigured()) saveSchedule(merged, scheduledSlots);
+        if (isFirebaseConfigured()) saveSchedule(allJobs, scheduledSlots);
         addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);
         return;
       }
@@ -123,7 +156,7 @@ export function useJobs({
       justSavedAt.current = Date.now();
       setJobs(allJobs);
       setScheduledSlots(preservedSlots);
-      if (isFirebaseConfigured()) saveSchedule(merged, preservedSlots);
+      if (isFirebaseConfigured()) saveSchedule(allJobs, preservedSlots);
       showToast(`Loaded ${jobCount} jobs from CSV`);
       addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
     } catch (e) {
