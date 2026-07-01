@@ -28,3 +28,54 @@ Items parked during sessions for weekly review every Sunday.
 - [ ] **Google Sheets VB column formula** — SEARCH formula on col L no longer needed (PDF parser already strips VB: and sets flag). No action required — closed.
 
 ---
+
+## 2026-06-24 — Session: Full App Audit + Team Build
+
+Full audit by agent team + council. All items prioritised and actionable.
+
+### Architecture (do first — foundation for everything else)
+- [ ] **Split App.jsx into specialist roles** — 1,000+ line file does everything at once. Split into job manager, calendar manager, Firebase manager, GCal manager, screen manager. Run through full team protocol. Prevents the regression days.
+
+### Council flags (urgent)
+- [ ] **Silent GCal conflict bump** — app quietly moves bumped jobs with no durable record. Could come in Monday to scrambled schedule with no explanation. Fix: durable log + visible notification when job gets bumped.
+- [ ] **Firebase writes entire jobs array on every change** — fine now, will hit limits as pomoLog accumulates. Watch it.
+
+### Quick wins
+- [ ] Fix desktop "Place on Calendar" button (confirmed broken)
+- [ ] Fix Pomodoro alarm sound (confirmed broken)
+- [ ] Fix `setChangelog` bug — every drag/sync/upload event silently discarded
+- [ ] Remove dead code: `GCalDrawer.jsx`, `autoSchedule()`, `placeJob()`, `canPlace()`, `JobEditDrawer.jsx`
+- [ ] "Today" button on week nav
+- [ ] Age colour badges on sidebar cards — 60+ day jobs red (Runway has this, sidebar doesn't)
+- [ ] Status badge on sidebar cards — GTS/INC/CI/PARTS not visible on card
+- [ ] Auto-scroll calendar to current hour on load
+- [ ] Undo toast on unschedule — currently destructive with no confirmation
+- [ ] Revenue pill in header — data already computed, not surfaced
+
+### Bigger ideas
+- [ ] Mobile "Move" action for scheduled jobs — currently remove → find → reschedule
+- [ ] Day load indicator on mobile Schedule tab — no visibility into what's booked before placing
+- [ ] "What's on today" morning banner — no daily summary anywhere
+- [ ] Actual vs estimated hours on job card — data exists, never shown together
+- [ ] "Next job" recommendation — nothing tells you what to do next
+- [ ] Weekly capacity view — "22h booked, 18h queued, 6h buffer"
+- [ ] Pomo timer without scheduling — can't log time on unscheduled jobs
+- [ ] Auto-import CSV — pipeline already writes to Firebase, app should react automatically
+- [ ] Week-over-week revenue history — no trend view
+
+### UX friction
+- [ ] "Mark Done" without job being on calendar
+- [ ] Subtask expand affordance too small — needs visible chip
+- [ ] No GCal sync indicator on calendar cards
+- [ ] Urgent mode toggle too prominent — accidental activation risk
+- [ ] Mobile time picker allows non-30min snapping — replace with preset buttons
+- [ ] VB badge needs tooltip — "Valued Builder — priority customer"
+
+---
+
+## 2026-07-01 — Session: CSV Fix Merged + Remove from Calendar
+
+- [x] **"Remove from Calendar" button in PomoDrawer (desktop)** — clicking a scheduled job on the calendar opens PomoDrawer (not JobDrawer). Added a "Remove from Calendar" button there (below Job Done section, only shows when idle) so jobs can be unscheduled with one click instead of dragging back to the sidebar. Uses existing `scheduler.unscheduleJob`. Verified working in preview — job disappears from calendar cleanly. Mobile already had this in MobileJobSheet.
+- [ ] **Pomodoro timer broken (Trevor confirmed 2026-07-01)** — timer itself not working right, on top of the already-logged alarm sound bug above. Needs a proper look — parked, not touched today.
+
+---

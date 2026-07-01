@@ -36,7 +36,7 @@ function reducer(state, action) {
   }
 }
 
-export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone }) {
+export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onRemove }) {
   const [workMins, setWorkMins] = useState(DEFAULT_WORK_MINS);
   const workSecs = workMins * 60;
 
@@ -354,6 +354,21 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone }) {
               >Done ✓</button>
             </div>
           </div>
+        )}
+
+        {/* Remove from calendar */}
+        {onRemove && job.scheduled && isIdle && (
+          <button
+            onClick={() => { onRemove(job); handleClose(); }}
+            style={{
+              width: '100%', marginTop: 14, padding: '9px 0',
+              background: 'transparent', color: '#f87171',
+              border: '1px solid #f8717144', borderRadius: 8,
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Remove from Calendar
+          </button>
         )}
 
         {/* Past sessions + manual log */}

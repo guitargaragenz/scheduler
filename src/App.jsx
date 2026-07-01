@@ -478,6 +478,7 @@ export default function App() {
             onSave={jobOps.handleSaveDrawer}
             weekDays={weekDays}
             onSchedule={scheduler.handleMobileSchedule}
+            onRemove={scheduler.unscheduleJob}
           />
         )
       )}
@@ -488,6 +489,7 @@ export default function App() {
           onClose={() => setPomoJob(null)}
           onLogSession={session => jobOps.handleLogPomoSession(pomoJob.id, session)}
           onMarkDone={jobOps.handleMarkDone}
+          onRemove={scheduler.unscheduleJob}
         />
       )}
 
