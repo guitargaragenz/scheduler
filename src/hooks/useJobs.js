@@ -157,8 +157,15 @@ export function useJobs({
       setJobs(allJobs);
       setScheduledSlots(preservedSlots);
       if (isFirebaseConfigured()) saveSchedule(allJobs, preservedSlots);
-      showToast(`Loaded ${jobCount} jobs from CSV`);
-      addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
+
+      const droppedCount = prevCount - nextCount;
+      if (droppedCount > 0) {
+        showToast(`⚠ Loaded ${jobCount} jobs — ${droppedCount} scheduled slot${droppedCount > 1 ? 's' : ''} dropped (job ID no longer matched). Check calendar.`);
+        addChangelog(`CSV uploaded — ${jobCount} jobs, ${droppedCount} scheduled slots dropped (ID mismatch)`);
+      } else {
+        showToast(`Loaded ${jobCount} jobs from CSV`);
+        addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
+      }
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
