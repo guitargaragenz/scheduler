@@ -226,3 +226,10 @@ export const BENCH_COLORS = {
   Finishing:   { bg: '#92400e', border: '#d97706', text: '#fef3c7' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
 };
+
+export const HOURS_BUCKETS = [
+  { label: '< 1hr',  key: 'lt1',  test: h => h > 0 && h < 1 },
+  { label: '1–2hr',  key: '1to2', test: h => h >= 1 && h < 2 },
+  { label: '2–4hr',  key: '2to4', test: h => h >= 2 && h < 4 },
+  { label: '4hr+',   key: 'gt4',  test: h => h >= 4 },
+];

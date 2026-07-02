@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { BENCH_COLORS } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -212,7 +211,7 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
                           outline: isToday && !isSelected ? '1px solid #2563eb' : 'none',
                         }}
                       >
-                        <span style={{ fontSize: 11, fontWeight: 600 }}>{DAYS_SHORT[i]}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600 }}>{day.toLocaleDateString('en-NZ', { weekday: 'short' })}</span>
                         <span style={{ fontSize: 15, fontWeight: 700 }}>
                           {day.getDate()}
                         </span>
@@ -247,7 +246,7 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
                 <span style={{ fontSize: 13, color: '#94a3b8' }}>
-                  {DAYS_SHORT[selectedDay]} {weekDays[selectedDay]?.getDate()} at {timeVal}
+                  {weekDays[selectedDay]?.toLocaleDateString('en-NZ', { weekday: 'short' })} {weekDays[selectedDay]?.getDate()} at {timeVal}
                 </span>
                 <span style={{ fontSize: 13, color: '#64748b' }}>{job.hours}h · {job.bench}</span>
               </div>

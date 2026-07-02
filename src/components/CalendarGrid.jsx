@@ -138,13 +138,17 @@ function LunchSlot({ dayIdx, minute }) {
   );
 }
 
-export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick }) {
+export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, scrollToCurrentHour = true }) {
 
   const scrollRef = useRef(null);
   const todayStr = new Date().toDateString();
 
   useEffect(() => {
     if (!scrollRef.current) return;
+    if (!scrollToCurrentHour) {
+      scrollRef.current.scrollTop = 0;
+      return;
+    }
     const now = new Date();
     const currentHour = now.getHours();
     // Scroll to 1 hour before current time so current slot is visible with context
@@ -153,7 +157,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
     if (slotIndex >= 0) {
       scrollRef.current.scrollTop = slotIndex * SLOT_HEIGHT * 2;
     }
-  }, []);
+  }, [scrollToCurrentHour]);
 
   // slotKey -> job object
   const slotJobMap = scheduledJobs;

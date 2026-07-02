@@ -1,14 +1,7 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
-import { BENCH_COLORS } from '../data/jobs.js';
-
-const HOURS_BUCKETS = [
-  { label: '< 1hr',  key: 'lt1',  test: h => h > 0 && h < 1 },
-  { label: '1–2hr',  key: '1to2', test: h => h >= 1 && h < 2 },
-  { label: '2–4hr',  key: '2to4', test: h => h >= 2 && h < 4 },
-  { label: '4hr+',   key: 'gt4',  test: h => h >= 4 },
-];
+import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
 export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt }) {
   const [search, setSearch] = useState('');

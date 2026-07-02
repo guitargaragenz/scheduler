@@ -3,6 +3,17 @@ import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { isFirebaseConfigured } from '../utils/firebase.js';
+import { localDateKey } from '../utils/calendar.js';
+
+// crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — Safari disables it
+// entirely over plain http:// on a LAN IP, which breaks local iPhone testing. Fall back to a
+// manual ID in that case; production (Vercel, HTTPS) always has the real one.
+function genId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function getDb() {
   const existing = getApps();
@@ -20,13 +31,13 @@ function getDb() {
 const DAILY_LOGS_DOC = () => doc(getDb(), 'ggnz', 'dailyLogs');
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateKey();
 }
 
 function tomorrowKey() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return localDateKey(d);
 }
 
 export function useDailyLog() {
@@ -83,7 +94,7 @@ export function useDailyLog() {
           bullets: [
             ...day.bullets,
             {
-              id: crypto.randomUUID(),
+              id: genId(),
               text,
               jobId,
               meta,
@@ -94,6 +105,54 @@ export function useDailyLog() {
           ],
         },
       };
+    });
+  }
+
+  // Insert `bullet` so that, restricted to the subsequence of job-bullets (jobId != null),
+  // order is ascending by scheduledMinutes. Free-text bullets never move.
+  function insertJobBullet(bullets, bullet) {
+    let insertAt = bullets.length;
+    for (let i = 0; i < bullets.length; i++) {
+      const b = bullets[i];
+      if (b.jobId != null && b.scheduledMinutes != null && b.scheduledMinutes > bullet.scheduledMinutes) {
+        insertAt = i;
+        break;
+      }
+    }
+    const next = bullets.slice();
+    next.splice(insertAt, 0, bullet);
+    return next;
+  }
+
+  function upsertScheduledBullet(job, hour, minute) {
+    const key = todayKey();
+    const scheduledMinutes = hour * 60 + minute;
+    const text = `${job.customer ? job.customer + ' — ' : ''}${job.mfr} ${job.model}`;
+    const meta = { bench: job.bench, hoursRange: job.hoursRange, action: job.action };
+
+    updateLogs(prev => {
+      const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
+      if (day.locked) return prev;
+
+      const existingIdx = day.bullets.findIndex(b => b.jobId === job.id);
+
+      if (existingIdx !== -1) {
+        const updated = { ...day.bullets[existingIdx], text, meta, scheduledMinutes };
+        const withoutIt = day.bullets.filter((_, i) => i !== existingIdx);
+        return { ...prev, [key]: { ...day, bullets: insertJobBullet(withoutIt, updated) } };
+      }
+
+      const newBullet = {
+        id: genId(),
+        text,
+        jobId: job.id,
+        meta,
+        done: false,
+        createdAt: new Date().toISOString(),
+        migration: null,
+        scheduledMinutes,
+      };
+      return { ...prev, [key]: { ...day, bullets: insertJobBullet(day.bullets, newBullet) } };
     });
   }
 
@@ -142,7 +201,7 @@ export function useDailyLog() {
       const keptBullets = closedBullets
         .filter(b => migrations[b.id] === 'kept')
         .map(b => ({
-          id: crypto.randomUUID(),
+          id: genId(),
           text: b.text,
           jobId: b.jobId,
           done: false,
@@ -175,6 +234,7 @@ export function useDailyLog() {
     todayLog: logs[key] ?? null,
     loading,
     addBullet,
+    upsertScheduledBullet,
     removeBullet,
     toggleDone,
     closeDay,

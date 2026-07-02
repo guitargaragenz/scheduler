@@ -1,37 +1,111 @@
 import { useState } from 'react';
+import JobCard from './JobCard.jsx';
+import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-function ageDotColor(days) {
-  if (days < 30) return '#3a9e5f';
-  if (days <= 60) return '#c47d20';
-  return '#c44040';
+const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Admin'];
+
+function getSubtasks(job, jobs) {
+  if (job.hasSubtasks && Array.isArray(job.subtasks)) {
+    return jobs.filter(j => job.subtasks.includes(j.id));
+  }
+  if (job.isSplit) {
+    return jobs.filter(j => j.parentId === job.id);
+  }
+  return [];
 }
 
-export default function JobShelf({ jobs, onPull }) {
+function formatSyncedAt(lastSyncedAt) {
+  const d = new Date(lastSyncedAt);
+  const now = new Date();
+  const mins = Math.floor((now - d) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
+}
+
+export default function JobShelf({
+  jobs, dragMode, onDragModeChange, onCsvUpload,
+  highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
+}) {
+  const [selectedBench, setSelectedBench] = useState(() => localStorage.getItem('jobShelfBench') || null);
   const [search, setSearch] = useState('');
+  const [hoursFilter, setHoursFilter] = useState(null);
+  const [expandedJobs, setExpandedJobs] = useState({});
 
-  const q = search.toLowerCase();
+  function pickBench(bench) {
+    setSelectedBench(prev => {
+      const next = prev === bench ? null : bench;
+      if (next) localStorage.setItem('jobShelfBench', next);
+      else localStorage.removeItem('jobShelfBench');
+      return next;
+    });
+  }
 
-  const filtered = jobs
-    .filter(j => j.id && !j.done)
-    .filter(j => {
-      if (!q) return true;
-      return [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q));
-    })
-    .slice()
-    .sort((a, b) => (b.days ?? 0) - (a.days ?? 0));
+  const toggleExpand = jobId => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
+
+  const topLevel = jobs.filter(j => j.id && !j.done && !j.parentId && !j.scheduled && !j.isSplit);
+
+  const benchCounts = BENCH_ORDER.map(bench => ({
+    bench,
+    count: topLevel.filter(j => j.bench === bench).length,
+  }));
+
+  const q = search.trim().toLowerCase();
+  const searching = q.length > 0;
+  const active = searching || !!selectedBench;
+
+  const matchHours = job => {
+    if (!hoursFilter) return true;
+    const bucket = HOURS_BUCKETS.find(b => b.key === hoursFilter);
+    if (!bucket) return true;
+    const h = parseFloat(job.hours);
+    return !isNaN(h) && bucket.test(h);
+  };
+
+  const visible = (searching
+    ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
+    : selectedBench
+      ? topLevel.filter(j => j.bench === selectedBench)
+      : []
+  ).filter(matchHours).sort((a, b) => (b.days ?? 0) - (a.days ?? 0));
+
+  function renderJob(job, indent = false) {
+    const subtasks = getSubtasks(job, jobs);
+    const isExpanded = expandedJobs[job.id];
+    return (
+      <div key={job.id} style={{ marginBottom: 6, marginLeft: indent ? 16 : 0 }}>
+        <JobCard
+          job={job}
+          dragMode={dragMode}
+          isHighlighted={job.id === highlightedJobId}
+          onClick={() => onJobClick(job)}
+        />
+        {subtasks.length > 0 && (
+          <div
+            onClick={() => toggleExpand(job.id)}
+            style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}
+          >
+            {isExpanded ? '▼' : '▶'} {subtasks.length} sub-tasks
+          </div>
+        )}
+        {isExpanded && subtasks.map(st => renderJob(st, true))}
+      </div>
+    );
+  }
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
       background: '#181818', overflow: 'hidden',
     }}>
-      <div style={{ padding: '12px 14px 8px' }}>
-        <div style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-          color: '#444', textTransform: 'uppercase', marginBottom: 8,
-        }}>
-          Job shelf
-        </div>
+      <div style={{ textAlign: 'center', padding: '14px 14px 12px', borderBottom: '1px solid #232323' }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: '#e2e8f0' }}>{topLevel.length}</div>
+        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>jobs waiting</div>
+      </div>
+
+      <div style={{ padding: '10px 14px 8px' }}>
         <input
           type="text"
           value={search}
@@ -41,66 +115,120 @@ export default function JobShelf({ jobs, onPull }) {
             display: 'block', width: '100%', padding: '6px 10px',
             background: '#1e1e1e', border: '1px solid #252525', borderRadius: 7,
             color: '#ccc', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+            marginBottom: 10,
           }}
         />
-      </div>
-
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 0' }}>
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', marginTop: 32, fontSize: 13, color: '#333' }}>
-            {search ? 'No jobs match' : 'No jobs'}
+        {!searching && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+            {benchCounts.map(({ bench, count }) => {
+              const isActive = selectedBench === bench;
+              const colors = BENCH_COLORS[bench] || BENCH_COLORS.Admin;
+              return (
+                <span
+                  key={bench}
+                  onClick={() => pickBench(bench)}
+                  style={{
+                    fontSize: 9, padding: '4px 9px', borderRadius: 11, fontWeight: 600, cursor: 'pointer',
+                    background: colors.bg,
+                    color: colors.text,
+                    opacity: isActive ? 1 : 0.5,
+                    border: isActive ? `1px solid ${colors.border}` : '1px solid transparent',
+                  }}
+                >
+                  {bench} <span style={{ opacity: 0.7 }}>{count}</span>
+                </span>
+              );
+            })}
           </div>
         )}
-        {filtered.map(job => {
-          const name = job.customer
-            ? `${job.customer} — ${job.mfr || ''} ${job.model || ''}`.trim()
-            : `${job.mfr || ''} ${job.model || ''}`.trim();
-          const sub = `${job.days ?? 0}d · ${job.action || '—'}`;
-          const dotColor = ageDotColor(job.days ?? 0);
 
-          return (
-            <div
-              key={job.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '7px 14px', borderBottom: '1px solid #1e1e1e',
-              }}
-            >
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: dotColor, flexShrink: 0,
-              }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13, color: '#bbb', whiteSpace: 'nowrap',
-                  overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>
-                  {name}
-                </div>
-                <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>
-                  {sub}
-                </div>
-              </div>
-              <button
-                onClick={() => onPull(job)}
-                style={{
-                  flexShrink: 0, padding: '3px 9px', borderRadius: 5,
-                  border: '1px solid #252525', background: 'none',
-                  color: '#444', fontSize: 11, cursor: 'pointer',
-                }}
-              >
-                pull
-              </button>
+        {active && (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+              {HOURS_BUCKETS.map(bucket => {
+                const isActive = hoursFilter === bucket.key;
+                return (
+                  <button
+                    key={bucket.key}
+                    onClick={() => setHoursFilter(isActive ? null : bucket.key)}
+                    title={isActive ? 'Clear hours filter' : `Show jobs ${bucket.label}`}
+                    style={{
+                      fontSize: 9, padding: '3px 7px', borderRadius: 4, cursor: 'pointer',
+                      background: isActive ? '#0284c7' : '#1e1e1e',
+                      border: `1px solid ${isActive ? '#38bdf8' : '#252525'}`,
+                      color: isActive ? '#fff' : '#7dd3fc',
+                      fontWeight: isActive ? 700 : 500,
+                    }}
+                  >{bucket.label}</button>
+                );
+              })}
             </div>
-          );
-        })}
+
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+              <button
+                onClick={() => onDragModeChange('regular')}
+                style={{
+                  flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                  background: dragMode === 'regular' ? '#166534' : '#1e1e1e',
+                  color: dragMode === 'regular' ? '#bbf7d0' : '#94a3b8',
+                }}
+              >Regular</button>
+              <button
+                onClick={() => onDragModeChange('urgent')}
+                style={{
+                  flex: 1, padding: '4px 0', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 600,
+                  background: dragMode === 'urgent' ? '#7f1d1d' : '#1e1e1e',
+                  color: dragMode === 'urgent' ? '#fca5a5' : '#94a3b8',
+                }}
+              >🚨 Urgent</button>
+              <label
+                htmlFor="job-shelf-csv-upload"
+                title="Upload CSV"
+                style={{
+                  flexShrink: 0, minWidth: 28, boxSizing: 'border-box', padding: '4px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 12,
+                  background: '#1e1e1e', border: '1px solid #252525', color: '#94a3b8',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >📂</label>
+              <input
+                id="job-shelf-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = evt => onCsvUpload(evt.target.result);
+                  reader.readAsText(file);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      <div style={{
-        padding: '8px 14px', borderTop: '1px solid #1e1e1e',
-        fontSize: 10, color: '#2a2a2a', textAlign: 'center', letterSpacing: 0.5,
-      }}>
-        read only · you pull · it never pushes
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 14px 12px' }}>
+        {!active && (
+          <div style={{ textAlign: 'center', marginTop: 32, fontSize: 12, color: '#333', fontStyle: 'italic' }}>
+            · pick a bench above, or search ·
+          </div>
+        )}
+        {active && visible.length === 0 && (
+          <div style={{ textAlign: 'center', marginTop: 32, fontSize: 13, color: '#333' }}>
+            {searching ? 'No jobs match' : 'No jobs'}
+          </div>
+        )}
+        {visible.map(job => renderJob(job))}
+      </div>
+
+      <div style={{ padding: '8px 14px', borderTop: '1px solid #1e1e1e' }}>
+        {lastSyncedAt && (
+          <div style={{ fontSize: 9, color: '#3a3a3a', textAlign: 'center', marginBottom: 4 }}>
+            ☁ synced {formatSyncedAt(lastSyncedAt)}
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: '#2a2a2a', textAlign: 'center', letterSpacing: 0.5 }}>
+          you drag · it never pushes
+        </div>
       </div>
     </div>
   );

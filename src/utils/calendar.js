@@ -1,3 +1,12 @@
+// Local YYYY-MM-DD key — NOT toISOString().slice(0,10), which is UTC and drifts a day
+// off local date for timezones ahead of UTC (e.g. NZ, UTC+12/+13) for large parts of the day.
+export function localDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // Work hours config
 export const WORK_HOURS = {
   weekday:  { start: 10, end: 23 }, // 10am–6pm + 9pm–11pm Mon–Fri

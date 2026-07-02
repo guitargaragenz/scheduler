@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { BENCH_COLORS } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
-const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -265,7 +264,7 @@ export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSched
                       outline: isToday && !isSelected ? '1px solid #2563eb' : 'none',
                       cursor: isPast ? 'default' : 'pointer', fontSize: 10, fontWeight: 600,
                     }}>
-                      <div>{DAYS_SHORT[i]}</div>
+                      <div>{day.toLocaleDateString('en-NZ', { weekday: 'short' })}</div>
                       <div>{day.getDate()}</div>
                     </button>
                   );

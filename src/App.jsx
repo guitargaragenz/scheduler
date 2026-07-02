@@ -42,6 +42,9 @@ export default function App() {
   });
   const [scheduledSlots, setScheduledSlots] = useState({});
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
+  const [displayedDate, setDisplayedDate] = useState(() =>
+    getWeekDays().find(d => d.toDateString() === new Date().toDateString()) || new Date()
+  );
   const [dragMode, setDragMode] = useState('regular');
   const [toast, setToast] = useState('');
   const [changelog, setChangelog] = useState([
@@ -69,7 +72,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showRunway, setShowRunway] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
-  const [showDailyLog, setShowDailyLog] = useState(false);
+  const [showWeekView, setShowWeekView] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
@@ -120,13 +123,16 @@ export default function App() {
   // Keep externalEventsRef in sync for useScheduler (reads it directly)
   useEffect(() => { externalEventsRef.current = gcal.externalEvents; }, [gcal.externalEvents]);
 
+  const { todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet } = useDailyLog();
+
+  const schedulerWeekDays = showWeekView ? weekDays : [displayedDate];
+
   const scheduler = useScheduler({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
-    weekDays, externalEventsRef, justSavedAt,
+    weekDays: schedulerWeekDays, externalEventsRef, justSavedAt,
     signedIn: gcal.signedIn, showToast, addChangelog,
+    upsertScheduledBullet,
   });
-
-  const { todayLog, addBullet, removeBullet, toggleDone, closeDay } = useDailyLog();
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
@@ -303,15 +309,15 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowDailyLog(d => !d)}
+              onClick={() => setShowWeekView(w => !w)}
               style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showDailyLog ? '#065f46' : '#334155'}`,
-                background: showDailyLog ? '#022c22' : '#1e293b',
-                color: showDailyLog ? '#6ee7b7' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showDailyLog ? 700 : 400,
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekView ? '#065f46' : '#334155'}`,
+                background: showWeekView ? '#022c22' : '#1e293b',
+                color: showWeekView ? '#6ee7b7' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showWeekView ? 700 : 400,
               }}
             >
-              Daily Log
+              Week View
             </button>
 
             <button
@@ -390,20 +396,7 @@ export default function App() {
             />
           ) : showRunway ? (
             <RunwayPage jobs={jobs} />
-          ) : showDailyLog ? (
-            <DailyLogPage
-              jobs={jobs}
-              todayLog={todayLog}
-              onAddBullet={addBullet}
-              onToggleDone={toggleDone}
-              onRemoveBullet={removeBullet}
-              onBulletJobClick={jobId => {
-                const j = jobs.find(job => job.id === jobId);
-                if (j) setEditingJob(j);
-              }}
-              onRequestCloseDay={() => setShowCloseDay(true)}
-            />
-          ) : (
+          ) : showWeekView ? (
             <>
               <CalendarGrid
                 weekDays={weekDays}
@@ -426,6 +419,35 @@ export default function App() {
                 lastSyncedAt={lastSyncedAt}
               />
             </>
+          ) : (
+            <DailyLogPage
+              jobs={jobs}
+              scheduledSlots={scheduledSlots}
+              weekDays={weekDays}
+              displayedDate={displayedDate}
+              onDisplayedDateChange={setDisplayedDate}
+              scheduledJobs={scheduledJobObjects}
+              externalEvents={gcal.externalEvents}
+              isDragging={scheduler.isDragging}
+              activeJobId={scheduler.activeJob?.id ?? null}
+              onCalendarJobClick={jobOps.handleOpenPomo}
+              dragMode={dragMode}
+              onDragModeChange={setDragMode}
+              onCsvUpload={jobOps.handleCsvUpload}
+              highlightedJobId={highlightedJobId}
+              onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
+              onJobClick={setEditingJob}
+              lastSyncedAt={lastSyncedAt}
+              todayLog={todayLog}
+              onAddBullet={addBullet}
+              onToggleDone={toggleDone}
+              onRemoveBullet={removeBullet}
+              onBulletJobClick={jobId => {
+                const j = jobs.find(job => job.id === jobId);
+                if (j) setEditingJob(j);
+              }}
+              onRequestCloseDay={() => setShowCloseDay(true)}
+            />
           )}
         </div>
       </div>
@@ -465,7 +487,7 @@ export default function App() {
         isMobile ? (
           <MobileJobSheet
             job={editingJob}
-            weekDays={weekDays}
+            weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
             onSave={jobOps.handleSaveDrawer}
             onClose={() => setEditingJob(null)}
@@ -476,7 +498,7 @@ export default function App() {
             job={editingJob}
             onClose={() => setEditingJob(null)}
             onSave={jobOps.handleSaveDrawer}
-            weekDays={weekDays}
+            weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
             onRemove={scheduler.unscheduleJob}
           />

@@ -14,9 +14,14 @@ export function useScheduler({
   signedIn,
   showToast,
   addChangelog,
+  upsertScheduledBullet,
 }) {
   const [activeJob, setActiveJob] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  function isToday(date) {
+    return date.toDateString() === new Date().toDateString();
+  }
 
   function buildExternalBlockedSlots() {
     const blocked = new Set();
@@ -120,6 +125,12 @@ export function useScheduler({
     ));
     showToast(`#${job.job} placed — ${spanDesc}`);
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
+
+    const firstSlot = slots[0];
+    const firstDate = weekDays[firstSlot.dayIdx];
+    if (upsertScheduledBullet && isToday(firstDate)) {
+      upsertScheduledBullet(job, firstSlot.hour, firstSlot.minute);
+    }
   }
 
   function handleMobileSchedule(job, dayIdx, hour, minute) {
@@ -201,6 +212,10 @@ export function useScheduler({
       ? `🚨 #${job.job} forced to ${dayName} ${timeStr}${splitNote}. Moved ${displaced.map(id => `#${id}`).join(', ')} back.`
       : `🚨 #${job.job} scheduled ${dayName} ${timeStr}${splitNote}`;
     showToast(msg);
+
+    if (upsertScheduledBullet && isToday(firstDate)) {
+      upsertScheduledBullet(job, first.hour, first.minute);
+    }
     addChangelog(msg);
   }
 

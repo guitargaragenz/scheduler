@@ -1,9 +1,49 @@
 import { useState, useRef, useEffect } from 'react';
 import JobShelf from './JobShelf';
+import CalendarGrid from './CalendarGrid';
+import { BENCH_COLORS as CANONICAL_BENCH_COLORS } from '../data/jobs.js';
 
 const DATE_LABEL = new Date().toLocaleDateString('en-NZ', {
   weekday: 'long', day: 'numeric', month: 'long',
 });
+
+function JobPeekPopover({ job, onClose, onOpenFull }) {
+  const colors = CANONICAL_BENCH_COLORS[job.bench] || CANONICAL_BENCH_COLORS.Admin;
+  return (
+    <div style={{
+      position: 'absolute', top: 12, right: 12, zIndex: 10,
+      background: '#1e293b', border: '1px solid #334155', borderRadius: 10,
+      padding: '14px 16px', width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{job.mfr} {job.model}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8' }}>{job.customer} · {job.bench}</div>
+        </div>
+        <span onClick={onClose} style={{ fontSize: 14, color: '#64748b', cursor: 'pointer' }}>&times;</span>
+      </div>
+      {job.desc && (
+        <div style={{ fontSize: 11, color: colors.text, fontStyle: 'italic', marginBottom: 10 }}>
+          {job.desc.length > 60 ? job.desc.slice(0, 60) + '…' : job.desc}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          onClick={onOpenFull}
+          style={{ flex: 1, background: 'none', border: '1px solid #334155', borderRadius: 6, padding: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}
+        >
+          Start Pomo
+        </button>
+        <button
+          onClick={onOpenFull}
+          style={{ flex: 1, background: 'none', border: '1px solid #334155', borderRadius: 6, padding: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}
+        >
+          Full details →
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const ACTION_COLORS = {
   GTS:   { bg: '#0f2d1f', color: '#3fb950' },
@@ -47,6 +87,9 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
     return job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null;
   })();
   const isJob = !!bullet.jobId;
+  const timeLabel = bullet.scheduledMinutes != null
+    ? `${Math.floor(bullet.scheduledMinutes / 60)}:${String(bullet.scheduledMinutes % 60).padStart(2, '0')}`
+    : null;
 
   const [offsetX, setOffsetX] = useState(0);
   const [springing, setSpringing] = useState(false);
@@ -146,6 +189,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
             color: done ? '#475569' : '#e2e8f0',
             textDecoration: done ? 'line-through' : 'none',
           }}>
+            {timeLabel && (
+              <span style={{ fontSize: 10, color: '#64748b', marginRight: 6, fontVariantNumeric: 'tabular-nums' }}>
+                {timeLabel}
+              </span>
+            )}
             {bullet.text}
             {isJob && !done && (
               <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
@@ -179,18 +227,22 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   );
 }
 
-function LogJobCard({ job, pulled, onPull, jobs }) {
+function LogJobCard({ job, pulled, onPull, onOpenJob, jobs }) {
   const splits = jobs.filter(j => j.parentId === job.id);
   const actionStyle = ACTION_COLORS[job.action] || { bg: '#1e293b', color: '#64748b' };
   const benchStyle = BENCH_COLORS[job.bench] || { bg: '#1e293b', color: '#64748b' };
 
   return (
-    <div style={{
-      margin: '0 16px 10px',
-      background: pulled ? '#131a13' : '#1e293b',
-      border: `1px solid ${pulled ? '#1a3a1a' : '#334155'}`,
-      borderRadius: 12, padding: '12px 14px',
-    }}>
+    <div
+      onClick={() => onOpenJob && onOpenJob(job.id)}
+      style={{
+        margin: '0 16px 10px',
+        background: pulled ? '#131a13' : '#1e293b',
+        border: `1px solid ${pulled ? '#1a3a1a' : '#334155'}`,
+        borderRadius: 12, padding: '12px 14px',
+        cursor: onOpenJob ? 'pointer' : 'default',
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
         <div style={{
           width: 8, height: 8, borderRadius: '50%',
@@ -239,7 +291,7 @@ function LogJobCard({ job, pulled, onPull, jobs }) {
       )}
 
       <button
-        onClick={() => !pulled && onPull(job)}
+        onClick={(e) => { e.stopPropagation(); if (!pulled) onPull(job); }}
         style={{
           width: '100%', border: `1px solid ${pulled ? '#1a3a1a' : '#334155'}`,
           borderRadius: 8, background: pulled ? 'rgba(35,134,54,0.08)' : 'none',
@@ -255,12 +307,131 @@ function LogJobCard({ job, pulled, onPull, jobs }) {
   );
 }
 
-export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay }) {
+const DEFAULT_COL_WIDTHS = { shelf: 280, schedule: 260 };
+const MIN_COL_WIDTH = 120;
+const MAX_COL_WIDTH = 720;
+
+function loadColWidths() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('dailyLogColWidths') || 'null');
+    return stored ? { ...DEFAULT_COL_WIDTHS, ...stored } : DEFAULT_COL_WIDTHS;
+  } catch {
+    return DEFAULT_COL_WIDTHS;
+  }
+}
+
+function ResizeHandle({ onResize }) {
+  const dragRef = useRef(null);
+
+  function handleMouseDown(e) {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, pendingDx: 0, rafId: null };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    function flush() {
+      dragRef.current.rafId = null;
+      const dx = dragRef.current.pendingDx;
+      dragRef.current.pendingDx = 0;
+      if (dx !== 0) onResize(dx);
+    }
+
+    function handleMouseMove(moveEvent) {
+      const dx = moveEvent.clientX - dragRef.current.startX;
+      dragRef.current.startX = moveEvent.clientX;
+      dragRef.current.pendingDx += dx;
+      if (dragRef.current.rafId == null) {
+        dragRef.current.rafId = requestAnimationFrame(flush);
+      }
+    }
+    function handleMouseUp() {
+      if (dragRef.current.rafId != null) {
+        cancelAnimationFrame(dragRef.current.rafId);
+        flush();
+      }
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }
+
+  return (
+    <div
+      onMouseDown={handleMouseDown}
+      style={{
+        width: 10, marginLeft: -5, marginRight: -5, flexShrink: 0, cursor: 'col-resize',
+        background: 'transparent', position: 'relative', zIndex: 1,
+        display: 'flex', justifyContent: 'center',
+      }}
+      onMouseEnter={e => { e.currentTarget.firstChild.style.background = '#475569'; }}
+      onMouseLeave={e => { e.currentTarget.firstChild.style.background = 'transparent'; }}
+    >
+      <div style={{ width: 2, height: '100%', background: 'transparent', pointerEvents: 'none' }} />
+    </div>
+  );
+}
+
+export default function DailyLogPage({
+  jobs, scheduledSlots, weekDays, displayedDate, onDisplayedDateChange, scheduledJobs, externalEvents, isDragging, activeJobId, onCalendarJobClick,
+  dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
+  todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
+}) {
+  const isDisplayedDateToday = displayedDate.toDateString() === new Date().toDateString();
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [shelfOpen, setShelfOpen] = useState(false);
+  const [colWidths, setColWidths] = useState(loadColWidths);
+  const [peekJob, setPeekJob] = useState(null);
+  const wheelAccumRef = useRef(0);
+  const wheelCooldownRef = useRef(false);
   const inputRef = useRef(null);
+
+  const SWIPE_THRESHOLD = 70;
+  const SWIPE_COOLDOWN_MS = 400;
+
+  function changeDay(delta) {
+    const next = new Date(displayedDate);
+    next.setDate(next.getDate() + delta);
+    onDisplayedDateChange(next);
+  }
+
+  function handleDayWheel(e) {
+    if (wheelCooldownRef.current) return;
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+
+    wheelAccumRef.current += e.deltaX;
+    if (wheelAccumRef.current > SWIPE_THRESHOLD) {
+      changeDay(1);
+    } else if (wheelAccumRef.current < -SWIPE_THRESHOLD) {
+      changeDay(-1);
+    } else {
+      return;
+    }
+    wheelAccumRef.current = 0;
+    wheelCooldownRef.current = true;
+    setTimeout(() => { wheelCooldownRef.current = false; }, SWIPE_COOLDOWN_MS);
+  }
+
+  useEffect(() => {
+    localStorage.setItem('dailyLogColWidths', JSON.stringify(colWidths));
+  }, [colWidths]);
+
+  function resizeShelf(dx) {
+    setColWidths(prev => ({
+      ...prev, shelf: Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, prev.shelf + dx)),
+    }));
+  }
+
+  function resizeSchedule(dx) {
+    setColWidths(prev => ({
+      ...prev, schedule: Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, prev.schedule - dx)),
+    }));
+  }
 
   const bullets = todayLog?.bullets || [];
   const locked = !!todayLog?.locked;
@@ -452,6 +623,7 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
                     job={job}
                     pulled={pulledJobIds.has(job.id)}
                     onPull={handlePull}
+                    onOpenJob={onBulletJobClick}
                     jobs={jobs}
                   />
                 ))
@@ -520,26 +692,30 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
             />
           ))
         )}
-      </div>
 
-      <div style={{ padding: '12px 24px 20px', flexShrink: 0, borderTop: '1px solid #1e293b' }}>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={locked}
-          placeholder="quick note — hit enter"
-          style={{
-            width: '100%', boxSizing: 'border-box',
-            background: locked ? '#172032' : '#1e293b',
-            border: '1px solid #334155', borderRadius: 8,
-            padding: '10px 14px', fontSize: 14,
-            color: locked ? '#475569' : '#e2e8f0',
-            outline: 'none', cursor: locked ? 'not-allowed' : 'text',
-          }}
-        />
+        <div style={{
+          position: 'sticky', bottom: 0, left: 0, right: 0,
+          background: '#0f172a', padding: '12px 0 8px', marginTop: 8,
+          borderTop: '1px solid #1e293b',
+        }}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={locked}
+            placeholder="quick note — hit enter"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: locked ? '#172032' : '#1e293b',
+              border: '1px solid #334155', borderRadius: 8,
+              padding: '10px 14px', fontSize: 14,
+              color: locked ? '#475569' : '#e2e8f0',
+              outline: 'none', cursor: locked ? 'not-allowed' : 'text',
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -551,15 +727,45 @@ export default function DailyLogPage({ jobs, todayLog, onAddBullet, onToggleDone
     }}>
       <div style={{
         flex: 1,
-        display: 'grid',
-        gridTemplateColumns: '1fr 280px',
+        display: 'flex',
         minHeight: 0, overflow: 'hidden',
       }}>
-        <div style={{ minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: '1 1 260px', minWidth: 180, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {leftPanel}
         </div>
-        <div style={{ height: '100%', overflow: 'hidden', borderLeft: '1px solid #1e293b' }}>
-          <JobShelf jobs={jobs} onPull={handlePull} />
+        <ResizeHandle onResize={resizeShelf} />
+        <div style={{ flex: `0 1 ${colWidths.shelf}px`, minWidth: 180, height: '100%', overflow: 'hidden' }}>
+          <JobShelf
+            jobs={jobs}
+            dragMode={dragMode} onDragModeChange={onDragModeChange}
+            onCsvUpload={onCsvUpload}
+            highlightedJobId={highlightedJobId} onClearHighlight={onClearHighlight}
+            onJobClick={onJobClick}
+            lastSyncedAt={lastSyncedAt}
+          />
+        </div>
+        <ResizeHandle onResize={resizeSchedule} />
+        <div
+          onWheel={handleDayWheel}
+          style={{ flex: `0 1 ${colWidths.schedule}px`, minWidth: 180, height: '100%', overflow: 'hidden', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', position: 'relative' }}
+        >
+          <CalendarGrid
+            key={displayedDate.toDateString()}
+            weekDays={[displayedDate]}
+            scheduledJobs={scheduledJobs}
+            externalEvents={externalEvents}
+            isDragging={isDragging}
+            activeJobId={activeJobId}
+            onJobClick={job => setPeekJob(job)}
+            scrollToCurrentHour={isDisplayedDateToday}
+          />
+          {peekJob && (
+            <JobPeekPopover
+              job={peekJob}
+              onClose={() => setPeekJob(null)}
+              onOpenFull={() => { onCalendarJobClick(peekJob); setPeekJob(null); }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "landing-page",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "landing", "-p", "4173", "--no-clipboard"],
+      "port": 4173
+    },
+    {
       "name": "ggnz-scheduler",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
