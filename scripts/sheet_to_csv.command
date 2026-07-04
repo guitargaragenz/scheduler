@@ -281,6 +281,52 @@ def hours_range(h):
     lo, hi = math.floor(h), math.ceil(h)
     return str(h) if lo == hi else f'{lo}-{hi}'
 
+# ── Firestore REST value decoder (mirror of to_fs, defined below) ─────────────
+def from_fs(fv):
+    if not isinstance(fv, dict):
+        return None
+    if 'booleanValue' in fv: return fv['booleanValue']
+    if 'integerValue' in fv: return int(fv['integerValue'])
+    if 'doubleValue' in fv:  return fv['doubleValue']
+    if 'stringValue' in fv:  return fv['stringValue']
+    if 'nullValue' in fv:    return None
+    if 'arrayValue' in fv:
+        return [from_fs(v) for v in fv['arrayValue'].get('values', [])]
+    if 'mapValue' in fv:
+        return {k: from_fs(v) for k, v in fv['mapValue'].get('fields', {}).items()}
+    return None
+
+# ── Fetch existing scheduledSlots + jobs from Firestore ────────────────────────
+scheduled_slots = {}
+existing_jobs = []
+try:
+    req = urllib.request.Request(DOC_URL, method='GET')
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        doc = json.loads(resp.read())
+    raw_slots = doc.get('fields', {}).get('scheduledSlots', {}).get('mapValue', {}).get('fields', {})
+    for k, v in raw_slots.items():
+        val = v.get('stringValue') or v.get('integerValue') or ''
+        if val:
+            scheduled_slots[k] = str(val)
+    print(f"Fetched {len(scheduled_slots)} scheduled slots from Firestore")
+    raw_jobs_field = doc.get('fields', {}).get('jobs')
+    if raw_jobs_field:
+        decoded = from_fs(raw_jobs_field)
+        existing_jobs = decoded if isinstance(decoded, list) else []
+    print(f"Fetched {len(existing_jobs)} existing jobs from Firestore")
+except urllib.error.HTTPError as e:
+    if e.code == 404:
+        print("No existing Firestore doc — will create fresh")
+    else:
+        print(f"ERROR: Could not fetch existing slots ({e.code}) — aborting to protect calendar bookings")
+        import sys; sys.exit(1)
+except Exception as e:
+    print(f"ERROR: Could not fetch existing slots ({e}) — aborting to protect calendar bookings")
+    import sys; sys.exit(1)
+
+# Lookup of existing jobs by id, for preserving live-state fields
+existing_jobs_by_id = {str(j.get('id')): j for j in existing_jobs if isinstance(j, dict) and 'id' in j}
+
 # ── Parse CSV → job objects ────────────────────────────────────────────────────
 with open(CSV_FILE, newline='', encoding='utf-8') as f:
     raw = [l for l in f if not l.lstrip().startswith('#')]
@@ -313,8 +359,10 @@ for obj in rows:
         continue
     effective_hours = hours if not (hours == 0 and schedulable) else 1.0
     bench = infer_bench(obj.get('Desc',''), status, obj.get('Action',''), obj.get('Model',''), obj.get('Mfr',''))
+    job_id = str(obj['Job'])
+    existing = existing_jobs_by_id.get(job_id, {})
     jobs.append({
-        'id':           str(obj['Job']),
+        'id':           job_id,
         'job':          obj['Job'],
         'mfr':          obj.get('Mfr', ''),
         'model':        obj.get('Model', ''),
@@ -334,7 +382,15 @@ for obj in rows:
         'backlog':      obj.get('BL') == 'Y',
         'project':      obj.get('PJ') == 'Y',
         'bench':        bench,
-        'scheduled':    False,
+        # Live-state fields: preserved from existing Firestore record (not CSV-driven).
+        # The CSV/Sheet never carries scheduling state, so overwriting these with
+        # hardcoded defaults on every sync would silently un-schedule every job.
+        'scheduled':    existing.get('scheduled', False),
+        'calendarSlot': existing.get('calendarSlot', None),
+        'gcalEventId':  existing.get('gcalEventId', None),
+        'gcalEventIds': existing.get('gcalEventIds', []),
+        'pomoLog':      existing.get('pomoLog', []),
+        'done':         existing.get('done', False),
     })
 
 print(f"Parsed {len(jobs)} jobs from CSV")
@@ -343,27 +399,20 @@ if skipped:
     for s in skipped:
         print(f"  {s}")
 
-# ── Fetch existing scheduledSlots from Firestore ───────────────────────────────
-scheduled_slots = {}
-try:
-    req = urllib.request.Request(DOC_URL, method='GET')
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        doc = json.loads(resp.read())
-    raw_slots = doc.get('fields', {}).get('scheduledSlots', {}).get('mapValue', {}).get('fields', {})
-    for k, v in raw_slots.items():
-        val = v.get('stringValue') or v.get('integerValue') or ''
-        if val:
-            scheduled_slots[k] = str(val)
-    print(f"Fetched {len(scheduled_slots)} scheduled slots from Firestore")
-except urllib.error.HTTPError as e:
-    if e.code == 404:
-        print("No existing Firestore doc — will create fresh")
-    else:
-        print(f"ERROR: Could not fetch existing slots ({e.code}) — aborting to protect calendar bookings")
-        import sys; sys.exit(1)
-except Exception as e:
-    print(f"ERROR: Could not fetch existing slots ({e}) — aborting to protect calendar bookings")
-    import sys; sys.exit(1)
+# ── Preserve manually-split child jobs ──────────────────────────────────────────
+# Manual splits (created via the app's JobDrawer "+ Add bench" feature) live in
+# Firestore as separate records with a truthy parentId. The CSV/Sheet-driven loop
+# above only ever produces one record per Job row, keyed by the bare job number,
+# so it can never regenerate these. Carry them over unchanged or they'd be wiped
+# out by the full-document PATCH below.
+new_job_ids = {j['id'] for j in jobs}
+carried_over = 0
+for ej in existing_jobs:
+    if isinstance(ej, dict) and ej.get('parentId') and str(ej.get('id')) not in new_job_ids:
+        jobs.append(ej)
+        carried_over += 1
+if carried_over:
+    print(f"Carried over {carried_over} manually-split child job(s) untouched")
 
 # ── Serialise to Firestore REST format ─────────────────────────────────────────
 def to_fs(val):
@@ -386,10 +435,18 @@ body = json.dumps({
 }).encode()
 
 # ── PATCH to Firestore ─────────────────────────────────────────────────────────
-patch_url = DOC_URL + '&currentDocument.exists=false' if not scheduled_slots and len(jobs) == 0 else DOC_URL
+# updateMask restricts the PATCH to just these fields (defense-in-depth): without
+# it, a PATCH with a body replaces the ENTIRE document, so any field we didn't
+# explicitly fetch-and-preserve above would be silently deleted.
+patch_url = (
+    DOC_URL
+    + '&updateMask.fieldPaths=jobs'
+    + '&updateMask.fieldPaths=scheduledSlots'
+    + '&updateMask.fieldPaths=updatedAt'
+)
 try:
     req = urllib.request.Request(
-        DOC_URL, data=body, method='PATCH',
+        patch_url, data=body, method='PATCH',
         headers={'Content-Type': 'application/json'}
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
