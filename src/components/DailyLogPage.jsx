@@ -841,16 +841,39 @@ export default function DailyLogPage({
                 Jobs
               </div>
 
-              <div style={{ padding: '0 16px 8px' }}>
+              <div style={{ padding: '0 16px 8px', display: 'flex', gap: 8 }}>
                 <input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Customer, make, model…"
                   style={{
-                    width: '100%', background: '#1e293b', border: '1px solid #334155',
+                    flex: 1, background: '#1e293b', border: '1px solid #334155',
                     borderRadius: 8, padding: '8px 12px', fontSize: 13,
                     color: '#e2e8f0', outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+                <label
+                  htmlFor="mobile-job-csv-upload"
+                  title="Upload CSV"
+                  style={{
+                    flexShrink: 0, width: 44, height: 38, borderRadius: 8,
+                    border: '1px solid #334155', background: '#1e293b', color: '#94a3b8',
+                    fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📂
+                </label>
+                <input
+                  id="mobile-job-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = evt => onCsvUpload(evt.target.result);
+                    reader.readAsText(file);
+                    e.target.value = '';
                   }}
                 />
               </div>
