@@ -386,9 +386,13 @@ export default function DailyLogPage({
   const [shelfOpen, setShelfOpen] = useState(false);
   const [colWidths, setColWidths] = useState(loadColWidths);
   const [peekJob, setPeekJob] = useState(null);
+  const [mobileView, setMobileView] = useState('log');
   const wheelAccumRef = useRef(0);
   const wheelCooldownRef = useRef(false);
   const inputRef = useRef(null);
+  const dayTouchStartX = useRef(null);
+  const dayTouchStartY = useRef(null);
+  const dayDirLocked = useRef(null);
 
   const SWIPE_THRESHOLD = 70;
   const SWIPE_COOLDOWN_MS = 400;
@@ -397,6 +401,32 @@ export default function DailyLogPage({
     const next = new Date(displayedDate);
     next.setDate(next.getDate() + delta);
     onDisplayedDateChange(next);
+  }
+
+  function handleDayTouchStart(e) {
+    dayTouchStartX.current = e.touches[0].clientX;
+    dayTouchStartY.current = e.touches[0].clientY;
+    dayDirLocked.current = null;
+  }
+
+  function handleDayTouchMove(e) {
+    if (dayTouchStartX.current === null) return;
+    const dx = e.touches[0].clientX - dayTouchStartX.current;
+    const dy = e.touches[0].clientY - dayTouchStartY.current;
+    if (!dayDirLocked.current && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      dayDirLocked.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+  }
+
+  function handleDayTouchEnd(e) {
+    if (dayDirLocked.current === 'h' && dayTouchStartX.current !== null) {
+      const dx = e.changedTouches[0].clientX - dayTouchStartX.current;
+      if (dx < -SWIPE_THRESHOLD) changeDay(1);
+      else if (dx > SWIPE_THRESHOLD) changeDay(-1);
+    }
+    dayTouchStartX.current = null;
+    dayTouchStartY.current = null;
+    dayDirLocked.current = null;
   }
 
   function handleDayWheel(e) {
@@ -476,6 +506,11 @@ export default function DailyLogPage({
 
   // ── MOBILE ──────────────────────────────────────────────────────────────────
   if (isMobile) {
+    const dayLabel = displayedDate.toLocaleDateString('en-NZ', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+    const jobsActive = search.trim().length > 0 || !!benchFilter;
+
     return (
       <div style={{
         flex: 1, background: '#0f172a', color: '#e2e8f0',
@@ -484,29 +519,108 @@ export default function DailyLogPage({
         {/* Header */}
         <div style={{
           background: '#1e293b', borderBottom: '1px solid #334155',
-          padding: '10px 16px 12px', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 16px 10px', flexShrink: 0,
         }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>{DATE_LABEL}</div>
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
-              Today's log{locked ? ' · Locked' : ''}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>
+                {mobileView === 'day' ? dayLabel : DATE_LABEL}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
+                {mobileView === 'day'
+                  ? (isDisplayedDateToday ? 'Today' : ' ')
+                  : `Today's log${locked ? ' · Locked' : ''}`}
+              </div>
             </div>
+            {mobileView === 'log' && hasBullets && !locked && (
+              <button
+                onClick={onRequestCloseDay}
+                style={{
+                  background: 'none', border: '1px solid #334155', borderRadius: 16,
+                  padding: '5px 12px', fontSize: 11, color: '#94a3b8', cursor: 'pointer',
+                }}
+              >
+                Close day →
+              </button>
+            )}
           </div>
-          {hasBullets && !locked && (
+
+          <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={onRequestCloseDay}
+              onClick={() => setMobileView('log')}
               style={{
-                background: 'none', border: '1px solid #334155', borderRadius: 16,
-                padding: '5px 12px', fontSize: 11, color: '#94a3b8', cursor: 'pointer',
+                flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                border: mobileView === 'log' ? '1px solid #38bdf8' : '1px solid #334155',
+                background: mobileView === 'log' ? '#0284c7' : 'none',
+                color: mobileView === 'log' ? '#fff' : '#94a3b8',
+                fontFamily: 'inherit', cursor: 'pointer',
               }}
             >
-              Close day →
+              Log
             </button>
-          )}
+            <button
+              onClick={() => setMobileView('day')}
+              style={{
+                flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                border: mobileView === 'day' ? '1px solid #38bdf8' : '1px solid #334155',
+                background: mobileView === 'day' ? '#0284c7' : 'none',
+                color: mobileView === 'day' ? '#fff' : '#94a3b8',
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              Day
+            </button>
+          </div>
         </div>
 
-        {/* Scrollable body */}
+        {mobileView === 'day' ? (
+          /* DAY CALENDAR */
+          <div
+            style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+            onTouchStart={handleDayTouchStart}
+            onTouchMove={handleDayTouchMove}
+            onTouchEnd={handleDayTouchEnd}
+          >
+            <CalendarGrid
+              key={displayedDate.toDateString()}
+              weekDays={[displayedDate]}
+              scheduledJobs={scheduledJobs}
+              externalEvents={externalEvents}
+              isDragging={isDragging}
+              activeJobId={activeJobId}
+              onJobClick={job => setPeekJob(job)}
+              scrollToCurrentHour={isDisplayedDateToday}
+            />
+            <div
+              onClick={() => changeDay(-1)}
+              style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0, width: 32, zIndex: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#334155', fontSize: 20, background: 'linear-gradient(to right, rgba(15,23,42,0.5), transparent)',
+              }}
+            >
+              ‹
+            </div>
+            <div
+              onClick={() => changeDay(1)}
+              style={{
+                position: 'absolute', right: 0, top: 0, bottom: 0, width: 32, zIndex: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#334155', fontSize: 20, background: 'linear-gradient(to left, rgba(15,23,42,0.5), transparent)',
+              }}
+            >
+              ›
+            </div>
+            {peekJob && (
+              <JobPeekPopover
+                job={peekJob}
+                onClose={() => setPeekJob(null)}
+                onOpenFull={() => { onCalendarJobClick(peekJob); setPeekJob(null); }}
+              />
+            )}
+          </div>
+        ) : (
+        /* Scrollable body */
         <div style={{ flex: 1, overflowY: 'auto' }}>
 
           {/* TODAY'S LOG */}
@@ -612,9 +726,13 @@ export default function DailyLogPage({
                 })}
               </div>
 
-              {filteredJobs.length === 0 ? (
+              {!jobsActive ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 13, color: '#475569', fontStyle: 'italic' }}>
+                  · pick a bench above, or search ·
+                </div>
+              ) : filteredJobs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 13, color: '#475569' }}>
-                  {search || benchFilter ? 'No jobs match' : 'No jobs'}
+                  No jobs match
                 </div>
               ) : (
                 filteredJobs.map(job => (
@@ -631,6 +749,7 @@ export default function DailyLogPage({
             </div>
           )}
         </div>
+        )}
       </div>
     );
   }
