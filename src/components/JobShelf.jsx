@@ -2,7 +2,7 @@ import { useState } from 'react';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Admin'];
+const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
 function getSubtasks(job, jobs) {
   if (job.hasSubtasks && Array.isArray(job.subtasks)) {
@@ -106,18 +106,39 @@ export default function JobShelf({
       </div>
 
       <div style={{ padding: '10px 14px 8px' }}>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Customer, make, model…"
-          style={{
-            display: 'block', width: '100%', padding: '6px 10px',
-            background: '#1e1e1e', border: '1px solid #252525', borderRadius: 7,
-            color: '#ccc', fontSize: 13, outline: 'none', boxSizing: 'border-box',
-            marginBottom: 10,
-          }}
-        />
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Customer, make, model…"
+            style={{
+              flex: 1, padding: '6px 10px',
+              background: '#1e1e1e', border: '1px solid #252525', borderRadius: 7,
+              color: '#ccc', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+          <label
+            htmlFor="job-shelf-csv-upload"
+            title="Upload CSV"
+            style={{
+              flexShrink: 0, width: 32, boxSizing: 'border-box', borderRadius: 7, cursor: 'pointer', fontSize: 13,
+              background: '#1e1e1e', border: '1px solid #252525', color: '#94a3b8',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >📂</label>
+          <input
+            id="job-shelf-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = evt => onCsvUpload(evt.target.result);
+              reader.readAsText(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
         {!searching && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {benchCounts.map(({ bench, count }) => {
@@ -181,26 +202,6 @@ export default function JobShelf({
                   color: dragMode === 'urgent' ? '#fca5a5' : '#94a3b8',
                 }}
               >🚨 Urgent</button>
-              <label
-                htmlFor="job-shelf-csv-upload"
-                title="Upload CSV"
-                style={{
-                  flexShrink: 0, minWidth: 28, boxSizing: 'border-box', padding: '4px 8px', borderRadius: 5, cursor: 'pointer', fontSize: 12,
-                  background: '#1e1e1e', border: '1px solid #252525', color: '#94a3b8',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >📂</label>
-              <input
-                id="job-shelf-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
-                onChange={e => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = evt => onCsvUpload(evt.target.result);
-                  reader.readAsText(file);
-                  e.target.value = '';
-                }}
-              />
             </div>
           </>
         )}
