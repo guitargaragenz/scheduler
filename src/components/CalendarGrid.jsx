@@ -15,7 +15,7 @@ const ALL_SLOTS = [
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
 ];
 
-function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick }) {
+function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick, onRemoveAdHocTask }) {
   const key = slotKey(date, hour, minute);
   const { setNodeRef, isOver } = useDroppable({ id: key, data: { dayIdx, hour, minute } });
 
@@ -27,6 +27,31 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
   if (job) {
     const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
     const isDone = !!job.done;
+
+    // Ad-hoc maintenance tasks aren't real jobs — not draggable, no job number,
+    // just a small removable card so they don't route through job-scheduling logic.
+    if (job.isAdHoc && isFirstSlot) {
+      return (
+        <div ref={setNodeRef} style={{
+          height: SLOT_HEIGHT, borderBottom: '1px solid #263348',
+          padding: '2px 6px', position: 'relative', overflow: 'hidden',
+          background: colors.bg, borderLeft: `3px solid ${colors.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            🔧 {job.model}
+          </span>
+          <span
+            onClick={() => onRemoveAdHocTask && onRemoveAdHocTask(job.id)}
+            title="Remove"
+            style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', cursor: 'pointer', flexShrink: 0, padding: '0 2px' }}
+          >
+            ✕
+          </span>
+        </div>
+      );
+    }
+
     if (isFirstSlot) {
       return (
         <div ref={setNodeRef} style={{
@@ -138,7 +163,7 @@ function LunchSlot({ dayIdx, minute }) {
   );
 }
 
-export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, scrollToCurrentHour = true }) {
+export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, onRemoveAdHocTask, scrollToCurrentHour = true }) {
 
   const scrollRef = useRef(null);
   const todayStr = new Date().toDateString();
@@ -300,6 +325,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                       isDropping={isDragging}
                       activeJobId={activeJobId}
                       onJobClick={onJobClick}
+                      onRemoveAdHocTask={onRemoveAdHocTask}
                     />
                   </div>
                 );

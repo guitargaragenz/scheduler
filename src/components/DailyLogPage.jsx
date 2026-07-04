@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
 import { BENCH_COLORS as CANONICAL_BENCH_COLORS } from '../data/jobs.js';
+import { localDateKey } from '../utils/calendar.js';
 
 const DATE_LABEL = new Date().toLocaleDateString('en-NZ', {
   weekday: 'long', day: 'numeric', month: 'long',
@@ -89,7 +90,14 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   const isJob = !!bullet.jobId;
   const timeLabel = bullet.scheduledMinutes != null
     ? `${Math.floor(bullet.scheduledMinutes / 60)}:${String(bullet.scheduledMinutes % 60).padStart(2, '0')}`
-    : null;
+    : meta?.isAdHoc && meta.hour != null
+      ? (() => {
+          const hm = `${meta.hour}:${String(meta.minute).padStart(2, '0')}`;
+          if (meta.scheduledDateKey === localDateKey()) return `📅 ${hm}`;
+          const d = new Date(meta.scheduledDateKey + 'T00:00:00');
+          return `📅 ${d.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric' })} · ${hm}`;
+        })()
+      : null;
 
   const [offsetX, setOffsetX] = useState(0);
   const [springing, setSpringing] = useState(false);
@@ -374,8 +382,133 @@ function ResizeHandle({ onResize }) {
   );
 }
 
+const DURATION_OPTIONS = [
+  { hours: 0.25, label: '15m' },
+  { hours: 0.5,  label: '30m' },
+  { hours: 1,    label: '1h' },
+  { hours: 1.5,  label: '1.5h' },
+  { hours: 2,    label: '2h' },
+];
+
+function ScheduleNoteModal({ text, defaultDate, onConfirm, onClose }) {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const initialDate = defaultDate && defaultDate >= new Date(today.toDateString()) ? defaultDate : today;
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [timeVal, setTimeVal] = useState('17:00');
+  const [hours, setHours] = useState(0.5);
+  const [error, setError] = useState('');
+
+  function pick(d) { setSelectedDate(d); setError(''); }
+
+  function handleConfirm() {
+    const [h, m] = timeVal.split(':').map(Number);
+    const result = onConfirm(selectedDate, h, m, hours);
+    if (!result.ok) setError(result.reason);
+  }
+
+  const dayBtn = (active) => ({
+    flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+    border: active ? '1px solid #38bdf8' : '1px solid #334155',
+    background: active ? '#0284c7' : 'none',
+    color: active ? '#fff' : '#94a3b8', fontFamily: 'inherit',
+  });
+
+  const hourBtn = (active) => ({
+    flex: 1, padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+    border: active ? '1px solid #38bdf8' : '1px solid #334155',
+    background: active ? '#0284c7' : 'none',
+    color: active ? '#fff' : '#94a3b8', fontFamily: 'inherit',
+  });
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 420, background: '#1e293b',
+          borderRadius: '16px 16px 0 0', padding: 18, borderTop: '1px solid #334155',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginBottom: 4 }}>Schedule note</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14, fontStyle: 'italic' }}>
+          "{text.length > 60 ? text.slice(0, 60) + '…' : text}"
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <button onClick={() => pick(today)} style={dayBtn(selectedDate.toDateString() === today.toDateString())}>Today</button>
+          <button onClick={() => pick(tomorrow)} style={dayBtn(selectedDate.toDateString() === tomorrow.toDateString())}>Tomorrow</button>
+          <input
+            type="date"
+            value={localDateKey(selectedDate)}
+            onChange={e => { if (e.target.value) pick(new Date(e.target.value + 'T00:00:00')); }}
+            style={{
+              flex: 1, background: '#0f172a', border: '1px solid #334155', borderRadius: 8,
+              padding: '6px 8px', fontSize: 12, color: '#e2e8f0', fontFamily: 'inherit',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', width: 36 }}>Time</span>
+          <input
+            type="time"
+            step={1800}
+            value={timeVal}
+            onChange={e => setTimeVal(e.target.value)}
+            style={{
+              flex: 1, background: '#0f172a', border: '1px solid #334155', borderRadius: 8,
+              padding: '6px 8px', fontSize: 13, color: '#e2e8f0', fontFamily: 'inherit',
+            }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', width: 36 }}>Length</span>
+          <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            {DURATION_OPTIONS.map(opt => (
+              <button key={opt.hours} onClick={() => setHours(opt.hours)} style={hourBtn(hours === opt.hours)}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ fontSize: 11, color: '#f87171', marginBottom: 10 }}>⚠ {error}</div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid #334155', background: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: '#0284c7', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Place on calendar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DailyLogPage({
   jobs, scheduledSlots, weekDays, displayedDate, onDisplayedDateChange, scheduledJobs, externalEvents, isDragging, activeJobId, onCalendarJobClick,
+  onRemoveAdHocTask, onScheduleAdHocNote,
   dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
 }) {
@@ -387,6 +520,7 @@ export default function DailyLogPage({
   const [colWidths, setColWidths] = useState(loadColWidths);
   const [peekJob, setPeekJob] = useState(null);
   const [mobileView, setMobileView] = useState('log');
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const wheelAccumRef = useRef(0);
   const wheelCooldownRef = useRef(false);
   const inputRef = useRef(null);
@@ -478,6 +612,15 @@ export default function DailyLogPage({
       onAddBullet(input.trim(), null, null);
       setInput('');
     }
+  }
+
+  function handleConfirmSchedule(date, hour, minute, hours) {
+    const result = onScheduleAdHocNote(input.trim(), date, hour, minute, hours);
+    if (result.ok) {
+      setInput('');
+      setScheduleModalOpen(false);
+    }
+    return result;
   }
 
   function handlePull(job) {
@@ -589,6 +732,7 @@ export default function DailyLogPage({
               isDragging={isDragging}
               activeJobId={activeJobId}
               onJobClick={job => setPeekJob(job)}
+              onRemoveAdHocTask={onRemoveAdHocTask}
               scrollToCurrentHour={isDisplayedDateToday}
             />
             <div
@@ -653,7 +797,7 @@ export default function DailyLogPage({
               ))
             )}
 
-            <div style={{ paddingTop: 8 }}>
+            <div style={{ paddingTop: 8, display: 'flex', gap: 8 }}>
               <input
                 ref={inputRef}
                 type="text"
@@ -663,7 +807,7 @@ export default function DailyLogPage({
                 disabled={locked}
                 placeholder="quick note — hit enter"
                 style={{
-                  width: '100%', background: locked ? '#172032' : '#1e293b',
+                  flex: 1, background: locked ? '#172032' : '#1e293b',
                   border: '1px solid #334155', borderRadius: 8,
                   padding: '9px 12px', fontSize: 13,
                   color: locked ? '#475569' : '#e2e8f0',
@@ -671,6 +815,18 @@ export default function DailyLogPage({
                   fontFamily: 'inherit',
                 }}
               />
+              {!locked && input.trim() && (
+                <button
+                  onClick={() => setScheduleModalOpen(true)}
+                  title="Schedule this note"
+                  style={{
+                    flexShrink: 0, width: 38, borderRadius: 8, border: '1px solid #334155',
+                    background: '#1e293b', color: '#94a3b8', fontSize: 15, cursor: 'pointer',
+                  }}
+                >
+                  📅
+                </button>
+              )}
             </div>
           </div>
 
@@ -750,6 +906,14 @@ export default function DailyLogPage({
           )}
         </div>
         )}
+        {scheduleModalOpen && (
+          <ScheduleNoteModal
+            text={input.trim()}
+            defaultDate={displayedDate}
+            onConfirm={handleConfirmSchedule}
+            onClose={() => setScheduleModalOpen(false)}
+          />
+        )}
       </div>
     );
   }
@@ -816,6 +980,7 @@ export default function DailyLogPage({
           position: 'sticky', bottom: 0, left: 0, right: 0,
           background: '#0f172a', padding: '12px 0 8px', marginTop: 8,
           borderTop: '1px solid #1e293b',
+          display: 'flex', gap: 8,
         }}>
           <input
             ref={inputRef}
@@ -826,7 +991,7 @@ export default function DailyLogPage({
             disabled={locked}
             placeholder="quick note — hit enter"
             style={{
-              width: '100%', boxSizing: 'border-box',
+              flex: 1, boxSizing: 'border-box',
               background: locked ? '#172032' : '#1e293b',
               border: '1px solid #334155', borderRadius: 8,
               padding: '10px 14px', fontSize: 14,
@@ -834,8 +999,28 @@ export default function DailyLogPage({
               outline: 'none', cursor: locked ? 'not-allowed' : 'text',
             }}
           />
+          {!locked && input.trim() && (
+            <button
+              onClick={() => setScheduleModalOpen(true)}
+              title="Schedule this note"
+              style={{
+                flexShrink: 0, width: 40, borderRadius: 8, border: '1px solid #334155',
+                background: '#1e293b', color: '#94a3b8', fontSize: 16, cursor: 'pointer',
+              }}
+            >
+              📅
+            </button>
+          )}
         </div>
       </div>
+      {scheduleModalOpen && (
+        <ScheduleNoteModal
+          text={input.trim()}
+          defaultDate={displayedDate}
+          onConfirm={handleConfirmSchedule}
+          onClose={() => setScheduleModalOpen(false)}
+        />
+      )}
     </div>
   );
 
@@ -876,6 +1061,7 @@ export default function DailyLogPage({
             isDragging={isDragging}
             activeJobId={activeJobId}
             onJobClick={job => setPeekJob(job)}
+            onRemoveAdHocTask={onRemoveAdHocTask}
             scrollToCurrentHour={isDisplayedDateToday}
           />
           {peekJob && (

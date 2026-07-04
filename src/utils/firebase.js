@@ -80,6 +80,41 @@ export function subscribeToParkingLot(callback) {
   }
 }
 
+const ADHOC_TASKS_DOC = () => doc(getDb(), 'ggnz', 'adHocTasks');
+
+// Ad-hoc maintenance tasks — scheduled bullet-journal notes not tied to a real
+// CSV job. Kept in their own doc so they never touch the `jobs` array / CSV
+// drift-safety check.
+export async function loadAdHocTasks() {
+  try {
+    const snap = await getDoc(ADHOC_TASKS_DOC());
+    if (!snap.exists()) return [];
+    return snap.data().tasks || [];
+  } catch (e) {
+    console.error('Firestore ad-hoc tasks load error:', e);
+    return [];
+  }
+}
+
+export async function saveAdHocTasks(tasks) {
+  try {
+    await setDoc(ADHOC_TASKS_DOC(), { tasks, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore ad-hoc tasks save error:', e);
+  }
+}
+
+export function subscribeToAdHocTasks(callback) {
+  try {
+    return onSnapshot(ADHOC_TASKS_DOC(), snap => {
+      callback(snap.exists() ? (snap.data().tasks || []) : []);
+    });
+  } catch (e) {
+    console.error('Firestore ad-hoc tasks subscribe error:', e);
+    return () => {};
+  }
+}
+
 const COMPLETED_JOBS_DOC = () => doc(getDb(), 'ggnz', 'completedJobs');
 
 export async function saveCompletedJobs(records, doneJobIds) {

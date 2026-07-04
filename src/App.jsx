@@ -4,7 +4,7 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
-import { getWeekDays, formatDateRange } from './utils/calendar.js';
+import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
 import { isFirebaseConfigured, loadConflictLog, clearConflictLog } from './utils/firebase.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
@@ -29,6 +29,7 @@ import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
 import { useJobs } from './hooks/useJobs.js';
 import { useDailyLog } from './hooks/useDailyLog.js';
+import { useAdHocTasks } from './hooks/useAdHocTasks.js';
 
 export default function App() {
   // --- Core state ---
@@ -124,6 +125,7 @@ export default function App() {
   useEffect(() => { externalEventsRef.current = gcal.externalEvents; }, [gcal.externalEvents]);
 
   const { todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet } = useDailyLog();
+  const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
 
   const schedulerWeekDays = showWeekView ? weekDays : [displayedDate];
 
@@ -173,6 +175,32 @@ export default function App() {
     const job = jobs.find(j => j.id === jobId);
     if (job) scheduledJobObjects[key] = job;
   });
+  // Merge in ad-hoc maintenance tasks (never touch `jobs`/`scheduledSlots` —
+  // kept in their own store so CSV drift-detection can't see them).
+  adHocTasks.forEach(task => {
+    const pseudoJob = {
+      id: task.id, job: null, mfr: 'Maintenance', model: task.text,
+      bench: 'Admin', hours: task.hours, desc: task.text, customer: '',
+      calendarSlot: task.calendarSlot, isAdHoc: true, done: false,
+    };
+    task.slotKeys.forEach(k => { if (!scheduledJobObjects[k]) scheduledJobObjects[k] = pseudoJob; });
+  });
+
+  // Attempt to schedule a bujo note as an ad-hoc calendar task. Returns
+  // { ok, reason } — DailyLogPage shows the reason inline on failure.
+  const handleScheduleAdHocNote = useCallback((text, date, hour, minute, hours) => {
+    const result = scheduleAdHocTask({
+      text, date, hour, minute, hours,
+      occupiedKeys: new Set(Object.keys(scheduledSlotsRef.current)),
+    });
+    if (result.ok) {
+      addBullet(text, null, {
+        isAdHoc: true, hoursRange: hours,
+        scheduledDateKey: localDateKey(date), hour, minute,
+      });
+    }
+    return result;
+  }, [scheduleAdHocTask, addBullet]);
 
   const syncColors = { idle: '#64748b', syncing: '#fbbf24', synced: '#22c55e', error: '#ef4444' };
   const syncLabels = { idle: 'Sync', syncing: 'Syncing…', synced: 'Synced ✓', error: 'Sync Error' };
@@ -405,6 +433,7 @@ export default function App() {
                 isDragging={scheduler.isDragging}
                 activeJobId={scheduler.activeJob?.id ?? null}
                 onJobClick={jobOps.handleOpenPomo}
+                onRemoveAdHocTask={removeAdHocTask}
               />
               <Sidebar
                 jobs={jobs}
@@ -431,6 +460,8 @@ export default function App() {
               isDragging={scheduler.isDragging}
               activeJobId={scheduler.activeJob?.id ?? null}
               onCalendarJobClick={jobOps.handleOpenPomo}
+              onRemoveAdHocTask={removeAdHocTask}
+              onScheduleAdHocNote={handleScheduleAdHocNote}
               dragMode={dragMode}
               onDragModeChange={setDragMode}
               onCsvUpload={jobOps.handleCsvUpload}
