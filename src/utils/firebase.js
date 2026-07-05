@@ -115,6 +115,41 @@ export function subscribeToAdHocTasks(callback) {
   }
 }
 
+const FOCUS_LIST_DOC = () => doc(getDb(), 'ggnz', 'focusList');
+
+// Focus list — job IDs Trevor is prioritizing this week, picked from the
+// Sunday board-meeting interview. Kept in its own doc so it never touches
+// the `jobs` array / CSV drift-safety check.
+export async function loadFocusList() {
+  try {
+    const snap = await getDoc(FOCUS_LIST_DOC());
+    if (!snap.exists()) return [];
+    return snap.data().jobIds || [];
+  } catch (e) {
+    console.error('Firestore focus list load error:', e);
+    return [];
+  }
+}
+
+export async function saveFocusList(jobIds) {
+  try {
+    await setDoc(FOCUS_LIST_DOC(), { jobIds, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore focus list save error:', e);
+  }
+}
+
+export function subscribeToFocusList(callback) {
+  try {
+    return onSnapshot(FOCUS_LIST_DOC(), snap => {
+      callback(snap.exists() ? (snap.data().jobIds || []) : []);
+    });
+  } catch (e) {
+    console.error('Firestore focus list subscribe error:', e);
+    return () => {};
+  }
+}
+
 const COMPLETED_JOBS_DOC = () => doc(getDb(), 'ggnz', 'completedJobs');
 
 export async function saveCompletedJobs(records, doneJobIds) {

@@ -28,11 +28,14 @@ function formatSyncedAt(lastSyncedAt) {
 export default function JobShelf({
   jobs, dragMode, onDragModeChange, onCsvUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
+  focusList = [],
 }) {
   const [selectedBench, setSelectedBench] = useState(() => localStorage.getItem('jobShelfBench') || null);
   const [search, setSearch] = useState('');
   const [hoursFilter, setHoursFilter] = useState(null);
+  const [focusOnly, setFocusOnly] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState({});
+  const focusSet = new Set(focusList.map(String));
 
   function pickBench(bench) {
     setSelectedBench(prev => {
@@ -54,7 +57,7 @@ export default function JobShelf({
 
   const q = search.trim().toLowerCase();
   const searching = q.length > 0;
-  const active = searching || !!selectedBench;
+  const active = searching || !!selectedBench || focusOnly;
 
   const matchHours = job => {
     if (!hoursFilter) return true;
@@ -68,7 +71,9 @@ export default function JobShelf({
     ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
     : selectedBench
       ? topLevel.filter(j => j.bench === selectedBench)
-      : []
+      : focusOnly
+        ? topLevel.filter(j => focusSet.has(String(j.job)))
+        : []
   ).filter(matchHours).sort((a, b) => (b.days ?? 0) - (a.days ?? 0));
 
   function renderJob(job, indent = false) {
@@ -139,7 +144,21 @@ export default function JobShelf({
             }}
           />
         </div>
-        {!searching && (
+        {focusList.length > 0 && (
+          <button
+            onClick={() => setFocusOnly(v => !v)}
+            style={{
+              width: '100%', padding: '6px 0', borderRadius: 7, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, marginBottom: 8,
+              border: `1px solid ${focusOnly ? '#f59e0b' : '#252525'}`,
+              background: focusOnly ? '#451a03' : '#1e1e1e',
+              color: focusOnly ? '#fcd34d' : '#94a3b8',
+            }}
+          >
+            🎯 Focus ({focusList.length}){focusOnly ? ' — showing only these' : ''}
+          </button>
+        )}
+        {!searching && !focusOnly && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {benchCounts.map(({ bench, count }) => {
               const isActive = selectedBench === bench;

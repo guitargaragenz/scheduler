@@ -511,6 +511,7 @@ export default function DailyLogPage({
   onRemoveAdHocTask, onScheduleAdHocNote,
   dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
+  focusList = [],
 }) {
   const isDisplayedDateToday = displayedDate.toDateString() === new Date().toDateString();
   const [input, setInput] = useState('');
@@ -1069,6 +1070,7 @@ export default function DailyLogPage({
             highlightedJobId={highlightedJobId} onClearHighlight={onClearHighlight}
             onJobClick={onJobClick}
             lastSyncedAt={lastSyncedAt}
+            focusList={focusList}
           />
         </div>
         <ResizeHandle onResize={resizeSchedule} />

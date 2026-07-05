@@ -30,6 +30,7 @@ import { useScheduler } from './hooks/useScheduler.js';
 import { useJobs } from './hooks/useJobs.js';
 import { useDailyLog } from './hooks/useDailyLog.js';
 import { useAdHocTasks } from './hooks/useAdHocTasks.js';
+import { useFocusList } from './hooks/useFocusList.js';
 
 export default function App() {
   // --- Core state ---
@@ -126,6 +127,7 @@ export default function App() {
 
   const { todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet } = useDailyLog();
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
+  const { focusList } = useFocusList();
 
   const schedulerWeekDays = showWeekView ? weekDays : [displayedDate];
 
@@ -217,7 +219,7 @@ export default function App() {
       onDragStart={scheduler.onDragStart}
       onDragEnd={(e) => scheduler.onDragEnd(e, dragMode)}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         {/* Header */}
         <header style={{
           padding: '10px 20px', background: '#1e293b', borderBottom: '1px solid #334155',
@@ -235,6 +237,26 @@ export default function App() {
               <div style={{ fontSize: 15, fontWeight: 800, color: '#e2e8f0', letterSpacing: -0.3 }}>GGNZ Scheduler</div>
               <div style={{ fontSize: 11, color: '#64748b' }}>Guitar Garage NZ Ltd</div>
             </div>
+          </div>
+
+          <div style={{ textAlign: 'center', lineHeight: 1.3, flexShrink: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              <span style={{ color: revenueColor }}>${weekRevenue.toLocaleString()}</span>
+              <span style={{ color: '#334155' }}> / </span>
+              <span
+                style={{ color: '#475569', cursor: 'pointer' }}
+                title="Click to change weekly target"
+                onClick={() => {
+                  const v = window.prompt('Weekly revenue target ($):', weeklyTarget);
+                  if (v !== null && !isNaN(Number(v))) {
+                    const t = Number(v);
+                    setWeeklyTarget(t);
+                    localStorage.setItem('weeklyTarget', String(t));
+                  }
+                }}
+              >${weeklyTarget.toLocaleString()}</span>
+            </div>
+            <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: '.08em' }}>week revenue</div>
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
@@ -325,6 +347,18 @@ export default function App() {
             )}
 
             <button
+              onClick={() => setShowWeekView(w => !w)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekView ? '#065f46' : '#334155'}`,
+                background: showWeekView ? '#022c22' : '#1e293b',
+                color: showWeekView ? '#6ee7b7' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showWeekView ? 700 : 400,
+              }}
+            >
+              {showWeekView ? 'Day View' : 'Week View'}
+            </button>
+
+            <button
               onClick={() => setShowRunway(r => !r)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: `1px solid ${showRunway ? '#4f46e5' : '#334155'}`,
@@ -337,15 +371,37 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowWeekView(w => !w)}
+              onClick={() => setShowParts(p => !p)}
               style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekView ? '#065f46' : '#334155'}`,
-                background: showWeekView ? '#022c22' : '#1e293b',
-                color: showWeekView ? '#6ee7b7' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showWeekView ? 700 : 400,
+                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
+                background: showParts ? '#1e3a5f' : '#1e293b',
+                color: showParts ? '#93c5fd' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer',
               }}
             >
-              Week View
+              Parts
+            </button>
+
+            <button
+              onClick={() => setShowSummary(true)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
+                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Summary
+            </button>
+
+            <button
+              onClick={() => setShowHelp(h => !h)}
+              style={{
+                padding: '7px 12px', borderRadius: 6, border: '1px solid #334155',
+                background: showHelp ? '#1e3a5f' : '#1e293b',
+                color: showHelp ? '#93c5fd' : '#94a3b8',
+                fontSize: 13, cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              ?
             </button>
 
             <button
@@ -362,40 +418,6 @@ export default function App() {
               }}
             >
               Parking Lot
-            </button>
-
-            <button
-              onClick={() => setShowSummary(true)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
-                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              Summary
-            </button>
-
-            <button
-              onClick={() => setShowParts(p => !p)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
-                background: showParts ? '#1e3a5f' : '#1e293b',
-                color: showParts ? '#93c5fd' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              Parts
-            </button>
-
-            <button
-              onClick={() => setShowHelp(h => !h)}
-              style={{
-                padding: '7px 12px', borderRadius: 6, border: '1px solid #334155',
-                background: showHelp ? '#1e3a5f' : '#1e293b',
-                color: showHelp ? '#93c5fd' : '#94a3b8',
-                fontSize: 13, cursor: 'pointer', fontWeight: 600,
-              }}
-            >
-              ?
             </button>
 
             <button
@@ -446,6 +468,7 @@ export default function App() {
                 isOpen={sidebarOpen}
                 onToggle={() => setSidebarOpen(o => !o)}
                 lastSyncedAt={lastSyncedAt}
+                focusList={focusList}
               />
             </>
           ) : (
@@ -478,6 +501,7 @@ export default function App() {
                 if (j) setEditingJob(j);
               }}
               onRequestCloseDay={() => setShowCloseDay(true)}
+              focusList={focusList}
             />
           )}
         </div>

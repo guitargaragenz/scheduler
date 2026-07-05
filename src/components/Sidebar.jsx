@@ -3,11 +3,13 @@ import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [] }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
+  const [showFocusOnly, setShowFocusOnly] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState({});
+  const focusSet = new Set(focusList.map(String));
   const { setNodeRef, isOver } = useDroppable({ id: 'sidebar' });
 
   const toggleExpand = (jobId) => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
@@ -78,7 +80,8 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
       const h = parseFloat(j.hours);
       return !isNaN(h) && bucket.test(h);
     };
-    const match      = j => matchText(j) && matchBench(j) && matchHours(j);
+    const matchFocus = j => !showFocusOnly || focusSet.has(String(j.job));
+    const match      = j => matchText(j) && matchBench(j) && matchHours(j) && matchFocus(j);
     displayed          = active.filter(match);
     displayedBacklog   = backlog.filter(match);
     displayedReady     = readyToStart.filter(match);
@@ -156,6 +159,24 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
               </>
             )}
           </div>
+
+          {/* Focus list toggle — jobs picked in the Sunday board-meeting interview */}
+          {focusList.length > 0 && !isFocusMode && (
+            <div style={{ padding: '10px 16px 0' }}>
+              <button
+                onClick={() => setShowFocusOnly(v => !v)}
+                style={{
+                  width: '100%', padding: '7px 0', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 12, fontWeight: 700,
+                  border: `1px solid ${showFocusOnly ? '#f59e0b' : '#334155'}`,
+                  background: showFocusOnly ? '#451a03' : '#0a1a38',
+                  color: showFocusOnly ? '#fcd34d' : '#94a3b8',
+                }}
+              >
+                🎯 Focus ({focusList.length}){showFocusOnly ? ' — showing only these' : ''}
+              </button>
+            </div>
+          )}
 
           {/* Drag mode toggle */}
           <div style={{ padding: '10px 16px', borderBottom: '1px solid #3b82f6', display: 'flex', gap: 8 }}>
