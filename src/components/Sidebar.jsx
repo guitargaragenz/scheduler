@@ -16,10 +16,14 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
 
   const renderJob = (job, highlighted = false) => {
     if (job.parentId && !highlighted) return null; // subtasks shown via expand or focus mode only
-    // Only show unscheduled subtasks
-    const subtaskList = job.hasSubtasks
+    // Only show unscheduled subtasks — auto-splits (hasSubtasks) and manual splits (isSplit) both supported
+    const autoSubtasks = job.hasSubtasks
       ? jobs.filter(j => job.subtasks?.includes(j.id) && !j.scheduled)
       : [];
+    const manualSubtasks = job.isSplit
+      ? jobs.filter(j => j.parentId === job.id && !j.scheduled)
+      : [];
+    const subtaskList = [...autoSubtasks, ...manualSubtasks];
     // If all subtasks are scheduled, hide the parent too (unless it's a focus-mode highlight)
     if (!highlighted && job.hasSubtasks && job.subtasks?.length > 0) {
       const allSubtasksScheduled = jobs
@@ -27,11 +31,15 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         .every(j => j.scheduled);
       if (allSubtasksScheduled) return null;
     }
+    if (!highlighted && job.isSplit) {
+      const manualChildren = jobs.filter(j => j.parentId === job.id);
+      if (manualChildren.length > 0 && manualChildren.every(j => j.scheduled)) return null;
+    }
     const isExpanded = expandedJobs[job.id];
     return (
       <div key={job.id}>
         <JobCard job={job} dragMode={dragMode} isHighlighted={highlighted} onClick={() => onJobClick(job)} />
-        {job.hasSubtasks && subtaskList.length > 0 && (
+        {(job.hasSubtasks || job.isSplit) && subtaskList.length > 0 && (
           <div
             onClick={() => toggleExpand(job.id)}
             style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}
@@ -48,7 +56,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     );
   };
 
-  const unscheduled   = jobs.filter(j => !j.scheduled && !j.isSplit);
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.parentId);
   const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
   const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
   const readyToStart  = unscheduled.filter(j => j.readyToStart);

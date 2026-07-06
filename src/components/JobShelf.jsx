@@ -48,7 +48,7 @@ export default function JobShelf({
 
   const toggleExpand = jobId => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
 
-  const topLevel = jobs.filter(j => j.id && !j.done && !j.parentId && !j.scheduled && !j.isSplit);
+  const topLevel = jobs.filter(j => j.id && !j.done && !j.parentId && !j.scheduled);
 
   const benchCounts = BENCH_ORDER.map(bench => ({
     bench,
