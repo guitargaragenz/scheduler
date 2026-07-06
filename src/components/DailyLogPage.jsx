@@ -517,6 +517,7 @@ export default function DailyLogPage({
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
+  const [focusOnly, setFocusOnly] = useState(false);
   const [shelfOpen, setShelfOpen] = useState(false);
   const [colWidths, setColWidths] = useState(loadColWidths);
   const [peekJob, setPeekJob] = useState(null);
@@ -637,9 +638,12 @@ export default function DailyLogPage({
 
   const benches = [...new Set(availableJobs.map(j => j.bench).filter(Boolean))].sort();
 
+  const focusSet = new Set(focusList.map(String));
+
   const q = search.toLowerCase();
   const filteredJobs = availableJobs
     .filter(j => !benchFilter || j.bench === benchFilter)
+    .filter(j => !focusOnly || focusSet.has(String(j.job)))
     .filter(j => {
       if (!q) return true;
       return [j.job, j.customer, j.mfr, j.model, j.desc].some(v =>
@@ -653,7 +657,7 @@ export default function DailyLogPage({
     const dayLabel = displayedDate.toLocaleDateString('en-NZ', {
       weekday: 'long', day: 'numeric', month: 'long',
     });
-    const jobsActive = search.trim().length > 0 || !!benchFilter;
+    const jobsActive = search.trim().length > 0 || !!benchFilter || focusOnly;
 
     return (
       <div style={{
@@ -884,6 +888,21 @@ export default function DailyLogPage({
                 display: 'flex', gap: 6, padding: '0 16px 10px',
                 overflowX: 'auto',
               }}>
+                {focusList.length > 0 && (
+                  <button
+                    onClick={() => setFocusOnly(v => !v)}
+                    style={{
+                      fontSize: 10, padding: '4px 10px', borderRadius: 12,
+                      border: `1px solid ${focusOnly ? '#f59e0b' : '#334155'}`,
+                      color: focusOnly ? '#fcd34d' : '#94a3b8',
+                      background: focusOnly ? '#451a03' : 'none',
+                      cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                      fontFamily: 'inherit', fontWeight: 700,
+                    }}
+                  >
+                    🎯 Focus ({focusList.length})
+                  </button>
+                )}
                 {benches.map(b => {
                   const bc = BENCH_COLORS[b] || { bg: '#1e293b', color: '#64748b' };
                   const active = benchFilter === b;
