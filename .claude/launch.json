@@ -4,7 +4,7 @@
     {
       "name": "landing-page",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "landing", "-p", "4173", "--no-clipboard"],
+      "runtimeArgs": ["serve", "marketing", "-p", "4173", "--no-clipboard"],
       "port": 4173
     },
     {

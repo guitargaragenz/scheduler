@@ -1,5 +1,16 @@
 # Guitar Garage NZ — Scheduler Project
 
+## Departments
+
+GGNZ is organized into departments, each with its own `claude.md` + `context/` folder:
+
+- **Apps** (this file, repo root) — Scheduler (the deployed app, can't move — see Tech stack below). No subfolder of its own since Scheduler lives at repo root, unlike the other departments.
+  - Live CSV/PDF pipeline (not part of this repo): `~/Desktop/SCHEDULER_old/` — see CSV pipeline section below
+  - Job Tracker (legacy standalone tool) decommissioned 2026-07-06 — archived to `archive/job-tracker/`, no longer deployed. Superseded entirely by this app's Jobs page/Sidebar (same bench/status/action filtering, plus real scheduling and sync).
+- **Marketing** — [marketing/claude.md](marketing/claude.md)
+- **Admin** — [admin/claude.md](admin/claude.md) (board meetings, backlog, parts/procurement)
+- North star: [northstar.md](northstar.md)
+
 ## Starting a New Session
 
 1. **Micky / Moby** — open terminal, `cd` into the scheduler project folder, run `claude`. The repo context is automatic.
@@ -152,7 +163,7 @@ This section exists so Claude can orient instantly in a new session. Each file h
 - Syncs `scheduledSlots` and job state across devices in real time
 - `appendConflictLog()` — writes bump events to Firestore for audit trail
 
-### `src/App.jsx` — Main app shell (needs splitting — see parking-lot.md)
+### `src/App.jsx` — Main app shell (needs splitting — see admin/context/parking-lot.md)
 - Holds top-level state: `jobs`, `scheduledSlots`, `weekDays`, settings, pomodoro
 - Passes refs (`scheduledSlotsRef`, `jobsRef`) to hooks so callbacks always see current state without stale closures
 

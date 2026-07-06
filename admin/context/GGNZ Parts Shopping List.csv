@@ -1,0 +1,46 @@
+Category,Value/Part,Type/Description,Qty to Buy,Have in Stock,Note,ARC refs,DEL refs,PER refs,SAP refs,XAN refs
+Caps - Electrolytic,100uF,electrolytic,7,0,,,"C3,C7,C11",C18,"C24,C27",C14
+Caps - Electrolytic,10uF,electrolytic,2,0,,,,"C14,C16",,
+Caps - Electrolytic,10uF bipolar,electrolytic,4,0,,,,,,"C4,C5,C10,C11"
+Caps - Electrolytic,220uF,electrolytic,3,0,,"C26,C28,C29",,,,
+Caps - Electrolytic,47uF,electrolytic,7,0,,C27,,C17,"C23,C25,C26","C12,C15"
+Caps - Film,100n,film,7,0,,"C15,C24",,"C8,C15","C2,C7",C7
+Caps - Film,10n,film,2,0,only ceramic in stock,C2,C1,,,
+Caps - Film,12n,film,1,0,,C10,,,,
+Caps - Film,150n,film,1,0,,,,,C3,
+Caps - Film,18n,film,3,0,,C18,,,"C15,C16",
+Caps - Film,1n,film,2,0,only ceramic in stock,C21,,,,C3
+Caps - Film,1n8,film,1,0,,C17,,,,
+Caps - Film,1uF,film,11,0,,"C13,C14,C23","C4,C8","C2,C7","C11,C21,C22",C2
+Caps - Film,2.2uF,film,3,0,,"C5,C6,C8",,,,
+Caps - Film,220n,film,2,0,,,,"C5,C6",,
+Caps - Film,22n,film,3,0,,C20,C9,C1,,
+Caps - Film,2n2,film,4,0,,,"C5,C10",,"C9,C18",
+Caps - Film,2n7,film,1,0,,C12,,,,
+Caps - Film,3.3uF,film,1,0,,C25,,,,
+Caps - Film,33n,film,3,0,,C16,,"C10,C11",,
+Caps - Film,3n9,film,1,0,,C7,,,,
+Caps - Film,47n,film,4,0,,,,C4,"C1,C8,C17",
+Caps - Film,4n7,film,3,0,,,,"C12,C13",,C6
+Caps - Film,56n,film,3,0,,C11,,,"C19,C20",
+Caps - Film,5n6,film,1,0,,,,,C14,
+Caps - Film,68n,film,5,0,,"C1,C4","C2,C6",,,C8
+Caps - Film,6n8,film,1,0,,,,,C13,
+Caps - Film,82n,film,1,0,,C22,,,,
+Caps - Film,8n2,film,1,0,,C19,,,,
+Caps - MLCC,100n,ceramic,6,0,,C30,C12,C19,C28,"C13,C16"
+Resistors,10k,resistor,14,23,have 23 in stock,"R5,R9,R18,R23,R28,R29,LEDR","R2,R3,R5,R6,R7,R8,R9,R11,R12,R13,R15","R3,R4,R5,R8,R13,R18,R20,R23,R24","R1,R3,R26,R29,R33,R34","R6,R11,R12,LEDR"
+Resistors,12k,resistor,1,0,,R12,,,,
+Resistors,1k,resistor,2,7,have 7 in stock,"R6,R7",,"R1,R7,R10,R11",R31,"R1,R8"
+Resistors,1k2,resistor,1,0,,,,,R25,
+Resistors,200k,resistor,3,0,,"R14,R25,R27",,,,
+Resistors,2k4,resistor,1,0,,R20,,,,
+Resistors,2k7,resistor,1,0,,R4,,,,
+Resistors,43k,resistor,1,0,,R10,,,,
+Resistors,4k7,resistor,2,8,have 8 in stock,R22,LEDR,"R6,R15,R16,LEDR","R5,R16,LEDR",R10
+Resistors,5k6,resistor,3,0,,"R19,R21",,,R22,
+Resistors,62k,resistor,1,0,,,,,,R9
+Resistors,6k8,resistor,1,0,,,,,R24,
+Semiconductors,2SK209-GR,"JFET, N-channel, SOT-23",5,0,,,,,"Q1,Q2,Q3,Q5,Q6",
+Semiconductors,5mm,"LED, 5mm, red diffused",4,1,have 1 in stock,LED,LED,LED,LED,LED
+Semiconductors,JRC4558D,"Operational amplifier, DIP8",4,0,,,,"IC1,IC2",IC1,IC1

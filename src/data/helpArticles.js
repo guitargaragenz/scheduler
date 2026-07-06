@@ -297,46 +297,6 @@ The quantity field shows the max allowed for the chosen location and won't accep
 Click Remove from stock to confirm.`,
   },
 
-  // ─── JOB TRACKER ──────────────────────────────────────────────────────────
-
-  {
-    id: 'job-tracker-open',
-    section: 'Job Tracker',
-    title: 'Opening the Job Tracker',
-    keywords: ['job tracker', 'tracker', 'open', 'html', 'standalone'],
-    body: `The Job Tracker is a standalone HTML app separate from the scheduler.
-
-Open it at: localhost:5173/job-tracker
-
-Or open the file directly: Job Tracker Files/guitar-garage-job-tracker-v35.html
-
-It runs entirely in your browser with no server needed when opened as a file.`,
-  },
-
-  {
-    id: 'job-tracker-csv',
-    section: 'Job Tracker',
-    title: 'Loading jobs into Job Tracker',
-    keywords: ['load', 'csv', 'upload', 'jobs', 'import', 'job tracker'],
-    body: `Click Load CSV in the Job Tracker and select your jobs.csv file. Jobs with Tag=SKP are automatically excluded.
-
-The tracker shows all current jobs with status, bench type, hours estimate, action required, and days in shop.`,
-  },
-
-  {
-    id: 'job-tracker-filter',
-    section: 'Job Tracker',
-    title: 'Filtering jobs in Job Tracker',
-    keywords: ['filter', 'bench', 'status', 'search', 'job tracker', 'sort'],
-    body: `Use the filter controls to narrow the job list by:
-
-• Bench type (Electronics, Setup, Luthier, Fretwork, Admin)
-• Status (Active, Booked In, Waiting, On Hold, In Transit)
-• Action (GTS, INC, CI, Parts, Tubes, etc.)
-
-Click any column header to sort. The tracker is read-only — edits happen in Multitrack, then re-exported via the CSV pipeline.`,
-  },
-
   // ─── CSV PIPELINE ─────────────────────────────────────────────────────────
 
   {
@@ -384,7 +344,6 @@ Action — Next step abbreviation:
 Desc — Job description (pricing stripped automatically)
 VB — Virtual Booking: Y/N (customer keeps instrument until bench time)
 BL — Backlog: Y/N
-SKP — If Tag=SKP, job is excluded from Job Tracker (not a real column, set Tag to SKP)
 
 Tag auto-thresholds:
 EZ = ≤1.5h · T = ≤3h · M = ≤5.5h · H = >5.5h`,

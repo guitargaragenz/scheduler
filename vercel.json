@@ -1,5 +1,3 @@
 {
-  "rewrites": [
-    { "source": "/job-tracker", "destination": "/job-tracker.html" }
-  ]
+  "rewrites": []
 }

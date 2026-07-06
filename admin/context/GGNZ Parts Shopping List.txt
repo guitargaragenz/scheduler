@@ -1,0 +1,70 @@
+GGNZ PEDAL BUILDS — PARTS SHOPPING LIST
+Arcturus / Delta / Perelandra / Sapphire / Xanthus
+Generated: 2026-06-01
+======================================================================
+NOTE: 1N914 → substitute 1N4148TR (48 in stock) — no purchase needed
+      RC4558P can sub for JRC4558D (pin-compatible) — 4 in stock
+======================================================================
+
+── CAPS - ELECTROLYTIC ──
+    100uF         x7     [DEL:C3,C7,C11  PER:C18  SAP:C24,C27  XAN:C14]
+    10uF          x2     [PER:C14,C16]
+    10uF bipolar  x4     [XAN:C4,C5,C10,C11]
+    220uF         x3     [ARC:C26,C28,C29]
+    47uF          x7     [ARC:C27  PER:C17  SAP:C23,C25,C26  XAN:C12,C15]
+
+── CAPS - FILM ──
+    100n          x7     [ARC:C15,C24  PER:C8,C15  SAP:C2,C7  XAN:C7]
+    10n           x2     [ARC:C2  DEL:C1]
+           ↳ only ceramic in stock
+    12n           x1     [ARC:C10]
+    150n          x1     [SAP:C3]
+    18n           x3     [ARC:C18  SAP:C15,C16]
+    1n            x2     [ARC:C21  XAN:C3]
+           ↳ only ceramic in stock
+    1n8           x1     [ARC:C17]
+    1uF           x11    [ARC:C13,C14,C23  DEL:C4,C8  PER:C2,C7  SAP:C11,C21,C22  XAN:C2]
+    2.2uF         x3     [ARC:C5,C6,C8]
+    220n          x2     [PER:C5,C6]
+    22n           x3     [ARC:C20  DEL:C9  PER:C1]
+    2n2           x4     [DEL:C5,C10  SAP:C9,C18]
+    2n7           x1     [ARC:C12]
+    3.3uF         x1     [ARC:C25]
+    33n           x3     [ARC:C16  PER:C10,C11]
+    3n9           x1     [ARC:C7]
+    47n           x4     [PER:C4  SAP:C1,C8,C17]
+    4n7           x3     [PER:C12,C13  XAN:C6]
+    56n           x3     [ARC:C11  SAP:C19,C20]
+    5n6           x1     [SAP:C14]
+    68n           x5     [ARC:C1,C4  DEL:C2,C6  XAN:C8]
+    6n8           x1     [SAP:C13]
+    82n           x1     [ARC:C22]
+    8n2           x1     [ARC:C19]
+
+── CAPS - MLCC ──
+    100n          x6     [ARC:C30  DEL:C12  PER:C19  SAP:C28  XAN:C13,C16]
+
+── RESISTORS ──
+  ⚠ 10k           x14    [ARC:R5,R9,R18,R23,R28,R29,LEDR  DEL:R2,R3,R5,R6,R7,R8,R9,R11,R12,R13,R15  PER:R3,R4,R5,R8,R13,R18,R20,R23,R24  SAP:R1,R3,R26,R29,R33,R34  XAN:R6,R11,R12,LEDR]
+           ↳ have 23 in stock
+    12k           x1     [ARC:R12]
+  ⚠ 1k            x2     [ARC:R6,R7  PER:R1,R7,R10,R11  SAP:R31  XAN:R1,R8]
+           ↳ have 7 in stock
+    1k2           x1     [SAP:R25]
+    200k          x3     [ARC:R14,R25,R27]
+    2k4           x1     [ARC:R20]
+    2k7           x1     [ARC:R4]
+    43k           x1     [ARC:R10]
+  ⚠ 4k7           x2     [ARC:R22  DEL:LEDR  PER:R6,R15,R16,LEDR  SAP:R5,R16,LEDR  XAN:R10]
+           ↳ have 8 in stock
+    5k6           x3     [ARC:R19,R21  SAP:R22]
+    62k           x1     [XAN:R9]
+    6k8           x1     [SAP:R24]
+
+── SEMICONDUCTORS ──
+    2SK209-GR     x5     [SAP:Q1,Q2,Q3,Q5,Q6]
+  ⚠ 5mm           x4     [ARC:LED  DEL:LED  PER:LED  SAP:LED  XAN:LED]
+           ↳ have 1 in stock
+    JRC4558D      x4     [PER:IC1,IC2  SAP:IC1  XAN:IC1]
+
+TOTAL PURCHASE LINES: 45

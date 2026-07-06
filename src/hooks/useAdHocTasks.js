@@ -51,7 +51,7 @@ export function useAdHocTasks() {
 
   // Try to schedule an ad-hoc task at an exact day/time. Never bumps or
   // searches for another slot — same philosophy as the deliberately-not-built
-  // auto-cascade reschedule (see parking-lot.md, 2026-06-15). If the exact
+  // auto-cascade reschedule (see admin/context/parking-lot.md, 2026-06-15). If the exact
   // requested time isn't free, the caller shows the conflict and the user
   // picks a different time themselves.
   function scheduleAdHocTask({ text, date, hour, minute, hours, occupiedKeys }) {

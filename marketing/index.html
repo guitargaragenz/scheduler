@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guitar Garage NZ — Guitar, Amp &amp; Electronics Repair, Tauranga</title>
+  <meta name="description" content="Tauranga's specialist workshop for guitar, amplifier, and electronics repair. Run by Trevor Collings. Free assessment with every job." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #06101e;
+      --bg2:      #080f1c;
+      --bg3:      #0a1528;
+      --card:     #081422;
+      --teal:     #00c896;
+      --teal-lt:  #20e8b0;
+      --teal-dk:  #009e78;
+      --text:     #f0f4f8;
+      --muted:    #8fa8be;
+      --border:   rgba(0, 200, 150, 0.2);
+      --border2:  rgba(255,255,255,0.08);
+      --radius:   12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Background gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        linear-gradient(35deg, transparent 0%, transparent 45%, rgba(20,80,220,0.4) 70%, rgba(30,100,255,0.6) 100%),
+        radial-gradient(ellipse 35% 30% at 0% 95%, rgba(0,150,110,0.25) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── PILL LABEL ── */
+    .pill {
+      display: inline-block;
+      background: var(--teal);
+      color: #0a1b2a;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 100px;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: var(--teal);
+      color: #0a1b2a;
+    }
+    .btn-primary:hover { background: var(--teal-lt); transform: translateY(-1px); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid rgba(255,255,255,0.4);
+    }
+    .btn-outline:hover { border-color: var(--teal); color: var(--teal); transform: translateY(-1px); }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(11, 26, 43, 0.85);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .logo-text span {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta { display: block; }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 100px 0 80px;
+    }
+
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .hero-title {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .hero-desc {
+      font-size: 17px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      font-weight: 400;
+      line-height: 1.65;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hero-photo {
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hero-photo-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0f2a3f 0%, #0d3320 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 320px;
+    }
+
+    .hero-photo svg {
+      width: 120px;
+      height: 120px;
+      opacity: 0.3;
+    }
+
+    /* ── SECTIONS ── */
+    section { padding: 96px 0; }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 580px;
+      font-weight: 400;
+    }
+
+    .section-head { margin-bottom: 56px; }
+
+    /* ── ABOUT ── */
+    #about { background: transparent; }
+
+    .about-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 72px;
+      align-items: start;
+    }
+
+    .about-body {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.7;
+    }
+
+    .why-box {
+      background: rgba(10, 27, 42, 0.8);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+    }
+
+    .why-box h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .why-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .why-list li {
+      font-size: 15px;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .why-list li::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+      margin-top: 8px;
+    }
+
+    /* ── SERVICES ── */
+    #services { background: transparent; }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .service-card {
+      background: rgba(10, 27, 42, 0.7);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.25s, transform 0.2s;
+    }
+
+    .service-card:hover {
+      border-color: var(--teal);
+      transform: translateY(-3px);
+    }
+
+    .service-photo {
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #0f2a3f 0%, #0d3320 100%);
+      border: 1px solid var(--border2);
+    }
+
+    .service-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .service-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #process { background: transparent; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-bottom: 48px;
+    }
+
+    .step { position: relative; }
+
+    .chevron-wrap {
+      position: relative;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .chevron-wrap svg.chevron-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .chevron-icon {
+      position: relative;
+      z-index: 1;
+      width: 28px;
+      height: 28px;
+      stroke: var(--teal);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .step h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+      padding: 0 16px;
+    }
+
+    .step p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      padding: 0 16px;
+    }
+
+    /* ── TESTIMONIALS ── */
+    #testimonials { background: transparent; }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .testimonial-card {
+      background: rgba(8, 20, 36, 0.8);
+      border: 1.5px solid var(--teal);
+      border-radius: var(--radius);
+      padding: 28px 28px 24px;
+      position: relative;
+    }
+
+    .quote-open, .quote-close {
+      font-size: 72px;
+      line-height: 1;
+      color: var(--teal);
+      font-family: Georgia, serif;
+      display: block;
+      position: absolute;
+    }
+
+    .quote-open { top: 16px; left: 20px; }
+    .quote-close { bottom: 60px; right: 20px; }
+
+    .testimonial-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 48px 0 20px;
+    }
+
+    .testimonial-author {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── FREE ASSESSMENT BAND ── */
+    #assessment-band {
+      padding: 96px 0;
+      background: transparent;
+    }
+
+    .assessment-inner {
+      background: linear-gradient(135deg, rgba(0,80,60,0.4) 0%, rgba(0,40,80,0.3) 100%);
+      border-radius: 20px;
+      padding: 72px 60px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .assessment-inner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><circle cx="30" cy="30" r="1" fill="rgba(255,255,255,0.03)"/></svg>');
+      pointer-events: none;
+    }
+
+    .assessment-inner .section-title { max-width: 560px; }
+    .assessment-inner .section-sub { margin-bottom: 32px; }
+
+    /* ── CTA SECTION ── */
+    #cta { background: transparent; }
+
+    .cta-inner {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .cta-inner .section-title { margin-bottom: 16px; }
+    .cta-inner .section-sub { margin: 0 auto 36px; }
+
+    .cta-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+
+    .cta-info-box {
+      background: rgba(0, 30, 80, 0.5);
+      border: 1px solid rgba(0, 200, 150, 0.25);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      font-size: 14px;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .cta-info-box svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--teal);
+      fill: none;
+      stroke-width: 1.5;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .cta-info-box strong { color: var(--text); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: rgba(6, 14, 26, 0.98);
+      border-top: 1px solid var(--border2);
+      padding: 56px 0 32px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    .footer-col {
+      background: rgba(10, 25, 42, 0.8);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .footer-col h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+
+    .footer-col p, .footer-col address {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-style: normal;
+      margin-bottom: 16px;
+    }
+
+    .footer-col a {
+      color: var(--teal);
+      transition: color 0.2s;
+    }
+    .footer-col a:hover { color: var(--teal-lt); }
+
+    .footer-bottom {
+      border-top: 1px solid var(--border2);
+      padding-top: 24px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .services-grid { grid-template-columns: 1fr 1fr; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links, .nav-cta { display: none; }
+
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .hero-photo { order: -1; }
+
+      .about-inner { grid-template-columns: 1fr; gap: 36px; }
+
+      .steps { grid-template-columns: 1fr; gap: 32px; }
+      .step-arrow { display: none; }
+
+      .services-grid { grid-template-columns: 1fr; }
+
+      .assessment-inner { padding: 48px 28px; }
+
+      .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .services-grid .reveal:nth-child(2) { transition-delay: 0.08s; }
+    .services-grid .reveal:nth-child(3) { transition-delay: 0.16s; }
+    .services-grid .reveal:nth-child(4) { transition-delay: 0.24s; }
+    .services-grid .reveal:nth-child(5) { transition-delay: 0.32s; }
+    .services-grid .reveal:nth-child(6) { transition-delay: 0.4s; }
+    .steps .reveal:nth-child(2) { transition-delay: 0.12s; }
+    .steps .reveal:nth-child(3) { transition-delay: 0.24s; }
+    .testimonials-grid .reveal:nth-child(2) { transition-delay: 0.1s; }
+    .testimonials-grid .reveal:nth-child(3) { transition-delay: 0.2s; }
+
+    /* ── SERVICE CARD HOVER ZOOM ── */
+    .service-photo { overflow: hidden; transition: transform 0.4s ease; }
+    .service-card:hover .service-photo { transform: scale(1.06); }
+
+    .service-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: rgba(0, 200, 150, 0.12);
+      color: var(--teal);
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+    .service-card:hover .service-icon { animation: pulseGrow 0.5s ease; }
+
+    @keyframes pulseGrow {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── PARALLAX ── */
+    .hero-photo { transform: translateY(var(--parallax-hero, 0px)); }
+    .assessment-inner::before { transform: translateY(var(--parallax-assess, 0px)); }
+
+    /* ── MARQUEE TICKER ── */
+    .marquee {
+      overflow: hidden;
+      border-top: 1px solid var(--border2);
+      border-bottom: 1px solid var(--border2);
+      background: rgba(10, 27, 42, 0.6);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #fff 6%, #fff 94%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #fff 6%, #fff 94%, transparent);
+    }
+
+    .marquee-track {
+      display: flex;
+      width: max-content;
+      animation: marqueeScroll 31.2s linear infinite;
+      animation-direction: reverse;
+    }
+
+    .marquee--services .marquee-track {
+      animation-duration: 26.4s;
+      animation-direction: normal;
+    }
+
+    .marquee:hover .marquee-track { animation-play-state: paused; }
+
+    .marquee-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 28px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .marquee-item .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+    }
+
+    @keyframes marqueeScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .hero-photo, .assessment-inner::before { transform: none !important; }
+      .marquee-track { animation: none !important; }
+      .marquee { overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="#" class="logo" aria-label="Guitar Garage NZ home">
+        <div class="logo-text">
+          Guitar Garage NZ
+          <span>Tauranga, New Zealand</span>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#process">How it Works</a></li>
+        <li><a href="#testimonials">Reviews</a></li>
+        <li><a href="#cta">Contact</a></li>
+      </ul>
+      <a href="#cta" class="btn btn-primary nav-cta">Book a Free Assessment</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero" aria-label="Hero">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <h1 class="hero-title">Your Gear Deserves Expert Hands</h1>
+        <p class="hero-desc">
+          Guitar Garage NZ is Tauranga's specialist workshop for guitar, amplifier, and electronics repair. Trusted by local musicians — run by Trevor Collings, a technician who genuinely loves the craft.
+        </p>
+        <div class="hero-ctas">
+          <a href="#cta" class="btn btn-primary">Book a Free Assessment</a>
+          <a href="#cta" class="btn btn-outline">Get in Touch</a>
+        </div>
+      </div>
+
+      <div class="hero-photo" aria-hidden="true">
+        <div class="hero-photo-placeholder">
+          <!-- Swap this for a real photo: <img src="your-photo.jpg" alt="Guitar and amp in the workshop" /> -->
+          <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60 10 L60 45 M45 15 L75 15" stroke="#00c896" stroke-width="2" stroke-linecap="round"/>
+            <rect x="40" y="45" width="40" height="55" rx="6" stroke="#00c896" stroke-width="1.5" fill="none"/>
+            <circle cx="60" cy="72" r="14" stroke="#00c896" stroke-width="1.5" fill="none"/>
+            <circle cx="60" cy="72" r="6" stroke="rgba(0,200,150,0.4)" stroke-width="1" fill="none"/>
+            <line x1="50" y1="55" x2="50" y2="100" stroke="#00c896" stroke-width="0.8" opacity="0.4"/>
+            <line x1="55" y1="54" x2="55" y2="100" stroke="#00c896" stroke-width="0.8" opacity="0.4"/>
+            <line x1="60" y1="54" x2="60" y2="100" stroke="#00c896" stroke-width="0.8" opacity="0.4"/>
+            <line x1="65" y1="54" x2="65" y2="100" stroke="#00c896" stroke-width="0.8" opacity="0.4"/>
+            <line x1="70" y1="55" x2="70" y2="100" stroke="#00c896" stroke-width="0.8" opacity="0.4"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HERO MARQUEE -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span class="marquee-item"><span class="dot"></span>Free Assessment on Every Job</span>
+      <span class="marquee-item"><span class="dot"></span>Tauranga Workshop</span>
+      <span class="marquee-item"><span class="dot"></span>All Brands, All Eras</span>
+      <span class="marquee-item"><span class="dot"></span>Fast Turnaround</span>
+      <span class="marquee-item"><span class="dot"></span>Trusted by Local Musicians</span>
+      <span class="marquee-item"><span class="dot"></span>Free Assessment on Every Job</span>
+      <span class="marquee-item"><span class="dot"></span>Tauranga Workshop</span>
+      <span class="marquee-item"><span class="dot"></span>All Brands, All Eras</span>
+      <span class="marquee-item"><span class="dot"></span>Fast Turnaround</span>
+      <span class="marquee-item"><span class="dot"></span>Trusted by Local Musicians</span>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <section id="about" aria-labelledby="about-title">
+    <div class="container">
+      <div class="about-inner">
+        <div class="reveal">
+          <div class="pill">About Us</div>
+          <h2 class="section-title" id="about-title">A Workshop Built for Musicians</h2>
+          <p class="about-body">
+            Guitar Garage NZ Ltd is a specialist repair workshop tucked away at 12 Victory St, Welcome Bay, Tauranga — run by Trevor Collings, a passionate technician with deep experience across guitars, amplifiers, and studio electronics.
+          </p>
+          <p class="about-body">
+            Whether your vintage valve amp has gone quiet, your Floyd Rose needs a full setup, or your synth has developed a mind of its own, Trevor brings the same care and expertise to every job. No job too small, no gear too beloved.
+          </p>
+        </div>
+
+        <div class="why-box reveal">
+          <h3>Why Musicians Trust Us</h3>
+          <ul class="why-list">
+            <li>Specialist knowledge, not generalist guesswork</li>
+            <li>Honest assessments — free of charge</li>
+            <li>All work explained clearly before we start</li>
+            <li>Tauranga-based, locally trusted</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section id="services" aria-labelledby="services-title">
+    <div class="container">
+      <div class="section-head reveal">
+        <div class="pill">Services</div>
+        <h2 class="section-title" id="services-title">Everything Your Gear Needs</h2>
+        <p class="section-sub">From a simple setup to a complex electronics repair, Guitar Garage NZ handles it all — with care, precision, and a genuine love of great-sounding gear.</p>
+      </div>
+    </div>
+
+    <div class="marquee marquee--services" aria-hidden="true">
+      <div class="marquee-track">
+        <span class="marquee-item"><span class="dot"></span>Guitar Setup &amp; Maintenance</span>
+        <span class="marquee-item"><span class="dot"></span>Guitar Repairs</span>
+        <span class="marquee-item"><span class="dot"></span>Amplifier Servicing &amp; Repair</span>
+        <span class="marquee-item"><span class="dot"></span>Keyboard &amp; Synthesizer Repair</span>
+        <span class="marquee-item"><span class="dot"></span>PA System Servicing</span>
+        <span class="marquee-item"><span class="dot"></span>Studio Equipment Repair</span>
+        <span class="marquee-item"><span class="dot"></span>Guitar Setup &amp; Maintenance</span>
+        <span class="marquee-item"><span class="dot"></span>Guitar Repairs</span>
+        <span class="marquee-item"><span class="dot"></span>Amplifier Servicing &amp; Repair</span>
+        <span class="marquee-item"><span class="dot"></span>Keyboard &amp; Synthesizer Repair</span>
+        <span class="marquee-item"><span class="dot"></span>PA System Servicing</span>
+        <span class="marquee-item"><span class="dot"></span>Studio Equipment Repair</span>
+      </div>
+    </div>
+
+    <div class="container" style="margin-top: 56px;">
+      <div class="services-grid">
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L6 20 M18 4 L18 20"/><circle cx="9" cy="16" r="2.5"/><circle cx="15" cy="14" r="2.5"/></svg></div>
+          <h3>Guitar Setup &amp; Maintenance</h3>
+          <p>Full setups for acoustic and electric guitars, including tremolo and Floyd Rose systems. Action, Intonation, tuning stability — dialled in properly.</p>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.1-3.1a4 4 0 01-5.4 5.4L6 21l-3-3 9.6-9.4a4 4 0 015.4-5.4l-3.1 3.1z"/></svg></div>
+          <h3>Guitar Repairs</h3>
+          <p>Fret levelling and crowning, nut replacement, wiring and electronics, hardware installation and upgrades. Your guitar restored to its best.</p>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 11 14 9 22 19 10 11 10 13 2"/></svg></div>
+          <h3>Amplifier Servicing &amp; Repair</h3>
+          <p>Valve, solid state, and modelling amplifiers. From re-tubing and bias setting to full fault diagnosis and repair — all amp types welcomed.</p>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="7" y1="9" x2="7" y2="15"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="17" y1="9" x2="17" y2="13"/></svg></div>
+          <h3>Keyboard &amp; Synthesizer Repair</h3>
+          <p>Faulty keys, dead oscillators, connectivity issues — Trevor services and repairs a wide range of keyboards and synthesizers to get your sounds flowing again.</p>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 6a9 9 0 010 12"/></svg></div>
+          <h3>PA System Servicing</h3>
+          <p>Keep your live sound performing at its best. Guitar Garage NZ services and repairs PA systems — from speaker cabinets to power amplifiers and mixers.</p>
+        </div>
+
+        <div class="service-card reveal">
+          <div class="service-photo" aria-hidden="true"></div>
+          <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
+          <h3>Studio Equipment Repair</h3>
+          <p>Audio interfaces, outboard gear, studio monitors, and more. Precision repairs for the equipment that underpins your recording sessions.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ALL BRANDS -->
+  <section id="brands" aria-labelledby="brands-title" style="padding-top: 0;">
+    <div class="container">
+      <div class="why-box reveal">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+          <div>
+            <div class="pill" style="margin-bottom:12px;">What We Work On</div>
+            <h2 class="section-title" id="brands-title" style="font-size:clamp(24px,3vw,36px);">All Brands, All Eras, All Types</h2>
+            <p class="section-sub">From a battered 1970s Strat to a modern modelling amp or a classic Rhodes — if it makes music, Trevor can likely fix it. Guitar Garage NZ works across a wide range of brands and instrument types.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:8px;">
+            <div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px;">
+                <span style="color:var(--teal);margin-right:6px;">♪</span> Electric Guitars
+              </h4>
+              <p style="font-size:13px;color:var(--muted);line-height:1.6;">Fender, Gibson, PRS, Ibanez, Gretsch, and everything in between — including vintage and boutique instruments.</p>
+            </div>
+            <div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px;">
+                <span style="color:var(--teal);margin-right:6px;">♪</span> Acoustic Guitars
+              </h4>
+              <p style="font-size:13px;color:var(--muted);line-height:1.6;">Steel-string and classical acoustics, including setup, bridge saddle work, and nut replacements.</p>
+            </div>
+            <div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px;">
+                <span style="color:var(--teal);margin-right:6px;">♪</span> Amplifiers
+              </h4>
+              <p style="font-size:13px;color:var(--muted);line-height:1.6;">Marshall, Fender, Vox, Mesa Boogie, Roland, Line 6 — valve, solid state, and digital modellers.</p>
+            </div>
+            <div>
+              <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:6px;">
+                <span style="color:var(--teal);margin-right:6px;">♩</span> Keyboards &amp; Synths
+              </h4>
+              <p style="font-size:13px;color:var(--muted);line-height:1.6;">Vintage analogue synths, digital workstations, stage pianos — repaired and serviced with care.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="process" aria-labelledby="process-title">
+    <div class="container">
+      <div class="section-head reveal" style="text-align:center;">
+        <div class="pill">How It Works</div>
+        <h2 class="section-title" id="process-title">Simple. Straightforward. Sorted.</h2>
+        <p class="section-sub" style="margin:0 auto;">Getting your gear repaired shouldn't be complicated. Here's how Guitar Garage NZ makes it easy from start to finish.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal">
+          <div class="chevron-wrap" aria-hidden="true">
+            <svg class="chevron-bg" viewBox="0 0 300 80" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4 H260 L296 40 L260 76 H4 L40 40 Z" stroke="#00c896" stroke-width="1.5" fill="rgba(0,200,150,0.05)"/>
+            </svg>
+            <svg class="chevron-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h3>1. Book Your Free Assessment</h3>
+          <p>Use the online booking tool to schedule a free, no-obligation assessment at a time that suits you.</p>
+        </div>
+
+        <div class="step reveal">
+          <div class="chevron-wrap" aria-hidden="true">
+            <svg class="chevron-bg" viewBox="0 0 300 80" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4 H260 L296 40 L260 76 H4 L40 40 Z" stroke="#00c896" stroke-width="1.5" fill="rgba(0,200,150,0.05)"/>
+            </svg>
+            <svg class="chevron-icon" viewBox="0 0 24 24"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
+          </div>
+          <h3>2. Drop Off Your Gear</h3>
+          <p>Bring your instrument or equipment to the workshop at 12 Victory St, Welcome Bay. Trevor will look it over and talk you through what's needed.</p>
+        </div>
+
+        <div class="step reveal">
+          <div class="chevron-wrap" aria-hidden="true">
+            <svg class="chevron-bg" viewBox="0 0 300 80" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4 H260 L296 40 L260 76 H4 L40 40 Z" stroke="#00c896" stroke-width="1.5" fill="rgba(0,200,150,0.05)"/>
+            </svg>
+            <svg class="chevron-icon" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3>3. Collect Once It's Sorted</h3>
+          <p>You'll be notified when your gear is ready. Pick it up knowing it's been serviced with care and backed by solid workmanship.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section id="testimonials" aria-labelledby="testimonials-title">
+    <div class="container">
+      <div class="section-head reveal" style="text-align:center;">
+        <div class="pill">Testimonials</div>
+        <h2 class="section-title" id="testimonials-title">What Musicians Are Saying</h2>
+      </div>
+
+      <div class="testimonials-grid">
+
+        <div class="testimonial-card reveal">
+          <span class="quote-open" aria-hidden="true">"</span>
+          <p>"Trevor did an incredible setup on my Les Paul — best it's ever played. He explained everything clearly and the turnaround was fast. Highly recommend Guitar Garage NZ."</p>
+          <span class="quote-close" aria-hidden="true">"</span>
+          <div class="testimonial-author">— James R., Tauranga</div>
+        </div>
+
+        <div class="testimonial-card reveal">
+          <span class="quote-open" aria-hidden="true">"</span>
+          <p>"My vintage Vox AC30 came back to life after Trevor worked his magic. Honest pricing, great communication, and a real passion for the craft. My go-to from now on."</p>
+          <span class="quote-close" aria-hidden="true">"</span>
+          <div class="testimonial-author">— Sarah K., Mount Maunganui</div>
+        </div>
+
+        <div class="testimonial-card reveal">
+          <span class="quote-open" aria-hidden="true">"</span>
+          <p>"I brought in a Roland synth that two other places had given up on. Trevor diagnosed the fault within the day. Outstanding service and a genuinely lovely workshop to visit."</p>
+          <span class="quote-close" aria-hidden="true">"</span>
+          <div class="testimonial-author">— Mike T., Tauranga</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- FREE ASSESSMENT BAND -->
+  <section id="assessment-band" aria-labelledby="assessment-title">
+    <div class="container">
+      <div class="assessment-inner reveal">
+        <div class="pill">Free Assessment</div>
+        <h2 class="section-title" id="assessment-title">Not Sure What Your Gear Needs?</h2>
+        <p class="section-sub">Start with a free assessment — no pressure, no obligation. Trevor will take a look, give you an honest diagnosis, and talk through your options before any work begins. It's the Guitar Garage way.</p>
+        <a href="#cta" class="btn btn-primary" style="margin-top:8px;">Book Your Free Assessment</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta" aria-labelledby="cta-title">
+    <div class="container">
+      <div class="cta-inner reveal">
+        <div class="pill">Ready to Book?</div>
+        <h2 class="section-title" id="cta-title">Let's Get Your Gear Playing Its Best</h2>
+        <p class="section-sub">Book a free, no-obligation assessment online and bring your instrument or equipment into the Guitar Garage NZ workshop in Welcome Bay, Tauranga. Trevor looks forward to hearing what you've got.</p>
+        <div class="cta-actions">
+          <a href="mailto:trevor@guitargaragenz.nz" class="btn btn-primary">Book a Free Assessment</a>
+          <a href="mailto:trevor@guitargaragenz.nz" class="btn btn-outline">Email Trevor</a>
+        </div>
+        <div class="cta-info-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>Free assessment included with every job.</strong> No surprise costs — Trevor talks you through every repair before work begins.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>Guitar Garage NZ Ltd</h4>
+          <p>Tauranga's specialist workshop for guitar, amplifier, and electronics repair. Serving musicians across the Bay of Plenty and wider New Zealand.</p>
+          <a href="mailto:trevor@guitargaragenz.nz" class="btn btn-primary" style="font-size:14px;padding:10px 22px;">Book Free Assessment</a>
+        </div>
+        <div class="footer-col">
+          <h4>Find Us</h4>
+          <address>
+            12 Victory St<br/>
+            Welcome Bay<br/>
+            Tauranga 3112<br/>
+            New Zealand
+          </address>
+        </div>
+        <div class="footer-col">
+          <h4>Get in Touch</h4>
+          <p><a href="mailto:trevor@guitargaragenz.nz">trevor@guitargaragenz.nz</a></p>
+          <p>Book online for a free assessment — or simply send Trevor an email with your question. He's happy to help.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        &copy; 2026 Guitar Garage NZ Ltd. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if ('IntersectionObserver' in window && !prefersReducedMotion) {
+      var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+      document.querySelectorAll('.reveal').forEach(function (el) {
+        revealObserver.observe(el);
+      });
+    } else {
+      document.querySelectorAll('.reveal').forEach(function (el) {
+        el.classList.add('is-visible');
+      });
+    }
+
+    if (!prefersReducedMotion) {
+      var heroPhoto = document.querySelector('.hero-photo');
+      var assessmentInner = document.querySelector('.assessment-inner');
+      var ticking = false;
+
+      function updateParallax() {
+        var scrollY = window.scrollY || window.pageYOffset;
+
+        if (heroPhoto) {
+          var heroOffset = Math.min(scrollY * 0.12, 40);
+          heroPhoto.style.setProperty('--parallax-hero', heroOffset + 'px');
+        }
+
+        if (assessmentInner) {
+          var rect = assessmentInner.getBoundingClientRect();
+          var viewportH = window.innerHeight || document.documentElement.clientHeight;
+          if (rect.top < viewportH && rect.bottom > 0) {
+            var progress = (viewportH - rect.top) / (viewportH + rect.height);
+            var assessOffset = (progress - 0.5) * 30;
+            assessmentInner.style.setProperty('--parallax-assess', assessOffset + 'px');
+          }
+        }
+
+        ticking = false;
+      }
+
+      window.addEventListener('scroll', function () {
+        if (!ticking) {
+          window.requestAnimationFrame(updateParallax);
+          ticking = true;
+        }
+      }, { passive: true });
+
+      updateParallax();
+    }
+  </script>
+
+</body>
+</html>

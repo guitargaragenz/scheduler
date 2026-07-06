@@ -6,7 +6,6 @@ const SECTION_COLORS = {
   'Sidebar':         { bg: '#0f2044', accent: '#6366f1', label: '#a5b4fc' },
   'Pomodoro':        { bg: '#0f2044', accent: '#f59e0b', label: '#fcd34d' },
   'Parts Inventory': { bg: '#0f2044', accent: '#10b981', label: '#6ee7b7' },
-  'Job Tracker':     { bg: '#0f2044', accent: '#8b5cf6', label: '#c4b5fd' },
   'CSV Pipeline':    { bg: '#0f2044', accent: '#64748b', label: '#94a3b8' },
   'Settings':        { bg: '#0f2044', accent: '#475569', label: '#94a3b8' },
 };
