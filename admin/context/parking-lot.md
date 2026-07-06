@@ -22,10 +22,8 @@ Items parked during sessions for weekly review every Sunday.
 
 - [x] **Desktop JobDrawer — schedule section not working** — STALE, resolved. Root-caused and fixed 2026-07-02, see that session's entry below (schedulerWeekDays day-index mismatch). Marked resolved 2026-07-04 during parking-lot cleanup.
 - [ ] **Pomodoro timer alarm sound not working** — alarm not firing at end of session.
-- [ ] **Mobile — remove job from calendar** — added Remove from Calendar button to MobileJobSheet for scheduled jobs (can't DnD back to sidebar on mobile). Pushed but not verified working.
 - [ ] **Online session journal / parking lot web page** — web-based editable version of this parking-lot.md. Readable and editable from any device (iPhone too). Can add ideas, add detail to existing items. Pulls live data from Firebase. More details = quicker comms with Claude, less stuck in brain. Replaces need to paste raw notes.
 - [ ] **Printable schedule / quick wins view** — live view of current week schedule + quick wins list. Print via Cmd+P → PDF. Could be part of the online journal page.
-- [ ] **Google Sheets VB column formula** — SEARCH formula on col L no longer needed (PDF parser already strips VB: and sets flag). No action required — closed.
 
 ---
 
@@ -33,34 +31,22 @@ Items parked during sessions for weekly review every Sunday.
 
 Full audit by agent team + council. All items prioritised and actionable.
 
-### Architecture (do first — foundation for everything else)
-- [ ] **Split App.jsx into specialist roles** — 1,000+ line file does everything at once. Split into job manager, calendar manager, Firebase manager, GCal manager, screen manager. Run through full team protocol. Prevents the regression days.
-
 ### Council flags (urgent)
-- [ ] **Silent GCal conflict bump** — app quietly moves bumped jobs with no durable record. Could come in Monday to scrambled schedule with no explanation. Fix: durable log + visible notification when job gets bumped.
 - [ ] **Firebase writes entire jobs array on every change** — fine now, will hit limits as pomoLog accumulates. Watch it.
 
 ### Quick wins
 - [x] Fix desktop "Place on Calendar" button (confirmed broken) — STALE, resolved 2026-07-02, marked resolved 2026-07-04 during parking-lot cleanup.
 - [ ] Fix Pomodoro alarm sound (confirmed broken)
-- [ ] Fix `setChangelog` bug — every drag/sync/upload event silently discarded
-- [ ] Remove dead code: `GCalDrawer.jsx`, `autoSchedule()`, `placeJob()`, `canPlace()`, `JobEditDrawer.jsx`
-- [ ] "Today" button on week nav
 - [ ] Age colour badges on sidebar cards — 60+ day jobs red (Runway has this, sidebar doesn't)
-- [ ] Status badge on sidebar cards — GTS/INC/CI/PARTS not visible on card
-- [ ] Auto-scroll calendar to current hour on load
 - [ ] Undo toast on unschedule — currently destructive with no confirmation
-- [ ] Revenue pill in header — data already computed, not surfaced
 
 ### Bigger ideas
 - [ ] Mobile "Move" action for scheduled jobs — currently remove → find → reschedule
 - [ ] Day load indicator on mobile Schedule tab — no visibility into what's booked before placing
-- [ ] "What's on today" morning banner — no daily summary anywhere
 - [ ] Actual vs estimated hours on job card — data exists, never shown together
 - [ ] "Next job" recommendation — nothing tells you what to do next
 - [ ] Weekly capacity view — "22h booked, 18h queued, 6h buffer"
 - [ ] Pomo timer without scheduling — can't log time on unscheduled jobs
-- [ ] Auto-import CSV — pipeline already writes to Firebase, app should react automatically
 - [ ] Week-over-week revenue history — no trend view
 
 ### UX friction
@@ -138,5 +124,15 @@ Full audit by agent team + council. All items prioritised and actionable.
 - [ ] **`SCHEDULER` symlink on Desktop is dangling** — points at `/Users/trevorcollings/...` but this machine's local user is `admin`. Pre-existing quirk from syncing across two different local accounts, unrelated to this reorg. Fix if it matters for cross-device workflow.
 - [x] **`jt-backup-ggnz-35a126beb4ca.json` credential — resolved (2026-07-06).** Confirmed it belongs to `jt-backup-ggnz`, a different (old, unused) Firebase project from the live Scheduler's `ggnz-scheduler` — leftover from the standalone Job Tracker tool, which Trevor confirmed he no longer uses. Added `.gitignore` rules (`*.json.key`, `jt-backup-*.json`) and moved the file into `archive/job-tracker/`. **Still needed: Trevor to revoke this service-account key in Google Cloud Console** — moving/gitignoring it locally doesn't invalidate the key itself.
 - [x] **Job Tracker fully decommissioned (2026-07-06)**, not just nested under `apps/` as the reorg first did. Trevor confirmed he'd asked for this in an earlier session and it didn't happen. Superseded entirely by this app's Jobs page/Sidebar (same filtering, plus real scheduling + sync) — no functional loss. Removed: the live `/job-tracker` route (`vercel.json` rewrite deleted, `public/job-tracker.html` moved), the 3 in-app help articles, the `SECTION_COLORS['Job Tracker']` entry in `HelpDrawer.jsx`, and the stale `SKP` help-text reference. Everything moved to `archive/job-tracker/` (not deleted) in case the old HTML is ever wanted for reference.
+
+---
+
+## 2026-07-06 — Session: Manual-splits data-loss fix + parking-lot cleanup
+
+- [x] **Root cause of "manual splits still being erased" found and fixed.** The 2026-07-04 fix to `sheet_to_csv.command` (preserving `calendarSlot`/`gcalEventId`/`pomoLog`/manual splits) only ever landed in the GitHub repo — the actual script running unattended every 2 minutes on Micky (`~/Desktop/SCHEDULER_old/sheet_to_csv.command`) was never re-curled from GitHub after the fix, so it kept running the old broken version the whole time. Re-deployed the correct script, confirmed byte-identical to the repo copy.
+- [x] **Related bug also fixed:** `useScheduler.js` was writing `calendarSlot` as a raw `{dayIdx,hour,minute}` object instead of the canonical `slotKey()` date-string, in both the regular-drop and urgent-drop paths. Didn't cause data loss itself, but violated the documented format. See `3b573e8`.
+- [ ] **Switch bounce on hrs in day job view (making splits)** — reported by Trevor, not yet investigated. Happens when adjusting hours while creating a manual split in the day job view.
+- [ ] **No Focus toggle in mobile day view** — the Focus list (shipped earlier today, `9bf62d3`) only got wired into `Sidebar.jsx` (desktop) and `JobShelf.jsx` (desktop Daily Log). Mobile's day view has its own separate job list component that never got the same toggle.
+- [x] **Parking-lot cleanup** — audited every open item against the actual code (not just taking old entries at face value). Removed 11 items confirmed already done: split App.jsx into hooks, revenue pill, GCal conflict log, dead-code removal, "Today" button, `setChangelog` fix, mobile remove-from-calendar, status badges, auto-scroll-to-hour, auto-import CSV reactivity, and the already-stale Google Sheets VB formula note. Also removed "What's on today" morning banner — superseded by the Daily Log page itself. Left "Day load indicator on mobile" and the standing "Sunday board meeting" idea open — see [[project_sunday_board_meeting]] for why that one needs a real conversation, not a checkbox.
 
 ---
