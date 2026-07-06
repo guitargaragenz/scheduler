@@ -4,7 +4,7 @@ import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
 const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
-function getSubtasks(job, jobs) {
+function getAllSubtasks(job, jobs) {
   if (job.hasSubtasks && Array.isArray(job.subtasks)) {
     return jobs.filter(j => job.subtasks.includes(j.id));
   }
@@ -12,6 +12,12 @@ function getSubtasks(job, jobs) {
     return jobs.filter(j => j.parentId === job.id);
   }
   return [];
+}
+
+// Only unscheduled subtasks — once a split piece is dragged onto the
+// calendar it should drop out of the shelf, same as Sidebar.jsx.
+function getSubtasks(job, jobs) {
+  return getAllSubtasks(job, jobs).filter(j => !j.scheduled);
 }
 
 function formatSyncedAt(lastSyncedAt) {
@@ -48,7 +54,15 @@ export default function JobShelf({
 
   const toggleExpand = jobId => setExpandedJobs(prev => ({ ...prev, [jobId]: !prev[jobId] }));
 
-  const topLevel = jobs.filter(j => j.id && !j.done && !j.parentId && !j.scheduled);
+  const topLevel = jobs.filter(j => {
+    if (!j.id || j.done || j.parentId || j.scheduled) return false;
+    // Hide a split/auto-split parent once every piece is already scheduled — nothing left to pull.
+    if (j.hasSubtasks || j.isSplit) {
+      const all = getAllSubtasks(j, jobs);
+      if (all.length > 0 && all.every(k => k.scheduled)) return false;
+    }
+    return true;
+  });
 
   const benchCounts = BENCH_ORDER.map(bench => ({
     bench,
