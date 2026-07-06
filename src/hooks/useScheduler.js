@@ -121,7 +121,7 @@ export function useScheduler({
     });
 
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slots[0] } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slotKey(weekDays[slots[0].dayIdx], slots[0].hour, slots[0].minute) } : j
     ));
     showToast(`#${job.job} placed — ${spanDesc}`);
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
@@ -199,7 +199,7 @@ export function useScheduler({
       ));
     }
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slots[0] } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slotKey(weekDays[slots[0].dayIdx], slots[0].hour, slots[0].minute) } : j
     ));
 
     const first = slots[0];
