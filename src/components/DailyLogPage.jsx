@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
+import DeferredItemsList from './DeferredItemsList.jsx';
 import { BENCH_COLORS as CANONICAL_BENCH_COLORS } from '../data/jobs.js';
 import { localDateKey } from '../utils/calendar.js';
 
@@ -81,13 +82,73 @@ function Tag({ label, style: extraStyle }) {
   );
 }
 
-function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
+function ChecklistSection({ bullet, locked, onToggleItem, onAddItem }) {
+  const [input, setInput] = useState('');
+  const items = bullet.checklist || [];
+
+  function submit() {
+    const text = input.trim();
+    if (!text) return;
+    onAddItem(bullet.id, text);
+    setInput('');
+  }
+
+  return (
+    <div style={{ marginTop: 6, marginLeft: 2 }} onClick={e => e.stopPropagation()}>
+      {items.map(item => (
+        <div
+          key={item.id}
+          onClick={() => !locked && item.status !== 'irrelevant' && onToggleItem(bullet.id, item.id)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0',
+            cursor: locked || item.status === 'irrelevant' ? 'default' : 'pointer',
+          }}
+        >
+          <span style={{
+            fontSize: 11,
+            color: item.status === 'done' ? '#238636'
+              : item.status === 'irrelevant' ? '#475569'
+              : item.status === 'migrated' || item.status === 'deferred' ? '#64748b'
+              : '#475569',
+          }}>
+            {item.status === 'done' ? '✓' : item.status === 'irrelevant' ? '✕' : '○'}
+          </span>
+          <span style={{
+            fontSize: 12,
+            color: item.status === 'done' ? '#64748b' : '#94a3b8',
+            textDecoration: item.status === 'irrelevant' ? 'line-through' : 'none',
+          }}>
+            {item.text}
+          </span>
+        </div>
+      ))}
+      {!locked && (
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+          placeholder="+ add step"
+          style={{
+            marginTop: 4, width: '100%', boxSizing: 'border-box',
+            background: 'transparent', border: 'none', borderBottom: '1px dashed #253044',
+            padding: '3px 0', fontSize: 11, color: '#64748b', outline: 'none', fontFamily: 'inherit',
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddChecklistItem, onToggleChecklistItem }) {
   const done = bullet.done;
-  const meta = bullet.meta || (() => {
-    const job = jobs?.find(j => j.id === bullet.jobId);
-    return job ? { bench: job.bench, hoursRange: job.hoursRange, action: job.action } : null;
-  })();
+  const linkedJob = jobs?.find(j => j.id === bullet.jobId);
+  const meta = bullet.meta || (linkedJob ? { bench: linkedJob.bench, hoursRange: linkedJob.hoursRange, action: linkedJob.action } : null);
   const isJob = !!bullet.jobId;
+  const sessionNote = linkedJob?.sessionNote;
+  const sessionBadge = linkedJob?.sessionIndex && linkedJob?.sessionTotal > 1
+    ? `${linkedJob.sessionIndex}/${linkedJob.sessionTotal}`
+    : null;
   const timeLabel = bullet.scheduledMinutes != null
     ? `${Math.floor(bullet.scheduledMinutes / 60)}:${String(bullet.scheduledMinutes % 60).padStart(2, '0')}`
     : meta?.isAdHoc && meta.hour != null
@@ -203,15 +264,36 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
               </span>
             )}
             {bullet.text}
+            {sessionBadge && (
+              <span style={{
+                marginLeft: 5, fontSize: 9, fontWeight: 700,
+                background: '#1d4ed8', color: '#bfdbfe', borderRadius: 4, padding: '1px 4px',
+              }}>
+                {sessionBadge}
+              </span>
+            )}
             {isJob && !done && (
               <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
             )}
           </div>
+          {sessionNote && (
+            <div style={{ fontSize: 11, color: '#fbbf24', fontStyle: 'italic', marginTop: 2 }}>
+              {sessionNote}
+            </div>
+          )}
           {meta && (
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
               {[meta.bench, meta.hoursRange ? `${meta.hoursRange}h` : null, meta.action]
                 .filter(Boolean).join(' · ')}
             </div>
+          )}
+          {isJob && (onAddChecklistItem || (bullet.checklist || []).length > 0) && (
+            <ChecklistSection
+              bullet={bullet}
+              locked={locked}
+              onToggleItem={onToggleChecklistItem}
+              onAddItem={onAddChecklistItem}
+            />
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -235,8 +317,9 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs }) {
   );
 }
 
-function LogJobCard({ job, pulled, onPull, onOpenJob, jobs }) {
+function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn }) {
   const splits = jobs.filter(j => j.parentId === job.id);
+  const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
   const actionStyle = ACTION_COLORS[job.action] || { bg: '#1e293b', color: '#64748b' };
   const benchStyle = BENCH_COLORS[job.bench] || { bg: '#1e293b', color: '#64748b' };
 
@@ -297,6 +380,8 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs }) {
           ))}
         </div>
       )}
+
+      <DeferredItemsList items={jobDeferredItems} onPullBackIn={onPullBackIn} />
 
       <button
         onClick={(e) => { e.stopPropagation(); if (!pulled) onPull(job); }}
@@ -511,6 +596,7 @@ export default function DailyLogPage({
   onRemoveAdHocTask, onScheduleAdHocNote,
   dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
+  onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
   focusList = [],
 }) {
   const isDisplayedDateToday = displayedDate.toDateString() === new Date().toDateString();
@@ -798,6 +884,8 @@ export default function DailyLogPage({
                   onRemove={onRemoveBullet}
                   onOpenJob={onBulletJobClick}
                   jobs={jobs}
+                  onAddChecklistItem={onAddChecklistItem}
+                  onToggleChecklistItem={onToggleChecklistItem}
                 />
               ))
             )}
@@ -942,6 +1030,8 @@ export default function DailyLogPage({
                     onPull={handlePull}
                     onOpenJob={onBulletJobClick}
                     jobs={jobs}
+                    deferredItems={deferredItems}
+                    onPullBackIn={onPullBackIn}
                   />
                 ))
               )}
@@ -1015,6 +1105,8 @@ export default function DailyLogPage({
               onToggle={onToggleDone}
               onRemove={onRemoveBullet}
               jobs={jobs}
+              onAddChecklistItem={onAddChecklistItem}
+              onToggleChecklistItem={onToggleChecklistItem}
             />
           ))
         )}
@@ -1090,6 +1182,8 @@ export default function DailyLogPage({
             onJobClick={onJobClick}
             lastSyncedAt={lastSyncedAt}
             focusList={focusList}
+            deferredItems={deferredItems}
+            onPullBackIn={onPullBackIn}
           />
         </div>
         <ResizeHandle onResize={resizeSchedule} />

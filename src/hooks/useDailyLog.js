@@ -40,42 +40,58 @@ function tomorrowKey() {
   return localDateKey(d);
 }
 
+const EMPTY_STATE = { logs: {}, deferredItems: [] };
+
 export function useDailyLog() {
-  const [logs, setLogs] = useState({});
+  // `logs` and `deferredItems` live in one state atom so every mutation that
+  // touches both (closeDay, pullBackIn) is a single atomic setState — no
+  // split calls that could race or read a stale snapshot of the other half.
+  const [state, setState] = useState(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const saveTimerRef = useRef(null);
-  const pendingLogsRef = useRef(null);
+  const pendingStateRef = useRef(null);
   const justSavedAt = useRef(0);
+  const readyRef = useRef(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
+      readyRef.current = true;
       setLoading(false);
       return;
     }
 
     const unsub = onSnapshot(DAILY_LOGS_DOC(), snap => {
       if (Date.now() - justSavedAt.current < 3000) return;
-      setLogs(snap.exists() ? (snap.data().logs || {}) : {});
+      const data = snap.exists() ? snap.data() : {};
+      const next = { logs: data.logs || {}, deferredItems: data.deferredItems || [] };
+      setState(next);
+      pendingStateRef.current = next;
+      readyRef.current = true;
       setLoading(false);
     });
 
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function scheduleSave(nextLogs) {
-    pendingLogsRef.current = nextLogs;
+  function scheduleSave(next) {
+    // Guard against writing before the initial Firestore snapshot has loaded —
+    // otherwise a save fired from stale/empty local state can overwrite every
+    // other day's data with a full-document setDoc (2026-07-05 data loss).
+    if (!readyRef.current) return;
+    pendingStateRef.current = next;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       justSavedAt.current = Date.now();
       setDoc(DAILY_LOGS_DOC(), {
-        logs: pendingLogsRef.current,
+        logs: pendingStateRef.current.logs,
+        deferredItems: pendingStateRef.current.deferredItems,
         updatedAt: new Date().toISOString(),
       });
     }, 300);
   }
 
-  function updateLogs(updater) {
-    setLogs(prev => {
+  function updateState(updater) {
+    setState(prev => {
       const next = updater(prev);
       scheduleSave(next);
       return next;
@@ -84,25 +100,28 @@ export function useDailyLog() {
 
   function addBullet(text, jobId = null, meta = null) {
     const key = todayKey();
-    updateLogs(prev => {
-      const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
+    updateState(prev => {
+      const day = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
       if (day.locked) return prev;
       return {
         ...prev,
-        [key]: {
-          ...day,
-          bullets: [
-            ...day.bullets,
-            {
-              id: genId(),
-              text,
-              jobId,
-              meta,
-              done: false,
-              createdAt: new Date().toISOString(),
-              migration: null,
-            },
-          ],
+        logs: {
+          ...prev.logs,
+          [key]: {
+            ...day,
+            bullets: [
+              ...day.bullets,
+              {
+                id: genId(),
+                text,
+                jobId,
+                meta,
+                done: false,
+                createdAt: new Date().toISOString(),
+                migration: null,
+              },
+            ],
+          },
         },
       };
     });
@@ -130,8 +149,8 @@ export function useDailyLog() {
     const text = `${job.customer ? job.customer + ' — ' : ''}${job.mfr} ${job.model}`;
     const meta = { bench: job.bench, hoursRange: job.hoursRange, action: job.action };
 
-    updateLogs(prev => {
-      const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
+    updateState(prev => {
+      const day = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
       if (day.locked) return prev;
 
       const existingIdx = day.bullets.findIndex(b => b.jobId === job.id);
@@ -139,7 +158,7 @@ export function useDailyLog() {
       if (existingIdx !== -1) {
         const updated = { ...day.bullets[existingIdx], text, meta, scheduledMinutes };
         const withoutIt = day.bullets.filter((_, i) => i !== existingIdx);
-        return { ...prev, [key]: { ...day, bullets: insertJobBullet(withoutIt, updated) } };
+        return { ...prev, logs: { ...prev.logs, [key]: { ...day, bullets: insertJobBullet(withoutIt, updated) } } };
       }
 
       const newBullet = {
@@ -152,54 +171,215 @@ export function useDailyLog() {
         migration: null,
         scheduledMinutes,
       };
-      return { ...prev, [key]: { ...day, bullets: insertJobBullet(day.bullets, newBullet) } };
+      return { ...prev, logs: { ...prev.logs, [key]: { ...day, bullets: insertJobBullet(day.bullets, newBullet) } } };
     });
   }
 
   function removeBullet(bulletId) {
     const key = todayKey();
-    updateLogs(prev => {
-      const day = prev[key];
+    updateState(prev => {
+      const day = prev.logs[key];
       if (!day || day.locked) return prev;
       return {
         ...prev,
-        [key]: { ...day, bullets: day.bullets.filter(b => b.id !== bulletId) },
+        logs: { ...prev.logs, [key]: { ...day, bullets: day.bullets.filter(b => b.id !== bulletId) } },
       };
     });
   }
 
   function toggleDone(bulletId) {
     const key = todayKey();
-    updateLogs(prev => {
-      const day = prev[key];
+    updateState(prev => {
+      const day = prev.logs[key];
       if (!day || day.locked) return prev;
       return {
         ...prev,
-        [key]: {
-          ...day,
-          bullets: day.bullets.map(b =>
-            b.id === bulletId ? { ...b, done: !b.done } : b
-          ),
+        logs: {
+          ...prev.logs,
+          [key]: {
+            ...day,
+            bullets: day.bullets.map(b =>
+              b.id === bulletId ? { ...b, done: !b.done } : b
+            ),
+          },
         },
       };
     });
   }
 
+  // Nested per-job sub-steps — mirrors the physical bullet journal, where each
+  // job gets its own checklist written in the moment. Only meaningful for
+  // job-linked bullets; free-text bullets never gain a checklist.
+  function addChecklistItem(bulletId, text) {
+    const key = todayKey();
+    updateState(prev => {
+      const day = prev.logs[key];
+      if (!day || day.locked) return prev;
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          [key]: {
+            ...day,
+            bullets: day.bullets.map(b =>
+              b.id === bulletId
+                ? {
+                    ...b,
+                    checklist: [
+                      ...(b.checklist || []),
+                      { id: genId(), text, status: 'todo', createdAt: new Date().toISOString() },
+                    ],
+                  }
+                : b
+            ),
+          },
+        },
+      };
+    });
+  }
+
+  function toggleChecklistItem(bulletId, itemId) {
+    const key = todayKey();
+    updateState(prev => {
+      const day = prev.logs[key];
+      if (!day || day.locked) return prev;
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          [key]: {
+            ...day,
+            bullets: day.bullets.map(b => {
+              if (b.id !== bulletId) return b;
+              return {
+                ...b,
+                checklist: (b.checklist || []).map(item =>
+                  item.id === itemId
+                    ? { ...item, status: item.status === 'done' ? 'todo' : 'done' }
+                    : item
+                ),
+              };
+            }),
+          },
+        },
+      };
+    });
+  }
+
+  // Pull a deferred item back out of the shelf pool and into today's log —
+  // appends to today's bullet for that job if one already exists, else creates it.
+  // Single atomic update against `prev` so the removal-from-pool and the
+  // add-to-today's-log can never observe inconsistent state.
+  function pullBackIn(deferredItemId) {
+    const key = todayKey();
+    updateState(prev => {
+      const item = prev.deferredItems.find(d => d.id === deferredItemId);
+      if (!item) return prev;
+
+      const day = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
+      if (day.locked) return prev;
+
+      const newChecklistItem = { id: genId(), text: item.text, status: 'todo', createdAt: new Date().toISOString() };
+      const existingIdx = day.bullets.findIndex(b => b.jobId === item.jobId);
+
+      let bullets;
+      if (existingIdx !== -1) {
+        bullets = day.bullets.slice();
+        bullets[existingIdx] = {
+          ...bullets[existingIdx],
+          checklist: [...(bullets[existingIdx].checklist || []), newChecklistItem],
+        };
+      } else {
+        bullets = [
+          ...day.bullets,
+          {
+            id: genId(),
+            text: item.bulletText,
+            jobId: item.jobId,
+            meta: null,
+            done: false,
+            createdAt: new Date().toISOString(),
+            migration: null,
+            checklist: [newChecklistItem],
+          },
+        ];
+      }
+
+      return {
+        ...prev,
+        logs: { ...prev.logs, [key]: { ...day, bullets } },
+        deferredItems: prev.deferredItems.filter(d => d.id !== deferredItemId),
+      };
+    });
+  }
+
+  // `migrations` shape: { [bulletId]: 'kept'|'dropped'|'deferred', checklist: { [bulletId]: { [itemId]: { action, reason? } } } }
+  // Whole-bullet resolutions (first form) only apply to bullets with no checklist items —
+  // job bullets that have a checklist are resolved per-item instead; the bullet
+  // itself only carries forward if at least one item was kept.
   function closeDay(migrations) {
     const key = todayKey();
     const nextKey = tomorrowKey();
+    const checklistMigrations = migrations.checklist || {};
 
-    updateLogs(prev => {
-      const day = prev[key] ?? { bullets: [], closedAt: null, locked: false };
+    updateState(prev => {
+      const day = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
       if (day.locked) return prev;
 
-      const closedBullets = day.bullets.map(b => ({
-        ...b,
-        migration: migrations[b.id] ?? null,
-      }));
+      const deferredToAdd = [];
+      const keptChecklistBullets = [];
 
-      const keptBullets = closedBullets
-        .filter(b => migrations[b.id] === 'kept')
+      const closedBullets = day.bullets.map(b => {
+        const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
+        if (!hasChecklist) {
+          return { ...b, migration: migrations[b.id] ?? null };
+        }
+
+        const itemMigrations = checklistMigrations[b.id] || {};
+        const keptTexts = [];
+        const resolvedChecklist = b.checklist.map(item => {
+          if (item.status !== 'todo') return item;
+          const resolution = itemMigrations[item.id];
+          if (!resolution) return item;
+          if (resolution.action === 'kept') {
+            keptTexts.push(item.text);
+            return { ...item, status: 'migrated' };
+          }
+          if (resolution.action === 'dropped') {
+            return { ...item, status: 'irrelevant' };
+          }
+          if (resolution.action === 'deferred') {
+            deferredToAdd.push({
+              id: genId(),
+              jobId: b.jobId,
+              bulletText: b.text,
+              text: item.text,
+              reason: resolution.reason || '',
+              createdAt: new Date().toISOString(),
+            });
+            return { ...item, status: 'deferred' };
+          }
+          return item;
+        });
+
+        if (keptTexts.length > 0) {
+          keptChecklistBullets.push({
+            id: genId(),
+            text: b.text,
+            jobId: b.jobId,
+            meta: b.meta ?? null,
+            done: false,
+            createdAt: new Date().toISOString(),
+            migration: null,
+            checklist: keptTexts.map(t => ({ id: genId(), text: t, status: 'todo', createdAt: new Date().toISOString() })),
+          });
+        }
+
+        return { ...b, checklist: resolvedChecklist, migration: null };
+      });
+
+      const keptWholeBullets = closedBullets
+        .filter(b => (!Array.isArray(b.checklist) || b.checklist.length === 0) && migrations[b.id] === 'kept')
         .map(b => ({
           id: genId(),
           text: b.text,
@@ -209,20 +389,24 @@ export function useDailyLog() {
           migration: null,
         }));
 
-      const tomorrow = prev[nextKey] ?? { bullets: [], closedAt: null, locked: false };
+      const tomorrow = prev.logs[nextKey] ?? { bullets: [], closedAt: null, locked: false };
 
       return {
         ...prev,
-        [key]: {
-          ...day,
-          bullets: closedBullets,
-          closedAt: new Date().toISOString(),
-          locked: true,
+        logs: {
+          ...prev.logs,
+          [key]: {
+            ...day,
+            bullets: closedBullets,
+            closedAt: new Date().toISOString(),
+            locked: true,
+          },
+          [nextKey]: {
+            ...tomorrow,
+            bullets: [...keptWholeBullets, ...keptChecklistBullets, ...tomorrow.bullets],
+          },
         },
-        [nextKey]: {
-          ...tomorrow,
-          bullets: [...keptBullets, ...tomorrow.bullets],
-        },
+        deferredItems: deferredToAdd.length > 0 ? [...prev.deferredItems, ...deferredToAdd] : prev.deferredItems,
       };
     });
   }
@@ -231,12 +415,16 @@ export function useDailyLog() {
 
   return {
     todayKey: key,
-    todayLog: logs[key] ?? null,
+    todayLog: state.logs[key] ?? null,
+    deferredItems: state.deferredItems,
     loading,
     addBullet,
     upsertScheduledBullet,
     removeBullet,
     toggleDone,
+    addChecklistItem,
+    toggleChecklistItem,
+    pullBackIn,
     closeDay,
   };
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import JobCard from './JobCard.jsx';
+import DeferredItemsList from './DeferredItemsList.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
 const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
@@ -34,7 +35,7 @@ function formatSyncedAt(lastSyncedAt) {
 export default function JobShelf({
   jobs, dragMode, onDragModeChange, onCsvUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
-  focusList = [],
+  focusList = [], deferredItems = [], onPullBackIn,
 }) {
   const [selectedBench, setSelectedBench] = useState(() => localStorage.getItem('jobShelfBench') || null);
   const [search, setSearch] = useState('');
@@ -93,6 +94,7 @@ export default function JobShelf({
   function renderJob(job, indent = false) {
     const subtasks = getSubtasks(job, jobs);
     const isExpanded = expandedJobs[job.id];
+    const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
     return (
       <div key={job.id} style={{ marginBottom: 6, marginLeft: indent ? 16 : 0 }}>
         <JobCard
@@ -101,6 +103,7 @@ export default function JobShelf({
           isHighlighted={job.id === highlightedJobId}
           onClick={() => onJobClick(job)}
         />
+        <DeferredItemsList items={jobDeferredItems} onPullBackIn={onPullBackIn} />
         {subtasks.length > 0 && (
           <div
             onClick={() => toggleExpand(job.id)}

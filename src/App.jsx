@@ -125,7 +125,10 @@ export default function App() {
   // Keep externalEventsRef in sync for useScheduler (reads it directly)
   useEffect(() => { externalEventsRef.current = gcal.externalEvents; }, [gcal.externalEvents]);
 
-  const { todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet } = useDailyLog();
+  const {
+    todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet,
+    deferredItems, addChecklistItem, toggleChecklistItem, pullBackIn,
+  } = useDailyLog();
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList } = useFocusList();
 
@@ -496,6 +499,10 @@ export default function App() {
               onAddBullet={addBullet}
               onToggleDone={toggleDone}
               onRemoveBullet={removeBullet}
+              onAddChecklistItem={addChecklistItem}
+              onToggleChecklistItem={toggleChecklistItem}
+              deferredItems={deferredItems}
+              onPullBackIn={pullBackIn}
               onBulletJobClick={jobId => {
                 const j = jobs.find(job => job.id === jobId);
                 if (j) setEditingJob(j);
