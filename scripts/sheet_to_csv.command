@@ -243,16 +243,21 @@ print("────────────────────────�
 DEFAULT_KEYWORDS = {
     'Fretwork':    ['refret', 'fret level', 'fret dress', 'fret polish'],
     'Luthier':     [r'bridge(?!\s*pup|\s*pickup)', r'\bcrack\b', 'brace', r'\breset\b', r'\btop\b', 'lower bout', 'inlay',
-                    'binding', 'finish', 'restoration', r'\bsplit\b', 'lifting', 'lifted', 'broken'],
-    'Electronics': ['power', 'output', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa',
+                    'binding', 'refinish', 'restoration', r'\bsplit\b', 'lifting', 'lifted',
+                    'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
+    'Electronics': ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa',
                     'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate',
                     'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed',
-                    'keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack',
-                    'valve', r'\bhead\b', 'combo', 'bias', 'jack', 'pot', 'wiring'],
-    'Setup':       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', 'strings',
+                    'keyboard', r'\bkeys?\b', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack',
+                    'valve', r'\bhead\b', 'combo', 'bias', 'jack', 'pot', 'wiring', 'scratchy'],
+    'Setup':       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', r'\bstring\b', 'strings',
                     'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 }
 
+# NOTE: this table + infer_bench() are hand-kept in sync with src/data/jobs.js's
+# DEFAULT_BENCH_KEYWORDS/inferBench() (JS side is authoritative — this is the
+# CSV/Sheet pipeline's copy). Keep the setup-priority-before-Electronics rule
+# below aligned with the JS version if either changes.
 def infer_bench(desc, status, action, model, mfr):
     act = (action or '').strip().upper()
     if status == 'In Transit': return 'Admin'
@@ -262,6 +267,9 @@ def infer_bench(desc, status, action, model, mfr):
     def rx(bench): return re.compile('|'.join(DEFAULT_KEYWORDS[bench]))
     if rx('Fretwork').search(d): return 'Fretwork'
     if rx('Luthier').search(d): return 'Luthier'
+    # "setup", "stp", or "restring" take priority over Electronics keywords like "pot" —
+    # mirrors src/data/jobs.js inferBench so "setup + pot" classifies Setup, not Electronics.
+    if re.search(r'\bsetup\b|\bstp\b|\brestring\b', d): return 'Setup'
     if rx('Electronics').search(d): return 'Electronics'
     if rx('Setup').search(d): return 'Setup'
     if re.search(r'passport|pa\s*\d', d): return 'Electronics'
