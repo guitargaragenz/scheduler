@@ -34,12 +34,28 @@ function formatSlotDisplay(slot, weekDays = []) {
   return `${dayStr} · ${hour12}${mins} ${ampm}`;
 }
 
-function initRows(job) {
+function initRows(job, allJobs = []) {
+  // Already manually split — hydrate the editor from the existing children so
+  // re-saving edits the real split instead of appending a duplicate one.
+  if (job.isSplit && !job.isSubtask) {
+    const children = allJobs
+      .filter(j => j.parentId === job.id && j.isSubtask)
+      .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
+    if (children.length > 0) {
+      const rows = [];
+      children.forEach(c => {
+        let row = rows.find(r => r.bench === c.bench);
+        if (!row) { row = { bench: c.bench, sessions: [] }; rows.push(row); }
+        row.sessions.push({ hours: c.hours, note: c.sessionNote || '' });
+      });
+      return rows;
+    }
+  }
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSchedule }) {
-  const [rows, setRows] = useState(() => initRows(job));
+export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule }) {
+  const [rows, setRows] = useState(() => initRows(job, jobs));
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
   const modalRef = useRef(null);
@@ -106,7 +122,13 @@ export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSched
   }
 
   function setBench(ri, bench) {
-    setRows(prev => prev.map((row, i) => i !== ri ? row : { ...row, bench }));
+    // Guard against two rows sharing a bench — child ids are
+    // `${parentId}_${bench}_${sessionIndex}`, so a duplicate bench across
+    // rows collides on id and silently drops one row's hours (last-write-wins).
+    setRows(prev => {
+      if (prev.some((row, i) => i !== ri && row.bench === bench)) return prev;
+      return prev.map((row, i) => i !== ri ? row : { ...row, bench });
+    });
   }
 
   function handleSave() {

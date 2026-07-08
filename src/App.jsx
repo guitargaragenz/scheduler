@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS } from './data/jobs.js';
+import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
 import { isFirebaseConfigured, loadConflictLog, clearConflictLog } from './utils/firebase.js';
@@ -549,6 +549,7 @@ export default function App() {
         isMobile ? (
           <MobileJobSheet
             job={editingJob}
+            jobs={jobs}
             weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
             onSave={jobOps.handleSaveDrawer}
@@ -558,6 +559,7 @@ export default function App() {
         ) : (
           <JobDrawer
             job={editingJob}
+            jobs={jobs}
             onClose={() => setEditingJob(null)}
             onSave={jobOps.handleSaveDrawer}
             weekDays={schedulerWeekDays}
@@ -599,7 +601,17 @@ export default function App() {
           onBenchKeywordsChange={kw => {
             setBenchKeywords(kw);
             localStorage.setItem('benchKeywords', JSON.stringify(kw));
-            setJobs(parseCSV(RAW_CSV, kw, benchHours));
+            // Re-infer benches over the CURRENT jobs — never re-parse RAW_CSV
+            // (a header-only stub: parseCSV returns [] and the debounced save
+            // would wipe every job on every device). Skip split children
+            // (bench chosen by the user or the split logic) and split parents
+            // (changing their bench would drift auto-split child IDs and
+            // orphan their scheduled slots).
+            setJobs(prev => prev.map(j =>
+              (j.parentId || j.isSplit || j.hasSubtasks)
+                ? j
+                : { ...j, bench: inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw) }
+            ));
           }}
           hourlyRate={hourlyRate}
           onHourlyRateChange={n => { setHourlyRate(n); localStorage.setItem('hourlyRate', String(n)); }}

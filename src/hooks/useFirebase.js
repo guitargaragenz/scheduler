@@ -21,10 +21,15 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
   for (const job of rawJobs) {
     if (job.parentId) continue;
 
-    // Manual splits — restore stored sub-tasks from Firebase directly
-    if (job.isSplit && storedSubtasksByParent[job.id]?.length > 0) {
-      result.push(job);
-      for (const st of storedSubtasksByParent[job.id]) {
+    // Manual splits — stored manual children (isSubtask) are authoritative:
+    // restore them even if the parent's isSplit flag was lost (self-heals flag
+    // loss; safe now that un-split deletes children). Auto-split children can
+    // also appear in the stored doc — they lack isSubtask and are re-derived
+    // below instead of restored.
+    const storedManualKids = (storedSubtasksByParent[job.id] || []).filter(st => st.isSubtask);
+    if (storedManualKids.length > 0) {
+      result.push({ ...job, isSplit: true });
+      for (const st of storedManualKids) {
         result.push({
           ...st,
           scheduled:    scheduledIds.has(st.id),
@@ -33,6 +38,16 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
           gcalEventIds: st.gcalEventIds ?? [],
         });
       }
+      continue;
+    }
+
+    // User deliberately un-split this job (handleSaveDrawer collapsed it to a
+    // single card). createSubtasks() derives purely from bench/desc/hours,
+    // which haven't changed, so without this persisted marker there is no way
+    // to distinguish "never auto-split" from "user un-split it" — regenerating
+    // here would silently revert the un-split on every reload/subscription tick.
+    if (job.noAutoSplit) {
+      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
       continue;
     }
 
