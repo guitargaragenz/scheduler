@@ -64,7 +64,12 @@ export function useJobs({
       setJobs(prev => prev
         .filter(j => j.parentId !== parentJob.id)
         .map(j => j.id === parentJob.id
-          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false, hasSubtasks: false, subtasks: null }
+          // noAutoSplit persists the "user deliberately un-split this" signal —
+          // createSubtasks() derives purely from bench/desc/hours (unchanged by
+          // this action), so without a stored marker withSplitsExpanded has no
+          // way to tell "never split" from "un-split" and would silently
+          // regenerate the auto-split on the next reload/subscription update.
+          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false, hasSubtasks: false, subtasks: null, noAutoSplit: true }
           : j
         ));
       releaseSlots(new Set(existingChildren.map(j => j.id)));
@@ -102,7 +107,11 @@ export function useJobs({
     setJobs(prev => [
       ...prev
         .filter(j => j.parentId !== parentJob.id)
-        .map(j => j.id === parentJob.id ? { ...j, isSplit: true, hasSubtasks: false, subtasks: null } : j),
+        // Re-splitting is a fresh deliberate choice, not an un-split — clear
+        // any stale noAutoSplit from a prior collapse so a future CSV
+        // re-upload or bench-keyword change doesn't treat this job as
+        // permanently un-splittable.
+        .map(j => j.id === parentJob.id ? { ...j, isSplit: true, hasSubtasks: false, subtasks: null, noAutoSplit: false } : j),
       ...subtasks,
     ]);
     releaseSlots(new Set(existingChildren.filter(j => !keptIds.has(j.id)).map(j => j.id)));
@@ -171,9 +180,26 @@ export function useJobs({
         carriedSplits.push(...splits.map(s => ({ ...s, parentId: parent.id })));
       });
 
-      // Drop the duplicate auto-split children of collided parents — the carried
-      // manual split is authoritative.
-      const keptJobs = merged.filter(j => !(j.parentId && collidedParentIds.has(j.parentId)));
+      // Carry forward noAutoSplit ("user deliberately un-split this job") —
+      // parseCSV() has no knowledge of it and will happily re-auto-split a job
+      // whose bench/desc still qualify. Without this, re-uploading the CSV
+      // undoes the un-split exactly like a stale withSplitsExpanded would.
+      const noAutoSplitParentIds = new Set();
+      merged.forEach(parent => {
+        if (parent.parentId) return;
+        if (existingByJobNo[parent.job]?.noAutoSplit) {
+          parent.noAutoSplit = true;
+          parent.hasSubtasks = false;
+          parent.subtasks = null;
+          noAutoSplitParentIds.add(parent.id);
+        }
+      });
+
+      // Drop the duplicate auto-split children of collided parents (manual
+      // split wins) and of noAutoSplit parents (un-split wins) — either
+      // parent's own children were already excluded above.
+      const dropAutoChildrenParentIds = new Set([...collidedParentIds, ...noAutoSplitParentIds]);
+      const keptJobs = merged.filter(j => !(j.parentId && dropAutoChildrenParentIds.has(j.parentId)));
       const collisionCount = collidedParentIds.size;
 
       if (collisionCount > 0) {

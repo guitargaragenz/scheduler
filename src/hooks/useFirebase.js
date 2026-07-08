@@ -41,6 +41,16 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
       continue;
     }
 
+    // User deliberately un-split this job (handleSaveDrawer collapsed it to a
+    // single card). createSubtasks() derives purely from bench/desc/hours,
+    // which haven't changed, so without this persisted marker there is no way
+    // to distinguish "never auto-split" from "user un-split it" — regenerating
+    // here would silently revert the un-split on every reload/subscription tick.
+    if (job.noAutoSplit) {
+      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
+      continue;
+    }
+
     // Auto-splits — regenerate from createSubtasks()
     const subtasks = createSubtasks(job);
     if (subtasks && subtasks.length > 0) {
