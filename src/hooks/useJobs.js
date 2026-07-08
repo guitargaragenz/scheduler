@@ -1,6 +1,17 @@
 import { parseCSV } from '../data/jobs.js';
 import { isFirebaseConfigured, saveSchedule, saveCompletedJobs } from '../utils/firebase.js';
 import { getWeekDays } from '../utils/calendar.js';
+import { deleteEvent } from '../utils/googleCalendar.js';
+
+// Split children carry their own GCal event(s) once synced. Deleting a child
+// locally (un-split, or re-split dropping it) must also delete its calendar
+// event, or the appointment orphans on the user's real Google Calendar forever.
+function cleanupGcalEvents(removedChildren) {
+  removedChildren.forEach(child => {
+    const ids = child.gcalEventIds?.length ? child.gcalEventIds : (child.gcalEventId ? [child.gcalEventId] : []);
+    ids.forEach(id => deleteEvent(id));
+  });
+}
 
 export function useJobs({
   jobs,
@@ -86,6 +97,7 @@ export function useJobs({
           : j
         ));
       releaseSlots(new Set(existingChildren.map(j => j.id)));
+      cleanupGcalEvents(existingChildren);
       return;
     }
 
@@ -127,7 +139,9 @@ export function useJobs({
         .map(j => j.id === parentJob.id ? { ...j, isSplit: true, hasSubtasks: false, subtasks: null, noAutoSplit: false } : j),
       ...subtasks,
     ]);
-    releaseSlots(new Set(existingChildren.filter(j => !keptIds.has(j.id)).map(j => j.id)));
+    const removedChildren = existingChildren.filter(j => !keptIds.has(j.id));
+    releaseSlots(new Set(removedChildren.map(j => j.id)));
+    cleanupGcalEvents(removedChildren);
     setHighlightedJobId(parentJob.id);
     setSidebarOpen(true);
   }
