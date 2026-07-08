@@ -24,6 +24,7 @@ export function useGoogleCalendar({
   const [syncStatus, setSyncStatus] = useState('idle');
   const externalEventsRef = useRef([]);
   const pollRef = useRef(null);
+  const lastEventSigRef = useRef('');
 
   useEffect(() => { externalEventsRef.current = externalEvents; }, [externalEvents]);
 
@@ -67,8 +68,12 @@ export function useGoogleCalendar({
       end.setHours(23, 59, 59, 999);
       const events = await listEvents(start, end);
       if (events && events.length > 0) {
-        setExternalEvents(events);
-        externalEventsRef.current = events;
+        const sig = events.map(e => `${e.id}:${e.updated}`).sort().join(',');
+        if (sig !== lastEventSigRef.current) {
+          lastEventSigRef.current = sig;
+          setExternalEvents(events);
+          externalEventsRef.current = events;
+        }
       }
 
       // Build blocked slots from freshly fetched events

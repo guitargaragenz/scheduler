@@ -50,7 +50,6 @@ export function useDailyLog() {
   const [loading, setLoading] = useState(true);
   const saveTimerRef = useRef(null);
   const pendingStateRef = useRef(null);
-  const justSavedAt = useRef(0);
   const readyRef = useRef(false);
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export function useDailyLog() {
     }
 
     const unsub = onSnapshot(DAILY_LOGS_DOC(), snap => {
-      if (Date.now() - justSavedAt.current < 3000) return;
+      if (snap.metadata.hasPendingWrites) return;
       const data = snap.exists() ? snap.data() : {};
       const next = { logs: data.logs || {}, deferredItems: data.deferredItems || [] };
       setState(next);
@@ -81,7 +80,6 @@ export function useDailyLog() {
     pendingStateRef.current = next;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      justSavedAt.current = Date.now();
       setDoc(DAILY_LOGS_DOC(), {
         logs: pendingStateRef.current.logs,
         deferredItems: pendingStateRef.current.deferredItems,
