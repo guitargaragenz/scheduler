@@ -110,7 +110,7 @@ export function useJobs({
       });
 
       const autoSplitParentIds = new Set(merged.filter(j => j.parentId).map(j => j.parentId));
-      let collisionCount = 0;
+      const collidedParentIds = new Set();
       const carriedSplits = [];
 
       merged.forEach(parent => {
@@ -120,26 +120,34 @@ export function useJobs({
 
         if (autoSplitParentIds.has(parent.id)) {
           // Bench reclassification now also produces an auto-split for this parent —
-          // keep the existing manual split (deliberate user intent), skip the duplicate.
-          collisionCount++;
-          return;
+          // keep the existing manual split (deliberate user intent). The duplicate
+          // auto-split children are dropped below, and the parent's auto-split
+          // pointers are cleared so withSplitsExpanded can't regenerate them.
+          collidedParentIds.add(parent.id);
+          parent.hasSubtasks = false;
+          parent.subtasks = null;
         }
 
         parent.isSplit = true;
         carriedSplits.push(...splits.map(s => ({ ...s, parentId: parent.id })));
       });
 
+      // Drop the duplicate auto-split children of collided parents — the carried
+      // manual split is authoritative.
+      const keptJobs = merged.filter(j => !(j.parentId && collidedParentIds.has(j.parentId)));
+      const collisionCount = collidedParentIds.size;
+
       if (collisionCount > 0) {
         showToast(`⚠ ${collisionCount} job${collisionCount > 1 ? 's' : ''} reclassified — kept existing manual split, skipped duplicate auto-split`);
       }
 
       const doneJobs = jobs.filter(j => j.done);
-      const allJobs = [...merged, ...carriedSplits, ...doneJobs];
+      const allJobs = [...keptJobs, ...carriedSplits, ...doneJobs];
       const newJobIds = new Set(allJobs.map(j => j.id));
       const preservedSlots = Object.fromEntries(
         Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
       );
-      const jobCount = merged.filter(j => !j.parentId).length;
+      const jobCount = keptJobs.filter(j => !j.parentId).length;
 
       // Safety guard — if CSV wipes >50% of scheduled slots, warn and abort the save.
       // This catches ID drift from bench reclassification silently clearing the schedule.
