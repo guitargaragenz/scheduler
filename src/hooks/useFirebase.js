@@ -21,10 +21,15 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
   for (const job of rawJobs) {
     if (job.parentId) continue;
 
-    // Manual splits — restore stored sub-tasks from Firebase directly
-    if (job.isSplit && storedSubtasksByParent[job.id]?.length > 0) {
-      result.push(job);
-      for (const st of storedSubtasksByParent[job.id]) {
+    // Manual splits — stored manual children (isSubtask) are authoritative:
+    // restore them even if the parent's isSplit flag was lost (self-heals flag
+    // loss; safe now that un-split deletes children). Auto-split children can
+    // also appear in the stored doc — they lack isSubtask and are re-derived
+    // below instead of restored.
+    const storedManualKids = (storedSubtasksByParent[job.id] || []).filter(st => st.isSubtask);
+    if (storedManualKids.length > 0) {
+      result.push({ ...job, isSplit: true });
+      for (const st of storedManualKids) {
         result.push({
           ...st,
           scheduled:    scheduledIds.has(st.id),
