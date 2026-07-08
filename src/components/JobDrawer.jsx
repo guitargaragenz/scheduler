@@ -34,12 +34,28 @@ function formatSlotDisplay(slot, weekDays = []) {
   return `${dayStr} · ${hour12}${mins} ${ampm}`;
 }
 
-function initRows(job) {
+function initRows(job, allJobs = []) {
+  // Already manually split — hydrate the editor from the existing children so
+  // re-saving edits the real split instead of appending a duplicate one.
+  if (job.isSplit && !job.isSubtask) {
+    const children = allJobs
+      .filter(j => j.parentId === job.id && j.isSubtask)
+      .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
+    if (children.length > 0) {
+      const rows = [];
+      children.forEach(c => {
+        let row = rows.find(r => r.bench === c.bench);
+        if (!row) { row = { bench: c.bench, sessions: [] }; rows.push(row); }
+        row.sessions.push({ hours: c.hours, note: c.sessionNote || '' });
+      });
+      return rows;
+    }
+  }
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, onClose, onSave, weekDays = [], onSchedule }) {
-  const [rows, setRows] = useState(() => initRows(job));
+export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule }) {
+  const [rows, setRows] = useState(() => initRows(job, jobs));
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
   const modalRef = useRef(null);

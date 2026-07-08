@@ -36,7 +36,27 @@ function fromTimeValue(val) {
   return { hour: h, minute: m };
 }
 
-export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onClose, onRemove }) {
+function initRows(job, allJobs = []) {
+  // Already manually split — hydrate the editor from the existing children so
+  // re-saving edits the real split instead of appending a duplicate one.
+  if (job.isSplit && !job.isSubtask) {
+    const children = allJobs
+      .filter(j => j.parentId === job.id && j.isSubtask)
+      .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
+    if (children.length > 0) {
+      const rows = [];
+      children.forEach(c => {
+        let row = rows.find(r => r.bench === c.bench);
+        if (!row) { row = { bench: c.bench, sessions: [] }; rows.push(row); }
+        row.sessions.push({ hours: c.hours, note: c.sessionNote || '' });
+      });
+      return rows;
+    }
+  }
+  return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
+}
+
+export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, onSave, onClose, onRemove }) {
   const [tab, setTab] = useState('schedule');
 
   // Schedule tab state
@@ -44,7 +64,7 @@ export default function MobileJobSheet({ job, weekDays, onSchedule, onSave, onCl
   const [timeVal, setTimeVal] = useState('09:00');
 
   // Bench/split tab state
-  const [rows, setRows] = useState([{ bench: job.bench, sessions: [{ hours: job.hours, note: '' }] }]);
+  const [rows, setRows] = useState(() => initRows(job, jobs));
 
   // Slide-up animation
   const [visible, setVisible] = useState(false);

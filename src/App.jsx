@@ -549,6 +549,7 @@ export default function App() {
         isMobile ? (
           <MobileJobSheet
             job={editingJob}
+            jobs={jobs}
             weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
             onSave={jobOps.handleSaveDrawer}
@@ -558,6 +559,7 @@ export default function App() {
         ) : (
           <JobDrawer
             job={editingJob}
+            jobs={jobs}
             onClose={() => setEditingJob(null)}
             onSave={jobOps.handleSaveDrawer}
             weekDays={schedulerWeekDays}

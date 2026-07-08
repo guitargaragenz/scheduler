@@ -33,22 +33,43 @@ export function useJobs({
       return;
     }
 
+    // Existing manual-split children — replaced (multi-card) or deleted (single-card)
+    const existingChildren = jobs.filter(j => j.parentId === parentJob.id && j.isSubtask);
+    const existingById = Object.fromEntries(existingChildren.map(j => [j.id, j]));
+
+    // Free the calendar slots held by children that no longer exist
+    function releaseSlots(removedIds) {
+      if (removedIds.size === 0) return;
+      setScheduledSlots(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(k => { if (removedIds.has(next[k])) delete next[k]; });
+        return next;
+      });
+    }
+
     if (totalCards === 1) {
       const row = rows[0];
       const sess = row.sessions[0];
-      setJobs(prev => prev.map(j => j.id === parentJob.id
-        ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note }
-        : j
-      ));
+      // True un-split: delete this job's manual-split children, free their
+      // slots, and clear isSplit so the parent doesn't double-book the hours.
+      setJobs(prev => prev
+        .filter(j => !(j.parentId === parentJob.id && j.isSubtask))
+        .map(j => j.id === parentJob.id
+          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false }
+          : j
+        ));
+      releaseSlots(new Set(existingChildren.map(j => j.id)));
       return;
     }
 
     const subtasks = [];
     rows.forEach(row => {
       row.sessions.forEach((sess, si) => {
+        const id = `${parentJob.id}_${row.bench}_${si}`;
+        const prevChild = existingById[id];
         subtasks.push({
           ...parentJob,
-          id: `${parentJob.id}_${row.bench}_${si}`,
+          id,
           bench: row.bench,
           hours: Number(sess.hours),
           sessionIndex: si + 1,
@@ -56,17 +77,25 @@ export function useJobs({
           sessionNote: sess.note || '',
           parentId: parentJob.id,
           isSubtask: true,
-          scheduled: false,
-          calendarSlot: null,
-          gcalEventId: null,
+          // Children whose id survives the re-save keep their scheduling
+          scheduled: prevChild?.scheduled ?? false,
+          calendarSlot: prevChild?.calendarSlot ?? null,
+          gcalEventId: prevChild?.gcalEventId ?? null,
+          gcalEventIds: prevChild?.gcalEventIds ?? [],
         });
       });
     });
 
+    // Replace, never append: drop ALL existing children for this parent, then
+    // insert the new set — re-saving a split can no longer create duplicates.
+    const keptIds = new Set(subtasks.map(s => s.id));
     setJobs(prev => [
-      ...prev.map(j => j.id === parentJob.id ? { ...j, isSplit: true } : j),
+      ...prev
+        .filter(j => !(j.parentId === parentJob.id && j.isSubtask))
+        .map(j => j.id === parentJob.id ? { ...j, isSplit: true } : j),
       ...subtasks,
     ]);
+    releaseSlots(new Set(existingChildren.filter(j => !keptIds.has(j.id)).map(j => j.id)));
     setHighlightedJobId(parentJob.id);
     setSidebarOpen(true);
   }
