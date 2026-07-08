@@ -33,8 +33,15 @@ export function useJobs({
       return;
     }
 
-    // Existing manual-split children — replaced (multi-card) or deleted (single-card)
-    const existingChildren = jobs.filter(j => j.parentId === parentJob.id && j.isSubtask);
+    // Existing children — union of manual-split (isSubtask) AND auto-split
+    // (parentId only, from createSubtasks()/withSplitsExpanded) children.
+    // Auto-split children never carry isSubtask, so a filter that only
+    // matched isSubtask left them behind: both sets ended up in state
+    // together, parent.hasSubtasks/subtasks stayed stale, and their
+    // scheduledSlots leaked into Firestore permanently. All of this parent's
+    // children — however they were produced — are "existing" and must be
+    // replaced or deleted, never left to coexist with a fresh manual split.
+    const existingChildren = jobs.filter(j => j.parentId === parentJob.id);
     const existingById = Object.fromEntries(existingChildren.map(j => [j.id, j]));
 
     // Free the calendar slots held by children that no longer exist
@@ -50,12 +57,14 @@ export function useJobs({
     if (totalCards === 1) {
       const row = rows[0];
       const sess = row.sessions[0];
-      // True un-split: delete this job's manual-split children, free their
-      // slots, and clear isSplit so the parent doesn't double-book the hours.
+      // True un-split: delete ALL of this job's children (manual or
+      // auto-split), free their slots, clear isSplit + the auto-split
+      // pointers so the parent doesn't double-book the hours and
+      // withSplitsExpanded can't regenerate the auto-split on next load.
       setJobs(prev => prev
-        .filter(j => !(j.parentId === parentJob.id && j.isSubtask))
+        .filter(j => j.parentId !== parentJob.id)
         .map(j => j.id === parentJob.id
-          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false }
+          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false, hasSubtasks: false, subtasks: null }
           : j
         ));
       releaseSlots(new Set(existingChildren.map(j => j.id)));
@@ -86,13 +95,14 @@ export function useJobs({
       });
     });
 
-    // Replace, never append: drop ALL existing children for this parent, then
-    // insert the new set — re-saving a split can no longer create duplicates.
+    // Replace, never append: drop ALL existing children for this parent
+    // (manual AND auto-split), then insert the new set — re-saving a split
+    // can no longer create duplicates or leave a stale auto-split behind.
     const keptIds = new Set(subtasks.map(s => s.id));
     setJobs(prev => [
       ...prev
-        .filter(j => !(j.parentId === parentJob.id && j.isSubtask))
-        .map(j => j.id === parentJob.id ? { ...j, isSplit: true } : j),
+        .filter(j => j.parentId !== parentJob.id)
+        .map(j => j.id === parentJob.id ? { ...j, isSplit: true, hasSubtasks: false, subtasks: null } : j),
       ...subtasks,
     ]);
     releaseSlots(new Set(existingChildren.filter(j => !keptIds.has(j.id)).map(j => j.id)));

@@ -91,7 +91,13 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
   }
 
   function setBench(ri, bench) {
-    setRows(prev => prev.map((row, i) => i !== ri ? row : { ...row, bench }));
+    // Guard against two rows sharing a bench — child ids are
+    // `${parentId}_${bench}_${sessionIndex}`, so a duplicate bench across
+    // rows collides on id and silently drops one row's hours (last-write-wins).
+    setRows(prev => {
+      if (prev.some((row, i) => i !== ri && row.bench === bench)) return prev;
+      return prev.map((row, i) => i !== ri ? row : { ...row, bench });
+    });
   }
 
   function addBench() {
