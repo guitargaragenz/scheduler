@@ -57,6 +57,13 @@ export function useJobs({
     if (totalCards === 1) {
       const row = rows[0];
       const sess = row.sessions[0];
+      // Only a real un-split (collapsing a job that WAS auto- or
+      // manually-split down to one card) should mark noAutoSplit. A routine
+      // single-card save on a job that was never split (JobDrawer's initRows
+      // defaults every non-split job to one row) must not set it — doing so
+      // unconditionally would permanently suppress a legitimate future
+      // auto-split for a job that was simply edited, not un-split.
+      const wasSplit = parentJob.hasSubtasks || parentJob.isSplit;
       // True un-split: delete ALL of this job's children (manual or
       // auto-split), free their slots, clear isSplit + the auto-split
       // pointers so the parent doesn't double-book the hours and
@@ -64,12 +71,18 @@ export function useJobs({
       setJobs(prev => prev
         .filter(j => j.parentId !== parentJob.id)
         .map(j => j.id === parentJob.id
-          // noAutoSplit persists the "user deliberately un-split this" signal —
-          // createSubtasks() derives purely from bench/desc/hours (unchanged by
-          // this action), so without a stored marker withSplitsExpanded has no
-          // way to tell "never split" from "un-split" and would silently
-          // regenerate the auto-split on the next reload/subscription update.
-          ? { ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note, isSplit: false, hasSubtasks: false, subtasks: null, noAutoSplit: true }
+          ? {
+              ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note,
+              isSplit: false, hasSubtasks: false, subtasks: null,
+              // noAutoSplit persists the "user deliberately un-split this" signal —
+              // createSubtasks() derives purely from bench/desc/hours (unchanged by
+              // this action), so without a stored marker withSplitsExpanded has no
+              // way to tell "never split" from "un-split" and would silently
+              // regenerate the auto-split on the next reload/subscription update.
+              // Leave the existing flag alone (don't force false) when this
+              // wasn't actually an un-split.
+              ...(wasSplit ? { noAutoSplit: true } : {}),
+            }
           : j
         ));
       releaseSlots(new Set(existingChildren.map(j => j.id)));
