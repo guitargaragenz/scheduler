@@ -35,11 +35,15 @@ function formatSlotDisplay(slot, weekDays = []) {
 }
 
 function initRows(job, allJobs = []) {
-  // Already manually split — hydrate the editor from the existing children so
-  // re-saving edits the real split instead of appending a duplicate one.
-  if (job.isSplit && !job.isSubtask) {
+  // Already split (manual OR auto) — hydrate the editor from the existing
+  // children so re-saving edits the real split instead of appending a
+  // duplicate one. isSplit only covers manual splits; auto-split jobs from
+  // createSubtasks() never get isSplit, only hasSubtasks + real children via
+  // parentId — checking isSplit alone left auto-split jobs hydrating from
+  // stale pre-split bench/hours, hiding the real split from the editor.
+  if (!job.isSubtask) {
     const children = allJobs
-      .filter(j => j.parentId === job.id && j.isSubtask)
+      .filter(j => j.parentId === job.id)
       .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
     if (children.length > 0) {
       const rows = [];
