@@ -8,6 +8,7 @@ let gisInited = false;
 let calApiLoaded = false;
 let tokenClient = null;
 let initPromise = null; // Cached so initGoogleApi() can be called multiple times safely
+let calApiPromise = null; // Cached so ensureCalendarApi() can be called multiple times safely
 
 export function isConfigured() {
   return Boolean(CLIENT_ID && API_KEY);
@@ -58,11 +59,20 @@ export async function initGoogleApi() {
   return initPromise;
 }
 
-// Lazy-load the calendar API the first time it's actually needed
+// Lazy-load the calendar API the first time it's actually needed. Cached the
+// same way as initGoogleApi() — on page load the 30s poll and a user-
+// triggered sync can both call this within the same tick, before
+// calApiLoaded flips true; without a shared promise that fires two
+// concurrent gapi.client.load() calls, and whichever one loses the race
+// throws, silently failing that caller's job update.
 async function ensureCalendarApi() {
   if (calApiLoaded) return;
-  await window.gapi.client.load('calendar', 'v3');
-  calApiLoaded = true;
+  if (!calApiPromise) {
+    calApiPromise = window.gapi.client.load('calendar', 'v3')
+      .then(() => { calApiLoaded = true; })
+      .catch(e => { calApiPromise = null; throw e; }); // allow retry on failure
+  }
+  return calApiPromise;
 }
 
 export function requestAuth(forceConsent = false) {
