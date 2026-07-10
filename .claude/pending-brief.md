@@ -5,8 +5,11 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
-## Status: APPROVED 2026-07-11 — Problem 3 build in progress on branch `problem-3-bump-reason`
-Rollback tag `pre-bump-reason-stable` created at commit `065ac8f` before build started.
+## Status: BUILT, AWAITING MERGE APPROVAL — Problem 3, branch `problem-3-bump-reason`
+Rollback tag `pre-bump-reason-stable` at commit `065ac8f` (pre-build). Build commit `b0d7fbe`.
+Independent verifier: PASS (7/7) on the useScheduler.js blast-radius diff. Code review: 3
+low-severity non-blocking findings (see commit message). `npx vite build` passes.
+Not pushed yet — no Vercel preview exists until Trevor approves the push.
 
 **Issued:** 2026-07-11
 **Problem 1 status:** SHIPPED — merged to main, deployed (commit `79c16b9`).
