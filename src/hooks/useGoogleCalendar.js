@@ -187,44 +187,72 @@ export function useGoogleCalendar({
     setSyncStatus('syncing');
     const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot && !j.isSplit);
     let ok = 0;
+    let failed = 0;
+    let authExpired = false;
     const updatedJobs = [...jobs];
     for (const job of scheduled) {
-      try {
-        const blocks = getJobBlocks(job.id);
-        if (!blocks.length) continue;
+      if (authExpired) break;
 
-        // Existing event IDs in order — support old single gcalEventId and new array
-        const existingIds = job.gcalEventIds?.length
-          ? job.gcalEventIds
-          : job.gcalEventId ? [job.gcalEventId] : [];
+      const blocks = getJobBlocks(job.id);
+      if (!blocks.length) {
+        console.warn(`Sync: #${job.job} (${job.id}) is marked scheduled but has no matching scheduledSlots entries — skipping`);
+        continue;
+      }
 
-        const newIds = [];
-        for (let i = 0; i < blocks.length; i++) {
-          const { date, hour, minute, durationHours } = blocks[i];
+      // Existing event IDs in order — support old single gcalEventId and new array
+      const existingIds = job.gcalEventIds?.length
+        ? job.gcalEventIds
+        : job.gcalEventId ? [job.gcalEventId] : [];
+
+      const newIds = [];
+      let jobFailed = false;
+      for (let i = 0; i < blocks.length; i++) {
+        const { date, hour, minute, durationHours } = blocks[i];
+        try {
           const result = existingIds[i]
             ? await updateEvent(existingIds[i], job, date, hour, durationHours, minute)
             : await createEvent(job, date, hour, durationHours, minute);
           if (result?.id) newIds.push(result.id);
+        } catch (e) {
+          jobFailed = true;
+          if (e?.status === 401) { authExpired = true; break; }
+          console.error(`Sync: failed to sync #${job.job} block ${i}:`, e);
         }
-
-        // Delete any GCal events from blocks that no longer exist
-        for (let i = blocks.length; i < existingIds.length; i++) {
-          await deleteEvent(existingIds[i]).catch(() => {});
-        }
-
-        const idx = updatedJobs.findIndex(j => j.id === job.id);
-        if (idx >= 0) {
-          updatedJobs[idx] = { ...updatedJobs[idx], gcalEventIds: newIds, gcalEventId: newIds[0] || null };
-        }
-        ok++;
-      } catch (e) {
-        console.error(e);
       }
+
+      // A failed job keeps its existing gcalEventIds untouched — overwriting
+      // them with the partial newIds here would orphan the real GCal event
+      // and cause the next sync to create a duplicate instead of updating it.
+      if (jobFailed) {
+        failed++;
+        continue;
+      }
+
+      // Delete any GCal events from blocks that no longer exist
+      for (let i = blocks.length; i < existingIds.length; i++) {
+        await deleteEvent(existingIds[i]).catch(() => {});
+      }
+
+      const idx = updatedJobs.findIndex(j => j.id === job.id);
+      if (idx >= 0) {
+        updatedJobs[idx] = { ...updatedJobs[idx], gcalEventIds: newIds, gcalEventId: newIds[0] || null };
+      }
+      ok++;
     }
     setJobs(updatedJobs);
-    setSyncStatus(ok === scheduled.length ? 'synced' : 'error');
-    showToast(`Synced ${ok}/${scheduled.length} jobs to Google Calendar`);
-    addChangelog(`Synced ${ok} jobs to Google Calendar`);
+
+    if (authExpired) {
+      setSignedIn(false);
+      setSyncStatus('error');
+      showToast('⚠ Google Calendar session expired — reconnect in Settings and sync again.');
+      addChangelog('Sync stopped — Google Calendar auth expired');
+    } else {
+      setSyncStatus(failed === 0 ? 'synced' : 'error');
+      showToast(failed === 0
+        ? `Synced ${ok}/${scheduled.length} jobs to Google Calendar`
+        : `Synced ${ok}/${scheduled.length} jobs — ${failed} failed, check console`);
+      addChangelog(`Synced ${ok} jobs to Google Calendar${failed ? `, ${failed} failed` : ''}`);
+    }
     setTimeout(() => setSyncStatus('idle'), 4000);
   }
 

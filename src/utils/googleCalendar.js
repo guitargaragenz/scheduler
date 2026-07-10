@@ -93,6 +93,17 @@ export function isSignedIn() {
   return gapiInited && window.gapi?.client?.getToken()?.access_token;
 }
 
+// Access tokens expire (~1hr) — isSignedIn() only checks a token string
+// exists, not that it's still valid. Callers hitting a 401 must clear it
+// here so isSignedIn() starts correctly reporting disconnected.
+function isAuthError(e) {
+  return e?.status === 401;
+}
+
+function clearStaleTokenIfAuthError(e) {
+  if (isAuthError(e)) window.gapi?.client?.setToken('');
+}
+
 export function signOut() {
   const token = window.gapi?.client?.getToken();
   if (token) {
@@ -139,6 +150,7 @@ export async function listEvents(timeMin, timeMax) {
 
     return events;
   } catch (e) {
+    clearStaleTokenIfAuthError(e);
     console.error('Calendar list error:', e);
     return [];
   }
@@ -174,8 +186,9 @@ export async function createEvent(job, date, hour, durationHours, minute = 0) {
     const resp = await window.gapi.client.calendar.events.insert({ calendarId: CALENDAR_ID, resource: event });
     return resp.result;
   } catch (e) {
+    clearStaleTokenIfAuthError(e);
     console.error('Create event error:', e);
-    return null;
+    throw e;
   }
 }
 
@@ -201,8 +214,9 @@ export async function updateEvent(eventId, job, date, hour, durationHours, minut
     });
     return resp.result;
   } catch (e) {
+    clearStaleTokenIfAuthError(e);
     console.error('Update event error:', e);
-    return null;
+    throw e;
   }
 }
 
@@ -212,6 +226,7 @@ export async function deleteEvent(eventId) {
     await ensureCalendarApi();
     await window.gapi.client.calendar.events.delete({ calendarId: CALENDAR_ID, eventId });
   } catch (e) {
+    clearStaleTokenIfAuthError(e);
     console.error('Delete event error:', e);
   }
 }
