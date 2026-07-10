@@ -125,6 +125,7 @@ export function useDailyLog() {
   const pendingStateRef = useRef(null);
   const readyRef = useRef(false);
   const touchedLogKeysRef = useRef(new Set());
+  const deferredItemsTouchedRef = useRef(false);
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
@@ -146,27 +147,33 @@ export function useDailyLog() {
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function scheduleSave(next, changedKeys) {
+  function scheduleSave(next, changedKeys, deferredItemsChanged) {
     // Guard against writing before the initial Firestore snapshot has loaded —
     // otherwise a save fired from stale/empty local state can overwrite every
     // other day's data with a full-document setDoc (2026-07-05 data loss).
     if (!readyRef.current) return;
     pendingStateRef.current = next;
     changedKeys.forEach(k => touchedLogKeysRef.current.add(k));
+    if (deferredItemsChanged) deferredItemsTouchedRef.current = true;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       // Merge-safe per-date-key write, not a blind whole-doc setDoc — two
       // devices opening Daily Log near-simultaneously touch different (or the
       // same) date keys without clobbering each other's `logs` entries.
+      // deferredItems is a plain array (Firestore doesn't deep-merge arrays),
+      // so it's only included when this device actually changed it — an
+      // unrelated save (e.g. autoCarryForward touching only `logs`) must not
+      // overwrite it with a possibly-stale local copy.
       const keys = Array.from(touchedLogKeysRef.current);
       touchedLogKeysRef.current = new Set();
       const logsPatch = {};
       keys.forEach(k => { logsPatch[k] = pendingStateRef.current.logs[k]; });
-      setDoc(DAILY_LOGS_DOC(), {
-        logs: logsPatch,
-        deferredItems: pendingStateRef.current.deferredItems,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      const patch = { logs: logsPatch, updatedAt: new Date().toISOString() };
+      if (deferredItemsTouchedRef.current) {
+        patch.deferredItems = pendingStateRef.current.deferredItems;
+        deferredItemsTouchedRef.current = false;
+      }
+      setDoc(DAILY_LOGS_DOC(), patch, { merge: true });
     }, 300);
   }
 
@@ -175,7 +182,7 @@ export function useDailyLog() {
       const next = updater(prev);
       if (next === prev) return prev;
       const changedKeys = Object.keys(next.logs).filter(k => next.logs[k] !== prev.logs[k]);
-      scheduleSave(next, changedKeys);
+      scheduleSave(next, changedKeys, next.deferredItems !== prev.deferredItems);
       return next;
     });
   }
