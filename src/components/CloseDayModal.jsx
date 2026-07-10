@@ -70,7 +70,9 @@ function ActionRow({ selected, reason, onSelect, onReasonChange }) {
 export default function CloseDayModal({ bullets = [], onClose }) {
   // Split bullets into whole-bullet resolution (no checklist, or empty checklist)
   // vs per-item resolution (checklist bullets — only their unresolved 'todo' items need a decision).
-  const wholeBullets = bullets.filter(b => !Array.isArray(b.checklist) || b.checklist.length === 0);
+  const wholeBullets = bullets.filter(b =>
+    (!Array.isArray(b.checklist) || b.checklist.length === 0) && b.migration == null
+  );
   const checklistBullets = bullets
     .filter(b => Array.isArray(b.checklist) && b.checklist.length > 0)
     .map(b => ({ ...b, unresolvedItems: b.checklist.filter(i => i.status === 'todo') }))

@@ -65,6 +65,11 @@ const BENCH_COLORS = {
   Wiring:      { bg: '#0f2a2d', color: '#3fbfa0' },
 };
 
+function formatCarriedDate(dateKey) {
+  const d = new Date(dateKey + 'T00:00:00');
+  return d.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function ageDotColor(days) {
   if (days < 30) return '#3a9e5f';
   if (days <= 60) return '#c47d20';
@@ -285,6 +290,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddC
             <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
               {[meta.bench, meta.hoursRange ? `${meta.hoursRange}h` : null, meta.action]
                 .filter(Boolean).join(' · ')}
+            </div>
+          )}
+          {bullet.carriedFrom && (
+            <div style={{ fontSize: 10, color: '#a371f7', marginTop: 2 }}>
+              ↪ carried from {formatCarriedDate(bullet.carriedFrom)}
             </div>
           )}
           {isJob && (onAddChecklistItem || (bullet.checklist || []).length > 0) && (
@@ -598,7 +608,15 @@ export default function DailyLogPage({
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
   focusList = [],
+  onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
 }) {
+  const autoCarryRanRef = useRef(false);
+  useEffect(() => {
+    if (autoCarryRanRef.current) return;
+    autoCarryRanRef.current = true;
+    onAutoCarryForward?.();
+  }, [onAutoCarryForward]);
+
   const isDisplayedDateToday = displayedDate.toDateString() === new Date().toDateString();
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
@@ -778,6 +796,19 @@ export default function DailyLogPage({
               </button>
             )}
           </div>
+
+          {mobileView === 'log' && catchUpNeeded && (
+            <div
+              onClick={onRequestCatchUp}
+              style={{
+                marginTop: 8, background: '#2a1a3a', border: '1px solid #4a2e6e',
+                borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#c9a3f7',
+                cursor: 'pointer',
+              }}
+            >
+              {catchUpNeeded.days.length} unfinished days since {formatCarriedDate(catchUpNeeded.days[0])} — catch up →
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 6 }}>
             <button
@@ -1073,6 +1104,18 @@ export default function DailyLogPage({
             )}
           </div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Today's log</div>
+          {catchUpNeeded && (
+            <div
+              onClick={onRequestCatchUp}
+              style={{
+                marginTop: 8, background: '#2a1a3a', border: '1px solid #4a2e6e',
+                borderRadius: 8, padding: '6px 12px', fontSize: 11, color: '#c9a3f7',
+                cursor: 'pointer', display: 'inline-block',
+              }}
+            >
+              {catchUpNeeded.days.length} unfinished days since {formatCarriedDate(catchUpNeeded.days[0])} — catch up →
+            </div>
+          )}
         </div>
         {hasBullets && !locked && (
           <button

@@ -42,6 +42,79 @@ function tomorrowKey() {
 
 const EMPTY_STATE = { logs: {}, deferredItems: [] };
 
+// Shared "kept" resolver — builds a fresh bullet/checklist-item copy for the
+// destination day. Reused by closeDay's explicit Keep path, autoCarryForward's
+// silent single-day carry, and resolveStaleDays' Catch-Up Interview carry, so
+// the three mechanisms cannot drift out of sync.
+function buildCarriedChecklistItem(item) {
+  return { id: genId(), text: item.text, status: 'todo', createdAt: new Date().toISOString() };
+}
+
+function buildCarriedWholeBullet(b, carriedFrom = null, reasonInfo = null) {
+  return {
+    id: genId(),
+    text: b.text,
+    jobId: b.jobId,
+    done: false,
+    createdAt: new Date().toISOString(),
+    migration: null,
+    ...(carriedFrom ? { carriedFrom } : {}),
+    ...(reasonInfo ? { carryReason: reasonInfo.reason, carryReasonText: reasonInfo.reasonText } : {}),
+  };
+}
+
+function buildCarriedChecklistBullet(b, keptItems, carriedFrom = null, reasonInfo = null) {
+  return {
+    id: genId(),
+    text: b.text,
+    jobId: b.jobId,
+    meta: b.meta ?? null,
+    done: false,
+    createdAt: new Date().toISOString(),
+    migration: null,
+    checklist: keptItems.map(buildCarriedChecklistItem),
+    ...(carriedFrom ? { carriedFrom } : {}),
+    ...(reasonInfo ? { carryReason: reasonInfo.reason, carryReasonText: reasonInfo.reasonText } : {}),
+  };
+}
+
+// A day counts as "unresolved" for auto-carry/catch-up purposes when it has at
+// least one checklist-bullet with a 'todo' item, or a checklist-less bullet
+// that's neither done nor already migrated/carried.
+function dayHasUnresolved(day) {
+  if (!day || day.locked) return false;
+  return day.bullets.some(b => {
+    const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
+    if (hasChecklist) return b.checklist.some(i => i.status === 'todo');
+    return !b.done && b.migration == null;
+  });
+}
+
+// Carries every unresolved item on `day` forward as "kept" — no per-item choice.
+// Returns the new carried bullets (destined for another day) and the source
+// day's bullets with migrated/carried stamps so they're never picked up again.
+function carryDayForward(day, sourceDateKey) {
+  const carried = [];
+  const updatedBullets = day.bullets.map(b => {
+    const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
+    if (hasChecklist) {
+      const unresolvedItems = b.checklist.filter(i => i.status === 'todo');
+      if (unresolvedItems.length === 0) return b;
+      const resolvedChecklist = b.checklist.map(i =>
+        i.status === 'todo' ? { ...i, status: 'migrated' } : i
+      );
+      carried.push(buildCarriedChecklistBullet(b, unresolvedItems, sourceDateKey));
+      return { ...b, checklist: resolvedChecklist };
+    }
+    if (!b.done && b.migration == null) {
+      carried.push(buildCarriedWholeBullet(b, sourceDateKey));
+      return { ...b, migration: 'carried' };
+    }
+    return b;
+  });
+  return { carriedBullets: carried, updatedSourceBullets: updatedBullets };
+}
+
 export function useDailyLog() {
   // `logs` and `deferredItems` live in one state atom so every mutation that
   // touches both (closeDay, pullBackIn) is a single atomic setState — no
@@ -51,6 +124,7 @@ export function useDailyLog() {
   const saveTimerRef = useRef(null);
   const pendingStateRef = useRef(null);
   const readyRef = useRef(false);
+  const touchedLogKeysRef = useRef(new Set());
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
@@ -72,26 +146,36 @@ export function useDailyLog() {
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function scheduleSave(next) {
+  function scheduleSave(next, changedKeys) {
     // Guard against writing before the initial Firestore snapshot has loaded —
     // otherwise a save fired from stale/empty local state can overwrite every
     // other day's data with a full-document setDoc (2026-07-05 data loss).
     if (!readyRef.current) return;
     pendingStateRef.current = next;
+    changedKeys.forEach(k => touchedLogKeysRef.current.add(k));
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      // Merge-safe per-date-key write, not a blind whole-doc setDoc — two
+      // devices opening Daily Log near-simultaneously touch different (or the
+      // same) date keys without clobbering each other's `logs` entries.
+      const keys = Array.from(touchedLogKeysRef.current);
+      touchedLogKeysRef.current = new Set();
+      const logsPatch = {};
+      keys.forEach(k => { logsPatch[k] = pendingStateRef.current.logs[k]; });
       setDoc(DAILY_LOGS_DOC(), {
-        logs: pendingStateRef.current.logs,
+        logs: logsPatch,
         deferredItems: pendingStateRef.current.deferredItems,
         updatedAt: new Date().toISOString(),
-      });
+      }, { merge: true });
     }, 300);
   }
 
   function updateState(updater) {
     setState(prev => {
       const next = updater(prev);
-      scheduleSave(next);
+      if (next === prev) return prev;
+      const changedKeys = Object.keys(next.logs).filter(k => next.logs[k] !== prev.logs[k]);
+      scheduleSave(next, changedKeys);
       return next;
     });
   }
@@ -334,13 +418,13 @@ export function useDailyLog() {
         }
 
         const itemMigrations = checklistMigrations[b.id] || {};
-        const keptTexts = [];
+        const keptItems = [];
         const resolvedChecklist = b.checklist.map(item => {
           if (item.status !== 'todo') return item;
           const resolution = itemMigrations[item.id];
           if (!resolution) return item;
           if (resolution.action === 'kept') {
-            keptTexts.push(item.text);
+            keptItems.push(item);
             return { ...item, status: 'migrated' };
           }
           if (resolution.action === 'dropped') {
@@ -360,17 +444,8 @@ export function useDailyLog() {
           return item;
         });
 
-        if (keptTexts.length > 0) {
-          keptChecklistBullets.push({
-            id: genId(),
-            text: b.text,
-            jobId: b.jobId,
-            meta: b.meta ?? null,
-            done: false,
-            createdAt: new Date().toISOString(),
-            migration: null,
-            checklist: keptTexts.map(t => ({ id: genId(), text: t, status: 'todo', createdAt: new Date().toISOString() })),
-          });
+        if (keptItems.length > 0) {
+          keptChecklistBullets.push(buildCarriedChecklistBullet(b, keptItems));
         }
 
         return { ...b, checklist: resolvedChecklist, migration: null };
@@ -378,14 +453,7 @@ export function useDailyLog() {
 
       const keptWholeBullets = closedBullets
         .filter(b => (!Array.isArray(b.checklist) || b.checklist.length === 0) && migrations[b.id] === 'kept')
-        .map(b => ({
-          id: genId(),
-          text: b.text,
-          jobId: b.jobId,
-          done: false,
-          createdAt: new Date().toISOString(),
-          migration: null,
-        }));
+        .map(b => buildCarriedWholeBullet(b));
 
       const tomorrow = prev.logs[nextKey] ?? { bullets: [], closedAt: null, locked: false };
 
@@ -409,13 +477,113 @@ export function useDailyLog() {
     });
   }
 
+  // Silently carries forward the single most recent unresolved-and-unlocked
+  // prior day. The scan runs against `prev.logs` inside the setState updater
+  // (not against `state.logs` read outside it) so it always decides against
+  // the state actually being written, never a possibly-stale snapshot.
+  function autoCarryForward() {
+    const key = todayKey();
+    updateState(prev => {
+      const staleDays = Object.keys(prev.logs)
+        .filter(k => k < key && dayHasUnresolved(prev.logs[k]))
+        .sort();
+
+      if (staleDays.length !== 1) return prev;
+
+      const sourceKey = staleDays[0];
+      const sourceDay = prev.logs[sourceKey];
+      const { carriedBullets, updatedSourceBullets } = carryDayForward(sourceDay, sourceKey);
+      if (carriedBullets.length === 0) return prev;
+
+      const today = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
+      if (today.locked) return prev;
+
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          [sourceKey]: { ...sourceDay, bullets: updatedSourceBullets },
+          [key]: { ...today, bullets: [...carriedBullets, ...today.bullets] },
+        },
+      };
+    });
+  }
+
+  // Catch-Up Interview resolution — carries forward only the bullets Trevor
+  // chose 'carry' for (with an attached reason), leaves 'skip'/undecided
+  // bullets untouched on their source day, and never locks the source days.
+  // resolutions shape: { [dateKey]: { [bulletId]: { action: 'carry'|'skip', reason, reasonText } } }
+  function resolveStaleDays(resolutions) {
+    const key = todayKey();
+    updateState(prev => {
+      const logsPatch = {};
+      const allCarried = [];
+
+      Object.keys(resolutions).forEach(sourceKey => {
+        const sourceDay = prev.logs[sourceKey];
+        if (!sourceDay) return;
+        const dayResolutions = resolutions[sourceKey];
+        let dayChanged = false;
+
+        const updatedBullets = sourceDay.bullets.map(b => {
+          const res = dayResolutions[b.id];
+          if (!res || res.action !== 'carry') return b;
+
+          const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
+          if (hasChecklist) {
+            const unresolvedItems = b.checklist.filter(i => i.status === 'todo');
+            if (unresolvedItems.length === 0) return b;
+            const resolvedChecklist = b.checklist.map(i =>
+              i.status === 'todo' ? { ...i, status: 'migrated' } : i
+            );
+            allCarried.push(buildCarriedChecklistBullet(b, unresolvedItems, sourceKey, res));
+            dayChanged = true;
+            return { ...b, checklist: resolvedChecklist };
+          }
+
+          if (b.done || b.migration != null) return b;
+          allCarried.push(buildCarriedWholeBullet(b, sourceKey, res));
+          dayChanged = true;
+          return { ...b, migration: 'carried' };
+        });
+
+        if (dayChanged) logsPatch[sourceKey] = { ...sourceDay, bullets: updatedBullets };
+      });
+
+      if (Object.keys(logsPatch).length === 0) return prev;
+
+      const today = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
+      if (today.locked) return prev;
+
+      return {
+        ...prev,
+        logs: {
+          ...prev.logs,
+          ...logsPatch,
+          [key]: { ...today, bullets: [...allCarried, ...today.bullets] },
+        },
+      };
+    });
+  }
+
   const key = todayKey();
+
+  // Derived, read-only signal for the UI — recomputed fresh every render from
+  // `state.logs`. Purely informational (whether to show the Catch-Up prompt);
+  // the actual carry-forward mutation always re-scans `prev` inside its own
+  // updater, so this never drives a write decision.
+  const staleDayKeys = Object.keys(state.logs)
+    .filter(k => k < key && dayHasUnresolved(state.logs[k]))
+    .sort();
+  const catchUpNeeded = staleDayKeys.length > 1 ? { days: staleDayKeys } : null;
 
   return {
     todayKey: key,
     todayLog: state.logs[key] ?? null,
+    logs: state.logs,
     deferredItems: state.deferredItems,
     loading,
+    catchUpNeeded,
     addBullet,
     upsertScheduledBullet,
     removeBullet,
@@ -424,5 +592,7 @@ export function useDailyLog() {
     toggleChecklistItem,
     pullBackIn,
     closeDay,
+    autoCarryForward,
+    resolveStaleDays,
   };
 }

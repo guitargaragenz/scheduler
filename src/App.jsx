@@ -23,6 +23,7 @@ import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
+import CatchUpInterview from './components/CatchUpInterview.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
@@ -79,6 +80,7 @@ export default function App() {
   const [showWeekView, setShowWeekView] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
+  const [showCatchUp, setShowCatchUp] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
@@ -133,6 +135,7 @@ export default function App() {
   const {
     todayLog, addBullet, removeBullet, toggleDone, closeDay, upsertScheduledBullet,
     deferredItems, addChecklistItem, toggleChecklistItem, pullBackIn,
+    logs: dailyLogs, catchUpNeeded, autoCarryForward, resolveStaleDays,
   } = useDailyLog();
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList } = useFocusList();
@@ -524,6 +527,9 @@ export default function App() {
               }}
               onRequestCloseDay={() => setShowCloseDay(true)}
               focusList={focusList}
+              onAutoCarryForward={autoCarryForward}
+              catchUpNeeded={catchUpNeeded}
+              onRequestCatchUp={() => setShowCatchUp(true)}
             />
           )}
         </div>
@@ -658,6 +664,17 @@ export default function App() {
           onClose={migrations => {
             closeDay(migrations);
             setShowCloseDay(false);
+          }}
+        />
+      )}
+
+      {showCatchUp && catchUpNeeded && (
+        <CatchUpInterview
+          days={catchUpNeeded.days}
+          logs={dailyLogs}
+          onClose={resolutions => {
+            if (resolutions) resolveStaleDays(resolutions);
+            setShowCatchUp(false);
           }}
         />
       )}
