@@ -6,7 +6,7 @@ import {
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
-import { isFirebaseConfigured, loadConflictLog, clearConflictLog } from './utils/firebase.js';
+import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog } from './utils/firebase.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -24,6 +24,7 @@ import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
+import BumpReasonModal from './components/BumpReasonModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
@@ -81,6 +82,7 @@ export default function App() {
   const [showJobs, setShowJobs] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
+  const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
@@ -137,16 +139,59 @@ export default function App() {
     deferredItems, addChecklistItem, toggleChecklistItem, pullBackIn,
     logs: dailyLogs, catchUpNeeded, autoCarryForward, resolveStaleDays,
   } = useDailyLog();
+  // Stamps a `source: 'auto-carry'` bump-history entry (reason left null —
+  // filled in later via handleSetBumpReason) on a job whose Daily Log bullet
+  // just silently migrated to today via autoCarryForward. Auto-carry has no
+  // real calendar slot (it's a log-day migration, not a scheduling move), so
+  // fromSlot/toSlot hold bare YYYY-MM-DD date-keys here, not slotKey() strings.
+  const handleJobAutoCarryBumped = useCallback((jobId, { fromDateKey, toDateKey }) => {
+    const entry = {
+      ts: Date.now(),
+      reason: null,
+      reasonText: undefined,
+      fromSlot: fromDateKey,
+      toSlot: toDateKey,
+      source: 'auto-carry',
+    };
+    setJobs(prev => prev.map(j =>
+      j.id === jobId ? { ...j, bumpHistory: [...(j.bumpHistory || []), entry] } : j
+    ));
+  }, [setJobs]);
+
+  const handleAutoCarryForward = useCallback(() => {
+    autoCarryForward(handleJobAutoCarryBumped);
+  }, [autoCarryForward, handleJobAutoCarryBumped]);
+
+  // Retroactively fills in a reason on a previously-unresolved auto-carry bump
+  // entry — called from DailyLogPage's CarriedReasonPicker, correlated by the
+  // bullet's `carriedFrom` date-key matching the entry's `fromSlot`.
+  const handleSetBumpReason = useCallback((jobId, carriedFrom, { reason, reasonText }) => {
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j;
+      const bumpHistory = (j.bumpHistory || []).map(entry =>
+        entry.source === 'auto-carry' && entry.fromSlot === carriedFrom && !entry.reason
+          ? { ...entry, reason, reasonText: reason === 'Other' ? reasonText : undefined }
+          : entry
+      );
+      return { ...j, bumpHistory };
+    }));
+  }, [setJobs]);
+
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList } = useFocusList();
 
   const schedulerWeekDays = showWeekView ? weekDays : [displayedDate];
+
+  const handleBumpDetected = useCallback(({ job, fromSlot, toSlot }) => {
+    setBumpPrompt({ job, fromSlot, toSlot });
+  }, []);
 
   const scheduler = useScheduler({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
     weekDays: schedulerWeekDays, externalEventsRef, justSavedAt,
     signedIn: gcal.signedIn, showToast, addChangelog,
     upsertScheduledBullet,
+    onBumpDetected: handleBumpDetected,
   });
 
   const jobOps = useJobs({
@@ -527,9 +572,10 @@ export default function App() {
               }}
               onRequestCloseDay={() => setShowCloseDay(true)}
               focusList={focusList}
-              onAutoCarryForward={autoCarryForward}
+              onAutoCarryForward={handleAutoCarryForward}
               catchUpNeeded={catchUpNeeded}
               onRequestCatchUp={() => setShowCatchUp(true)}
+              onSetBumpReason={handleSetBumpReason}
             />
           )}
         </div>
@@ -675,6 +721,40 @@ export default function App() {
           onClose={resolutions => {
             if (resolutions) resolveStaleDays(resolutions);
             setShowCatchUp(false);
+          }}
+        />
+      )}
+
+      {bumpPrompt && (
+        <BumpReasonModal
+          job={bumpPrompt.job}
+          fromSlot={bumpPrompt.fromSlot}
+          toSlot={bumpPrompt.toSlot}
+          onResolve={({ reason, reasonText }) => {
+            const entry = {
+              ts: Date.now(),
+              reason,
+              reasonText,
+              fromSlot: bumpPrompt.fromSlot,
+              toSlot: bumpPrompt.toSlot,
+              source: 'manual',
+            };
+            setJobs(prev => prev.map(j =>
+              j.id === bumpPrompt.job.id ? { ...j, bumpHistory: [...(j.bumpHistory || []), entry] } : j
+            ));
+            if (isFirebaseConfigured()) {
+              appendConflictLog([{
+                ts: entry.ts,
+                jobNum: bumpPrompt.job.job,
+                mfr: bumpPrompt.job.mfr,
+                model: bumpPrompt.job.model,
+                oldSlot: bumpPrompt.fromSlot,
+                newSlot: bumpPrompt.toSlot,
+                reason,
+                reasonText,
+              }]);
+            }
+            setBumpPrompt(null);
           }}
         />
       )}

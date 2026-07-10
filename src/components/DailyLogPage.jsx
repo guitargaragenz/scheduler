@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
 import DeferredItemsList from './DeferredItemsList.jsx';
+import ReasonPicker from './ReasonPicker.jsx';
 import { BENCH_COLORS as CANONICAL_BENCH_COLORS } from '../data/jobs.js';
 import { localDateKey } from '../utils/calendar.js';
 
@@ -145,9 +146,61 @@ function ChecklistSection({ bullet, locked, onToggleItem, onAddItem }) {
   );
 }
 
-function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddChecklistItem, onToggleChecklistItem }) {
+// Collapsed-by-default reason capture for an auto-carried bullet whose bump
+// history entry has no reason yet (silent autoCarryForward doesn't prompt —
+// this lets Trevor attach one retroactively). Correlated by
+// entry.fromSlot === bullet.carriedFrom && !entry.reason.
+function CarriedReasonPicker({ onSave }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState(null);
+  const [reasonText, setReasonText] = useState('');
+
+  if (!open) {
+    return (
+      <span
+        onClick={e => { e.stopPropagation(); setOpen(true); }}
+        style={{ fontSize: 10, color: '#64748b', marginLeft: 8, cursor: 'pointer', textDecoration: 'underline' }}
+      >
+        why?
+      </span>
+    );
+  }
+
+  const disabled = reason === 'Other' && !reasonText.trim();
+
+  return (
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{ marginTop: 6, background: '#161616', border: '1px solid #252525', borderRadius: 8, padding: 10 }}
+    >
+      <ReasonPicker
+        reason={reason}
+        reasonText={reasonText}
+        onSelectReason={setReason}
+        onReasonTextChange={setReasonText}
+      />
+      <button
+        onClick={() => { onSave({ reason, reasonText }); setOpen(false); }}
+        disabled={!reason || disabled}
+        style={{
+          background: '#1a2e1a', color: '#4a9e5a', border: 'none', borderRadius: 6,
+          padding: '5px 12px', fontSize: 11, fontWeight: 600,
+          cursor: !reason || disabled ? 'default' : 'pointer',
+          opacity: !reason || disabled ? 0.5 : 1,
+        }}
+      >
+        Save
+      </button>
+    </div>
+  );
+}
+
+function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddChecklistItem, onToggleChecklistItem, onSetBumpReason }) {
   const done = bullet.done;
   const linkedJob = jobs?.find(j => j.id === bullet.jobId);
+  const unresolvedBumpEntry = bullet.carriedFrom && linkedJob?.bumpHistory
+    ? linkedJob.bumpHistory.find(e => e.source === 'auto-carry' && e.fromSlot === bullet.carriedFrom && !e.reason)
+    : null;
   const meta = bullet.meta || (linkedJob ? { bench: linkedJob.bench, hoursRange: linkedJob.hoursRange, action: linkedJob.action } : null);
   const isJob = !!bullet.jobId;
   const sessionNote = linkedJob?.sessionNote;
@@ -295,6 +348,11 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddC
           {bullet.carriedFrom && (
             <div style={{ fontSize: 10, color: '#a371f7', marginTop: 2 }}>
               ↪ carried from {formatCarriedDate(bullet.carriedFrom)}
+              {unresolvedBumpEntry && onSetBumpReason && (
+                <CarriedReasonPicker
+                  onSave={info => onSetBumpReason(bullet.jobId, bullet.carriedFrom, info)}
+                />
+              )}
             </div>
           )}
           {isJob && (onAddChecklistItem || (bullet.checklist || []).length > 0) && (
@@ -609,6 +667,7 @@ export default function DailyLogPage({
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
   focusList = [],
   onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
+  onSetBumpReason,
 }) {
   const autoCarryRanRef = useRef(false);
   useEffect(() => {
@@ -917,6 +976,7 @@ export default function DailyLogPage({
                   jobs={jobs}
                   onAddChecklistItem={onAddChecklistItem}
                   onToggleChecklistItem={onToggleChecklistItem}
+                  onSetBumpReason={onSetBumpReason}
                 />
               ))
             )}
@@ -1150,6 +1210,7 @@ export default function DailyLogPage({
               jobs={jobs}
               onAddChecklistItem={onAddChecklistItem}
               onToggleChecklistItem={onToggleChecklistItem}
+              onSetBumpReason={onSetBumpReason}
             />
           ))
         )}

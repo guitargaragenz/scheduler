@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
 import { dayLabel } from '../utils/calendar.js';
+import ReasonPicker from './ReasonPicker.jsx';
 
-const REASONS = ['Interrupted', 'Ran out of time', 'Waiting on parts', 'Other'];
-
-// New, standalone here — not shared with Problem 3's bump-reason UI (not built
-// yet). Steps through each stale day's unresolved bullets one at a time.
+// Steps through each stale day's unresolved bullets one at a time. Reason
+// picker UI is shared with Problem 3's BumpReasonModal via ReasonPicker.jsx.
 export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
   const steps = useMemo(() => {
     const out = [];
@@ -103,38 +102,12 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
               {step.bullet.text}
             </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-              {REASONS.map(r => (
-                <button
-                  key={r}
-                  onClick={() => setReason(r)}
-                  style={{
-                    background: reason === r ? '#1a2e1a' : '#0f0f0f',
-                    color: reason === r ? '#4a9e5a' : '#888',
-                    border: 'none', borderRadius: 6, padding: '6px 12px',
-                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                    outline: reason === r ? '1px solid #4a9e5a' : 'none',
-                  }}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            {reason === 'Other' && (
-              <input
-                type="text"
-                value={reasonText}
-                onChange={e => setReasonText(e.target.value)}
-                placeholder="why?"
-                style={{
-                  width: '100%', boxSizing: 'border-box', marginBottom: 8,
-                  background: '#0f0f0f', border: '1px solid #252525', borderRadius: 6,
-                  padding: '7px 10px', fontSize: 12, color: '#ccc', outline: 'none',
-                  fontFamily: 'inherit',
-                }}
-              />
-            )}
+            <ReasonPicker
+              reason={reason}
+              reasonText={reasonText}
+              onSelectReason={setReason}
+              onReasonTextChange={setReasonText}
+            />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button

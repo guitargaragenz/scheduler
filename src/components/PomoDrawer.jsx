@@ -134,6 +134,7 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onR
   const isDone = phase === 'done';
 
   const pastSessions = (job.pomoLog || []).slice(-4).reverse();
+  const bumpHistory = (job.bumpHistory || []).slice(-4).reverse();
 
   return createPortal(
     <div style={{
@@ -464,6 +465,27 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onR
               </div>
             )) : (
               <div style={{ fontSize: 11, color: '#334155', fontStyle: 'italic' }}>No sessions logged yet.</div>
+            )}
+
+            {/* Bump history — read only, last 4 day-to-day reschedules */}
+            {bumpHistory.length > 0 && (
+              <>
+                <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 14, marginBottom: 7 }}>
+                  Bump history
+                </div>
+                {bumpHistory.map((entry, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    fontSize: 11, color: '#64748b', padding: '4px 0',
+                    borderBottom: i < bumpHistory.length - 1 ? '1px solid #1e293b' : 'none',
+                  }}>
+                    <span>{new Date(entry.ts).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                    <span style={{ color: '#94a3b8' }}>
+                      {entry.reason === 'Other' ? (entry.reasonText || 'Other') : (entry.reason || 'unspecified')}
+                    </span>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         )}

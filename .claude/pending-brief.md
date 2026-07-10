@@ -5,87 +5,153 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
-## Status: AWAITING APPROVAL
+## Status: BUILT, AWAITING MERGE APPROVAL — Problem 3, branch `problem-3-bump-reason`
+Rollback tag `pre-bump-reason-stable` at commit `065ac8f` (pre-build). Build commit `b0d7fbe`.
+Independent verifier: PASS (7/7) on the useScheduler.js blast-radius diff. Code review: 3
+low-severity non-blocking findings (see commit message). `npx vite build` passes.
+Not pushed yet — no Vercel preview exists until Trevor approves the push.
 
-**Issued:** 2026-07-04
-**Expires:** 4 hours from issue if no reply
-**Supersedes:** the 2026-07-01 ghost-slot-cleanup brief below this line (expired, unresolved, no longer current — left for reference only)
+**Issued:** 2026-07-11
+**Problem 1 status:** SHIPPED — merged to main, deployed (commit `79c16b9`).
+**Problem 2 status:** SHIPPED — merged to main, deployed (commit `efa9b42`).
 
-## Root cause / goal
-`scripts/sheet_to_csv.command` (the automated 2-minute Google Sheet poller / PDF-drop pipeline) rebuilds the entire `jobs` array from the CSV on every run and hardcodes `'scheduled': False` for every job ([sheet_to_csv.command:337](scripts/sheet_to_csv.command:337)), while omitting `calendarSlot`, `gcalEventId`, `gcalEventIds`, `pomoLog`, and `done` entirely from the per-job object it builds. It then PATCHes this straight to Firestore's `ggnz/schedule` doc with no `updateMask` ([sheet_to_csv.command:233-236](scripts/sheet_to_csv.command:233)) — per Firestore's REST API, a PATCH with no update mask replaces the *whole document*, so every automated sync silently wipes scheduling/GCal-link/pomo-log data for every job, not just the two Trevor noticed (#1520 Ampeg SVT 6 Pro, #1582 Roland Juno 106).
+# Brief — Problem 3: Capture a reason when a job gets bumped to another day
 
-Confirmed live against production Firestore (read-only check, no writes): both jobs currently show `scheduled: false`, no `calendarSlot`, and zero entries in `scheduledSlots`. Checked `ggnz/conflictLog` — zero events for either job, which rules out the GCal-poll bump-conflict mechanism as the cause. This is an ongoing, silent, recurring bug — every automated sync (every 2 minutes while the watcher runs) can wipe any job scheduled since the last successful sync.
+**Root cause / goal:** dragging a scheduled job to a different day is currently a silent overwrite
+— no record of why the original slot didn't work out. Trevor wants a quick, skippable prompt
+capturing a reason.
 
-Goal: stop the automated sync from destroying live scheduling/GCal/pomo data on every run.
+**What 2 independent reviewers found before build:**
+1. `BumpReasonModal` should reuse the reason-picker UI already built and shipped inside
+   `CatchUpInterview.jsx` (Problem 2) rather than build a near-duplicate — extract it into a small
+   shared piece first.
+2. The exact "is this a genuine bump" check needed to be precise (must compare against the job's
+   pre-move slot before it gets overwritten) — now specified exactly in the revised plan.
 
-## Fix scope (exactly what will change, nothing else)
-In `scripts/sheet_to_csv.command`, when building each job record (around line 316-338):
-1. Extend the existing Firestore fetch (currently only pulling `scheduledSlots`, lines 346-366) to also read the existing `jobs` array from that same response.
-2. For each new job row, if a job with the same ID already exists in the fetched Firestore data, preserve its `scheduled`, `calendarSlot`, `gcalEventId`, `gcalEventIds`, `pomoLog`, and `done` fields onto the freshly-parsed CSV record instead of defaulting/omitting them.
-3. No changes to the React app itself (`src/`) — this fix is entirely inside the Python script.
-4. No changes to `scheduledSlots` handling — that part already works correctly and is untouched.
+**Fix scope:**
+- Extract shared reason-picker UI from `CatchUpInterview.jsx` into a small shared component; refactor
+  `CatchUpInterview` to use it; build `BumpReasonModal` on top of the same piece.
+- Detect a genuine bump inside `handleRegularDrop` (`useScheduler.js`) — covers desktop drag AND
+  mobile's "Place on Calendar" (confirmed same code path, twice). Only day-to-day moves of an
+  already-scheduled job count; first-time placement and same-day time changes don't.
+- New `job.bumpHistory` array field, additive, persists automatically through existing save.
+- **Explicitly excluded, confirmed with you:** `unscheduleJob` (drag to sidebar — "unwanted noise"
+  per your words last session) and `handleUrgentDrop` (force-displacement — shouldn't add friction
+  to a flow meant to be fast).
+- Auto-carry-forward (Problem 2) also logs a bump entry with no prompt for job-linked carried
+  bullets, with an inline reason-picker next to the existing "carried from" badge.
+- Every bump entry also appends to the existing conflict log for one chronological feed.
+- Touched: `src/hooks/useScheduler.js` (blast-radius file), `src/hooks/useDailyLog.js`,
+  `src/components/DailyLogPage.jsx`, `src/components/CatchUpInterview.jsx` (refactor to shared
+  picker), `src/utils/firebase.js` (conflict log extension), `src/components/JobDrawer.jsx` /
+  `src/components/PomoDrawer.jsx` (read-only bump history display), `src/App.jsx`.
+- New: `src/components/BumpReasonModal.jsx`, small shared reason-picker component.
 
-## Blast radius
-Not one of the 5 flagged React files/state items by name, but writes directly into the same `scheduledSlots` / `jobs[]` data those rules exist to protect, via a path outside the app's own drift-safety checks (the app's in-app CSV upload button already has protections here — this automated script bypasses them entirely).
+**Blast radius:** `useScheduler.js`/`calendarSlot` — flagged, council already run (2 agents, both
+confirmed low corruption risk since the reason capture is additive/fire-after-commit, doesn't touch
+the actual slot-write logic).
 
-**Council required: yes** — active production data loss, not a "small enough to skip" case.
+**Verification:** code review confirming bump detection doesn't misfire on first-time scheduling or
+same-day adjustments; synthetic test dragging a throwaway job to a different day, confirm modal
+appears/is skippable, confirm `bumpHistory` lands on the job and in the conflict log.
 
-## Immediate mitigation (do this now, before any code fix)
-Pause `start_watcher.command` on Micky so the 2-minute poller stops overwriting Firestore while the fix is built and verified. Re-enable only after the fix is confirmed working.
+**Rollback:** tag `pre-bump-reason-stable` created before build starts;
+`git reset --hard pre-bump-reason-stable && git push origin main --force`.
 
-## Rollback
-This is a script fix, not an app deploy — nothing on Vercel to roll back. If the fixed script misbehaves:
-```
-git checkout pre-csv-sync-fix-stable -- scripts/sheet_to_csv.command
-```
-(tag `pre-csv-sync-fix-stable` set and pushed at commit `6e174a0`, 2026-07-04, before this fix)
+Full design detail (revised): `/Users/admin/.claude/plans/yp-use-whatever-agents-cozy-conway.md`
+(Problem 3 section).
 
-## Test plan / checklist
-- [ ] Manually run the fixed script once against a job that's currently scheduled — confirm `scheduled`, `calendarSlot`, `gcalEventId`, `pomoLog` all survive in Firestore afterward
-- [ ] Run it again against a job that is NOT scheduled — confirm it still correctly stays unscheduled (no false-positive preservation)
-- [ ] Confirm a genuinely new job (not previously in Firestore) still gets created correctly with `scheduled: false` as the sane default
-- [ ] Hard refresh the app, confirm no regressions in job list / calendar rendering
-- [ ] Re-enable the watcher, observe one full auto-sync cycle, re-check Firestore that scheduled jobs are untouched
+# Brief — Problem 2: Daily Log auto-carry-forward + catch-up interview
 
-Reply "yp" to proceed or "no" to cancel.
+**Root cause / goal:** unfinished Daily Log items from a skipped day just sit orphaned — the
+Keep/Drop/Defer migration logic exists but only runs if Trevor clicks an easy-to-miss "Close day"
+button he usually forgets.
 
----
+**What two independent reviewers found before build (both confirmed all 4 points):**
+1. The new "scan for most recent unresolved prior day" logic must run inside the existing
+   `updateState` callback in `useDailyLog.js`, not against outer component state — a subtlety the
+   original plan didn't spell out.
+2. **Real bug worth fixing now, not later:** Daily Log currently saves via a blind full-document
+   overwrite (no merge). Auto-carry adds a new *unattended* automatic write every time Daily Log
+   opens — with 3 devices (iMac/MacBook/iPhone), opening it on two around the same time could
+   silently drop one device's carried item. Fix: switch to merge-safe per-day writes (same pattern
+   already used for Problem 1's revenue doc).
+3. "Modeled on the Sunday board-meeting interview" turned out to be UX inspiration only, not code
+   reuse — that's an offline agent script, not an in-app component. `CatchUpInterview.jsx` is
+   genuinely new UI, budgeted as such.
+4. **Pre-existing adjacent bug, unrelated to this feature but must be fixed alongside it:**
+   `CloseDayModal.jsx`'s whole-bullet filter doesn't exclude already-migrated bullets (the
+   checklist-item filter does this correctly, whole-bullets doesn't) — once auto-carry starts
+   stamping bullets, this gap could let an already-carried item get duplicated. Small, contained fix.
 
-# [SUPERSEDED — 2026-07-01 ghost-slot-cleanup brief, expired/unresolved]
+**Fix scope:**
+- Extract shared "kept" resolver from `closeDay()`, add `autoCarryForward()` (single stale day →
+  silent carry with a "carried from" badge; multiple stale days → Catch-Up Interview instead).
+- Fix the merge-safety of Daily Log's Firestore save.
+- Fix `CloseDayModal.jsx`'s whole-bullet filter gap.
+- New: `src/components/CatchUpInterview.jsx`.
+- Touched: `src/hooks/useDailyLog.js`, `src/components/DailyLogPage.jsx`,
+  `src/components/CloseDayModal.jsx`, `src/utils/firebase.js` (Daily Log save function).
+- Nothing else changes — no touch to Problem 1 or Problem 3 scope, no touch to
+  `scheduledSlots`/`calendarSlot`/`useGoogleCalendar.js`/`jobs[]`.
 
-## Root cause / goal
-Live inspection of production Firebase data found `scheduledSlots` currently contains entries pointing at job IDs that no longer exist in the `jobs` array — e.g. `1520_Electronics_0` through `_6` (6 slot entries, job #1520's old manual splits) have no matching job record anymore. These are "ghost slots" — they show as busy on the calendar but render nothing, from a manual split that vanished at some point before today's CSV-drop fix existed. This is very likely most of what the "34 scheduled slots would be wiped" CSV safety-guard warning has been detecting — not new damage, old orphaned entries.
+**Blast radius:** none of the 5 flagged files. Judgment call, not mandatory — but given this
+already had 2 independent review passes and real findings, I'm treating it with the same rigor as
+a flagged build: independent verifier still runs after the build, same as Problem 1.
 
-Goal: one-time cleanup — remove `scheduledSlots` entries whose job ID has no matching record in the current `jobs` array. Purely additive safety: only removes slots that already point at nothing.
+**Verification:** synthetic multi-day test in local dev only (never simulate date changes against
+production data) — confirm single-day case carries silently with badge, multi-day case triggers
+the interview instead of a silent dump, running carry-forward twice never duplicates, and the
+Close Day modal fix doesn't resurface already-migrated bullets.
 
-## Fix scope (exactly what will change, nothing else) — REVISED after council review
-Both independent council reviewers caught the same critical flaw in the original plan: auto-split children (e.g. `1520-LU`) are **never stored in raw Firestore** — they're regenerated fresh every load via `createSubtasks()`/`withSplitsExpanded()`. Checking scheduledSlots against the *raw* stored `jobs` array would have wrongly flagged every currently-valid auto-split job's slot as "orphaned" and deleted real, working schedule data. Revised plan:
+**Rollback:** tag `pre-daily-log-carry-stable` will be created before build starts;
+`git reset --hard pre-daily-log-carry-stable && git push origin main --force`.
 
-1. **Report-only pass first.** Compute the valid-ID set using the app's actual expansion logic (same as `withSplitsExpanded` in `useFirebase.js` — parent + auto-split IDs + stored manual-split IDs), not the raw array. List every `scheduledSlots` key that has no match in that expanded set, with its date/time + dead job ID. Show this list to Trevor for visual confirmation against the calendar. **No deletion in this step.**
-2. **Snapshot backup** — save the full current `scheduledSlots` locally before any write, as the real undo path (this is a data change, not a code change — no git rollback applies to it).
-3. **Only after Trevor confirms the reported list** — write `scheduledSlots` with just those confirmed keys removed.
-4. **Durable log, not just a toast** — record the removed `{key, deadJobId}` pairs via `appendConflictLog()` (existing pattern in `firebase.js`), so it's auditable later, not just a transient message.
-5. **Timing** — run the write with no other device actively editing the schedule, to avoid racing the 1500ms debounced autosave in `useFirebase.js`. Re-verify `scheduledSlots` immediately after writing.
-6. No changes to any component, hook, or the CSV upload logic itself (today's fix in `fix/csv-manual-split-drift` is untouched by this).
+Full design detail (revised): `/Users/admin/.claude/plans/yp-use-whatever-agents-cozy-conway.md`
+(Problem 2 section).
 
-## Blast radius
-- `scheduledSlots` — YES (this is the entire point of the cleanup)
-- `calendarSlot` — NO (not touched — this only touches the slot-key map, not individual job records)
-- `useGoogleCalendar.js` — NO
-- `useFirebase.js` — NO (uses existing `loadSchedule`/`saveSchedule`, no logic changes)
-- `jobs[]` shape/identity — NO (jobs array itself is not modified, only read to check which IDs are valid)
+# Brief — Problem 1: Surface disappeared-from-CSV jobs for invoice entry (REVISED)
 
-**Council required: YES** (blast radius flagged — mandatory, no skip)
+**Root cause / goal:** Revenue pill reads $0 because it only updates when a job is marked done
+*inside the app*, but Trevor finishes/invoices in Multitrack — the in-app step never fires, so
+jobs that vanish from a CSV upload leave no record of being done+invoiced or cancelled.
 
-## Rollback
-```
-git reset --hard pre-ghost-slot-cleanup-stable && git push origin main --force
-```
-(tag set at commit `main`/`70def16`, 2026-07-01, before this cleanup started — note: this is a Firebase *data* cleanup, not primarily a code change, so the real rollback is restoring the previous `scheduledSlots` snapshot in Firebase, which will be captured and saved before any write)
+**What changed:** 2 independent council reviewers unanimously found the original design (diff
+inside `handleCsvUpload`) would never fire in Trevor's real automated workflow, since that
+pipeline writes to Firestore directly and bypasses the React app's CSV upload path entirely.
+Trevor chose the client-side fix: diff inside the `onSnapshot` listener in `useFirebase.js`
+instead, which sees every real job-list change regardless of which pipeline wrote it.
 
-## Test plan / checklist
-- [ ] Snapshot current `scheduledSlots` from Firebase and save it locally before making any change (so exact pre-cleanup state is recoverable)
-- [ ] Confirm every removed key genuinely has no matching job in the current `jobs` array (no false positives)
-- [ ] Confirm every slot for a job that DOES still exist is left untouched
-- [ ] After cleanup, re-check the CSV drift count — expect it to drop substantially
-- [ ] Hard refresh, confirm calendar renders correctly with no missing real jobs
+**Fix scope:**
+- `subscribeToSchedule`'s `onSnapshot` callback (`useFirebase.js`) diffs old vs incoming
+  top-level, non-done jobs. Jobs that vanish go into a new isolated Firestore doc
+  (`ggnz/pendingRevenueReview`, cloned from the existing `focusList` pattern, but written with
+  merge-on-read/keyed-map semantics rather than a blind `setDoc`, since this doc can be written
+  by both an automated sync and a manual dismiss around the same time and holds financial data).
+- New `RevenueReviewBanner` component (visual pattern from `ConflictBanner`) lists each
+  disappeared job with two outcomes only:
+  - **Done + invoiced** — amount input, calls existing unmodified `handleMarkDone`.
+  - **Cancelled** — free-text notepad, no revenue impact.
+- New files: `src/hooks/usePendingRevenueReview.js`, `src/components/RevenueReviewBanner.jsx`.
+- Touched: `src/hooks/useFirebase.js` (blast-radius file), `src/utils/firebase.js` (new
+  save/load/subscribe trio), `src/App.jsx` (wire + render banner near revenue pill).
+  `useJobs.js`/`handleCsvUpload` no longer touched.
+- Nothing else changes — no touch to Problem 2/3 scope, no touch to `scheduledSlots`/
+  `calendarSlot`/`useGoogleCalendar.js`.
+
+**Blast radius:** `useFirebase.js` (flagged file, new in this revision) + `jobs[]` shape. Council
+already run once on the original design and caught this issue — same council findings otherwise
+still apply (split children/subtasks correctly excluded via `!parentId`, two-outcome scope
+sufficient).
+
+**Verification:** synthetic test simulating an old jobs[] vs a new jobs[] missing one non-done
+top-level job (confirm banner shows exactly that job, not `done` jobs or split children); also
+confirm no misfire on the very first snapshot after app load. Not run against real active
+production jobs.
+
+**Rollback:** `git reset --hard pre-revenue-review-stable && git push origin main --force`
+(tag already created @ c72482e, before any commits).
+
+Full design detail: `/Users/admin/.claude/plans/yp-use-whatever-agents-cozy-conway.md` (Problem 1
+section, revised 2026-07-11), technical research in the companion
+`-agent-a7c224782ef299772.md` file.

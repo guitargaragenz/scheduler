@@ -15,6 +15,7 @@ export function useScheduler({
   showToast,
   addChangelog,
   upsertScheduledBullet,
+  onBumpDetected,
 }) {
   const [activeJob, setActiveJob] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -111,6 +112,19 @@ export function useScheduler({
       ? `${fmt(slots[0])}–${slots[slots.length-1].hour}:${slots[slots.length-1].minute === 0 ? '00' : '30'}`
       : `${fmt(slots[0])} → ${fmt(slots[slots.length - 1])}`;
 
+    const newCalendarSlot = slotKey(weekDays[slots[0].dayIdx], slots[0].hour, slots[0].minute);
+
+    // Genuine day-to-day bump detection — read-only, using the job's PRE-move
+    // calendarSlot (captured here before setJobs overwrites it below) vs the
+    // new slot's date portion. slotKey() format is "YYYY-MM-DD-H-M", so the
+    // date is always the first 3 dash-separated segments. This excludes
+    // first-time scheduling (calendarSlot == null) and same-day time nudges
+    // by construction — only a scheduled job whose day actually changes
+    // counts. Fires after the placement below; never affects it.
+    const previousSlot = job.calendarSlot;
+    const isGenuineBump = job.scheduled && typeof previousSlot === 'string' &&
+      previousSlot.split('-').slice(0, 3).join('-') !== newCalendarSlot.split('-').slice(0, 3).join('-');
+
     setScheduledSlots(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
@@ -121,7 +135,7 @@ export function useScheduler({
     });
 
     setJobs(prev => prev.map(j =>
-      j.id === job.id ? { ...j, scheduled: true, calendarSlot: slotKey(weekDays[slots[0].dayIdx], slots[0].hour, slots[0].minute) } : j
+      j.id === job.id ? { ...j, scheduled: true, calendarSlot: newCalendarSlot } : j
     ));
     showToast(`#${job.job} placed — ${spanDesc}`);
     addChangelog(`Scheduled #${job.job} ${job.mfr} ${job.model} — ${spanDesc}`);
@@ -130,6 +144,10 @@ export function useScheduler({
     const firstDate = weekDays[firstSlot.dayIdx];
     if (upsertScheduledBullet && isToday(firstDate)) {
       upsertScheduledBullet(job, firstSlot.hour, firstSlot.minute);
+    }
+
+    if (isGenuineBump) {
+      onBumpDetected?.({ job, fromSlot: previousSlot, toSlot: newCalendarSlot });
     }
   }
 
