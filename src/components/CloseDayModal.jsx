@@ -1,23 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const ACTIONS = ['kept', 'dropped', 'deferred'];
+const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
 
 const ACTION_STYLES = {
-  kept:     { background: '#1a2e1a', color: '#4a9e5a' },
-  dropped:  { background: '#2a1a1a', color: '#9e4a4a' },
-  deferred: { background: '#1a1a2e', color: '#4a5a9e' },
+  kept:      { background: '#1a2e1a', color: '#4a9e5a' },
+  dropped:   { background: '#2a1a1a', color: '#9e4a4a' },
+  deferred:  { background: '#1a1a2e', color: '#4a5a9e' },
+  completed: { background: '#1a2536', color: '#5b9bd5' },
 };
 
 const ACTION_LABELS = {
-  kept:     'Keep',
-  dropped:  'Drop',
-  deferred: 'Defer',
+  kept:      'Keep',
+  dropped:   'Drop',
+  deferred:  'Defer',
+  completed: 'Job complete',
 };
 
 const ACTION_EXPLANATIONS = {
-  kept:     "appears at top of tomorrow's log",
-  dropped:  'stays in history, gone from view',
-  deferred: 'returns to job shelf',
+  kept:      "appears at top of tomorrow's log",
+  dropped:   'stays in history, gone from view',
+  deferred:  'returns to job shelf',
+  completed: 'marked done — simple close for now, not the Done+invoiced flow',
 };
 
 function ActionRow({ selected, reason, onSelect, onReasonChange }) {
@@ -120,6 +123,7 @@ export default function CloseDayModal({ bullets = [], onClose }) {
       if (e.key === 'k' || e.key === 'K') select(bulletId, 'kept');
       if (e.key === 'd' || e.key === 'D') select(bulletId, 'dropped');
       if (e.key === 'f' || e.key === 'F') select(bulletId, 'deferred');
+      if (e.key === 'c' || e.key === 'C') select(bulletId, 'completed');
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);

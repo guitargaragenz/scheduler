@@ -421,6 +421,13 @@ export function useDailyLog() {
       const closedBullets = day.bullets.map(b => {
         const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
         if (!hasChecklist) {
+          // 'completed' is a plain done-stamp today, not the real Done+invoiced
+          // revenue procedure (usePendingRevenueReview / handleMarkDone in
+          // useJobs.js) — same scope note as the Catch-Up Interview's Job
+          // complete action.
+          if (migrations[b.id] === 'completed') {
+            return { ...b, done: true, migration: null };
+          }
           return { ...b, migration: migrations[b.id] ?? null };
         }
 
@@ -436,6 +443,9 @@ export function useDailyLog() {
           }
           if (resolution.action === 'dropped') {
             return { ...item, status: 'irrelevant' };
+          }
+          if (resolution.action === 'completed') {
+            return { ...item, status: 'done' };
           }
           if (resolution.action === 'deferred') {
             deferredToAdd.push({
