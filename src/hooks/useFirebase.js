@@ -104,15 +104,22 @@ export function useFirebase({
   const saveTimerRef = useRef(null);
   // No prior jobs[] to diff against on the very first onSnapshot tick after
   // mount — skip disappearance detection that one time to avoid flagging
-  // every job as "disappeared" against an empty/default baseline.
+  // every job as "disappeared" against an empty/default baseline. Tracked
+  // outside the setJobs updater (a plain ref, not component state) since
+  // React.StrictMode double-invokes updater functions in dev — running the
+  // detection/callback inside one would double-fire it.
   const hasSeenFirstSnapshotRef = useRef(false);
+  const prevJobsRef = useRef([]);
 
   // Load on mount + subscribe to real-time updates from other devices
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
     loadSchedule().then(data => {
       if (data) {
-        if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
+        if (data.jobs) {
+          setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
+          prevJobsRef.current = data.jobs;
+        }
         if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
         if (data.updatedAt) setLastSyncedAt(data.updatedAt);
       }
@@ -122,15 +129,14 @@ export function useFirebase({
     const unsub = subscribeToSchedule(data => {
       if (Date.now() - justSavedAt.current < 5000) return;
       if (data.jobs) {
-        setJobs(prev => {
-          if (hasSeenFirstSnapshotRef.current) {
-            const disappeared = detectDisappearedJobs(prev, data.jobs);
-            if (disappeared.length > 0) onJobsDisappeared?.(disappeared);
-          } else {
-            hasSeenFirstSnapshotRef.current = true;
-          }
-          return withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {});
-        });
+        if (hasSeenFirstSnapshotRef.current) {
+          const disappeared = detectDisappearedJobs(prevJobsRef.current, data.jobs);
+          if (disappeared.length > 0) onJobsDisappeared?.(disappeared);
+        } else {
+          hasSeenFirstSnapshotRef.current = true;
+        }
+        prevJobsRef.current = data.jobs;
+        setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
       }
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
       if (data.updatedAt) setLastSyncedAt(data.updatedAt);
