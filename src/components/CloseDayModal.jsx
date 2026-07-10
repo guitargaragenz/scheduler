@@ -23,6 +23,20 @@ const ACTION_EXPLANATIONS = {
   completed: 'marked done — simple close for now, not the Done+invoiced flow',
 };
 
+// Matches the "bench · hours · action" subtitle DailyLogPage's BulletRow shows,
+// so a split job's individual sub-tasks are distinguishable here too.
+function BulletMeta({ meta }) {
+  if (!meta) return null;
+  const line = [meta.bench, meta.hoursRange ? `${meta.hoursRange}h` : null, meta.action]
+    .filter(Boolean).join(' · ');
+  if (!line) return null;
+  return (
+    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 12 }}>
+      {line}
+    </div>
+  );
+}
+
 function ActionRow({ selected, reason, onSelect, onReasonChange }) {
   return (
     <div>
@@ -198,9 +212,10 @@ export default function CloseDayModal({ bullets = [], onClose }) {
                 onFocus={e => { e.currentTarget.style.borderColor = '#3a3a3a'; }}
                 onBlur={e => { e.currentTarget.style.borderColor = '#252525'; }}
               >
-                <div style={{ fontSize: 14, color: '#bbb', marginBottom: 12 }}>
+                <div style={{ fontSize: 14, color: '#bbb', marginBottom: bullet.meta ? 2 : 12 }}>
                   {bullet.text}
                 </div>
+                <BulletMeta meta={bullet.meta} />
                 <ActionRow
                   selected={selected}
                   onSelect={action => select(bullet.id, action)}
@@ -217,9 +232,10 @@ export default function CloseDayModal({ bullets = [], onClose }) {
                 borderRadius: 10, padding: 14, marginBottom: 10,
               }}
             >
-              <div style={{ fontSize: 14, color: '#bbb', marginBottom: 12 }}>
+              <div style={{ fontSize: 14, color: '#bbb', marginBottom: bullet.meta ? 2 : 12 }}>
                 {bullet.text}
               </div>
+              <BulletMeta meta={bullet.meta} />
               {bullet.unresolvedItems.map((item, idx) => {
                 const sel = itemSelections[bullet.id][item.id];
                 return (
