@@ -24,6 +24,7 @@ import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
+import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
@@ -31,6 +32,7 @@ import { useJobs } from './hooks/useJobs.js';
 import { useDailyLog } from './hooks/useDailyLog.js';
 import { useAdHocTasks } from './hooks/useAdHocTasks.js';
 import { useFocusList } from './hooks/useFocusList.js';
+import { usePendingRevenueReview } from './hooks/usePendingRevenueReview.js';
 
 export default function App() {
   // --- Core state ---
@@ -110,11 +112,14 @@ export default function App() {
   }, []);
 
   // --- Hooks ---
+  const { pendingRevenueReview, addDisappearedJobs, resolveItem: resolvePendingRevenueReviewItem } = usePendingRevenueReview();
+
   useFirebase({
     jobs, scheduledSlots, setJobs, setScheduledSlots,
     setFirebaseReady, setLastSyncedAt,
     setCompletedJobs, setDoneJobIds,
     justSavedAt, firebaseReady,
+    onJobsDisappeared: addDisappearedJobs,
   });
 
   const gcal = useGoogleCalendar({
@@ -148,6 +153,16 @@ export default function App() {
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
   });
+
+  const handleRevenueReviewDone = useCallback((item, amount) => {
+    jobOps.handleMarkDone(item, amount);
+    resolvePendingRevenueReviewItem(item.job);
+  }, [jobOps, resolvePendingRevenueReviewItem]);
+
+  const handleRevenueReviewCancelled = useCallback((item, note) => {
+    addChangelog(`#${item.job} ${item.mfr} ${item.model} — cancelled${note ? `: ${note}` : ''}`);
+    resolvePendingRevenueReviewItem(item.job);
+  }, [addChangelog, resolvePendingRevenueReviewItem]);
 
   // Deep-link: ?job=XXXX opens that job's drawer on load
   const deepLinkJobNum = useRef(new URLSearchParams(window.location.search).get('job'));
@@ -541,6 +556,13 @@ export default function App() {
           setConflictEvents([]);
           if (isFirebaseConfigured()) clearConflictLog();
         }}
+      />
+
+      <RevenueReviewBanner
+        items={pendingRevenueReview}
+        onDone={handleRevenueReviewDone}
+        onCancelled={handleRevenueReviewCancelled}
+        top={conflictEvents.length > 0 ? 56 + 46 + conflictEvents.length * 20 : 56}
       />
 
       <Toast message={toast} onDismiss={() => setToast('')} />

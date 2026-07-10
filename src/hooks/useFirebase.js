@@ -74,6 +74,18 @@ function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
 
 export { withSplitsExpanded };
 
+// A top-level, not-yet-done job whose job number is present in `prevJobs` but
+// absent from `incomingJobs` — it vanished from a CSV/Sheet sync without ever
+// being marked done in-app (Trevor's real workflow finishes in Multitrack).
+function detectDisappearedJobs(prevJobs, incomingJobs) {
+  const incomingTopLevelJobNos = new Set(
+    incomingJobs.filter(j => !j.parentId).map(j => j.job)
+  );
+  return prevJobs.filter(j =>
+    !j.parentId && !j.done && j.job != null && !incomingTopLevelJobNos.has(j.job)
+  );
+}
+
 // Manages Firebase load, real-time subscribe, debounced save, and completed jobs.
 // justSavedAt: shared ref owned by App.jsx — stamp before any mutation to suppress echo snapshots.
 export function useFirebase({
@@ -87,8 +99,13 @@ export function useFirebase({
   setDoneJobIds,
   justSavedAt,
   firebaseReady,
+  onJobsDisappeared,
 }) {
   const saveTimerRef = useRef(null);
+  // No prior jobs[] to diff against on the very first onSnapshot tick after
+  // mount — skip disappearance detection that one time to avoid flagging
+  // every job as "disappeared" against an empty/default baseline.
+  const hasSeenFirstSnapshotRef = useRef(false);
 
   // Load on mount + subscribe to real-time updates from other devices
   useEffect(() => {
@@ -104,7 +121,17 @@ export function useFirebase({
 
     const unsub = subscribeToSchedule(data => {
       if (Date.now() - justSavedAt.current < 5000) return;
-      if (data.jobs) setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
+      if (data.jobs) {
+        setJobs(prev => {
+          if (hasSeenFirstSnapshotRef.current) {
+            const disappeared = detectDisappearedJobs(prev, data.jobs);
+            if (disappeared.length > 0) onJobsDisappeared?.(disappeared);
+          } else {
+            hasSeenFirstSnapshotRef.current = true;
+          }
+          return withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {});
+        });
+      }
       if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
       if (data.updatedAt) setLastSyncedAt(data.updatedAt);
     });

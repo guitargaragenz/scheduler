@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, deleteField } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -203,6 +203,59 @@ export async function clearConflictLog() {
     await setDoc(CONFLICT_LOG_DOC(), { events: [], updatedAt: new Date().toISOString() });
   } catch (e) {
     console.error('Firestore conflict log clear error:', e);
+  }
+}
+
+const PENDING_REVENUE_REVIEW_DOC = () => doc(getDb(), 'ggnz', 'pendingRevenueReview');
+
+// Jobs that vanished from a CSV/Sheet sync without being marked done in-app —
+// awaiting Trevor's Done+invoiced/Cancelled call. Keyed by job number (not a
+// plain array) and written with field-level merge, never a blind setDoc, since
+// an automated sync (adding a newly-disappeared job) and a manual dismiss from
+// another device can land around the same time and this doc holds financial data.
+export async function loadPendingRevenueReview() {
+  try {
+    const snap = await getDoc(PENDING_REVENUE_REVIEW_DOC());
+    if (!snap.exists()) return {};
+    return snap.data().items || {};
+  } catch (e) {
+    console.error('Firestore pending revenue review load error:', e);
+    return {};
+  }
+}
+
+export async function addPendingRevenueReviewItems(items) {
+  if (!items || items.length === 0) return;
+  try {
+    const itemsByJobNo = Object.fromEntries(items.map(j => [String(j.job), j]));
+    await setDoc(PENDING_REVENUE_REVIEW_DOC(), {
+      items: itemsByJobNo,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (e) {
+    console.error('Firestore pending revenue review add error:', e);
+  }
+}
+
+export async function removePendingRevenueReviewItem(jobNo) {
+  try {
+    await setDoc(PENDING_REVENUE_REVIEW_DOC(), {
+      items: { [String(jobNo)]: deleteField() },
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (e) {
+    console.error('Firestore pending revenue review remove error:', e);
+  }
+}
+
+export function subscribeToPendingRevenueReview(callback) {
+  try {
+    return onSnapshot(PENDING_REVENUE_REVIEW_DOC(), snap => {
+      callback(snap.exists() ? (snap.data().items || {}) : {});
+    });
+  } catch (e) {
+    console.error('Firestore pending revenue review subscribe error:', e);
+    return () => {};
   }
 }
 
