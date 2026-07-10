@@ -498,8 +498,18 @@ export function useDailyLog() {
   // prior day. The scan runs against `prev.logs` inside the setState updater
   // (not against `state.logs` read outside it) so it always decides against
   // the state actually being written, never a possibly-stale snapshot.
-  function autoCarryForward() {
+  //
+  // `onJobBumped(jobId, { fromDateKey, toDateKey })` is an optional, additive
+  // hook for Problem 3's bump-history capture — fired once per carried
+  // job-linked bullet, AFTER updateState's closure has resolved (using the
+  // sourceKey/key locals captured inside it, not any outer/stale state). The
+  // existing carry decision logic above is unchanged; this only reports what
+  // already happened.
+  function autoCarryForward(onJobBumped) {
     const key = todayKey();
+    let bumpedJobIds = null;
+    let sourceKeyForBump = null;
+
     updateState(prev => {
       const staleDays = Object.keys(prev.logs)
         .filter(k => k < key && dayHasUnresolved(prev.logs[k]))
@@ -515,6 +525,11 @@ export function useDailyLog() {
       const today = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
       if (today.locked) return prev;
 
+      if (onJobBumped) {
+        bumpedJobIds = carriedBullets.filter(b => b.jobId != null).map(b => b.jobId);
+        sourceKeyForBump = sourceKey;
+      }
+
       return {
         ...prev,
         logs: {
@@ -524,6 +539,12 @@ export function useDailyLog() {
         },
       };
     });
+
+    if (onJobBumped && bumpedJobIds) {
+      bumpedJobIds.forEach(jobId => {
+        onJobBumped(jobId, { fromDateKey: sourceKeyForBump, toDateKey: key });
+      });
+    }
   }
 
   // Catch-Up Interview resolution — 'carry' brings the bullet forward to today

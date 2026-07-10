@@ -143,6 +143,7 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
   const isSubtaskEdit = !!job.isSubtask;
   const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
   const totalHours = rows.reduce((s, r) => s + r.sessions.reduce((ss, x) => ss + Number(x.hours), 0), 0);
+  const bumpHistory = (job.bumpHistory || []).slice(-4).reverse();
 
   return createPortal(
     <div
@@ -315,6 +316,29 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                   Place on Calendar
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Bump history — read only, last 4 day-to-day reschedules. JobDrawer
+              has no pre-existing list to mirror, so this matches JobDrawer's
+              own dark-slate palette instead. */}
+          {bumpHistory.length > 0 && (
+            <div style={{ borderTop: '1px solid #334155', paddingTop: 10, marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                Bump history
+              </div>
+              {bumpHistory.map((entry, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  fontSize: 11, color: '#94a3b8', padding: '4px 0',
+                  borderTop: i > 0 ? '1px solid #1e293b' : 'none',
+                }}>
+                  <span>{new Date(entry.ts).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                  <span style={{ color: '#cbd5e1' }}>
+                    {entry.reason === 'Other' ? (entry.reasonText || 'Other') : (entry.reason || 'unspecified')}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 

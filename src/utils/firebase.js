@@ -174,7 +174,11 @@ export function subscribeToCompletedJobs(callback) {
 const CONFLICT_LOG_DOC = () => doc(getDb(), 'ggnz', 'conflictLog');
 
 // Append bump events to the durable conflict log.
-// events: array of { ts, jobNum, mfr, model, oldSlot, newSlot|null }
+// events: array of { ts, jobNum, mfr, model, oldSlot, newSlot|null, reason?, reasonText? }
+// reason/reasonText (Problem 3) are optional — set when a bump was captured
+// via BumpReasonModal (manual day-to-day drag). Older/GCal-conflict-bump
+// events written before Problem 3 simply omit them; no shape validation here,
+// so no migration needed for existing log entries.
 export async function appendConflictLog(events) {
   try {
     const snap = await getDoc(CONFLICT_LOG_DOC());
