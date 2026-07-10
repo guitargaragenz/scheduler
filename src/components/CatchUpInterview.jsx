@@ -53,6 +53,14 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
     recordAndAdvance('skip');
   }
 
+  // "Simple close" — marks the item done and stops the nag-loop. Doesn't touch
+  // revenue: bullet.jobId is carried in the resolution so a future pass can
+  // route this through the real Done+invoiced flow (usePendingRevenueReview /
+  // handleMarkDone) instead of a plain done-stamp.
+  function handleComplete() {
+    recordAndAdvance('complete');
+  }
+
   function handleFinish() {
     onClose(resolutions);
   }
@@ -148,7 +156,16 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
                   borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                Skip / leave as-is
+                Skip
+              </button>
+              <button
+                onClick={handleComplete}
+                style={{
+                  flex: 1, background: '#1a2536', color: '#5b9bd5', border: 'none',
+                  borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Job complete
               </button>
             </div>
           </div>

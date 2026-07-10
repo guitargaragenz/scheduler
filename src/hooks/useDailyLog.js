@@ -516,10 +516,18 @@ export function useDailyLog() {
     });
   }
 
-  // Catch-Up Interview resolution — carries forward only the bullets Trevor
-  // chose 'carry' for (with an attached reason), leaves 'skip'/undecided
-  // bullets untouched on their source day, and never locks the source days.
-  // resolutions shape: { [dateKey]: { [bulletId]: { action: 'carry'|'skip', reason, reasonText } } }
+  // Catch-Up Interview resolution — 'carry' brings the bullet forward to today
+  // (with an attached reason); 'skip' dismisses it in place (marked irrelevant/
+  // skipped so it stops re-triggering the catch-up prompt, but isn't counted
+  // done); 'complete' is a simple done-stamp for backlog cleanup. Never locks
+  // the source days.
+  // resolutions shape: { [dateKey]: { [bulletId]: { action: 'carry'|'skip'|'complete', reason, reasonText } } }
+  //
+  // 'complete' is intentionally a plain done-stamp today, not the real
+  // Done+invoiced revenue procedure (usePendingRevenueReview / handleMarkDone
+  // in useJobs.js) — this hook only has the bullet's jobId, not the full job
+  // record or an invoice-amount UI. Wiring "job complete" here into that real
+  // procedure is future work; for now it just closes the item out.
   function resolveStaleDays(resolutions) {
     const key = todayKey();
     updateState(prev => {
@@ -534,24 +542,60 @@ export function useDailyLog() {
 
         const updatedBullets = sourceDay.bullets.map(b => {
           const res = dayResolutions[b.id];
-          if (!res || res.action !== 'carry') return b;
+          if (!res) return b;
 
           const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
-          if (hasChecklist) {
-            const unresolvedItems = b.checklist.filter(i => i.status === 'todo');
-            if (unresolvedItems.length === 0) return b;
-            const resolvedChecklist = b.checklist.map(i =>
-              i.status === 'todo' ? { ...i, status: 'migrated' } : i
-            );
-            allCarried.push(buildCarriedChecklistBullet(b, unresolvedItems, sourceKey, res));
+
+          if (res.action === 'carry') {
+            if (hasChecklist) {
+              const unresolvedItems = b.checklist.filter(i => i.status === 'todo');
+              if (unresolvedItems.length === 0) return b;
+              const resolvedChecklist = b.checklist.map(i =>
+                i.status === 'todo' ? { ...i, status: 'migrated' } : i
+              );
+              allCarried.push(buildCarriedChecklistBullet(b, unresolvedItems, sourceKey, res));
+              dayChanged = true;
+              return { ...b, checklist: resolvedChecklist };
+            }
+
+            if (b.done || b.migration != null) return b;
+            allCarried.push(buildCarriedWholeBullet(b, sourceKey, res));
             dayChanged = true;
-            return { ...b, checklist: resolvedChecklist };
+            return { ...b, migration: 'carried' };
           }
 
-          if (b.done || b.migration != null) return b;
-          allCarried.push(buildCarriedWholeBullet(b, sourceKey, res));
-          dayChanged = true;
-          return { ...b, migration: 'carried' };
+          if (res.action === 'skip') {
+            if (hasChecklist) {
+              const hasUnresolved = b.checklist.some(i => i.status === 'todo');
+              if (!hasUnresolved) return b;
+              dayChanged = true;
+              return {
+                ...b,
+                checklist: b.checklist.map(i => i.status === 'todo' ? { ...i, status: 'irrelevant' } : i),
+              };
+            }
+            if (b.done || b.migration != null) return b;
+            dayChanged = true;
+            return { ...b, migration: 'skipped' };
+          }
+
+          if (res.action === 'complete') {
+            if (hasChecklist) {
+              const hasUnresolved = b.checklist.some(i => i.status === 'todo');
+              if (!hasUnresolved && b.done) return b;
+              dayChanged = true;
+              return {
+                ...b,
+                done: true,
+                checklist: b.checklist.map(i => i.status === 'todo' ? { ...i, status: 'done' } : i),
+              };
+            }
+            if (b.done) return b;
+            dayChanged = true;
+            return { ...b, done: true };
+          }
+
+          return b;
         });
 
         if (dayChanged) logsPatch[sourceKey] = { ...sourceDay, bullets: updatedBullets };
