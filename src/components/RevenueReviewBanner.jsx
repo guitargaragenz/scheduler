@@ -37,7 +37,7 @@ function ReviewRow({ item, onDone, onCancelled }) {
           <input
             type="number"
             autoFocus
-            placeholder="Invoice amount ($)"
+            placeholder="Invoice amount, ex-GST ($)"
             value={amount}
             onChange={e => setAmount(e.target.value)}
             style={{

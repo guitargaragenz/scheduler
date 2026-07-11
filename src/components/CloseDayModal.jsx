@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getJobSplits, BENCH_COLORS } from '../data/jobs.js';
+import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS } from '../data/jobs.js';
 
 const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
 
@@ -74,8 +74,9 @@ function JobStatusNote({ job, completedRecord, hasJobId }) {
   }
   if (hasJobId) {
     return (
-      <div style={{ fontSize: 11, color: '#666', marginBottom: 12 }}>
-        No matching job found — will only mark this bullet done
+      <div style={{ fontSize: 11, color: '#666', marginBottom: 4 }}>
+        No matching job found — enter an amount below if it still needs invoicing,
+        or leave blank to just mark it done.
       </div>
     );
   }
@@ -132,7 +133,7 @@ function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amo
           autoFocus
           value={amount || ''}
           onChange={e => onAmountChange(e.target.value)}
-          placeholder="Invoice amount ($)"
+          placeholder="Invoice amount, ex-GST ($)"
           style={{
             marginTop: 8, width: '100%', boxSizing: 'border-box',
             background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
@@ -172,6 +173,11 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
   // where a real job was resolved (invoicing prompt); irrelevant otherwise.
   const [invoiceAmounts, setInvoiceAmounts] = useState({});
 
+  // { [bulletId]: amountString } — optional manual invoice entry for bullets
+  // whose job vanished from jobs[] entirely (no live record, no completedJobs
+  // record). Left blank = just mark done, no invoice.
+  const [manualAmounts, setManualAmounts] = useState({});
+
   // { [bulletId]: { [itemId]: { action, reason } } }
   const [itemSelections, setItemSelections] = useState(() => {
     const init = {};
@@ -188,6 +194,10 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
 
   const setInvoiceAmount = useCallback((bulletId, value) => {
     setInvoiceAmounts(prev => ({ ...prev, [bulletId]: value }));
+  }, []);
+
+  const setManualAmount = useCallback((bulletId, value) => {
+    setManualAmounts(prev => ({ ...prev, [bulletId]: value }));
   }, []);
 
   const selectItem = useCallback((bulletId, itemId, action) => {
@@ -261,6 +271,15 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
         const amt = invoiceAmounts[b.id];
         if (job && amt !== undefined && amt !== '' && !isNaN(Number(amt))) {
           onJobComplete(job, amt);
+          return;
+        }
+        // No live job and no completedJobs record — only reachable when a
+        // manual amount was actually typed in (optional, defaults to none).
+        if (!job && !completedRecordForBullet(b) && b.jobId) {
+          const manualAmt = manualAmounts[b.id];
+          if (manualAmt !== undefined && manualAmt !== '' && !isNaN(Number(manualAmt))) {
+            onJobComplete(buildManualInvoiceJob(b), manualAmt);
+          }
         }
       });
     }
@@ -314,6 +333,20 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
                 <BenchChips splits={splits} />
                 <BulletMeta meta={bullet.meta} />
                 <JobStatusNote job={job} completedRecord={completedRecord} hasJobId={!!bullet.jobId} />
+                {!job && !completedRecord && bullet.jobId && selected === 'completed' && (
+                  <input
+                    type="number"
+                    value={manualAmounts[bullet.id] || ''}
+                    onChange={e => setManualAmount(bullet.id, e.target.value)}
+                    placeholder="Invoice amount, ex-GST ($) — optional"
+                    style={{
+                      marginBottom: 8, width: '100%', boxSizing: 'border-box',
+                      background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
+                      padding: '7px 10px', fontSize: 12, color: '#e2e8f0', outline: 'none',
+                      fontFamily: 'inherit',
+                    }}
+                  />
+                )}
                 <ActionRow
                   selected={selected}
                   onSelect={action => select(bullet.id, action)}

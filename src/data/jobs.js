@@ -232,6 +232,21 @@ export function getJobSplits(job, jobs) {
   return [{ bench: job.bench, hours: job.hours }];
 }
 
+// For a bullet whose job has vanished from jobs[] entirely (no live record,
+// no completedJobs record either) — builds a synthetic job good enough for
+// handleMarkDone to invoice against, so manually entering an amount here
+// doesn't require the real job object. bullet.text is always built as
+// "customer — mfr model" by upsertScheduledBullet (useDailyLog.js).
+export function buildManualInvoiceJob(bullet) {
+  const [first, ...rest] = (bullet.text || '').split(' — ');
+  return {
+    id: bullet.jobId, job: null, bench: null, hours: null,
+    customer: rest.length ? first : '',
+    mfr: rest.length ? rest.join(' — ') : first,
+    model: '',
+  };
+}
+
 export const BENCH_COLORS = {
   Luthier:     { bg: '#166534', border: '#15803d', text: '#bbf7d0' },
   Electronics: { bg: '#1e3a5f', border: '#2563eb', text: '#bfdbfe' },

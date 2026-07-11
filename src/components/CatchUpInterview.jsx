@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { dayLabel } from '../utils/calendar.js';
-import { getJobSplits, BENCH_COLORS } from '../data/jobs.js';
+import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS } from '../data/jobs.js';
 import ReasonPicker from './ReasonPicker.jsx';
 
 function BenchChips({ splits }) {
@@ -51,6 +51,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
   const [amountOpen, setAmountOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const [noJobNote, setNoJobNote] = useState(false);
+  const [manualInvoiceOpen, setManualInvoiceOpen] = useState(false);
 
   const step = steps[index];
   const atEnd = index >= steps.length;
@@ -77,6 +78,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
     setAmountOpen(false);
     setAmount('');
     setNoJobNote(false);
+    setManualInvoiceOpen(false);
     setIndex(i => i + 1);
   }
 
@@ -103,12 +105,27 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
       recordAndAdvance('complete');
       return;
     }
+    // Free-text notes have no jobId at all — nothing to invoice, just resolve.
+    if (!step.bullet.jobId) {
+      recordAndAdvance('complete');
+      return;
+    }
     setNoJobNote(true);
   }
 
   function confirmComplete() {
     if (amount !== '' && !isNaN(Number(amount)) && job && onJobComplete) {
       onJobComplete(job, amount);
+    }
+    recordAndAdvance('complete');
+  }
+
+  // No live job, no completedJobs record — the job's genuinely gone from
+  // Firestore. Still lets Trevor capture an invoice against a synthetic
+  // record built from the bullet text, rather than losing it silently.
+  function confirmManualComplete() {
+    if (amount !== '' && !isNaN(Number(amount)) && onJobComplete) {
+      onJobComplete(buildManualInvoiceJob(step.bullet), amount);
     }
     recordAndAdvance('complete');
   }
@@ -166,7 +183,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
                 <input
                   type="number"
                   autoFocus
-                  placeholder="Invoice amount ($)"
+                  placeholder="Invoice amount, ex-GST ($)"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   style={{
@@ -197,31 +214,78 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
                 </button>
               </div>
             ) : noJobNote ? (
-              <div>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
-                  No matching job found for this bullet — Job complete will just mark it done.
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    onClick={() => recordAndAdvance('complete')}
+              manualInvoiceOpen ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    autoFocus
+                    placeholder="Invoice amount, ex-GST ($)"
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
                     style={{
-                      flex: 1, background: '#2a2a2a', color: '#ccc', border: 'none',
-                      borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
+                      color: '#e2e8f0', fontSize: 12, padding: '7px 8px', flex: 1,
+                    }}
+                  />
+                  <button
+                    onClick={confirmManualComplete}
+                    disabled={amount === '' || isNaN(Number(amount))}
+                    style={{
+                      background: '#22c55e', border: 'none', borderRadius: 6, color: '#052e16',
+                      fontSize: 12, fontWeight: 700, padding: '7px 14px',
+                      cursor: amount === '' || isNaN(Number(amount)) ? 'default' : 'pointer',
+                      opacity: amount === '' || isNaN(Number(amount)) ? 0.5 : 1,
                     }}
                   >
-                    Mark done
+                    Confirm
                   </button>
                   <button
-                    onClick={() => setNoJobNote(false)}
+                    onClick={() => { setManualInvoiceOpen(false); setAmount(''); }}
                     style={{
                       background: 'none', border: '1px solid #334155', borderRadius: 6,
-                      color: '#888', fontSize: 12, padding: '7px 14px', cursor: 'pointer',
+                      color: '#888', fontSize: 12, padding: '7px 10px', cursor: 'pointer',
                     }}
                   >
                     Back
                   </button>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
+                    No matching job found for this bullet — enter an amount if it still needs
+                    invoicing, or just mark it done.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => setManualInvoiceOpen(true)}
+                      style={{
+                        flex: 1, background: '#1a2536', color: '#5b9bd5', border: 'none',
+                        borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      Enter amount
+                    </button>
+                    <button
+                      onClick={() => recordAndAdvance('complete')}
+                      style={{
+                        flex: 1, background: '#2a2a2a', color: '#ccc', border: 'none',
+                        borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      Mark done
+                    </button>
+                    <button
+                      onClick={() => setNoJobNote(false)}
+                      style={{
+                        background: 'none', border: '1px solid #334155', borderRadius: 6,
+                        color: '#888', fontSize: 12, padding: '7px 14px', cursor: 'pointer',
+                      }}
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              )
             ) : (
               <>
                 <ReasonPicker

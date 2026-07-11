@@ -326,7 +326,7 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onR
         {onMarkDone && !job.parentId && (isIdle || isDone) && (
           <div style={{ marginTop: 14, borderTop: '1px solid #1e293b', paddingTop: 12 }}>
             <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, textAlign: 'left' }}>
-              Job done? Invoice amount
+              Job done? Invoice amount (ex-GST)
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', flex: 1, background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '0 10px' }}>
