@@ -147,6 +147,55 @@ export function useDailyLog() {
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fires the actual write immediately — pulled out of the debounce timeout so
+  // it can also be invoked eagerly on tab-hide/unload (see the effect below).
+  // Without that eager flush, closing the Catch-Up Interview and refreshing
+  // within the 300ms debounce window silently drops the write: the resolved
+  // day looks fixed locally, but Firestore never saw it, so the next load
+  // shows the same unresolved day again — same bug class as the 2026-07-05
+  // data loss this file's ready-gate was built to prevent.
+  function performSave() {
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = null;
+    if (touchedLogKeysRef.current.size === 0 && !deferredItemsTouchedRef.current) return;
+    // Merge-safe per-date-key write, not a blind whole-doc setDoc — two
+    // devices opening Daily Log near-simultaneously touch different (or the
+    // same) date keys without clobbering each other's `logs` entries.
+    // deferredItems is a plain array (Firestore doesn't deep-merge arrays),
+    // so it's only included when this device actually changed it — an
+    // unrelated save (e.g. autoCarryForward touching only `logs`) must not
+    // overwrite it with a possibly-stale local copy.
+    const keys = Array.from(touchedLogKeysRef.current);
+    touchedLogKeysRef.current = new Set();
+    const logsPatch = {};
+    keys.forEach(k => { logsPatch[k] = pendingStateRef.current.logs[k]; });
+    const patch = { logs: logsPatch, updatedAt: new Date().toISOString() };
+    if (deferredItemsTouchedRef.current) {
+      patch.deferredItems = pendingStateRef.current.deferredItems;
+      deferredItemsTouchedRef.current = false;
+    }
+    setDoc(DAILY_LOGS_DOC(), patch, { merge: true });
+  }
+
+  // Eager flush on tab-hide/unload — `visibilitychange` fires reliably on
+  // both desktop (refresh/close/tab-switch) and mobile Safari (which often
+  // skips `beforeunload` entirely), so it's the primary safety net; `pagehide`
+  // is a second layer for desktop navigations `visibilitychange` might miss.
+  useEffect(() => {
+    function flush() {
+      if (saveTimerRef.current) performSave();
+    }
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') flush();
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function scheduleSave(next, changedKeys, deferredItemsChanged) {
     // Guard against writing before the initial Firestore snapshot has loaded —
     // otherwise a save fired from stale/empty local state can overwrite every
@@ -156,25 +205,7 @@ export function useDailyLog() {
     changedKeys.forEach(k => touchedLogKeysRef.current.add(k));
     if (deferredItemsChanged) deferredItemsTouchedRef.current = true;
     clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      // Merge-safe per-date-key write, not a blind whole-doc setDoc — two
-      // devices opening Daily Log near-simultaneously touch different (or the
-      // same) date keys without clobbering each other's `logs` entries.
-      // deferredItems is a plain array (Firestore doesn't deep-merge arrays),
-      // so it's only included when this device actually changed it — an
-      // unrelated save (e.g. autoCarryForward touching only `logs`) must not
-      // overwrite it with a possibly-stale local copy.
-      const keys = Array.from(touchedLogKeysRef.current);
-      touchedLogKeysRef.current = new Set();
-      const logsPatch = {};
-      keys.forEach(k => { logsPatch[k] = pendingStateRef.current.logs[k]; });
-      const patch = { logs: logsPatch, updatedAt: new Date().toISOString() };
-      if (deferredItemsTouchedRef.current) {
-        patch.deferredItems = pendingStateRef.current.deferredItems;
-        deferredItemsTouchedRef.current = false;
-      }
-      setDoc(DAILY_LOGS_DOC(), patch, { merge: true });
-    }, 300);
+    saveTimerRef.current = setTimeout(performSave, 300);
   }
 
   function updateState(updater) {
