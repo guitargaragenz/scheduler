@@ -5,7 +5,9 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
-## Status: AWAITING APPROVAL
+## Status: SHIPPED — merged to main (commit `95eb262`), deployed.
+Independent verifier caught a real double-invoice risk (done jobs weren't excluded from the live
+lookup) before commit — fixed and re-verified SAFE TO COMMIT. Approved by Trevor 2026-07-11.
 
 # Brief — Job complete real invoicing + bench/split visibility + completed-job lookup fix
 
