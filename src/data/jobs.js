@@ -217,6 +217,21 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
   return jobs.sort((a, b) => b.days - a.days);
 }
 
+// Full bench breakdown for a job — a single entry for a plain job, or one
+// entry per sibling for an auto-split (hasSubtasks/subtasks) or manual-split
+// (isSplit/parentId) job. Same branching Sidebar.jsx uses for its expand toggle.
+export function getJobSplits(job, jobs) {
+  if (!job) return [];
+  if (job.hasSubtasks && job.subtasks?.length > 0) {
+    return jobs.filter(j => job.subtasks.includes(j.id)).map(j => ({ bench: j.bench, hours: j.hours }));
+  }
+  if (job.isSplit) {
+    const children = jobs.filter(j => j.parentId === job.id);
+    if (children.length > 0) return children.map(j => ({ bench: j.bench, hours: j.hours }));
+  }
+  return [{ bench: job.bench, hours: job.hours }];
+}
+
 export const BENCH_COLORS = {
   Luthier:     { bg: '#166534', border: '#15803d', text: '#bbf7d0' },
   Electronics: { bg: '#1e3a5f', border: '#2563eb', text: '#bfdbfe' },

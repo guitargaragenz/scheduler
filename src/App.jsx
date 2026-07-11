@@ -707,6 +707,9 @@ export default function App() {
       {showCloseDay && (
         <CloseDayModal
           bullets={(todayLog?.bullets || []).filter(b => !b.done)}
+          jobs={jobs}
+          completedJobs={completedJobs}
+          onJobComplete={(job, amount) => jobOps.handleMarkDone(job, amount)}
           onClose={migrations => {
             closeDay(migrations);
             setShowCloseDay(false);
@@ -718,6 +721,9 @@ export default function App() {
         <CatchUpInterview
           days={catchUpNeeded.days}
           logs={dailyLogs}
+          jobs={jobs}
+          completedJobs={completedJobs}
+          onJobComplete={(job, amount) => jobOps.handleMarkDone(job, amount)}
           onClose={resolutions => {
             if (resolutions) resolveStaleDays(resolutions);
             setShowCatchUp(false);

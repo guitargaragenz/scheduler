@@ -452,10 +452,10 @@ export function useDailyLog() {
       const closedBullets = day.bullets.map(b => {
         const hasChecklist = Array.isArray(b.checklist) && b.checklist.length > 0;
         if (!hasChecklist) {
-          // 'completed' is a plain done-stamp today, not the real Done+invoiced
-          // revenue procedure (usePendingRevenueReview / handleMarkDone in
-          // useJobs.js) — same scope note as the Catch-Up Interview's Job
-          // complete action.
+          // The real invoicing write (handleMarkDone in useJobs.js) happens in
+          // CloseDayModal itself before onClose fires, since it needs the full
+          // job record and an amount that only the modal has. This just stamps
+          // the daily-log bullet — additive, not a replacement for that write.
           if (migrations[b.id] === 'completed') {
             return { ...b, done: true, migration: null };
           }
@@ -585,11 +585,10 @@ export function useDailyLog() {
   // the source days.
   // resolutions shape: { [dateKey]: { [bulletId]: { action: 'carry'|'skip'|'complete', reason, reasonText } } }
   //
-  // 'complete' is intentionally a plain done-stamp today, not the real
-  // Done+invoiced revenue procedure (usePendingRevenueReview / handleMarkDone
-  // in useJobs.js) — this hook only has the bullet's jobId, not the full job
-  // record or an invoice-amount UI. Wiring "job complete" here into that real
-  // procedure is future work; for now it just closes the item out.
+  // The real invoicing write (handleMarkDone in useJobs.js) happens in
+  // CatchUpInterview itself before onClose fires, since it needs the full job
+  // record and an amount this hook doesn't have. This just stamps the
+  // daily-log bullet done — additive, not a replacement for that write.
   function resolveStaleDays(resolutions) {
     const key = todayKey();
     updateState(prev => {

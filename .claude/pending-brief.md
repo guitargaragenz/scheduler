@@ -5,6 +5,48 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
+## Status: AWAITING APPROVAL
+
+# Brief — Job complete real invoicing + bench/split visibility + completed-job lookup fix
+
+**Root cause / goal:** "Job complete" in Catch-Up Interview / Close Day was a placeholder — it
+stamped the daily-log bullet done but never touched the real job record or captured an invoice
+amount. Separately, neither screen showed bench/split info, so deciding Carry/Skip/Complete on a
+split job meant deciding blind. Both already built and sitting uncommitted in the working tree
+(verified via `git diff --stat`, matches the plan at `~/.claude/plans/attach-typed-parasol.md`).
+
+On top of that: live testing surfaced "job complete does nothing" for old bullets. Root cause
+(confirmed by two independent agents in the prior session, reconciled): the job lookup only checks
+the live `jobs[]` array, never `completedJobs` — so a bullet referencing a job that already finished
+and was properly processed through the revenue-review banner still shows as "not found" and silently
+does nothing instead of saying "already done."
+
+**Fix scope:**
+1. Commit the already-built, uncommitted work as-is (verified clean against the plan):
+   `src/App.jsx`, `src/data/jobs.js` (new pure helper `getJobSplits`), `src/components/CatchUpInterview.jsx`,
+   `src/components/CloseDayModal.jsx` — inline amount entry on Job complete (reuses existing
+   `handleMarkDone`, no new write path), always-visible bench/split chips.
+2. New fix on top: extend the job lookup in `CatchUpInterview.jsx`/`CloseDayModal.jsx` to also check
+   `completedJobs` before concluding "no matching job" — surface it as already-done (e.g. "already
+   invoiced $X — marking bullet done") instead of silently advancing with no feedback.
+3. Also closes the parking-lot bug "Job complete silently does nothing when bullet's job can't be
+   resolved."
+
+**Blast radius:** none of the 5 flagged files. `getJobSplits` is a pure additive helper, no `jobs[]`
+shape change. Job-complete write path reuses existing unmodified `handleMarkDone`. Judgment call —
+no council required, but independent verifier still runs given jobs[]-adjacent reads.
+
+**Verification:** dev server — Catch-Up/Close Day "Job complete" on a live job shows amount input,
+confirms writes `completedJobs`/`doneJobIds`/`job.done`; a bullet tied to an already-completed job
+shows the new "already done" message instead of silent failure; bench/split chips render for both
+plain and split jobs; a bullet with no resolvable job at all still falls back gracefully with a
+visible message, not silence.
+
+**Rollback:** these commits land on top of current `main` (HEAD `04ca511`) with no blast-radius
+touch — if something's wrong post-merge, `git revert` the specific commit rather than a hard reset.
+
+---
+
 ## Status: SHIPPED — Problem 3 merged to main (commit `8eb9f90`), deployed.
 Rollback tag `pre-bump-reason-stable` at commit `065ac8f` (pre-build, on main before merge).
 Independent verifier: PASS (7/7) on the useScheduler.js blast-radius diff. Code review: 3

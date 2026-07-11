@@ -1,10 +1,33 @@
 import { useState, useMemo } from 'react';
 import { dayLabel } from '../utils/calendar.js';
+import { getJobSplits, BENCH_COLORS } from '../data/jobs.js';
 import ReasonPicker from './ReasonPicker.jsx';
+
+function BenchChips({ splits }) {
+  if (!splits.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+      {splits.map((s, i) => {
+        const colors = BENCH_COLORS[s.bench] || BENCH_COLORS.Admin;
+        return (
+          <span
+            key={i}
+            style={{
+              background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`,
+              borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600,
+            }}
+          >
+            {s.bench}{s.hours ? ` · ${s.hours}h` : ''}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 // Steps through each stale day's unresolved bullets one at a time. Reason
 // picker UI is shared with Problem 3's BumpReasonModal via ReasonPicker.jsx.
-export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
+export default function CatchUpInterview({ days = [], logs = {}, jobs = [], completedJobs = [], onJobComplete, onClose }) {
   const steps = useMemo(() => {
     const out = [];
     days.forEach(dateKey => {
@@ -25,9 +48,19 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
   const [resolutions, setResolutions] = useState({});
   const [reason, setReason] = useState(null);
   const [reasonText, setReasonText] = useState('');
+  const [amountOpen, setAmountOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [noJobNote, setNoJobNote] = useState(false);
 
   const step = steps[index];
   const atEnd = index >= steps.length;
+
+  // Exclude already-done jobs — otherwise a job invoiced elsewhere (JobDrawer,
+  // RevenueReviewBanner) earlier in the session still matches here, reopening
+  // the amount prompt and risking a duplicate completedJobs record.
+  const job = step ? jobs.find(j => j.id === step.bullet.jobId && !j.done) : null;
+  const completedRecord = step && !job ? completedJobs.find(r => r.id === step.bullet.jobId) : null;
+  const splits = useMemo(() => getJobSplits(job, jobs), [job, jobs]);
 
   function recordAndAdvance(action) {
     if (step) {
@@ -41,6 +74,9 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
     }
     setReason(null);
     setReasonText('');
+    setAmountOpen(false);
+    setAmount('');
+    setNoJobNote(false);
     setIndex(i => i + 1);
   }
 
@@ -52,11 +88,28 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
     recordAndAdvance('skip');
   }
 
-  // "Simple close" — marks the item done and stops the nag-loop. Doesn't touch
-  // revenue: bullet.jobId is carried in the resolution so a future pass can
-  // route this through the real Done+invoiced flow (usePendingRevenueReview /
-  // handleMarkDone) instead of a plain done-stamp.
+  // Marking a job complete invoices it for real (onJobComplete → handleMarkDone
+  // in useJobs.js) — reveal an amount prompt first, matching RevenueReviewBanner's
+  // inline pattern. If the job already has a completedJobs record (finished +
+  // synced out of jobs[] already), just resolve — it's already invoiced. If
+  // there's genuinely no matching job anywhere, show it instead of silently
+  // advancing, so "nothing happened" never reads as a bug.
   function handleComplete() {
+    if (job && onJobComplete) {
+      setAmountOpen(true);
+      return;
+    }
+    if (completedRecord) {
+      recordAndAdvance('complete');
+      return;
+    }
+    setNoJobNote(true);
+  }
+
+  function confirmComplete() {
+    if (amount !== '' && !isNaN(Number(amount)) && job && onJobComplete) {
+      onJobComplete(job, amount);
+    }
     recordAndAdvance('complete');
   }
 
@@ -98,49 +151,120 @@ export default function CatchUpInterview({ days = [], logs = {}, onClose }) {
             <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>
               {dayLabel(new Date(step.dateKey + 'T00:00:00'))}
             </div>
-            <div style={{ fontSize: 14, color: '#bbb', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, color: '#bbb', marginBottom: splits.length ? 2 : 14 }}>
               {step.bullet.text}
             </div>
+            <BenchChips splits={splits} />
+            {completedRecord && (
+              <div style={{ fontSize: 11, color: '#4a9e5a', marginBottom: 12 }}>
+                ✓ Already invoiced ${Number(completedRecord.invoiceAmount).toFixed(0)}
+              </div>
+            )}
 
-            <ReasonPicker
-              reason={reason}
-              reasonText={reasonText}
-              onSelectReason={setReason}
-              onReasonTextChange={setReasonText}
-            />
+            {amountOpen ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="number"
+                  autoFocus
+                  placeholder="Invoice amount ($)"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  style={{
+                    background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
+                    color: '#e2e8f0', fontSize: 12, padding: '7px 8px', flex: 1,
+                  }}
+                />
+                <button
+                  onClick={confirmComplete}
+                  disabled={amount === '' || isNaN(Number(amount))}
+                  style={{
+                    background: '#22c55e', border: 'none', borderRadius: 6, color: '#052e16',
+                    fontSize: 12, fontWeight: 700, padding: '7px 14px',
+                    cursor: amount === '' || isNaN(Number(amount)) ? 'default' : 'pointer',
+                    opacity: amount === '' || isNaN(Number(amount)) ? 0.5 : 1,
+                  }}
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => { setAmountOpen(false); setAmount(''); }}
+                  style={{
+                    background: 'none', border: '1px solid #334155', borderRadius: 6,
+                    color: '#888', fontSize: 12, padding: '7px 10px', cursor: 'pointer',
+                  }}
+                >
+                  Back
+                </button>
+              </div>
+            ) : noJobNote ? (
+              <div>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>
+                  No matching job found for this bullet — Job complete will just mark it done.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => recordAndAdvance('complete')}
+                    style={{
+                      flex: 1, background: '#2a2a2a', color: '#ccc', border: 'none',
+                      borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Mark done
+                  </button>
+                  <button
+                    onClick={() => setNoJobNote(false)}
+                    style={{
+                      background: 'none', border: '1px solid #334155', borderRadius: 6,
+                      color: '#888', fontSize: 12, padding: '7px 14px', cursor: 'pointer',
+                    }}
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <ReasonPicker
+                  reason={reason}
+                  reasonText={reasonText}
+                  onSelectReason={setReason}
+                  onReasonTextChange={setReasonText}
+                />
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button
-                onClick={handleCarry}
-                disabled={reason === 'Other' && !reasonText.trim()}
-                style={{
-                  flex: 1, background: '#1a2e1a', color: '#4a9e5a', border: 'none',
-                  borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600,
-                  cursor: reason === 'Other' && !reasonText.trim() ? 'default' : 'pointer',
-                  opacity: reason === 'Other' && !reasonText.trim() ? 0.5 : 1,
-                }}
-              >
-                Carry forward
-              </button>
-              <button
-                onClick={handleSkip}
-                style={{
-                  flex: 1, background: '#2a2a2a', color: '#888', border: 'none',
-                  borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                Skip
-              </button>
-              <button
-                onClick={handleComplete}
-                style={{
-                  flex: 1, background: '#1a2536', color: '#5b9bd5', border: 'none',
-                  borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}
-              >
-                Job complete
-              </button>
-            </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button
+                    onClick={handleCarry}
+                    disabled={reason === 'Other' && !reasonText.trim()}
+                    style={{
+                      flex: 1, background: '#1a2e1a', color: '#4a9e5a', border: 'none',
+                      borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600,
+                      cursor: reason === 'Other' && !reasonText.trim() ? 'default' : 'pointer',
+                      opacity: reason === 'Other' && !reasonText.trim() ? 0.5 : 1,
+                    }}
+                  >
+                    Carry forward
+                  </button>
+                  <button
+                    onClick={handleSkip}
+                    style={{
+                      flex: 1, background: '#2a2a2a', color: '#888', border: 'none',
+                      borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={handleComplete}
+                    style={{
+                      flex: 1, background: '#1a2536', color: '#5b9bd5', border: 'none',
+                      borderRadius: 8, padding: '9px 0', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Job complete
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

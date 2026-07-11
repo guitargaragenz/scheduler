@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getJobSplits, BENCH_COLORS } from '../data/jobs.js';
 
 const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
 
@@ -20,8 +21,30 @@ const ACTION_EXPLANATIONS = {
   kept:      "appears at top of tomorrow's log",
   dropped:   'stays in history, gone from view',
   deferred:  'returns to job shelf',
-  completed: 'marked done — simple close for now, not the Done+invoiced flow',
+  completed: 'marks done and invoices',
 };
+
+function BenchChips({ splits }) {
+  if (!splits.length) return null;
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+      {splits.map((s, i) => {
+        const colors = BENCH_COLORS[s.bench] || BENCH_COLORS.Admin;
+        return (
+          <span
+            key={i}
+            style={{
+              background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`,
+              borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600,
+            }}
+          >
+            {s.bench}{s.hours ? ` · ${s.hours}h` : ''}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 // Matches the "bench · hours · action" subtitle DailyLogPage's BulletRow shows,
 // so a split job's individual sub-tasks are distinguishable here too.
@@ -37,7 +60,30 @@ function BulletMeta({ meta }) {
   );
 }
 
-function ActionRow({ selected, reason, onSelect, onReasonChange }) {
+// Job already gone from the live jobs[] array (finished + synced out via the
+// CSV/Sheet pipeline). Surfaces which case this is instead of silently
+// letting "Job complete" resolve with no explanation.
+function JobStatusNote({ job, completedRecord, hasJobId }) {
+  if (job) return null;
+  if (completedRecord) {
+    return (
+      <div style={{ fontSize: 11, color: '#4a9e5a', marginBottom: 12 }}>
+        ✓ Already invoiced ${Number(completedRecord.invoiceAmount).toFixed(0)}
+      </div>
+    );
+  }
+  if (hasJobId) {
+    return (
+      <div style={{ fontSize: 11, color: '#666', marginBottom: 12 }}>
+        No matching job found — will only mark this bullet done
+      </div>
+    );
+  }
+  return null;
+}
+
+function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amount, onAmountChange }) {
+  const showInvoice = selected === 'completed' && invoiceJob;
   return (
     <div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -80,11 +126,26 @@ function ActionRow({ selected, reason, onSelect, onReasonChange }) {
           }}
         />
       )}
+      {showInvoice && (
+        <input
+          type="number"
+          autoFocus
+          value={amount || ''}
+          onChange={e => onAmountChange(e.target.value)}
+          placeholder="Invoice amount ($)"
+          style={{
+            marginTop: 8, width: '100%', boxSizing: 'border-box',
+            background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
+            padding: '7px 10px', fontSize: 12, color: '#e2e8f0', outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+      )}
     </div>
   );
 }
 
-export default function CloseDayModal({ bullets = [], onClose }) {
+export default function CloseDayModal({ bullets = [], jobs = [], completedJobs = [], onJobComplete, onClose }) {
   // Split bullets into whole-bullet resolution (no checklist, or empty checklist)
   // vs per-item resolution (checklist bullets — only their unresolved 'todo' items need a decision).
   const wholeBullets = bullets.filter(b =>
@@ -95,11 +156,21 @@ export default function CloseDayModal({ bullets = [], onClose }) {
     .map(b => ({ ...b, unresolvedItems: b.checklist.filter(i => i.status === 'todo') }))
     .filter(b => b.unresolvedItems.length > 0);
 
+  // Exclude already-done jobs — otherwise a job invoiced elsewhere (JobDrawer,
+  // RevenueReviewBanner) earlier in the session still matches here, reopening
+  // the amount prompt and risking a duplicate completedJobs record.
+  const jobForBullet = b => jobs.find(j => j.id === b.jobId && !j.done) || null;
+  const completedRecordForBullet = b => completedJobs.find(r => r.id === b.jobId) || null;
+
   const [selections, setSelections] = useState(() => {
     const init = {};
     wholeBullets.forEach(b => { init[b.id] = null; });
     return init;
   });
+
+  // { [bulletId]: amountString } — only used for whole-bullet 'completed' selections
+  // where a real job was resolved (invoicing prompt); irrelevant otherwise.
+  const [invoiceAmounts, setInvoiceAmounts] = useState({});
 
   // { [bulletId]: { [itemId]: { action, reason } } }
   const [itemSelections, setItemSelections] = useState(() => {
@@ -113,6 +184,10 @@ export default function CloseDayModal({ bullets = [], onClose }) {
 
   const select = useCallback((bulletId, action) => {
     setSelections(prev => ({ ...prev, [bulletId]: action }));
+  }, []);
+
+  const setInvoiceAmount = useCallback((bulletId, value) => {
+    setInvoiceAmounts(prev => ({ ...prev, [bulletId]: value }));
   }, []);
 
   const selectItem = useCallback((bulletId, itemId, action) => {
@@ -143,7 +218,15 @@ export default function CloseDayModal({ bullets = [], onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [select]);
 
-  const wholeBulletsResolved = wholeBullets.every(b => selections[b.id] !== null);
+  const wholeBulletsResolved = wholeBullets.every(b => {
+    const sel = selections[b.id];
+    if (sel === null) return false;
+    if (sel === 'completed' && jobForBullet(b)) {
+      const amt = invoiceAmounts[b.id];
+      return amt !== undefined && amt !== '' && !isNaN(Number(amt));
+    }
+    return true;
+  });
   const checklistItemsResolved = checklistBullets.every(b =>
     b.unresolvedItems.every(item => {
       const sel = itemSelections[b.id]?.[item.id];
@@ -171,6 +254,16 @@ export default function CloseDayModal({ bullets = [], onClose }) {
         migrations.checklist[b.id][item.id] = { action: sel.action, reason: sel.reason };
       });
     });
+    if (onJobComplete) {
+      wholeBullets.forEach(b => {
+        if (selections[b.id] !== 'completed') return;
+        const job = jobForBullet(b);
+        const amt = invoiceAmounts[b.id];
+        if (job && amt !== undefined && amt !== '' && !isNaN(Number(amt))) {
+          onJobComplete(job, amt);
+        }
+      });
+    }
     onClose(migrations);
   }
 
@@ -200,6 +293,9 @@ export default function CloseDayModal({ bullets = [], onClose }) {
         <div>
           {wholeBullets.map(bullet => {
             const selected = selections[bullet.id];
+            const job = jobForBullet(bullet);
+            const completedRecord = job ? null : completedRecordForBullet(bullet);
+            const splits = getJobSplits(job, jobs);
             return (
               <div
                 key={bullet.id}
@@ -212,19 +308,27 @@ export default function CloseDayModal({ bullets = [], onClose }) {
                 onFocus={e => { e.currentTarget.style.borderColor = '#3a3a3a'; }}
                 onBlur={e => { e.currentTarget.style.borderColor = '#252525'; }}
               >
-                <div style={{ fontSize: 14, color: '#bbb', marginBottom: bullet.meta ? 2 : 12 }}>
+                <div style={{ fontSize: 14, color: '#bbb', marginBottom: 2 }}>
                   {bullet.text}
                 </div>
+                <BenchChips splits={splits} />
                 <BulletMeta meta={bullet.meta} />
+                <JobStatusNote job={job} completedRecord={completedRecord} hasJobId={!!bullet.jobId} />
                 <ActionRow
                   selected={selected}
                   onSelect={action => select(bullet.id, action)}
+                  invoiceJob={job}
+                  amount={invoiceAmounts[bullet.id]}
+                  onAmountChange={value => setInvoiceAmount(bullet.id, value)}
                 />
               </div>
             );
           })}
 
-          {checklistBullets.map(bullet => (
+          {checklistBullets.map(bullet => {
+            const job = jobForBullet(bullet);
+            const splits = getJobSplits(job, jobs);
+            return (
             <div
               key={bullet.id}
               style={{
@@ -232,9 +336,10 @@ export default function CloseDayModal({ bullets = [], onClose }) {
                 borderRadius: 10, padding: 14, marginBottom: 10,
               }}
             >
-              <div style={{ fontSize: 14, color: '#bbb', marginBottom: bullet.meta ? 2 : 12 }}>
+              <div style={{ fontSize: 14, color: '#bbb', marginBottom: 2 }}>
                 {bullet.text}
               </div>
+              <BenchChips splits={splits} />
               <BulletMeta meta={bullet.meta} />
               {bullet.unresolvedItems.map((item, idx) => {
                 const sel = itemSelections[bullet.id][item.id];
@@ -258,7 +363,8 @@ export default function CloseDayModal({ bullets = [], onClose }) {
                 );
               })}
             </div>
-          ))}
+            );
+          })}
 
           {totalCount === 0 && (
             <div style={{ fontSize: 14, color: '#555', textAlign: 'center', padding: '20px 0' }}>
