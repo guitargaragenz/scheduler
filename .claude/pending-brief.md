@@ -5,6 +5,48 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
+## Status: SUPERSEDED — not building this version.
+Both independent council reviewers rejected the fix scope below (the `createSubtasks()`-diff approach
+isn't stable against desc/bench drift, risks permanently freezing stale auto-split leftovers as fake
+manual data). Trevor's call 2026-07-12: review the whole split/sync structure fresh in its own
+dedicated session rather than patch this in isolation. Full writeup, both council reports, and a
+second (more promising, not yet reviewed) theory are in memory:
+`project_manual_split_data_loss_2026_07_12.md`. Kept below for reference only.
+
+# Brief — Stop manual splits being silently dropped on reload (SUPERSEDED, see above)
+
+**Root cause / goal:** Trevor found two jobs (#1520 Ampeg, #1175 Allen & Heath GL2800) whose manual
+splits had completely vanished from Firestore — no split flags, no child records, nothing.
+`withSplitsExpanded` (`src/hooks/useFirebase.js`) runs on every load/snapshot and only restores a
+manual split's children if they carry `isSubtask: true`. If that flag is ever missing on a stored
+child, the function falls through to regenerating via `createSubtasks()` instead — which won't
+reproduce an arbitrary user-chosen split, so the job appears to have never been split. That state
+then gets written back to Firestore by the next debounced save, permanently erasing the split.
+Confirmed: every currently-alive manual split in Firestore has `isSubtask: true` set correctly, and
+the current split-creation code (`useJobs.js`) does set it — so this can't be reproduced from a fresh
+click-through today, but the failure mode itself is real and would resurface if the flag is ever lost
+by any future code path (or was on some older split that predates the flag).
+
+**Fix scope:** `withSplitsExpanded` no longer trusts `isSubtask` alone. It computes what
+`createSubtasks(job)` would generate for this parent (already computed once, reused — no behavior
+change to the actual auto-split regeneration), and classifies any stored child NOT in that
+auto-generated id set as a manual child needing restoration — regardless of the `isSubtask` flag.
+This can never regress auto-split children (they're always reproducible by `createSubtasks()` so are
+correctly excluded from "manual" classification) and self-heals the flag going forward
+(`isSubtask: true` re-stamped on every restored manual child).
+
+**Blast radius:** `useFirebase.js` — flagged file, council mandatory, no exceptions.
+
+**Verification:** synthetic test — simulate a stored job with a split child missing `isSubtask`,
+confirm it's still restored as a manual child, not dropped. Confirm a genuine auto-split job with no
+manual children still regenerates via `createSubtasks()` exactly as before (no regression). Confirm
+a job that was deliberately un-split (`noAutoSplit: true`) still stays un-split.
+
+**Not in scope:** recovering #1520/#1175's actual lost split data — no backup/version history exists
+for this Firestore project, Trevor will manually re-split both once this fix ships.
+
+---
+
 ## Status: SHIPPED — merged to main (commit `95eb262`), deployed.
 Independent verifier caught a real double-invoice risk (done jobs weren't excluded from the live
 lookup) before commit — fixed and re-verified SAFE TO COMMIT. Approved by Trevor 2026-07-11.
