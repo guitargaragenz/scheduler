@@ -49,6 +49,7 @@ Currently-open items only — grouped by category, not by session date. Complete
 - [ ] Urgent mode toggle too prominent — accidental activation risk
 - [ ] Mobile time picker allows non-30min snapping — replace with preset buttons
 - [ ] VB badge needs tooltip — "Valued Builder — priority customer"
+- [ ] **Rename "Runway" to "Projects"** — decided 2026-07-12. Simple find/replace across the header button, page title, and component/file names (`RunwayPage.jsx` etc). Low risk, no logic change, just labels.
 
 ---
 
