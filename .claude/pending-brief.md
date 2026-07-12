@@ -5,6 +5,90 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
+## Status: ARCHITECTURE APPROVED 2026-07-12 — not built yet, needs a dedicated build session.
+Supersedes the two entries below (the `isSubtask`-flag guard and the fresh-eyes split/sync review
+they point to). Full investigation this session: root cause confirmed (not just theorized) by 3
+independent code-reading passes, two rounds of guard-style patches proposed and rejected by
+adversarial council review, then a full architectural redesign proposed and approved by Trevor after
+he explicitly rejected further patching ("I don't want a patch job... I want to eradicate the cause").
+Two more independent council reviewers stress-tested the redesign; both said "sound with
+modifications" — modifications folded in below. Trevor then reviewed and ruled out two of the
+remaining risks (job-number reuse, two-device races — both structurally impossible given how he
+actually runs the shop) and required one more fix (atomic batched writes for a split-set) before
+calling it resolved.
+
+# Brief — Split `ggnz/schedule` into `jobsMaster` + `jobsState` (job-master/schedule-state migration)
+
+**Root cause / goal:** #1520 (Ampeg SVT 6 Pro) and #1175 (Allen & Heath GL2800) had their manual
+split data permanently, silently deleted from Firestore. Confirmed mechanism: `ggnz/schedule` holds
+ONE `jobs` array mixing CSV/Sheet-owned fields (written by `scripts/sheet_to_csv.command`) and
+app-owned fields (written by the React app) in the same records. Both writers rebuild and blind-
+overwrite the *entire* array on every write. When a job's status/Hours/Days momentarily falls
+outside the CSV script's accepted set, its parent record drops from that sync's rebuild; the
+script's own carry-forward logic re-appends the job's split children regardless (orphaning them, not
+deleting them, at that layer) — but `withSplitsExpanded()` (`src/hooks/useFirebase.js:8-73`) only
+restores children by iterating *present* top-level parents, so an orphan's parent id is never
+visited and the orphan is silently excluded from the next save. Structurally identical bug in the
+in-app CSV-upload path (`useJobs.js` `handleCsvUpload`).
+
+Two rounds of guard-style patches were rejected: (1) comparing stored children against freshly-
+recomputed `createSubtasks()` output — unsafe, that output isn't stable against desc/bench drift;
+(2) a 3-layer additive-guard design — two independent reviewers found it only covered the confirmed
+mechanism (not the still-unruled-out isSubtask-flag-loss theory), risked a *new* duplicate-id
+corruption mode, and left revived records as permanently invisible zombies with no UI resolution
+path. Trevor's call: stop patching, fix the actual architecture.
+
+**Fix scope:** split `ggnz/schedule` into two Firestore collections, each with exactly one writer,
+each written via per-document updates (never a blind whole-collection overwrite):
+- `jobsMaster/{jobId}` — CSV/Sheet-owned fields only. Written only by `sheet_to_csv.command` (both
+  copies — repo + `~/Desktop/SCHEDULER_old/`) and the in-app CSV-upload path, via per-job upserts.
+- `jobsState/{jobId}` — app-owned fields only (`scheduled`, `calendarSlot`, `gcalEventId(s)`,
+  `pomoLog`, `done`, `isSplit`, `noAutoSplit`, `parentId`, `sessionNote`, `sessionIndex/Total`,
+  `bumpHistory`, `manualSplits`). Written only by the React app. **Deliberately keeps today's flat
+  `parentId`-linked model** (one doc per job id, parent and split children each their own doc) rather
+  than redesigning into an embedded map — an embedded-map alternative was considered and rejected: it
+  solves nothing the plain collection-split doesn't already solve, while costing a rewrite of ~15
+  `setJobs()` call sites, Google Calendar sync, and leaving `scheduledSlots`' new home undefined. The
+  deciding property: **the CSV script never having a code path into `jobsState` at all** is what
+  eliminates the orphaning bug, not the internal shape of the records.
+
+Required design decisions folded into the build (see full detail in
+`/Users/admin/.claude/plans/handoff-saved-to-re-fresh-runway-rename-quiet-otter.md`, "PART 2"):
+join semantics for `jobsMaster`/`jobsState` mismatch (union join, surface via the existing
+`pendingRevenueReview` pattern, never silently drop); `App.jsx`'s bench-keyword handler needs an
+explicit `jobsMaster` write path; `scheduledSlots` gets its own single-writer doc; cutover needs an
+explicit reload-all-devices step, not just pausing the Python poller; **split-set writes must be a
+single Firestore batched write (`writeBatch`), never sequential — non-negotiable, a killed
+app/network mid-split must never leave a half-created split.** Job-number reuse and two-device races
+were raised and explicitly ruled out by Trevor as non-risks for this shop — no defenses needed there.
+
+**Migration for existing production data (86 jobs, 33 split children, no backup/PITR):** manual JSON
+snapshot first (this IS the backup) → additive-only migration script (never touches the old doc) →
+verification script (set/key-based deep-compare against the snapshot, zero unexplained diffs) → hard
+cutover (pause poller → migrate → verify → reload every device → deploy app+script together → resume
+poller → live smoke test) → freeze (don't delete) the old doc for a 2-week probation window.
+
+**Blast radius:** `useFirebase.js`, `useJobs.js`, `useGoogleCalendar.js`, `firebase.js`,
+`scripts/sheet_to_csv.command` (both copies), plus a real one-time production data migration.
+Council-reviewed twice already (this session); genuinely larger blast radius than the rejected
+patches, but structurally safer — after this ships, the CSV script has no path through which it
+*could* delete split data, structurally, not through discipline.
+
+**Verification:** build session — unit-test the join function against fixture edge cases (normal
+job, manual split, auto split, orphaned split, done job with splits, bench-keyword-edited job).
+Cutover session — verification script's zero-diff pass is the primary gate; live smoke test after
+(schedule a job, split a job, run a CSV upload, confirm `jobsState` untouched by it).
+
+**Honest scope:** not a single-session build. This session = architecture brief + council review,
+done. Needs a dedicated build session (implement against scratch Firestore/local fixtures, never
+touching prod, independently reviewed before going near prod) and a separate dedicated cutover
+session for the actual production migration.
+
+Full design detail: `/Users/admin/.claude/plans/handoff-saved-to-re-fresh-runway-rename-quiet-otter.md`
+("PART 2"), investigation history in memory `project_manual_split_data_loss_2026_07_12.md`.
+
+---
+
 ## Status: SUPERSEDED — not building this version.
 Both independent council reviewers rejected the fix scope below (the `createSubtasks()`-diff approach
 isn't stable against desc/bench drift, risks permanently freezing stale auto-split leftovers as fake
