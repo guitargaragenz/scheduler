@@ -124,7 +124,7 @@ function Section({ def, jobs, windowDays }) {
   );
 }
 
-export default function RunwayPage({ jobs }) {
+export default function ProjectsPage({ jobs }) {
   const [actionFilter, setActionFilter] = useState(null);
 
   const today = new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -175,7 +175,7 @@ export default function RunwayPage({ jobs }) {
           <div style={{ fontSize: 32, marginBottom: 16 }}>📋</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No projects yet</div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            To add a job to the Runway, open your Google Sheet,
+            To add a job to Projects, open your Google Sheet,
             add a <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>PJ</code> column
             and set it to <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>Y</code> for
             any long-running job you want to track here. Then run <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>sheet_to_csv.command</code>.
@@ -192,7 +192,7 @@ export default function RunwayPage({ jobs }) {
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>Runway</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>Projects</div>
             <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
               Long-running projects · {today} · {projects.length} jobs
             </div>

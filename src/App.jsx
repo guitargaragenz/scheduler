@@ -17,7 +17,7 @@ import PomoDrawer from './components/PomoDrawer.jsx';
 import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
-import RunwayPage from './components/RunwayPage.jsx';
+import ProjectsPage from './components/ProjectsPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
@@ -76,7 +76,7 @@ export default function App() {
   const [showSummary, setShowSummary] = useState(false);
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showRunway, setShowRunway] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
   const [showWeekView, setShowWeekView] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
@@ -425,15 +425,15 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowRunway(r => !r)}
+              onClick={() => setShowProjects(r => !r)}
               style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showRunway ? '#4f46e5' : '#334155'}`,
-                background: showRunway ? '#1e1b4b' : '#1e293b',
-                color: showRunway ? '#a5b4fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showRunway ? 700 : 400,
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showProjects ? '#4f46e5' : '#334155'}`,
+                background: showProjects ? '#1e1b4b' : '#1e293b',
+                color: showProjects ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showProjects ? 700 : 400,
               }}
             >
-              Runway
+              Projects
             </button>
 
             <button
@@ -510,8 +510,8 @@ export default function App() {
               jobs={jobs}
               onJobClick={job => { setEditingJob(job); }}
             />
-          ) : showRunway ? (
-            <RunwayPage jobs={jobs} />
+          ) : showProjects ? (
+            <ProjectsPage jobs={jobs} />
           ) : showWeekView ? (
             <>
               <CalendarGrid

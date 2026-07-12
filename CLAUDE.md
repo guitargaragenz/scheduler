@@ -42,12 +42,12 @@ GGNZ is organized into departments, each with its own `claude.md` + `context/` f
   ```
 - CSV columns (from PDF): `Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL`
 - Manual fields (from Google Sheet, not PDF): `Tag, Hours, Action, VB, BL, PJ`
-- `PJ=Y` flags a job as a long-running project → appears on Runway page
+- `PJ=Y` flags a job as a long-running project → appears on Projects page
 - Re-uploading CSV preserves Pomodoro logs
 
-### Shipped — Runway view
-Long-running job timeline page, merged to main 2026-06-14.
-- Runway button in header toggles the page
+### Shipped — Projects view
+Long-running job timeline page, merged to main 2026-06-14. (Renamed from "Runway" to "Projects" 2026-07-12 — UI label only, no logic change.)
+- Projects button in header toggles the page
 - Jobs flagged with `PJ=Y` in Google Sheet appear here — fully working as of 2026-06-14
 - Sections: Needs Input (CI, Parts) / Needs Thinking (INC, RS, RS-C, DG) / Ready to Schedule (GTS)
 - Age colours: green <30 days, amber 30–60, red 60+
@@ -186,7 +186,7 @@ When debugging, trace: `useGoogleCalendar.js` → `googleCalendar.js` → `gapi`
 `slotsNeeded()` = hours × 2, capped at 6. Always divide by 2 before passing to anything that expects hours (GCal duration, display labels, etc.).
 
 ### Bench colour source of truth
-`BENCH_COLORS` in `src/data/jobs.js` is the single source. GCal colours, card colours, and Runway colours all derive from here. Never define bench colours elsewhere.
+`BENCH_COLORS` in `src/data/jobs.js` is the single source. GCal colours, card colours, and Projects page colours all derive from here. Never define bench colours elsewhere.
 
 ### Sub-task identity
 Sub-tasks carry the parent's `job` number but a suffixed `id`. They have their own `bench` value (different from parent). When syncing to GCal, sub-tasks must have their `bench` field set — check this if `colorId` falls back to the default.
