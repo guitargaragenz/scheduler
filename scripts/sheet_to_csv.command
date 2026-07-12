@@ -336,6 +336,15 @@ rows = list(csv.DictReader(raw))
 ACCEPTED = {'On Hold', 'Waiting', 'To Be Inv', 'In Transit'}
 jobs = []
 skipped = []
+# Job ids skipped ONLY for missing Hours/Days — these are still real, open
+# jobs (e.g. not yet quoted/measured), just not schedulable yet. Their
+# jobsMaster doc must be left alone: not upserted (no new data to write),
+# and — critically — never fed into the delete computation below. A job
+# with no Hours/Days has no jobsState doc yet either, so if its jobsMaster
+# doc were deleted it would vanish from the app with zero trace, not even
+# surface as an orphan. This is tracked separately from the accepted-status
+# filter's "continue" above it, which legitimately means "gone, delete it."
+skipped_incomplete_ids = set()
 for obj in rows:
     status = obj.get('Status', '')
     act    = (obj.get('Action', '') or '').strip().upper()
@@ -354,9 +363,11 @@ for obj in rows:
     schedulable    = status in ('Active', 'Booked In') or ready_to_start
     if not schedulable and status not in ACCEPTED:
         continue
-    # Skip jobs missing Hours or Days — not ready to schedule
+    # Skip jobs missing Hours or Days — not ready to schedule, but NOT gone.
+    # Track the id so the delete pass below can explicitly spare it.
     if not hours or not days:
         skipped.append(f"#{obj['Job']} {obj.get('Mfr','')} {obj.get('Model','')} (missing: {'Hours' if not hours else ''} {'Days' if not days else ''})")
+        skipped_incomplete_ids.add(str(obj['Job']))
         continue
     effective_hours = hours if not (hours == 0 and schedulable) else 1.0
     bench = infer_bench(obj.get('Desc',''), status, obj.get('Action',''), obj.get('Model',''), obj.get('Mfr',''))
@@ -444,11 +455,48 @@ if upsert_errors:
 # jobsState — at worst it surfaces as an orphan in the app's revenue-review
 # banner if real scheduling data still exists for that id, which is the
 # intended safety net, not a bug.
+#
+# EXCEPT: jobs skipped only for missing Hours/Days are real, open jobs with
+# no jobsState doc to surface as an orphan — never delete those (see
+# skipped_incomplete_ids above). They're spared here, not upserted either,
+# so their existing jobsMaster doc is simply left untouched until real
+# Hours/Days data shows up.
 current_job_ids = {j['id'] for j in jobs}
-to_delete = sorted(existing_master_ids - current_job_ids)
+candidate_delete = (existing_master_ids - current_job_ids) - skipped_incomplete_ids
+spared_incomplete = sorted((existing_master_ids - current_job_ids) & skipped_incomplete_ids)
+if spared_incomplete:
+    print(f"\nSparing {len(spared_incomplete)} jobsMaster doc(s) missing Hours/Days (not deleted, not upserted):")
+    for doc_id in spared_incomplete:
+        print(f"  #{doc_id}")
+
+to_delete = sorted(candidate_delete)
 deleted = 0
 delete_errors = []
-if to_delete:
+
+# ── Sanity floor: refuse to run the delete pass on a suspiciously empty or
+# suspiciously large-fraction result. A hiccup that leaves `jobs` empty (or
+# near-empty) without raising — a race with the first heredoc's CSV write,
+# a transiently truncated read, etc — must not be read as "every job is
+# gone." Real CSV syncs never legitimately remove a large chunk of active
+# jobs in one pass, so that shape indicates a bad read, not real state.
+# The upsert pass above already ran (new/changed data is still real and
+# safe to write); only the delete pass is gated here.
+DELETE_FRACTION_LIMIT = 0.3  # refuse to delete more than 30% of existing docs in one run
+delete_guard_tripped = None
+if len(jobs) == 0:
+    delete_guard_tripped = "CSV parse produced 0 accepted jobs — likely a transient/truncated read, not a real empty backlog"
+elif existing_master_ids and (len(to_delete) / len(existing_master_ids)) > DELETE_FRACTION_LIMIT:
+    delete_guard_tripped = (
+        f"delete pass would remove {len(to_delete)}/{len(existing_master_ids)} "
+        f"({len(to_delete) / len(existing_master_ids):.0%}) of existing jobsMaster docs in one run "
+        f"— exceeds the {DELETE_FRACTION_LIMIT:.0%} sanity floor"
+    )
+
+if delete_guard_tripped:
+    print(f"\nABORTING delete pass — {delete_guard_tripped}.")
+    print("Upserts above still ran normally. Re-run once the CSV read is confirmed good;")
+    print("no jobsMaster docs were deleted this run.")
+elif to_delete:
     print(f"\nRemoving {len(to_delete)} jobsMaster doc(s) no longer in the accepted-status set:")
     for doc_id in to_delete:
         print(f"  #{doc_id}")
