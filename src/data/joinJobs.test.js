@@ -35,12 +35,23 @@ describe('joinJobsMasterState', () => {
     });
   });
 
-  it('a job with no jobsState doc yet still joins cleanly (fresh CSV row, never touched by the app)', () => {
+  it('a job with no jobsState doc yet still joins cleanly (fresh CSV row, never touched by the app) with explicit defaults, not undefined', () => {
+    // Regression: production verification found 189 diffs after real
+    // cutover, all traced to top-level jobs with no jobsState doc yet —
+    // pickTopLevelState(state) on an empty {} leaves scheduled/pomoLog/
+    // calendarSlot/gcalEventId(s) as `undefined` instead of explicit
+    // false/[]/null. Downstream code isn't guaranteed to guard against
+    // `undefined` (e.g. a bare pomoLog.length), and it's inconsistent with
+    // how split children already get explicit fallbacks.
     const masters = [master({ id: '2000', job: '2000' })];
     const { jobs, orphans } = joinJobsMasterState(masters, []);
     expect(orphans).toHaveLength(0);
     expect(jobs).toHaveLength(1);
-    expect(jobs[0].scheduled).toBeUndefined();
+    expect(jobs[0].scheduled).toBe(false);
+    expect(jobs[0].pomoLog).toEqual([]);
+    expect(jobs[0].calendarSlot).toBeNull();
+    expect(jobs[0].gcalEventId).toBeNull();
+    expect(jobs[0].gcalEventIds).toEqual([]);
     expect(jobs[0].hasSubtasks).toBe(false);
   });
 

@@ -21,6 +21,24 @@ export function pickTopLevelState(stateDoc = {}) {
   return out;
 }
 
+// pickTopLevelState() only copies fields that actually exist on the stored
+// doc — for a top-level job with no jobsState doc at all yet (never
+// scheduled/logged), that leaves scheduled/calendarSlot/gcalEventId(s)/
+// pomoLog as `undefined` instead of explicit false/null/[]. Downstream code
+// isn't guaranteed to guard against that (e.g. a bare pomoLog.length without
+// a `|| []` fallback), and it's inconsistent with how split children already
+// get explicit fallbacks. Applied on every top-level branch in
+// joinJobsMasterState below.
+function withTopLevelDefaults(state) {
+  return {
+    scheduled: state.scheduled ?? false,
+    calendarSlot: state.calendarSlot ?? null,
+    gcalEventId: state.gcalEventId ?? null,
+    gcalEventIds: state.gcalEventIds ?? [],
+    pomoLog: state.pomoLog ?? [],
+  };
+}
+
 // Fields that are never jobsMaster-owned on a top-level job: app-owned state
 // fields plus fields the join layer derives fresh on every read (never
 // stored). Used to strip a flat/joined job object down to CSV/Sheet-owned
@@ -83,7 +101,7 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
 
     const manualKids = manualChildrenByParent[master.id] || [];
     if (manualKids.length > 0) {
-      result.push({ ...master, ...pickTopLevelState(state), isSplit: true, hasSubtasks: false, subtasks: null });
+      result.push({ ...master, ...pickTopLevelState(state), ...withTopLevelDefaults(state), isSplit: true, hasSubtasks: false, subtasks: null });
       for (const kid of manualKids) {
         claimedStateIds.add(kid.id);
         // jobsState fully owns manual split-child records.
@@ -99,13 +117,13 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
     }
 
     if (state.noAutoSplit) {
-      result.push({ ...master, ...pickTopLevelState(state), isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
+      result.push({ ...master, ...pickTopLevelState(state), ...withTopLevelDefaults(state), isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
       continue;
     }
 
     const subtasks = createSubtasks({ ...master, ...pickTopLevelState(state) }, benchHours);
     if (subtasks && subtasks.length > 0) {
-      result.push({ ...master, ...pickTopLevelState(state), isSplit: false, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
+      result.push({ ...master, ...pickTopLevelState(state), ...withTopLevelDefaults(state), isSplit: false, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
       for (const st of subtasks) {
         const stState = stateById[st.id] || {};
         claimedStateIds.add(st.id);
@@ -145,7 +163,7 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
         });
       }
     } else {
-      result.push({ ...master, ...pickTopLevelState(state), isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
+      result.push({ ...master, ...pickTopLevelState(state), ...withTopLevelDefaults(state), isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
     }
   }
 

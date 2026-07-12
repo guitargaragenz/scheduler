@@ -72,6 +72,24 @@ function findMostRecentSnapshot() {
 // silent broad exclusion.
 const ALLOWLISTED_IGNORE_FIELDS = new Set(['updatedAt']);
 
+// Fields allowlisted ONLY on split-child ids (parentId set on either side) —
+// a documented, permanent, intentional shape difference from the old model,
+// not a regression. Under the old withSplitsExpanded()/flat-array model,
+// split children wrongly INHERITED the parent's hasSubtasks/subtasks via
+// `{ ...parentJob, id, bench, parentId }` spread (see root CLAUDE.md: "don't
+// filter on !hasSubtasks... children inherit hasSubtasks:true via spread").
+// The new joinJobsMasterState() correctly does NOT reproduce that — a split
+// child's own hasSubtasks/subtasks are always false/null, it's the PARENT
+// record (a separate id) that carries the real values. Every migration run
+// will show old=<parent's value, wrongly inherited>/new=undefined for these
+// two fields on every split-child id — expected and permanent, not something
+// to chase down or "fix" on future runs.
+const SPLIT_CHILD_ONLY_IGNORE_FIELDS = new Set(['hasSubtasks', 'subtasks']);
+
+function isSplitChildId(oldJob, newJob) {
+  return Boolean(oldJob?.parentId || newJob?.parentId);
+}
+
 function isEqual(a, b) {
   if (a === b) return true;
   // Treat null/undefined as equivalent "absent" values — Firestore drops
@@ -98,9 +116,11 @@ function isEqual(a, b) {
 
 function diffJob(oldJob, newJob) {
   const diffs = [];
+  const skipSplitChildFields = isSplitChildId(oldJob, newJob);
   const keys = new Set([...Object.keys(oldJob), ...Object.keys(newJob)]);
   for (const k of keys) {
     if (ALLOWLISTED_IGNORE_FIELDS.has(k)) continue;
+    if (skipSplitChildFields && SPLIT_CHILD_ONLY_IGNORE_FIELDS.has(k)) continue;
     if (!isEqual(oldJob[k], newJob[k])) {
       diffs.push({ field: k, oldValue: oldJob[k], newValue: newJob[k] });
     }
