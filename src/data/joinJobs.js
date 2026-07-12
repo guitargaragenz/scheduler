@@ -110,19 +110,34 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
         const stState = stateById[st.id] || {};
         claimedStateIds.add(st.id);
         // Auto-split children aren't stored/re-derived wholesale like manual
-        // children — their existence/shape (bench, hours, label, parentId)
-        // comes fresh from createSubtasks() every time, so `st` is the base.
-        // But their jobsState doc is a real, fully-owned record just like a
-        // manual child's (see generic diff-save in useFirebase.js, which
-        // saves the full record for any job with a parentId) — so the
-        // overlay on top must be the FULL stored doc, not a 4-field
-        // allowlist. A narrower overlay was the bug: pomoLog/done/
-        // sessionNote/bumpHistory logged against one specific bench-card of
-        // a split job were silently discarded on every reconstruction, even
-        // though they were sitting safely in Firestore the whole time.
+        // children — their shape (bench, hours, label, hoursRange, parentId)
+        // comes FRESH from createSubtasks() on every call, deliberately: if
+        // the parent's desc/hours change, or a bench-keyword reclassification
+        // changes what qualifies as a split, these cards must reflect that
+        // immediately, every render. `st` is always the base for those.
+        //
+        // Their jobsState doc is still a real, fully-owned record for the
+        // true app-owned fields (pomoLog/done/sessionNote/bumpHistory/
+        // scheduled/calendarSlot/gcalEventId(s)) — pomoLog logged against one
+        // specific bench-card of a split job must survive reconstruction,
+        // not get silently discarded. But `jobsStateFieldsFor()` (the write
+        // side, same file) saves the FULL joined record for any job with a
+        // parentId, including bench/hours/label/hoursRange — those are
+        // CSV-shaped fields that just happen to also be sitting in the
+        // jobsState doc, not real app-owned data. Spreading the whole stored
+        // doc here would let a stale hours/bench from a previous save win
+        // over the fresh createSubtasks() value, and — because that stale
+        // value then round-trips right back into jobsState via the diff-save
+        // — permanently pin it there, even after the parent legitimately
+        // changes. pickTopLevelState() is the exact allowlist that avoids
+        // this: only the true app-owned fields cross over. Explicit defaults
+        // below matter when the child has no jobsState doc yet at all (a
+        // fresh auto-split card, never scheduled/logged) — pickTopLevelState
+        // only copies fields that actually exist on the stored doc, it
+        // doesn't invent scheduled:false/calendarSlot:null out of thin air.
         result.push({
           ...st,
-          ...stState,
+          ...pickTopLevelState(stState),
           scheduled: stState.scheduled ?? false,
           calendarSlot: stState.calendarSlot ?? null,
           gcalEventId: stState.gcalEventId ?? null,

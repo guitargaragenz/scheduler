@@ -140,6 +140,52 @@ describe('joinJobsMasterState', () => {
     expect(refretChild.parentId).toBe('3100');
   });
 
+  it('an auto-split child\'s stale stored hours/bench/label are ignored in favour of the freshly-derived createSubtasks() value, while pomoLog/done/sessionNote/bumpHistory still carry forward', () => {
+    // The regression the coordinator's second review caught: jobsStateFieldsFor()
+    // (the write side) saves the FULL joined record for any split child,
+    // including CSV-shaped fields (bench/hours/label/hoursRange) that just
+    // happen to also be sitting in the jobsState doc — not real app-owned
+    // data. If the parent's hours/desc are edited after that child was last
+    // saved, the stored doc's hours/bench/label go stale. The join must
+    // never let that stale doc win over the fresh createSubtasks() value —
+    // doing so would also create a feedback loop via the diff-save (stale
+    // value gets read back, re-saved, permanently pinned).
+    const masters = [master({ id: '4100', job: '4100', desc: 'refret and level', bench: 'Fretwork', hours: 6 })];
+    // createSubtasks() on hours:6 currently derives half = 3 for both
+    // '4100-R' and '4100-LC' (fretworkHours=6, half=round(6/2*2)/2=3).
+    const states = [
+      {
+        id: '4100-R',
+        // Stale values from a previous save, back when the parent's hours
+        // were different (or before a bench-keyword reclassification) —
+        // none of these should win.
+        hours: 2, bench: 'WrongBench', label: 'stale label', hoursRange: '2',
+        // Real app-owned data that MUST still carry forward.
+        pomoLog: [{ pomos: 1, ts: 222 }],
+        done: false,
+        sessionNote: 'left off after refret, needs crown+polish next',
+        bumpHistory: [{ ts: 999, reason: 'Other', fromSlot: 'x', toSlot: 'y' }],
+        scheduled: true,
+        calendarSlot: '2026-07-16-9-0',
+      },
+    ];
+
+    const { jobs } = joinJobsMasterState(masters, states);
+    const refretChild = jobs.find(j => j.id === '4100-R');
+
+    // Fresh createSubtasks() values win — stale stored CSV-shaped fields do not.
+    expect(refretChild.hours).toBe(3);
+    expect(refretChild.bench).toBe('Fretwork');
+    expect(refretChild.label).toBe('Refret');
+
+    // Real app-owned state still carries forward correctly.
+    expect(refretChild.pomoLog).toEqual([{ pomos: 1, ts: 222 }]);
+    expect(refretChild.sessionNote).toBe('left off after refret, needs crown+polish next');
+    expect(refretChild.bumpHistory).toEqual([{ ts: 999, reason: 'Other', fromSlot: 'x', toSlot: 'y' }]);
+    expect(refretChild.scheduled).toBe(true);
+    expect(refretChild.calendarSlot).toBe('2026-07-16-9-0');
+  });
+
   it('an orphaned split — jobsState exists with real split data but jobsMaster is missing — is surfaced as an orphan, never silently dropped', () => {
     // This is the exact production incident: #1520's parent record dropped
     // out of a CSV sync, but its manually-split children survived in
