@@ -1,92 +1,45 @@
 import { useEffect, useRef } from 'react';
-import { isFirebaseConfigured, loadSchedule, saveSchedule, subscribeToSchedule, saveCompletedJobs, subscribeToCompletedJobs } from '../utils/firebase.js';
-import { createSubtasks } from '../data/jobs.js';
+import {
+  isFirebaseConfigured,
+  loadJobsMaster, subscribeToJobsMaster,
+  loadJobsState, subscribeToJobsState, batchWriteJobsState,
+  loadScheduledSlots, saveScheduledSlots, subscribeToScheduledSlots,
+  saveCompletedJobs, subscribeToCompletedJobs,
+} from '../utils/firebase.js';
+import { joinJobsMasterState, jobsStateFieldsFor } from '../data/joinJobs.js';
 
-// Re-expand split subtasks after Firebase load so hard refresh doesn't wipe them.
-// Manual splits (isSplit: true, drawer-created) are stored in Firebase and restored directly.
-// Auto-splits are re-derived from createSubtasks() since they're not stored as separate entries.
-function withSplitsExpanded(rawJobs, existingJobs = [], knownSlots = {}) {
-  const existingById = Object.fromEntries(existingJobs.map(j => [j.id, j]));
-  const scheduledIds = new Set(Object.values(knownSlots));
+export { joinJobsMasterState };
 
-  // Collect stored sub-tasks (parentId set) keyed by parentId
-  const storedSubtasksByParent = {};
-  for (const job of rawJobs) {
-    if (!job.parentId) continue;
-    if (!storedSubtasksByParent[job.parentId]) storedSubtasksByParent[job.parentId] = [];
-    storedSubtasksByParent[job.parentId].push(job);
-  }
-
-  const result = [];
-  for (const job of rawJobs) {
-    if (job.parentId) continue;
-
-    // Manual splits — stored manual children (isSubtask) are authoritative:
-    // restore them even if the parent's isSplit flag was lost (self-heals flag
-    // loss; safe now that un-split deletes children). Auto-split children can
-    // also appear in the stored doc — they lack isSubtask and are re-derived
-    // below instead of restored.
-    const storedManualKids = (storedSubtasksByParent[job.id] || []).filter(st => st.isSubtask);
-    if (storedManualKids.length > 0) {
-      result.push({ ...job, isSplit: true });
-      for (const st of storedManualKids) {
-        result.push({
-          ...st,
-          scheduled:    scheduledIds.has(st.id),
-          calendarSlot: st.calendarSlot ?? null,
-          gcalEventId:  st.gcalEventId  ?? null,
-          gcalEventIds: st.gcalEventIds ?? [],
-        });
-      }
-      continue;
-    }
-
-    // User deliberately un-split this job (handleSaveDrawer collapsed it to a
-    // single card). createSubtasks() derives purely from bench/desc/hours,
-    // which haven't changed, so without this persisted marker there is no way
-    // to distinguish "never auto-split" from "user un-split it" — regenerating
-    // here would silently revert the un-split on every reload/subscription tick.
-    if (job.noAutoSplit) {
-      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
-      continue;
-    }
-
-    // Auto-splits — regenerate from createSubtasks()
-    const subtasks = createSubtasks(job);
-    if (subtasks && subtasks.length > 0) {
-      result.push({ ...job, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
-      for (const st of subtasks) {
-        const prev = existingById[st.id];
-        result.push({
-          ...st,
-          scheduled:    prev?.scheduled    ?? scheduledIds.has(st.id),
-          calendarSlot: prev?.calendarSlot ?? null,
-          gcalEventId:  prev?.gcalEventId  ?? null,
-          gcalEventIds: prev?.gcalEventIds ?? [],
-        });
-      }
-    } else {
-      result.push({ ...job, hasSubtasks: false, subtasks: null, manualSplits: false });
-    }
-  }
-  return result;
-}
-
-export { withSplitsExpanded };
-
-// A top-level, not-yet-done job whose job number is present in `prevJobs` but
-// absent from `incomingJobs` — it vanished from a CSV/Sheet sync without ever
-// being marked done in-app (Trevor's real workflow finishes in Multitrack).
-function detectDisappearedJobs(prevJobs, incomingJobs) {
-  const incomingTopLevelJobNos = new Set(
-    incomingJobs.filter(j => !j.parentId).map(j => j.job)
-  );
+// A top-level, not-yet-done job whose job number is present in `prevJobs`
+// (last joined output) but absent from the freshly-arrived jobsMaster
+// snapshot — it vanished from a CSV/Sheet sync without ever being marked
+// done in-app (Trevor's real workflow finishes/invoices in Multitrack).
+// Compares against jobsMaster only, per architecture brief — jobsState
+// changes never drive this check.
+function detectDisappearedJobs(prevJobs, incomingMasterDocs) {
+  const incomingJobNos = new Set(incomingMasterDocs.map(j => j.job));
   return prevJobs.filter(j =>
-    !j.parentId && !j.done && j.job != null && !incomingTopLevelJobNos.has(j.job)
+    !j.parentId && !j.done && j.job != null && !incomingJobNos.has(j.job)
   );
 }
 
-// Manages Firebase load, real-time subscribe, debounced save, and completed jobs.
+// Manages Firebase load, real-time subscribe (jobsMaster + jobsState +
+// scheduledSlots, each its own doc/collection), a debounced diff-based
+// jobsState save, and completed jobs.
+//
+// Persistence model: the three-way subscribe (master/state/slots) recomputes
+// the flat `jobs` shape via joinJobsMasterState() on every snapshot from any
+// of the three. On the write side, most app-owned field changes (scheduling
+// drag/drop via useScheduler, GCal poll bumps, pomodoro logging, mark-done)
+// just call setJobs/setScheduledSlots as before — this hook diffs the
+// resulting jobs[] against the last-known-saved jobsState per job id and
+// writes only what actually changed, as one writeBatch(), debounced 1.5s.
+// That keeps every existing call site working unchanged while every write
+// still lands as a real per-document Firestore write, never a whole-array
+// overwrite. Split-set changes (handleSaveDrawer in useJobs.js) bypass this
+// debounce entirely and issue their own immediate, atomic writeBatch(),
+// since a mid-split crash must never be allowed to land as a partial write
+// (architecture brief design decision #5).
 // justSavedAt: shared ref owned by App.jsx — stamp before any mutation to suppress echo snapshots.
 export function useFirebase({
   jobs,
@@ -100,48 +53,64 @@ export function useFirebase({
   justSavedAt,
   firebaseReady,
   onJobsDisappeared,
+  onSplitOrphansFound,
+  benchHours,
 }) {
-  const saveTimerRef = useRef(null);
-  // No prior jobs[] to diff against on the very first onSnapshot tick after
-  // mount — skip disappearance detection that one time to avoid flagging
-  // every job as "disappeared" against an empty/default baseline. Tracked
-  // outside the setJobs updater (a plain ref, not component state) since
-  // React.StrictMode double-invokes updater functions in dev — running the
-  // detection/callback inside one would double-fire it.
-  const hasSeenFirstSnapshotRef = useRef(false);
-  const prevJobsRef = useRef([]);
+  const masterRef = useRef([]);
+  const stateRef = useRef([]);
+  const prevJoinedJobsRef = useRef([]);
+  const hasSeenFirstMasterSnapshotRef = useRef(false);
+  const lastSavedStateRef = useRef({}); // job id -> JSON string of last-known-saved jobsState fields
+  const stateSaveTimerRef = useRef(null);
+
+  function recompute() {
+    const { jobs: joined, orphans } = joinJobsMasterState(masterRef.current, stateRef.current, benchHours || {});
+    joined.forEach(job => {
+      lastSavedStateRef.current[job.id] = JSON.stringify(jobsStateFieldsFor(job));
+    });
+    setJobs(joined);
+    prevJoinedJobsRef.current = joined;
+    if (orphans.length > 0) onSplitOrphansFound?.(orphans);
+  }
 
   // Load on mount + subscribe to real-time updates from other devices
   useEffect(() => {
     if (!isFirebaseConfigured()) return;
-    loadSchedule().then(data => {
-      if (data) {
-        if (data.jobs) {
-          setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
-          prevJobsRef.current = data.jobs;
-        }
-        if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
-        if (data.updatedAt) setLastSyncedAt(data.updatedAt);
-      }
+
+    Promise.all([loadJobsMaster(), loadJobsState(), loadScheduledSlots()]).then(([master, state, slots]) => {
+      masterRef.current = master;
+      stateRef.current = state;
+      setScheduledSlots(slots);
+      recompute();
+      setLastSyncedAt(new Date().toISOString());
       setFirebaseReady(true);
     });
 
-    const unsub = subscribeToSchedule(data => {
+    const unsubMaster = subscribeToJobsMaster(master => {
       if (Date.now() - justSavedAt.current < 5000) return;
-      if (data.jobs) {
-        if (hasSeenFirstSnapshotRef.current) {
-          const disappeared = detectDisappearedJobs(prevJobsRef.current, data.jobs);
-          if (disappeared.length > 0) onJobsDisappeared?.(disappeared);
-        } else {
-          hasSeenFirstSnapshotRef.current = true;
-        }
-        prevJobsRef.current = data.jobs;
-        setJobs(prev => withSplitsExpanded(data.jobs, prev, data.scheduledSlots || {}));
+      if (hasSeenFirstMasterSnapshotRef.current) {
+        const disappeared = detectDisappearedJobs(prevJoinedJobsRef.current, master);
+        if (disappeared.length > 0) onJobsDisappeared?.(disappeared);
+      } else {
+        hasSeenFirstMasterSnapshotRef.current = true;
       }
-      if (data.scheduledSlots) setScheduledSlots(data.scheduledSlots);
-      if (data.updatedAt) setLastSyncedAt(data.updatedAt);
+      masterRef.current = master;
+      recompute();
+      setLastSyncedAt(new Date().toISOString());
     });
-    return () => unsub();
+
+    const unsubState = subscribeToJobsState(state => {
+      if (Date.now() - justSavedAt.current < 5000) return;
+      stateRef.current = state;
+      recompute();
+    });
+
+    const unsubSlots = subscribeToScheduledSlots(slots => {
+      if (Date.now() - justSavedAt.current < 5000) return;
+      setScheduledSlots(slots);
+    });
+
+    return () => { unsubMaster(); unsubState(); unsubSlots(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to completed jobs / done IDs
@@ -154,16 +123,41 @@ export function useFirebase({
     return () => unsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced save — coalesces rapid changes into a single write
+  // Debounced diff-save of jobsState — coalesces rapid changes into one
+  // writeBatch() that touches only the docs whose app-owned fields actually
+  // changed since the last save/load. Never deletes: removing a split
+  // child's jobsState doc is handleSaveDrawer's job (its own atomic batch),
+  // not this generic backstop's.
   useEffect(() => {
     if (!isFirebaseConfigured() || !firebaseReady) return;
-    clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
+    clearTimeout(stateSaveTimerRef.current);
+    stateSaveTimerRef.current = setTimeout(() => {
+      const writes = [];
+      for (const job of jobs) {
+        const fields = jobsStateFieldsFor(job);
+        const serialized = JSON.stringify(fields);
+        if (lastSavedStateRef.current[job.id] === serialized) continue;
+        writes.push({ id: job.id, data: fields });
+        lastSavedStateRef.current[job.id] = serialized;
+      }
+      if (writes.length === 0) return;
       justSavedAt.current = Date.now();
-      saveSchedule(jobs, scheduledSlots);
+      batchWriteJobsState(writes);
     }, 1500);
-    return () => clearTimeout(saveTimerRef.current);
-  }, [jobs, scheduledSlots, firebaseReady]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearTimeout(stateSaveTimerRef.current);
+  }, [jobs, firebaseReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // scheduledSlots — its own single-writer doc, debounced independently.
+  const slotsSaveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!isFirebaseConfigured() || !firebaseReady) return;
+    clearTimeout(slotsSaveTimerRef.current);
+    slotsSaveTimerRef.current = setTimeout(() => {
+      justSavedAt.current = Date.now();
+      saveScheduledSlots(scheduledSlots);
+    }, 1500);
+    return () => clearTimeout(slotsSaveTimerRef.current);
+  }, [scheduledSlots, firebaseReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { saveCompletedJobs };
 }

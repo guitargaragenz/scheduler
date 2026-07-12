@@ -1,5 +1,6 @@
 import { parseCSV } from '../data/jobs.js';
-import { isFirebaseConfigured, saveSchedule, saveCompletedJobs } from '../utils/firebase.js';
+import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
+import { isFirebaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJobMaster } from '../utils/firebase.js';
 import { getWeekDays } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 
@@ -37,23 +38,24 @@ export function useJobs({
     if (parentJob.isSubtask) {
       const row = rows[0];
       const sess = row.sessions[0];
-      setJobs(prev => prev.map(j => j.id === parentJob.id
-        ? { ...j, hours: Number(sess.hours), sessionNote: sess.note }
-        : j
-      ));
+      const updated = { hours: Number(sess.hours), sessionNote: sess.note };
+      setJobs(prev => prev.map(j => j.id === parentJob.id ? { ...j, ...updated } : j));
+      if (isFirebaseConfigured()) {
+        justSavedAt.current = Date.now();
+        batchWriteJobsState([{ id: parentJob.id, data: jobsStateFieldsFor({ ...parentJob, ...updated }) }]);
+      }
       return;
     }
 
     // Existing children — union of manual-split (isSubtask) AND auto-split
-    // (parentId only, from createSubtasks()/withSplitsExpanded) children.
-    // Auto-split children never carry isSubtask, so a filter that only
-    // matched isSubtask left them behind: both sets ended up in state
+    // (parentId only, from createSubtasks()/the jobsMaster+jobsState join)
+    // children. Auto-split children never carry isSubtask, so a filter that
+    // only matched isSubtask left them behind: both sets ended up in state
     // together, parent.hasSubtasks/subtasks stayed stale, and their
     // scheduledSlots leaked into Firestore permanently. All of this parent's
     // children — however they were produced — are "existing" and must be
     // replaced or deleted, never left to coexist with a fresh manual split.
     const existingChildren = jobs.filter(j => j.parentId === parentJob.id);
-    const existingById = Object.fromEntries(existingChildren.map(j => [j.id, j]));
 
     // Free the calendar slots held by children that no longer exist
     function releaseSlots(removedIds) {
@@ -75,32 +77,55 @@ export function useJobs({
       // unconditionally would permanently suppress a legitimate future
       // auto-split for a job that was simply edited, not un-split.
       const wasSplit = parentJob.hasSubtasks || parentJob.isSplit;
+      const parentUpdate = {
+        bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note,
+        isSplit: false, hasSubtasks: false, subtasks: null,
+        // noAutoSplit persists the "user deliberately un-split this" signal —
+        // createSubtasks() derives purely from bench/desc/hours (unchanged by
+        // this action), so without a stored marker the join layer has no way
+        // to tell "never split" from "un-split" and would silently
+        // regenerate the auto-split on the next reload/subscription update.
+        // Leave the existing flag alone (don't force false) when this
+        // wasn't actually an un-split.
+        ...(wasSplit ? { noAutoSplit: true } : {}),
+      };
+
       // True un-split: delete ALL of this job's children (manual or
       // auto-split), free their slots, clear isSplit + the auto-split
-      // pointers so the parent doesn't double-book the hours and
-      // withSplitsExpanded can't regenerate the auto-split on next load.
+      // pointers so the parent doesn't double-book the hours and the join
+      // layer can't regenerate the auto-split on next load. `bench` is
+      // CSV-owned in the new schema, but a drawer-driven bench change on a
+      // job that's being collapsed to one card is a deliberate app-side
+      // override — same exception as the bench-keyword re-infer handler
+      // (App.jsx design decision #2) — so it goes to jobsMaster explicitly,
+      // alongside the atomic jobsState batch for the un-split itself.
       setJobs(prev => prev
         .filter(j => j.parentId !== parentJob.id)
-        .map(j => j.id === parentJob.id
-          ? {
-              ...j, bench: row.bench, hours: Number(sess.hours), sessionNote: sess.note,
-              isSplit: false, hasSubtasks: false, subtasks: null,
-              // noAutoSplit persists the "user deliberately un-split this" signal —
-              // createSubtasks() derives purely from bench/desc/hours (unchanged by
-              // this action), so without a stored marker withSplitsExpanded has no
-              // way to tell "never split" from "un-split" and would silently
-              // regenerate the auto-split on the next reload/subscription update.
-              // Leave the existing flag alone (don't force false) when this
-              // wasn't actually an un-split.
-              ...(wasSplit ? { noAutoSplit: true } : {}),
-            }
-          : j
-        ));
+        .map(j => j.id === parentJob.id ? { ...j, ...parentUpdate } : j));
       releaseSlots(new Set(existingChildren.map(j => j.id)));
       cleanupGcalEvents(existingChildren);
+
+      if (isFirebaseConfigured()) {
+        justSavedAt.current = Date.now();
+        const mergedParent = { ...parentJob, ...parentUpdate };
+        const writes = [
+          { id: parentJob.id, data: jobsStateFieldsFor(mergedParent) },
+          ...existingChildren.map(c => ({ id: c.id, delete: true })),
+        ];
+        batchWriteJobsState(writes); // atomic: parent's un-split state + all child deletes together
+        // `bench` is CSV-owned in the new schema, but a drawer-driven
+        // un-split can carry a deliberate bench override (the drawer lets
+        // the tech reassign the bench when collapsing a split back to one
+        // card) — same exception as the bench-keyword re-infer handler in
+        // App.jsx (design decision #2), so it goes to jobsMaster directly.
+        if (row.bench !== parentJob.bench) {
+          saveJobMaster(parentJob.id, pickMasterFields(mergedParent));
+        }
+      }
       return;
     }
 
+    const existingById = Object.fromEntries(existingChildren.map(j => [j.id, j]));
     const subtasks = [];
     rows.forEach(row => {
       row.sessions.forEach((sess, si) => {
@@ -129,6 +154,7 @@ export function useJobs({
     // (manual AND auto-split), then insert the new set — re-saving a split
     // can no longer create duplicates or leave a stale auto-split behind.
     const keptIds = new Set(subtasks.map(s => s.id));
+    const parentUpdate = { isSplit: true, hasSubtasks: false, subtasks: null, noAutoSplit: false };
     setJobs(prev => [
       ...prev
         .filter(j => j.parentId !== parentJob.id)
@@ -136,7 +162,7 @@ export function useJobs({
         // any stale noAutoSplit from a prior collapse so a future CSV
         // re-upload or bench-keyword change doesn't treat this job as
         // permanently un-splittable.
-        .map(j => j.id === parentJob.id ? { ...j, isSplit: true, hasSubtasks: false, subtasks: null, noAutoSplit: false } : j),
+        .map(j => j.id === parentJob.id ? { ...j, ...parentUpdate } : j),
       ...subtasks,
     ]);
     const removedChildren = existingChildren.filter(j => !keptIds.has(j.id));
@@ -144,6 +170,22 @@ export function useJobs({
     cleanupGcalEvents(removedChildren);
     setHighlightedJobId(parentJob.id);
     setSidebarOpen(true);
+
+    if (isFirebaseConfigured()) {
+      justSavedAt.current = Date.now();
+      const mergedParent = { ...parentJob, ...parentUpdate };
+      // ALL creates/updates/deletes for this split-set change land in one
+      // writeBatch() — non-negotiable per architecture brief design decision
+      // #5. A killed app/dropped network here must never leave 2 of 3 new
+      // split children saved and the 3rd missing, or the parent's own state
+      // update landing without its children (or vice versa).
+      const writes = [
+        { id: parentJob.id, data: jobsStateFieldsFor(mergedParent) },
+        ...subtasks.map(s => ({ id: s.id, data: jobsStateFieldsFor(s) })),
+        ...removedChildren.map(c => ({ id: c.id, delete: true })),
+      ];
+      batchWriteJobsState(writes);
+    }
   }
 
   function handleMarkDone(job, amount) {
@@ -165,107 +207,46 @@ export function useJobs({
     showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
   }
 
+  // Pure per-job upsert to jobsMaster — no carry-forward, no collision
+  // logic, nothing to preserve. In the old single-array model, a CSV upload
+  // had to carefully re-append manually-split children and noAutoSplit
+  // markers or they'd silently vanish (that carry-forward logic is exactly
+  // what orphaned #1520/#1175's split data when it missed an edge case).
+  // In this schema the CSV writer never touches jobsState at all, so
+  // there's nothing left to carry forward — scheduling/split/pomodoro state
+  // simply isn't part of what this function writes, and the join layer
+  // reattaches it from jobsState automatically on the next snapshot.
   function handleCsvUpload(csvText) {
     try {
-      const newJobs = parseCSV(csvText, benchKeywords, benchHours).filter(j => !doneJobIds.includes(String(j.id)));
-      const existingByJobNo = Object.fromEntries(jobs.map(j => [j.job, j]));
-      const merged = newJobs.map(j => ({
-        ...j,
-        pomoLog: existingByJobNo[j.job]?.pomoLog || [],
-        scheduled: existingByJobNo[j.job]?.scheduled || false,
-        calendarSlot: existingByJobNo[j.job]?.calendarSlot || null,
-      }));
+      const parsed = parseCSV(csvText, benchKeywords, benchHours);
+      const topLevel = parsed.filter(j => !j.parentId);
+      const masterByJobNo = Object.fromEntries(topLevel.map(j => [j.job, j]));
 
-      // Carry forward manually-split jobs (JobDrawer splits) — parseCSV() has no
-      // knowledge of these; without this they silently vanish on every CSV upload,
-      // taking their scheduledSlots with them (drift-guard false positive).
-      const manualSplitsByParentId = {};
-      jobs.filter(j => j.isSubtask === true && j.parentId).forEach(j => {
-        (manualSplitsByParentId[j.parentId] ||= []).push(j);
+      // Optimistic local merge for immediate UI feedback: CSV-owned fields
+      // refresh from the fresh parse; app-owned fields on existing jobs are
+      // left untouched (they live in jobsState and the join layer will
+      // reattach them from the next jobsMaster/jobsState snapshot regardless
+      // of what happens here). Split-child rows (parentId set) are left
+      // alone entirely — they're regenerated/restored by the join layer,
+      // never written directly by the CSV path.
+      setJobs(prev => {
+        const prevTopLevelJobNos = new Set(prev.filter(j => !j.parentId).map(j => j.job));
+        const updatedExisting = prev.map(j => {
+          if (j.parentId) return j;
+          const fresh = masterByJobNo[j.job];
+          return fresh ? { ...j, ...pickMasterFields(fresh) } : j;
+        });
+        const brandNew = topLevel.filter(j => !prevTopLevelJobNos.has(j.job));
+        return [...updatedExisting, ...brandNew];
       });
 
-      const autoSplitParentIds = new Set(merged.filter(j => j.parentId).map(j => j.parentId));
-      const collidedParentIds = new Set();
-      const carriedSplits = [];
-
-      merged.forEach(parent => {
-        if (parent.parentId) return; // only top-level jobs can own manual splits
-        const splits = manualSplitsByParentId[parent.id];
-        if (!splits || splits.length === 0) return;
-
-        if (autoSplitParentIds.has(parent.id)) {
-          // Bench reclassification now also produces an auto-split for this parent —
-          // keep the existing manual split (deliberate user intent). The duplicate
-          // auto-split children are dropped below, and the parent's auto-split
-          // pointers are cleared so withSplitsExpanded can't regenerate them.
-          collidedParentIds.add(parent.id);
-          parent.hasSubtasks = false;
-          parent.subtasks = null;
-        }
-
-        parent.isSplit = true;
-        carriedSplits.push(...splits.map(s => ({ ...s, parentId: parent.id })));
-      });
-
-      // Carry forward noAutoSplit ("user deliberately un-split this job") —
-      // parseCSV() has no knowledge of it and will happily re-auto-split a job
-      // whose bench/desc still qualify. Without this, re-uploading the CSV
-      // undoes the un-split exactly like a stale withSplitsExpanded would.
-      const noAutoSplitParentIds = new Set();
-      merged.forEach(parent => {
-        if (parent.parentId) return;
-        if (existingByJobNo[parent.job]?.noAutoSplit) {
-          parent.noAutoSplit = true;
-          parent.hasSubtasks = false;
-          parent.subtasks = null;
-          noAutoSplitParentIds.add(parent.id);
-        }
-      });
-
-      // Drop the duplicate auto-split children of collided parents (manual
-      // split wins) and of noAutoSplit parents (un-split wins) — either
-      // parent's own children were already excluded above.
-      const dropAutoChildrenParentIds = new Set([...collidedParentIds, ...noAutoSplitParentIds]);
-      const keptJobs = merged.filter(j => !(j.parentId && dropAutoChildrenParentIds.has(j.parentId)));
-      const collisionCount = collidedParentIds.size;
-
-      if (collisionCount > 0) {
-        showToast(`⚠ ${collisionCount} job${collisionCount > 1 ? 's' : ''} reclassified — kept existing manual split, skipped duplicate auto-split`);
+      if (isFirebaseConfigured()) {
+        justSavedAt.current = Date.now();
+        saveJobsMasterBatch(topLevel.map(j => ({ id: j.id, ...pickMasterFields(j) })));
       }
 
-      const doneJobs = jobs.filter(j => j.done);
-      const allJobs = [...keptJobs, ...carriedSplits, ...doneJobs];
-      const newJobIds = new Set(allJobs.map(j => j.id));
-      const preservedSlots = Object.fromEntries(
-        Object.entries(scheduledSlots).filter(([, jobId]) => newJobIds.has(jobId))
-      );
-      const jobCount = keptJobs.filter(j => !j.parentId).length;
-
-      // Safety guard — if CSV wipes >50% of scheduled slots, warn and abort the save.
-      // This catches ID drift from bench reclassification silently clearing the schedule.
-      const prevCount = Object.keys(scheduledSlots).length;
-      const nextCount = Object.keys(preservedSlots).length;
-      if (prevCount > 0 && nextCount < prevCount * 0.5) {
-        showToast(`⚠ CSV upload would clear ${prevCount - nextCount} scheduled slots — schedule preserved. Check job IDs.`);
-        setJobs(allJobs);
-        if (isFirebaseConfigured()) saveSchedule(allJobs, scheduledSlots);
-        addChangelog(`CSV uploaded — ${jobCount} jobs, schedule preserved (ID drift detected)`);
-        return;
-      }
-
-      justSavedAt.current = Date.now();
-      setJobs(allJobs);
-      setScheduledSlots(preservedSlots);
-      if (isFirebaseConfigured()) saveSchedule(allJobs, preservedSlots);
-
-      const droppedCount = prevCount - nextCount;
-      if (droppedCount > 0) {
-        showToast(`⚠ Loaded ${jobCount} jobs — ${droppedCount} scheduled slot${droppedCount > 1 ? 's' : ''} dropped (job ID no longer matched). Check calendar.`);
-        addChangelog(`CSV uploaded — ${jobCount} jobs, ${droppedCount} scheduled slots dropped (ID mismatch)`);
-      } else {
-        showToast(`Loaded ${jobCount} jobs from CSV`);
-        addChangelog(`CSV uploaded — loaded ${jobCount} jobs`);
-      }
+      showToast(`Loaded ${topLevel.length} jobs from CSV`);
+      addChangelog(`CSV uploaded — ${topLevel.length} jobs`);
     } catch (e) {
       showToast(`⚠ CSV parse error: ${e.message}`);
     }
@@ -276,10 +257,16 @@ export function useJobs({
   }
 
   function handleLogPomoSession(jobId, session) {
-    setJobs(prev => prev.map(j => j.id === jobId
-      ? { ...j, pomoLog: [...(j.pomoLog || []), session] }
-      : j
-    ));
+    let mergedJob = null;
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j;
+      mergedJob = { ...j, pomoLog: [...(j.pomoLog || []), session] };
+      return mergedJob;
+    }));
+    if (isFirebaseConfigured() && mergedJob) {
+      justSavedAt.current = Date.now();
+      batchWriteJobsState([{ id: jobId, data: jobsStateFieldsFor(mergedJob) }]);
+    }
     const jobRef = jobs.find(j => j.id === jobId);
     showToast(`Logged ${session.pomos} pomo${session.pomos !== 1 ? 's' : ''} for #${jobRef?.job ?? jobId}`);
   }

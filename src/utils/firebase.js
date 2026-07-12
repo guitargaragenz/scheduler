@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, deleteField } from 'firebase/firestore';
+import {
+  getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot,
+  deleteField, collection, writeBatch,
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -272,6 +275,191 @@ export function subscribeToSchedule(callback) {
     });
   } catch (e) {
     console.error('Firestore subscribe error:', e);
+    return () => {};
+  }
+}
+
+// ---------------------------------------------------------------------------
+// jobsMaster / jobsState — replaces the legacy single ggnz/schedule doc.
+//
+// The old doc held ONE `jobs` array mixing CSV/Sheet-owned fields and
+// app-owned fields, blind-overwritten in full by two independent writers
+// (the Python sync script and this app). That's what silently deleted
+// #1520/#1175's manually-split task data — see the architecture brief for
+// the full incident writeup. Each collection below has exactly one writer
+// and is updated per-document, never as a whole-collection overwrite.
+//
+// jobsMaster/{jobId} — CSV/Sheet-owned fields only (job number, mfr, model,
+//   desc, status, action, customer, tag, vb, backlog, project, days,
+//   hours, bench, schedulable flags). Written only by the CSV upload path
+//   (handleCsvUpload) and, outside this repo, sheet_to_csv.command — always
+//   via per-job upserts, never a full-array rebuild. Holds top-level jobs
+//   only; auto-split children are never stored here, they're re-derived by
+//   the join layer from bench/desc/hours exactly as before.
+//
+// jobsState/{jobId} — app-owned fields only (scheduled, calendarSlot,
+//   gcalEventId(s), pomoLog, done, noAutoSplit, sessionNote, bumpHistory).
+//   Also the sole/full record for split-child ids (manual and auto), since
+//   those ids don't correspond to a real CSV row. Written only by the React
+//   app. Multi-document split-set changes (handleSaveDrawer) MUST go through
+//   batchWriteJobsState() as a single writeBatch() — never sequential writes
+//   — so a killed app/dropped network mid-split can't leave a half-created
+//   split (architecture brief design decision #5, non-negotiable).
+//
+// The legacy `ggnz/schedule` functions above are kept in place through the
+// post-cutover probation window (see architecture brief) — do not delete
+// until that window has passed and the new collections are proven in
+// production. This build session does not touch or write to them.
+// ---------------------------------------------------------------------------
+
+const JOBS_MASTER_COLLECTION = () => collection(getDb(), 'jobsMaster');
+const JOBS_STATE_COLLECTION  = () => collection(getDb(), 'jobsState');
+const jobsMasterDoc = (jobId) => doc(getDb(), 'jobsMaster', String(jobId));
+const jobsStateDoc  = (jobId) => doc(getDb(), 'jobsState', String(jobId));
+
+export async function loadJobsMaster() {
+  try {
+    const snap = await getDocs(JOBS_MASTER_COLLECTION());
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error('Firestore jobsMaster load error:', e);
+    return [];
+  }
+}
+
+export async function saveJobMaster(jobId, fields) {
+  try {
+    await setDoc(jobsMasterDoc(jobId), { ...fields, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore jobsMaster save error:', e);
+  }
+}
+
+// Per-job upserts for a full CSV parse — one doc write per top-level job in
+// a batch, never a whole-collection overwrite. Chunked defensively at
+// Firestore's 500-write batch cap (GGNZ's job count today is far below it).
+export async function saveJobsMasterBatch(jobsList) {
+  if (!jobsList || jobsList.length === 0) return;
+  try {
+    for (let i = 0; i < jobsList.length; i += 450) {
+      const chunk = jobsList.slice(i, i + 450);
+      const batch = writeBatch(getDb());
+      const now = new Date().toISOString();
+      chunk.forEach(job => {
+        batch.set(jobsMasterDoc(job.id), { ...job, updatedAt: now });
+      });
+      await batch.commit();
+    }
+  } catch (e) {
+    console.error('Firestore jobsMaster batch save error:', e);
+  }
+}
+
+export function subscribeToJobsMaster(callback) {
+  try {
+    return onSnapshot(JOBS_MASTER_COLLECTION(), snap => {
+      callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  } catch (e) {
+    console.error('Firestore jobsMaster subscribe error:', e);
+    return () => {};
+  }
+}
+
+export async function loadJobsState() {
+  try {
+    const snap = await getDocs(JOBS_STATE_COLLECTION());
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error('Firestore jobsState load error:', e);
+    return [];
+  }
+}
+
+export async function saveJobState(jobId, fields) {
+  try {
+    await setDoc(jobsStateDoc(jobId), { ...fields, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore jobsState save error:', e);
+  }
+}
+
+export async function deleteJobState(jobId) {
+  try {
+    await deleteDoc(jobsStateDoc(jobId));
+  } catch (e) {
+    console.error('Firestore jobsState delete error:', e);
+  }
+}
+
+export function subscribeToJobsState(callback) {
+  try {
+    return onSnapshot(JOBS_STATE_COLLECTION(), snap => {
+      callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  } catch (e) {
+    console.error('Firestore jobsState subscribe error:', e);
+    return () => {};
+  }
+}
+
+// Atomic multi-document write for one logical change (a split-set edit, or
+// the periodic diff-save of scheduling/pomodoro/done state) — every create,
+// update, and delete in `writes` lands in a single writeBatch(). Non-
+// negotiable per architecture brief design decision #5: sequential
+// setDoc/deleteDoc calls would let a killed app/dropped network leave a
+// half-created split behind.
+//
+// writes: array of { id, data } to upsert, or { id, delete: true } to remove.
+export async function batchWriteJobsState(writes) {
+  if (!writes || writes.length === 0) return;
+  try {
+    const batch = writeBatch(getDb());
+    const now = new Date().toISOString();
+    writes.forEach(w => {
+      if (w.delete) {
+        batch.delete(jobsStateDoc(w.id));
+      } else {
+        batch.set(jobsStateDoc(w.id), { ...w.data, updatedAt: now });
+      }
+    });
+    await batch.commit();
+  } catch (e) {
+    console.error('Firestore jobsState batch write error:', e);
+  }
+}
+
+const SCHEDULED_SLOTS_DOC = () => doc(getDb(), 'ggnz', 'scheduledSlots');
+
+// scheduledSlots — its own single-writer doc (architecture brief design
+// decision #3). Previously lived inside the same ggnz/schedule doc as jobs;
+// app-owned, follows the existing PARKING_LOT_DOC/FOCUS_LIST_DOC pattern.
+export async function loadScheduledSlots() {
+  try {
+    const snap = await getDoc(SCHEDULED_SLOTS_DOC());
+    if (!snap.exists()) return {};
+    return snap.data().slots || {};
+  } catch (e) {
+    console.error('Firestore scheduledSlots load error:', e);
+    return {};
+  }
+}
+
+export async function saveScheduledSlots(slots) {
+  try {
+    await setDoc(SCHEDULED_SLOTS_DOC(), { slots, updatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Firestore scheduledSlots save error:', e);
+  }
+}
+
+export function subscribeToScheduledSlots(callback) {
+  try {
+    return onSnapshot(SCHEDULED_SLOTS_DOC(), snap => {
+      callback(snap.exists() ? (snap.data().slots || {}) : {});
+    });
+  } catch (e) {
+    console.error('Firestore scheduledSlots subscribe error:', e);
     return () => {};
   }
 }

@@ -1,0 +1,183 @@
+import { describe, it, expect } from 'vitest';
+import { joinJobsMasterState } from './joinJobs.js';
+
+// Minimal jobsMaster fixture factory — only the fields the join layer and
+// createSubtasks() actually read.
+function master(overrides = {}) {
+  return {
+    id: '1000',
+    job: '1000',
+    mfr: 'Fender',
+    model: 'Strat',
+    status: 'Active',
+    desc: 'general check',
+    action: '',
+    hours: 2,
+    bench: 'Setup',
+    schedulable: true,
+    ...overrides,
+  };
+}
+
+describe('joinJobsMasterState', () => {
+  it('a normal (unsplit) job passes through with jobsState fields merged in', () => {
+    const masters = [master({ id: '1000', job: '1000', desc: 'general check', bench: 'Setup', hours: 2 })];
+    const states = [{ id: '1000', scheduled: true, calendarSlot: '2026-07-13-9-0', done: false }];
+
+    const { jobs, orphans } = joinJobsMasterState(masters, states);
+
+    expect(orphans).toHaveLength(0);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      id: '1000', mfr: 'Fender', model: 'Strat',
+      scheduled: true, calendarSlot: '2026-07-13-9-0',
+      hasSubtasks: false, isSplit: false, subtasks: null,
+    });
+  });
+
+  it('a job with no jobsState doc yet still joins cleanly (fresh CSV row, never touched by the app)', () => {
+    const masters = [master({ id: '2000', job: '2000' })];
+    const { jobs, orphans } = joinJobsMasterState(masters, []);
+    expect(orphans).toHaveLength(0);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].scheduled).toBeUndefined();
+    expect(jobs[0].hasSubtasks).toBe(false);
+  });
+
+  it('a manual split restores stored children and marks the parent isSplit, never regenerating an auto-split', () => {
+    const masters = [master({ id: '1520', job: '1520', desc: 'refret and setup', bench: 'Fretwork', hours: 4 })];
+    const states = [
+      { id: '1520', done: false },
+      {
+        id: '1520_Luthier_0', parentId: '1520', isSubtask: true, bench: 'Luthier',
+        hours: 1.5, sessionIndex: 1, sessionTotal: 1, scheduled: true, calendarSlot: '2026-07-13-9-0',
+        job: '1520', mfr: 'Ampeg', model: 'SVT-6 Pro',
+      },
+      {
+        id: '1520_Setup_0', parentId: '1520', isSubtask: true, bench: 'Setup',
+        hours: 2.5, sessionIndex: 1, sessionTotal: 1, scheduled: false, calendarSlot: null,
+        job: '1520', mfr: 'Ampeg', model: 'SVT-6 Pro',
+      },
+    ];
+
+    const { jobs, orphans } = joinJobsMasterState(masters, states);
+
+    expect(orphans).toHaveLength(0);
+    const parent = jobs.find(j => j.id === '1520');
+    expect(parent.isSplit).toBe(true);
+    expect(parent.hasSubtasks).toBe(false);
+
+    const children = jobs.filter(j => j.parentId === '1520');
+    expect(children).toHaveLength(2);
+    expect(children.map(c => c.id).sort()).toEqual(['1520_Luthier_0', '1520_Setup_0']);
+    const luthierChild = children.find(c => c.id === '1520_Luthier_0');
+    expect(luthierChild.scheduled).toBe(true);
+    expect(luthierChild.calendarSlot).toBe('2026-07-13-9-0');
+    // This is the exact bug scenario: even though the master's desc/bench
+    // would auto-split this job too (Fretwork + refret+setup keywords), the
+    // stored manual children win — createSubtasks() must never be allowed to
+    // silently override or duplicate a real manual split.
+    expect(jobs).toHaveLength(3); // parent + 2 manual children, no auto-split leakage
+  });
+
+  it('an auto split (no stored jobsState for the parent) regenerates children from createSubtasks() and can still carry scheduling state per child', () => {
+    const masters = [master({ id: '3000', job: '3000', desc: 'refret and level', bench: 'Fretwork', hours: 4 })];
+    const states = [
+      { id: '3000-R', scheduled: true, calendarSlot: '2026-07-14-10-0' },
+    ];
+
+    const { jobs, orphans } = joinJobsMasterState(masters, states);
+
+    expect(orphans).toHaveLength(0);
+    const parent = jobs.find(j => j.id === '3000');
+    expect(parent.hasSubtasks).toBe(true);
+    expect(parent.isSplit).toBe(false);
+    expect(parent.subtasks).toEqual(expect.arrayContaining(['3000-R', '3000-LC']));
+
+    const refretChild = jobs.find(j => j.id === '3000-R');
+    expect(refretChild.scheduled).toBe(true);
+    expect(refretChild.calendarSlot).toBe('2026-07-14-10-0');
+    expect(refretChild.parentId).toBe('3000');
+
+    const otherChild = jobs.find(j => j.id === '3000-LC');
+    expect(otherChild.scheduled).toBe(false); // no jobsState doc for this one yet
+  });
+
+  it('an orphaned split — jobsState exists with real split data but jobsMaster is missing — is surfaced as an orphan, never silently dropped', () => {
+    // This is the exact production incident: #1520's parent record dropped
+    // out of a CSV sync, but its manually-split children survived in
+    // jobsState. The old withSplitsExpanded() only visited children whose
+    // parent was present, so the orphan silently vanished on the next save.
+    const masters = []; // parent's jobsMaster doc is gone
+    const states = [
+      {
+        id: '1520_Luthier_0', parentId: '1520', isSubtask: true, bench: 'Luthier',
+        hours: 1.5, job: '1520', mfr: 'Ampeg', model: 'SVT-6 Pro', scheduled: true,
+      },
+    ];
+
+    const { jobs, orphans } = joinJobsMasterState(masters, states);
+
+    expect(jobs).toHaveLength(0);
+    expect(orphans).toHaveLength(1);
+    expect(orphans[0]).toMatchObject({ id: '1520_Luthier_0', parentId: '1520', job: '1520', mfr: 'Ampeg' });
+  });
+
+  it('a jobsState doc with only empty/default fields and no jobsMaster parent is NOT flagged as an orphan (nothing real to lose)', () => {
+    const states = [{ id: '9999', scheduled: false, calendarSlot: null, pomoLog: [] }];
+    const { jobs, orphans } = joinJobsMasterState([], states);
+    expect(jobs).toHaveLength(0);
+    expect(orphans).toHaveLength(0);
+  });
+
+  it('a done job with splits keeps its manual children and is not flagged as an orphan even if its master doc later disappears', () => {
+    const states = [
+      { id: '1175', done: true },
+      { id: '1175_Wiring_0', parentId: '1175', isSubtask: true, bench: 'Wiring', hours: 1, job: '1175', done: true },
+    ];
+    // Master gone (job invoiced and rolled off the CSV) — done jobs are
+    // expected to eventually roll off; they're not a revenue-review case.
+    const { jobs, orphans } = joinJobsMasterState([], states);
+    expect(jobs).toHaveLength(0);
+    expect(orphans).toHaveLength(0); // done:true short-circuits orphan surfacing
+  });
+
+  it('a done job with splits still present in jobsMaster joins normally with done:true carried through', () => {
+    const masters = [master({ id: '1175', job: '1175', desc: 'rewire pots', bench: 'Wiring', hours: 2 })];
+    const states = [
+      { id: '1175', done: true },
+      { id: '1175_Wiring_0', parentId: '1175', isSubtask: true, bench: 'Wiring', hours: 1, job: '1175', done: true, scheduled: true },
+      { id: '1175_Wiring_1', parentId: '1175', isSubtask: true, bench: 'Wiring', hours: 1, job: '1175', done: true, scheduled: true },
+    ];
+    const { jobs, orphans } = joinJobsMasterState(masters, states);
+    expect(orphans).toHaveLength(0);
+    const parent = jobs.find(j => j.id === '1175');
+    expect(parent.done).toBe(true);
+    expect(parent.isSplit).toBe(true);
+    expect(jobs.filter(j => j.parentId === '1175')).toHaveLength(2);
+  });
+
+  it('a bench-keyword-edited job carries the updated jobsMaster bench through the join without needing any jobsState change', () => {
+    // Simulates App.jsx's onBenchKeywordsChange handler having already
+    // written the new bench to jobsMaster (design decision #2) — the join
+    // layer itself doesn't re-infer bench, it just reflects whatever
+    // jobsMaster currently says.
+    const masters = [master({ id: '4000', job: '4000', desc: 'scratchy pot', bench: 'Electronics', hours: 1 })];
+    const states = [{ id: '4000', scheduled: false }];
+    const { jobs } = joinJobsMasterState(masters, states);
+    expect(jobs[0].bench).toBe('Electronics');
+  });
+
+  it('never produces duplicate ids across the joined array', () => {
+    const masters = [
+      master({ id: '5000', job: '5000', desc: 'refret and setup', bench: 'Fretwork', hours: 4 }),
+      master({ id: '6000', job: '6000', desc: 'general check', bench: 'Setup', hours: 1 }),
+    ];
+    const states = [
+      { id: '5000_Setup_0', parentId: '5000', isSubtask: true, bench: 'Setup', hours: 2 },
+    ];
+    const { jobs } = joinJobsMasterState(masters, states);
+    const ids = jobs.map(j => j.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});

@@ -6,7 +6,8 @@ import {
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
-import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog } from './utils/firebase.js';
+import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJobMaster } from './utils/firebase.js';
+import { pickMasterFields } from './data/joinJobs.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -124,6 +125,13 @@ export default function App() {
     setCompletedJobs, setDoneJobIds,
     justSavedAt, firebaseReady,
     onJobsDisappeared: addDisappearedJobs,
+    // Union-join semantics (architecture brief design decision #1): a
+    // jobsState split-child doc whose jobsMaster parent has vanished is
+    // never silently dropped — it's surfaced here via the same
+    // pendingRevenueReview mechanism as a disappeared job, so Trevor sees it
+    // instead of it being erased on the next save (the exact #1520/#1175 bug).
+    onSplitOrphansFound: addDisappearedJobs,
+    benchHours,
   });
 
   const gcal = useGoogleCalendar({
@@ -676,16 +684,29 @@ export default function App() {
             setBenchKeywords(kw);
             localStorage.setItem('benchKeywords', JSON.stringify(kw));
             // Re-infer benches over the CURRENT jobs — never re-parse RAW_CSV
-            // (a header-only stub: parseCSV returns [] and the debounced save
-            // would wipe every job on every device). Skip split children
-            // (bench chosen by the user or the split logic) and split parents
-            // (changing their bench would drift auto-split child IDs and
-            // orphan their scheduled slots).
-            setJobs(prev => prev.map(j =>
-              (j.parentId || j.isSplit || j.hasSubtasks)
-                ? j
-                : { ...j, bench: inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw) }
-            ));
+            // (a header-only stub: parseCSV returns [] and would wipe every
+            // job on every device). Skip split children (bench chosen by the
+            // user or the split logic) and split parents (changing their
+            // bench would drift auto-split child IDs and orphan their
+            // scheduled slots).
+            //
+            // `bench` is CSV/Sheet-owned in the new jobsMaster/jobsState
+            // schema (architecture brief design decision #2) — this handler
+            // is the one deliberate app-side exception, so it writes the
+            // updated bench straight to each affected job's jobsMaster doc
+            // explicitly, rather than relying on the generic jobsState
+            // diff-save (which never touches jobsMaster fields at all).
+            const reinferred = [];
+            setJobs(prev => prev.map(j => {
+              if (j.parentId || j.isSplit || j.hasSubtasks) return j;
+              const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw);
+              if (bench !== j.bench) reinferred.push({ ...j, bench });
+              return { ...j, bench };
+            }));
+            if (isFirebaseConfigured() && reinferred.length > 0) {
+              justSavedAt.current = Date.now();
+              reinferred.forEach(j => saveJobMaster(j.id, pickMasterFields(j)));
+            }
           }}
           hourlyRate={hourlyRate}
           onHourlyRateChange={n => { setHourlyRate(n); localStorage.setItem('hourlyRate', String(n)); }}
