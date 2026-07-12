@@ -212,12 +212,12 @@ export default function App() {
 
   const handleRevenueReviewDone = useCallback((item, amount) => {
     jobOps.handleMarkDone(item, amount);
-    resolvePendingRevenueReviewItem(item.job);
+    resolvePendingRevenueReviewItem(item.id);
   }, [jobOps, resolvePendingRevenueReviewItem]);
 
   const handleRevenueReviewCancelled = useCallback((item, note) => {
-    addChangelog(`#${item.job} ${item.mfr} ${item.model} — cancelled${note ? `: ${note}` : ''}`);
-    resolvePendingRevenueReviewItem(item.job);
+    addChangelog(`#${item.job ?? item.id} ${item.mfr ?? ''} ${item.model ?? ''} — cancelled${note ? `: ${note}` : ''}`);
+    resolvePendingRevenueReviewItem(item.id);
   }, [addChangelog, resolvePendingRevenueReviewItem]);
 
   // Deep-link: ?job=XXXX opens that job's drawer on load

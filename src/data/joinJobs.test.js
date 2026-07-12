@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { joinJobsMasterState } from './joinJobs.js';
+import { joinJobsMasterState, keyReviewItemsById } from './joinJobs.js';
 
 // Minimal jobsMaster fixture factory — only the fields the join layer and
 // createSubtasks() actually read.
@@ -179,5 +179,51 @@ describe('joinJobsMasterState', () => {
     const { jobs } = joinJobsMasterState(masters, states);
     const ids = jobs.map(j => j.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('two simultaneous orphans — a top-level orphan (no job field) and an orphaned split child — are both returned distinctly, never merged', () => {
+    const states = [
+      // Top-level orphan: jobsMaster gone entirely for id '7000'. Top-level
+      // jobsState docs never carry `job` (jobsMaster owns it) — this is the
+      // shape that used to collide with every other job-less orphan under
+      // the old String(j.job) key.
+      { id: '7000', scheduled: true, calendarSlot: '2026-07-15-9-0' },
+      // Orphaned split child of a different, also-missing parent '8000'.
+      { id: '8000_Setup_0', parentId: '8000', isSubtask: true, bench: 'Setup', hours: 1, job: '8000' },
+    ];
+    const { orphans } = joinJobsMasterState([], states);
+    expect(orphans).toHaveLength(2);
+    expect(orphans.map(o => o.id).sort()).toEqual(['7000', '8000_Setup_0']);
+  });
+
+  it('two orphaned split children of the SAME missing parent (identical job number) are both returned distinctly', () => {
+    // This is the sibling-collision case: both children share job '9000' —
+    // keying by job number alone would let the second overwrite the first.
+    const states = [
+      { id: '9000_Setup_0', parentId: '9000', isSubtask: true, bench: 'Setup', hours: 1, job: '9000', mfr: 'Roland', model: 'JC-120' },
+      { id: '9000_Wiring_0', parentId: '9000', isSubtask: true, bench: 'Wiring', hours: 1, job: '9000', mfr: 'Roland', model: 'JC-120' },
+    ];
+    const { orphans } = joinJobsMasterState([], states);
+    expect(orphans).toHaveLength(2);
+    expect(orphans.map(o => o.id).sort()).toEqual(['9000_Setup_0', '9000_Wiring_0']);
+
+    // The regression this whole fix is about: converting the orphans array
+    // into the pendingRevenueReview map used to key by job number and
+    // silently drop one sibling. keyReviewItemsById (used by both
+    // usePendingRevenueReview.js and firebase.js's addPendingRevenueReviewItems)
+    // must key by each item's own doc id instead, so both survive.
+    const keyed = keyReviewItemsById(orphans);
+    expect(Object.keys(keyed).sort()).toEqual(['9000_Setup_0', '9000_Wiring_0']);
+    expect(keyed['9000_Setup_0'].bench).toBe('Setup');
+    expect(keyed['9000_Wiring_0'].bench).toBe('Wiring');
+  });
+
+  it('keyReviewItemsById never collides a top-level orphan (job undefined) with anything else', () => {
+    const topLevelOrphan = { id: '7000', scheduled: true }; // no `job` field
+    const splitOrphan = { id: '8000_Setup_0', parentId: '8000', job: '8000', bench: 'Setup' };
+    const keyed = keyReviewItemsById([topLevelOrphan, splitOrphan]);
+    expect(Object.keys(keyed)).toHaveLength(2);
+    expect(keyed['7000']).toBeDefined();
+    expect(keyed['8000_Setup_0']).toBeDefined();
   });
 });

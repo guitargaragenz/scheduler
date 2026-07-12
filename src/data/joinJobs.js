@@ -144,3 +144,16 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
 
   return { jobs: result, orphans };
 }
+
+// Keys a list of pendingRevenueReview candidates (disappeared top-level jobs
+// or joinJobsMasterState()'s `orphans`) by each item's own Firestore doc id,
+// never by job number: a top-level jobsState doc never carries a `job`
+// field (jobsMaster owns it, so it'd be undefined), and every split child of
+// the same parent shares the SAME job number — keying by job number lets a
+// second simultaneous orphan silently clobber the first in the review list.
+// `id` is always present and unique across every record this app produces
+// (top-level ids are the job number string; split-child ids are suffixed/
+// synthetic), so it's the only safe key here.
+export function keyReviewItemsById(items) {
+  return Object.fromEntries((items || []).map(j => [String(j.id), j]));
+}

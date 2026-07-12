@@ -215,11 +215,19 @@ export async function clearConflictLog() {
 
 const PENDING_REVENUE_REVIEW_DOC = () => doc(getDb(), 'ggnz', 'pendingRevenueReview');
 
-// Jobs that vanished from a CSV/Sheet sync without being marked done in-app —
-// awaiting Trevor's Done+invoiced/Cancelled call. Keyed by job number (not a
-// plain array) and written with field-level merge, never a blind setDoc, since
-// an automated sync (adding a newly-disappeared job) and a manual dismiss from
-// another device can land around the same time and this doc holds financial data.
+// Jobs that vanished from a CSV/Sheet sync without being marked done in-app,
+// PLUS orphaned split-child jobsState docs surfaced by the jobsMaster/
+// jobsState join (architecture brief design decision #1) — both awaiting
+// Trevor's Done+invoiced/Cancelled call. Keyed by each item's own Firestore
+// doc id (not job number, not a plain array): job number is undefined on a
+// top-level jobsState doc (jobsMaster owns it) and is SHARED across every
+// split child of the same parent, so keying by job number silently clobbers
+// one simultaneous orphan with another — exactly the kind of "data survives
+// in Firestore but only the last one is visible" bug this migration exists
+// to eliminate. Written with field-level merge, never a blind setDoc, since
+// an automated sync (adding a newly-disappeared job) and a manual dismiss
+// from another device can land around the same time and this doc holds
+// financial data.
 export async function loadPendingRevenueReview() {
   try {
     const snap = await getDoc(PENDING_REVENUE_REVIEW_DOC());
@@ -234,9 +242,9 @@ export async function loadPendingRevenueReview() {
 export async function addPendingRevenueReviewItems(items) {
   if (!items || items.length === 0) return;
   try {
-    const itemsByJobNo = Object.fromEntries(items.map(j => [String(j.job), j]));
+    const itemsById = Object.fromEntries(items.map(j => [String(j.id), j]));
     await setDoc(PENDING_REVENUE_REVIEW_DOC(), {
-      items: itemsByJobNo,
+      items: itemsById,
       updatedAt: new Date().toISOString(),
     }, { merge: true });
   } catch (e) {
@@ -244,10 +252,10 @@ export async function addPendingRevenueReviewItems(items) {
   }
 }
 
-export async function removePendingRevenueReviewItem(jobNo) {
+export async function removePendingRevenueReviewItem(itemId) {
   try {
     await setDoc(PENDING_REVENUE_REVIEW_DOC(), {
-      items: { [String(jobNo)]: deleteField() },
+      items: { [String(itemId)]: deleteField() },
       updatedAt: new Date().toISOString(),
     }, { merge: true });
   } catch (e) {

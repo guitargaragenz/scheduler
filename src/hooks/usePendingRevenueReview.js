@@ -3,11 +3,17 @@ import {
   isFirebaseConfigured, loadPendingRevenueReview, subscribeToPendingRevenueReview,
   addPendingRevenueReviewItems, removePendingRevenueReviewItem,
 } from '../utils/firebase.js';
+import { keyReviewItemsById } from '../data/joinJobs.js';
 
-// Jobs that disappeared from a CSV/Sheet sync without being marked done in-app
-// (Trevor's real workflow finishes/invoices in Multitrack) — awaiting a
-// Done+invoiced or Cancelled call. Kept in its own doc, keyed by job number, so
-// it never touches the `jobs` array / CSV drift-safety check.
+// Jobs that disappeared from a CSV/Sheet sync without being marked done
+// in-app (Trevor's real workflow finishes/invoices in Multitrack), plus
+// orphaned split-child jobsState docs surfaced by the jobsMaster/jobsState
+// join — both awaiting a Done+invoiced or Cancelled call. Kept in its own
+// doc, keyed by each item's own Firestore doc id (see keyReviewItemsById —
+// job number is undefined on a top-level jobsState doc and shared across
+// every split child of the same parent, so keying by job number would let
+// one simultaneous orphan silently clobber another). Never touches the
+// `jobs` array / CSV drift-safety check.
 export function usePendingRevenueReview() {
   const [items, setItems] = useState({});
   const [ready, setReady] = useState(false);
@@ -25,28 +31,23 @@ export function usePendingRevenueReview() {
 
   function addDisappearedJobs(disappearedJobs) {
     if (!disappearedJobs || disappearedJobs.length === 0) return;
-    setItems(prev => {
-      const next = { ...prev };
-      disappearedJobs.forEach(j => {
-        next[String(j.job)] = { ...j, disappearedAt: new Date().toISOString() };
-      });
-      return next;
-    });
+    const stamped = disappearedJobs.map(j => ({ ...j, disappearedAt: new Date().toISOString() }));
+    setItems(prev => ({ ...prev, ...keyReviewItemsById(stamped) }));
     if (isFirebaseConfigured()) {
       justSavedAt.current = Date.now();
-      addPendingRevenueReviewItems(disappearedJobs);
+      addPendingRevenueReviewItems(stamped);
     }
   }
 
-  function resolveItem(jobNo) {
+  function resolveItem(itemId) {
     setItems(prev => {
       const next = { ...prev };
-      delete next[String(jobNo)];
+      delete next[String(itemId)];
       return next;
     });
     if (isFirebaseConfigured()) {
       justSavedAt.current = Date.now();
-      removePendingRevenueReviewItem(jobNo);
+      removePendingRevenueReviewItem(itemId);
     }
   }
 

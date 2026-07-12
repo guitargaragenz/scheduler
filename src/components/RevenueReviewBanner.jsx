@@ -9,7 +9,8 @@ function ReviewRow({ item, onDone, onCancelled }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0', borderTop: '1px solid #78350f' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: '#fde68a', flex: 1, minWidth: 160 }}>
-          <span style={{ fontWeight: 700 }}>#{item.job}</span> {item.mfr} {item.model}
+          <span style={{ fontWeight: 700 }}>#{item.job ?? item.id}</span> {item.mfr} {item.model}
+          {item.parentId && <span style={{ color: '#fcd34d' }}> (split piece)</span>}
           {item.customer && <span style={{ color: '#fcd34d' }}> — {item.customer}</span>}
         </div>
         <button
@@ -103,7 +104,7 @@ export default function RevenueReviewBanner({ items, onDone, onCancelled, top = 
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {entries.map(item => (
-            <ReviewRow key={item.job} item={item} onDone={onDone} onCancelled={onCancelled} />
+            <ReviewRow key={item.id} item={item} onDone={onDone} onCancelled={onCancelled} />
           ))}
         </div>
       </div>
