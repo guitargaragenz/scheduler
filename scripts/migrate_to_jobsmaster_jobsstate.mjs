@@ -190,11 +190,18 @@ async function main() {
   const stateWritten = await commitInChunks(db, stateWrites, { dryRun: DRY_RUN });
 
   // ── Step 5: write scheduledSlots to its own new doc ─────────────────────
+  // Field must be named `slots` — that's what loadScheduledSlots()/
+  // subscribeToScheduledSlots() in src/utils/firebase.js actually read
+  // (snap.data().slots). Writing it under any other key means the live app
+  // silently sees an empty schedule even though the doc has real data —
+  // caught live during the actual cutover smoke test, fixed directly on the
+  // production doc; this correction keeps the script itself correct for any
+  // future re-run.
   let scheduledSlotsWritten = false;
   if (DRY_RUN) {
     console.log(`DRY RUN — would write ggnz/scheduledSlots with ${Object.keys(scheduledSlots).length} slot(s)`);
   } else {
-    await writeBatch(db).set(doc(db, 'ggnz', 'scheduledSlots'), { scheduledSlots }).commit();
+    await writeBatch(db).set(doc(db, 'ggnz', 'scheduledSlots'), { slots: scheduledSlots, updatedAt: new Date().toISOString() }).commit();
     scheduledSlotsWritten = true;
   }
 
