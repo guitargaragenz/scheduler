@@ -225,19 +225,20 @@ EOF
 # ── Firebase upload ────────────────────────────────────────────────────────────
 python3 << 'FBEOF'
 import csv, json, re, math, pathlib, urllib.request, urllib.error
-from datetime import datetime, timezone
 
 CSV_FILE     = pathlib.Path.home() / 'Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/jobs.csv'
 FIREBASE_API_KEY = 'AIzaSyC_t5tO9-vaCyo1pNePk7nT2bhoTubfv5M'
 PROJECT_ID       = 'ggnz-scheduler'
-DOC_URL = (
-    f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}'
-    f'/databases/(default)/documents/ggnz/schedule?key={FIREBASE_API_KEY}'
-)
+BASE_URL = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents'
+
+def master_url(job_id):
+    return f'{BASE_URL}/jobsMaster/{job_id}?key={FIREBASE_API_KEY}'
 
 print("─────────────────────────────────────────────")
-print("  CSV → Firebase sync")
+print("  CSV → jobsMaster sync")
 print("─────────────────────────────────────────────")
+print("This script is jobsMaster's ONLY writer. It never touches")
+print("scheduling/split/pomodoro state (that lives in jobsState now).")
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 DEFAULT_KEYWORDS = {
@@ -289,51 +290,43 @@ def hours_range(h):
     lo, hi = math.floor(h), math.ceil(h)
     return str(h) if lo == hi else f'{lo}-{hi}'
 
-# ── Firestore REST value decoder (mirror of to_fs, defined below) ─────────────
-def from_fs(fv):
-    if not isinstance(fv, dict):
-        return None
-    if 'booleanValue' in fv: return fv['booleanValue']
-    if 'integerValue' in fv: return int(fv['integerValue'])
-    if 'doubleValue' in fv:  return fv['doubleValue']
-    if 'stringValue' in fv:  return fv['stringValue']
-    if 'nullValue' in fv:    return None
-    if 'arrayValue' in fv:
-        return [from_fs(v) for v in fv['arrayValue'].get('values', [])]
-    if 'mapValue' in fv:
-        return {k: from_fs(v) for k, v in fv['mapValue'].get('fields', {}).items()}
-    return None
-
-# ── Fetch existing scheduledSlots + jobs from Firestore ────────────────────────
-scheduled_slots = {}
-existing_jobs = []
+# ── Fetch current jobsMaster document ids from Firestore ───────────────────────
+# We need the full current id set up front so we can compute, after parsing
+# the CSV below, which jobsMaster docs need to be deleted (jobs that dropped
+# out of the accepted-status list). If this fetch fails outright, abort
+# loudly rather than proceed with an incomplete picture of what to delete —
+# same caution as the old script's "abort to protect calendar bookings",
+# just scoped to jobsMaster now (deleting a jobsMaster doc can no longer
+# touch scheduling data, but an incomplete delete pass could still leave
+# stale/duplicate rows the app has to reconcile).
+existing_master_ids = set()
 try:
-    req = urllib.request.Request(DOC_URL, method='GET')
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        doc = json.loads(resp.read())
-    raw_slots = doc.get('fields', {}).get('scheduledSlots', {}).get('mapValue', {}).get('fields', {})
-    for k, v in raw_slots.items():
-        val = v.get('stringValue') or v.get('integerValue') or ''
-        if val:
-            scheduled_slots[k] = str(val)
-    print(f"Fetched {len(scheduled_slots)} scheduled slots from Firestore")
-    raw_jobs_field = doc.get('fields', {}).get('jobs')
-    if raw_jobs_field:
-        decoded = from_fs(raw_jobs_field)
-        existing_jobs = decoded if isinstance(decoded, list) else []
-    print(f"Fetched {len(existing_jobs)} existing jobs from Firestore")
+    page_token = None
+    while True:
+        list_url = f'{BASE_URL}/jobsMaster?key={FIREBASE_API_KEY}&pageSize=300&mask.fieldPaths=job'
+        if page_token:
+            list_url += f'&pageToken={page_token}'
+        req = urllib.request.Request(list_url, method='GET')
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            page = json.loads(resp.read())
+        for d in page.get('documents', []):
+            name = d.get('name', '')
+            doc_id = name.rsplit('/', 1)[-1]
+            if doc_id:
+                existing_master_ids.add(doc_id)
+        page_token = page.get('nextPageToken')
+        if not page_token:
+            break
+    print(f"Fetched {len(existing_master_ids)} existing jobsMaster doc id(s) from Firestore")
 except urllib.error.HTTPError as e:
     if e.code == 404:
-        print("No existing Firestore doc — will create fresh")
+        print("No existing jobsMaster documents — will create fresh")
     else:
-        print(f"ERROR: Could not fetch existing slots ({e.code}) — aborting to protect calendar bookings")
+        print(f"ERROR: Could not fetch existing jobsMaster ids ({e.code}) — aborting to protect jobsMaster from an incomplete delete pass")
         import sys; sys.exit(1)
 except Exception as e:
-    print(f"ERROR: Could not fetch existing slots ({e}) — aborting to protect calendar bookings")
+    print(f"ERROR: Could not fetch existing jobsMaster ids ({e}) — aborting to protect jobsMaster from an incomplete delete pass")
     import sys; sys.exit(1)
-
-# Lookup of existing jobs by id, for preserving live-state fields
-existing_jobs_by_id = {str(j.get('id')): j for j in existing_jobs if isinstance(j, dict) and 'id' in j}
 
 # ── Parse CSV → job objects ────────────────────────────────────────────────────
 with open(CSV_FILE, newline='', encoding='utf-8') as f:
@@ -368,7 +361,12 @@ for obj in rows:
     effective_hours = hours if not (hours == 0 and schedulable) else 1.0
     bench = infer_bench(obj.get('Desc',''), status, obj.get('Action',''), obj.get('Model',''), obj.get('Mfr',''))
     job_id = str(obj['Job'])
-    existing = existing_jobs_by_id.get(job_id, {})
+    # CSV/Sheet-owned fields only — matches src/data/joinJobs.js's
+    # pickMasterFields() (NON_MASTER_FIELDS minus this script's own 'id' key,
+    # which becomes the Firestore document id, not a field inside the doc).
+    # No live-state field (scheduled/calendarSlot/gcalEventId/gcalEventIds/
+    # pomoLog/done) is ever read, written, or preserved here — this script
+    # has no code path capable of touching that data anymore.
     jobs.append({
         'id':           job_id,
         'job':          obj['Job'],
@@ -390,15 +388,6 @@ for obj in rows:
         'backlog':      obj.get('BL') == 'Y',
         'project':      obj.get('PJ') == 'Y',
         'bench':        bench,
-        # Live-state fields: preserved from existing Firestore record (not CSV-driven).
-        # The CSV/Sheet never carries scheduling state, so overwriting these with
-        # hardcoded defaults on every sync would silently un-schedule every job.
-        'scheduled':    existing.get('scheduled', False),
-        'calendarSlot': existing.get('calendarSlot', None),
-        'gcalEventId':  existing.get('gcalEventId', None),
-        'gcalEventIds': existing.get('gcalEventIds', []),
-        'pomoLog':      existing.get('pomoLog', []),
-        'done':         existing.get('done', False),
     })
 
 print(f"Parsed {len(jobs)} jobs from CSV")
@@ -406,21 +395,6 @@ if skipped:
     print(f"Skipped {len(skipped)} incomplete jobs (missing Hours or Days):")
     for s in skipped:
         print(f"  {s}")
-
-# ── Preserve manually-split child jobs ──────────────────────────────────────────
-# Manual splits (created via the app's JobDrawer "+ Add bench" feature) live in
-# Firestore as separate records with a truthy parentId. The CSV/Sheet-driven loop
-# above only ever produces one record per Job row, keyed by the bare job number,
-# so it can never regenerate these. Carry them over unchanged or they'd be wiped
-# out by the full-document PATCH below.
-new_job_ids = {j['id'] for j in jobs}
-carried_over = 0
-for ej in existing_jobs:
-    if isinstance(ej, dict) and ej.get('parentId') and str(ej.get('id')) not in new_job_ids:
-        jobs.append(ej)
-        carried_over += 1
-if carried_over:
-    print(f"Carried over {carried_over} manually-split child job(s) untouched")
 
 # ── Serialise to Firestore REST format ─────────────────────────────────────────
 def to_fs(val):
@@ -434,38 +408,74 @@ def to_fs(val):
     if val is None:           return {'nullValue': None}
     return {'stringValue': str(val)}
 
-body = json.dumps({
-    'fields': {
-        'jobs':           to_fs(jobs),
-        'scheduledSlots': to_fs(scheduled_slots),
-        'updatedAt':      {'stringValue': datetime.now(timezone.utc).isoformat()},
-    }
-}).encode()
+# ── Upsert one jobsMaster/{jobId} doc per accepted CSV row ─────────────────────
+# jobsMaster is a one-writer collection (this script). Each write is a full-
+# document overwrite (no updateMask) since jobsMaster docs carry no other
+# fields this script needs to preserve — unlike the old ggnz/schedule doc,
+# there's no live-state data living alongside these fields to protect.
+upserted = 0
+upsert_errors = []
+for j in jobs:
+    doc_id = j['id']
+    fields = {k: to_fs(v) for k, v in j.items() if k != 'id'}
+    body = json.dumps({'fields': fields}).encode()
+    try:
+        req = urllib.request.Request(
+            master_url(doc_id), data=body, method='PATCH',
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        upserted += 1
+    except Exception as e:
+        upsert_errors.append(f"#{doc_id}: {e}")
 
-# ── PATCH to Firestore ─────────────────────────────────────────────────────────
-# updateMask restricts the PATCH to just these fields (defense-in-depth): without
-# it, a PATCH with a body replaces the ENTIRE document, so any field we didn't
-# explicitly fetch-and-preserve above would be silently deleted.
-patch_url = (
-    DOC_URL
-    + '&updateMask.fieldPaths=jobs'
-    + '&updateMask.fieldPaths=scheduledSlots'
-    + '&updateMask.fieldPaths=updatedAt'
-)
-try:
-    req = urllib.request.Request(
-        patch_url, data=body, method='PATCH',
-        headers={'Content-Type': 'application/json'}
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        resp.read()
-    print(f"Firebase updated — {len(jobs)} jobs pushed")
+print(f"Upserted {upserted}/{len(jobs)} jobsMaster doc(s)")
+if upsert_errors:
+    print(f"ERRORS upserting {len(upsert_errors)} jobsMaster doc(s):")
+    for e in upsert_errors:
+        print(f"  {e}")
+
+# ── Delete jobsMaster docs for jobs that dropped out of the accepted set ───────
+# Previously this was an implicit side effect of rebuilding the whole `jobs`
+# array; now jobsMaster is per-document, so it needs to be explicit. This is
+# safe under the new architecture (unlike the old whole-array-rebuild bug):
+# deleting a jobsMaster doc can no longer delete or orphan anything in
+# jobsState — at worst it surfaces as an orphan in the app's revenue-review
+# banner if real scheduling data still exists for that id, which is the
+# intended safety net, not a bug.
+current_job_ids = {j['id'] for j in jobs}
+to_delete = sorted(existing_master_ids - current_job_ids)
+deleted = 0
+delete_errors = []
+if to_delete:
+    print(f"\nRemoving {len(to_delete)} jobsMaster doc(s) no longer in the accepted-status set:")
+    for doc_id in to_delete:
+        print(f"  #{doc_id}")
+        try:
+            req = urllib.request.Request(master_url(doc_id), method='DELETE')
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                resp.read()
+            deleted += 1
+        except Exception as e:
+            delete_errors.append(f"#{doc_id}: {e}")
+    if delete_errors:
+        print(f"ERRORS deleting {len(delete_errors)} jobsMaster doc(s):")
+        for e in delete_errors:
+            print(f"  {e}")
+else:
+    print("No jobsMaster docs to remove — nothing dropped out of the accepted set.")
+
+print()
+print(f"jobsMaster upserted: {upserted}")
+print(f"jobsMaster deleted:  {deleted}")
+if upsert_errors or delete_errors:
+    print("─────────────────────────────────────────────")
+    print("Done with ERRORS — see above. Re-run to retry failed writes.")
+    print("─────────────────────────────────────────────")
+else:
     print("─────────────────────────────────────────────")
     print("Done! All Macs will update within seconds.")
-    print("─────────────────────────────────────────────")
-except Exception as e:
-    print(f"ERROR: Firebase upload failed: {e}")
-    print("Jobs are saved in CSV — re-upload manually if needed.")
     print("─────────────────────────────────────────────")
 
 FBEOF
