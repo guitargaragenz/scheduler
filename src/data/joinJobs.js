@@ -109,8 +109,20 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
       for (const st of subtasks) {
         const stState = stateById[st.id] || {};
         claimedStateIds.add(st.id);
+        // Auto-split children aren't stored/re-derived wholesale like manual
+        // children — their existence/shape (bench, hours, label, parentId)
+        // comes fresh from createSubtasks() every time, so `st` is the base.
+        // But their jobsState doc is a real, fully-owned record just like a
+        // manual child's (see generic diff-save in useFirebase.js, which
+        // saves the full record for any job with a parentId) — so the
+        // overlay on top must be the FULL stored doc, not a 4-field
+        // allowlist. A narrower overlay was the bug: pomoLog/done/
+        // sessionNote/bumpHistory logged against one specific bench-card of
+        // a split job were silently discarded on every reconstruction, even
+        // though they were sitting safely in Firestore the whole time.
         result.push({
           ...st,
+          ...stState,
           scheduled: stState.scheduled ?? false,
           calendarSlot: stState.calendarSlot ?? null,
           gcalEventId: stState.gcalEventId ?? null,

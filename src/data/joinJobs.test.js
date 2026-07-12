@@ -103,6 +103,43 @@ describe('joinJobsMasterState', () => {
     expect(otherChild.scheduled).toBe(false); // no jobsState doc for this one yet
   });
 
+  it('an auto-split child\'s pomoLog/done/sessionNote/bumpHistory survive the join, not just its scheduling fields', () => {
+    // Regression for the narrow 4-field overlay bug: an auto-split child's
+    // full jobsState doc (Pomodoro logged against that one bench-card,
+    // marked done, a session note, a bump-history entry) must all come
+    // through — this data is real and Pomodoro-log preservation across
+    // reloads is a named feature (root CLAUDE.md), not incidental.
+    const masters = [master({ id: '3100', job: '3100', desc: 'refret and level', bench: 'Fretwork', hours: 4 })];
+    const bumpEntry = { ts: 12345, reason: 'Parts', fromSlot: 'a', toSlot: 'b' };
+    const states = [
+      {
+        id: '3100-R',
+        scheduled: true,
+        calendarSlot: '2026-07-14-10-0',
+        pomoLog: [{ pomos: 2, ts: 111 }],
+        done: true,
+        sessionNote: 'Frets levelled, needs re-crown tomorrow',
+        bumpHistory: [bumpEntry],
+      },
+    ];
+
+    const { jobs } = joinJobsMasterState(masters, states);
+    const refretChild = jobs.find(j => j.id === '3100-R');
+
+    expect(refretChild.scheduled).toBe(true);
+    expect(refretChild.calendarSlot).toBe('2026-07-14-10-0');
+    expect(refretChild.pomoLog).toEqual([{ pomos: 2, ts: 111 }]);
+    expect(refretChild.done).toBe(true);
+    expect(refretChild.sessionNote).toBe('Frets levelled, needs re-crown tomorrow');
+    expect(refretChild.bumpHistory).toEqual([bumpEntry]);
+
+    // Fields that only createSubtasks() knows (never stored in jobsState)
+    // must still come from the freshly-derived base, not get wiped by the
+    // overlay.
+    expect(refretChild.bench).toBe('Fretwork');
+    expect(refretChild.parentId).toBe('3100');
+  });
+
   it('an orphaned split — jobsState exists with real split data but jobsMaster is missing — is surfaced as an orphan, never silently dropped', () => {
     // This is the exact production incident: #1520's parent record dropped
     // out of a CSV sync, but its manually-split children survived in
