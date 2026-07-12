@@ -90,6 +90,14 @@ function isSplitChildId(oldJob, newJob) {
   return Boolean(oldJob?.parentId || newJob?.parentId);
 }
 
+// A field is "empty" if it's absent (undefined/null) OR holds the semantic
+// zero-value for its type (false, ''). This does NOT include empty arrays —
+// those are handled separately below, only when the OTHER side is genuinely
+// absent, never when comparing two arrays with different real contents.
+function isEmptyDefault(v) {
+  return v === undefined || v === null || v === false || v === '';
+}
+
 function isEqual(a, b) {
   if (a === b) return true;
   // Treat null/undefined as equivalent "absent" values — Firestore drops
@@ -97,6 +105,17 @@ function isEqual(a, b) {
   const aEmpty = a === undefined || a === null;
   const bEmpty = b === undefined || b === null;
   if (aEmpty && bEmpty) return true;
+  // One side genuinely never had this field (old data predates it, or the
+  // migration correctly normalizes an absent jobsState doc to explicit
+  // defaults — see withTopLevelDefaults() in joinJobs.js). If the OTHER side
+  // is the field's own semantic default (false/''/empty array), that's not
+  // real data appearing or disappearing — it's "never set" being written out
+  // explicitly for the first time. Only fires when one side is truly
+  // undefined; a real `false`/`[]` on BOTH sides already returns true above,
+  // and a non-default value on either side always falls through to the
+  // strict checks below, so this can never mask an actual data change.
+  if (a === undefined && (isEmptyDefault(b) || (Array.isArray(b) && b.length === 0))) return true;
+  if (b === undefined && (isEmptyDefault(a) || (Array.isArray(a) && a.length === 0))) return true;
   if (aEmpty !== bEmpty) return false;
   if (Array.isArray(a) || Array.isArray(b)) {
     if (!Array.isArray(a) || !Array.isArray(b)) return false;
