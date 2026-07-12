@@ -5,17 +5,44 @@ _Open claude.ai/code on iPhone → select guitargaragenz/scheduler → read this
 
 ---
 
-## Status: ARCHITECTURE APPROVED 2026-07-12 — not built yet, needs a dedicated build session.
-Supersedes the two entries below (the `isSubtask`-flag guard and the fresh-eyes split/sync review
-they point to). Full investigation this session: root cause confirmed (not just theorized) by 3
-independent code-reading passes, two rounds of guard-style patches proposed and rejected by
-adversarial council review, then a full architectural redesign proposed and approved by Trevor after
-he explicitly rejected further patching ("I don't want a patch job... I want to eradicate the cause").
-Two more independent council reviewers stress-tested the redesign; both said "sound with
-modifications" — modifications folded in below. Trevor then reviewed and ruled out two of the
-remaining risks (job-number reuse, two-device races — both structurally impossible given how he
-actually runs the shop) and required one more fix (atomic batched writes for a split-set) before
-calling it resolved.
+## Status: SHIPPED 2026-07-12 — cutover complete, live in production.
+Merged to `main` and deployed (`0ec7caa` → `bb4ef1c`). Production migration ran for real: 96 job
+records (50 top-level + 46 split children) copied from the old `ggnz/schedule` doc into `jobsMaster`/
+`jobsState`, verified with 0 unexplained diffs and 0 orphans against a pre-migration snapshot backed
+up to `scripts/backups/`. Old `ggnz/schedule` doc frozen (not deleted) for a 2-week probation window
+— revoke access/delete it no earlier than **2026-07-26**.
+
+**One real bug caught live, during the smoke test, and fixed on the spot:** the migration wrote the
+new `ggnz/scheduledSlots` doc's data under the field name `scheduledSlots` instead of `slots` (what
+`firebase.js` actually reads) — the live calendar would have rendered completely empty despite every
+job's data being intact. Caught before Trevor ever saw it (a scripted reconstruction check run
+immediately after deploy, before any browser click-through), fixed directly on the live doc (same 37
+slots, corrected field name), migration script corrected too. Confirmed fixed both computationally
+(0 dangling slot references) and visually (live browser check: calendar renders scheduled jobs
+correctly, job/bench counts add up, no console errors).
+
+**Not yet done:** `scripts/sheet_to_csv.command`'s deployed twin on Micky's Desktop
+(`~/Desktop/SCHEDULER_old/sheet_to_csv.command`) was redeployed via the documented curl command and
+confirmed byte-identical to the repo copy — this IS done. What's still open: no live watcher process
+was found running during cutover (`ps aux` showed nothing), so the automated 2-minute poller isn't
+currently active — if Trevor relies on it, `start_watcher_fixed.command` (note: filename drifted from
+`start_watcher.command`, worth reconciling) needs to be started for the new CSV pipeline to actually
+sync. First live CSV upload / real split-job edit through the app hasn't been done yet — worth a
+deliberate first real test when Trevor's next at the bench, not urgent, the architecture doesn't need
+it to be considered done.
+
+Full incident/fix history: memory `project_manual_split_data_loss_2026_07_12.md`.
+
+Superseded status below (architecture approval) kept for history — supersedes the two entries below
+it in turn (the `isSubtask`-flag guard and the fresh-eyes split/sync review they point to). Full
+investigation: root cause confirmed (not just theorized) by 3 independent code-reading passes, two
+rounds of guard-style patches proposed and rejected by adversarial council review, then a full
+architectural redesign proposed and approved by Trevor after he explicitly rejected further patching
+("I don't want a patch job... I want to eradicate the cause"). Two more independent council reviewers
+stress-tested the redesign; both said "sound with modifications" — modifications folded in below.
+Trevor then reviewed and ruled out two of the remaining risks (job-number reuse, two-device races —
+both structurally impossible given how he actually runs the shop) and required one more fix (atomic
+batched writes for a split-set) before calling it resolved.
 
 # Brief — Split `ggnz/schedule` into `jobsMaster` + `jobsState` (job-master/schedule-state migration)
 
