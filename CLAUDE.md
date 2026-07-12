@@ -121,6 +121,26 @@ Example: if asked to "clean up duplicates", list what counts as a duplicate and 
 
 This rule exists because bulk session archiving was done when only duplicate removal was requested (2026-05-23).
 
+### Stay on-track during autonomous work — don't make Trevor babysit sessions
+
+The whole point of the agent-team protocol is that Trevor checks in twice per task — approve the
+brief, approve the merge — and otherwise gets back to the bench, not the Mac. Repeatedly needing him
+to come back mid-session and manually redirect a build defeats that entirely. This is a hard rule,
+not a preference — it caused real, stated distress on 2026-07-12 after it happened more than once in
+one evening.
+
+- **If Trevor (or a cross-session message relaying him) gives new direction mid-session, stop and
+  fully re-orient before taking the next action.** Never fall back to a "recommended"/default option
+  from a pending question if a redirect is sitting unaddressed in the transcript — read it first,
+  every time. This exact failure happened 2026-07-12: a redirect message ("no patch job, find root
+  cause") was delivered, and the session proceeded with "given no strong preference, going with the
+  recommended path" anyway, without processing it.
+- **When investigation shows a fix is symptom-patching (bugs keep multiplying with each new review
+  pass instead of converging), that itself is a signal to stop and step back to root-cause/
+  architecture level — not to add another layer of guards.** Don't wait to be told this explicitly.
+- If genuinely unsure whether new context changes the plan, stop and confirm — don't guess and
+  proceed on a blast-radius change.
+
 ---
 
 ## Architecture — File Boundaries and Ownership
