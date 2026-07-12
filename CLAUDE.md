@@ -29,6 +29,10 @@ memory file — this file loads automatically, every time, for every session and
   plan, diagnosis, and technical decision into plain terms before anything else — no jargon, no
   assuming familiarity with code concepts. If a plan file or agent report is dense/technical, read it
   and give the plain-English translation unprompted, don't wait to be asked.
+- **Answer open-ended prompts for him, don't leave him to formulate them.** When any tool/skill (e.g.
+  `/re-fresh`'s "what's the goal?") demands he compose a technical summary in his own words, that's a
+  real, recurring friction point — not a comprehension gap. Proactively supply the plain-language
+  answer for him to paste in before he has to ask. Confirmed recurring 2026-07-10 and again 2026-07-12.
 - **Give a straight verdict, not a hedge.** When asked "will this work" or "should I approve this,"
   fact-check the claim against the actual code/data first, then say yay or nay plainly, with the real
   reasoning — don't just list options and leave the decision entirely to him.
