@@ -141,11 +141,12 @@ export function useJobs({
           sessionNote: sess.note || '',
           parentId: parentJob.id,
           isSubtask: true,
-          // Children whose id survives the re-save keep their scheduling
+          // Children whose id survives the re-save keep their scheduling and piece-done state
           scheduled: prevChild?.scheduled ?? false,
           calendarSlot: prevChild?.calendarSlot ?? null,
           gcalEventId: prevChild?.gcalEventId ?? null,
           gcalEventIds: prevChild?.gcalEventIds ?? [],
+          pieceDone: prevChild?.pieceDone ?? false,
         });
       });
     });
@@ -295,15 +296,20 @@ export function useJobs({
       batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }]);
     }
 
-    // Check if all pieces are now done
-    const allChildrenDone = canInvoiceJob(parentJob, jobs);
-    if (allChildrenDone && pieceDone) {
-      // Auto-complete the parent
-      const parentPieces = parentJob.hasSubtasks
+    // Check if all pieces are now done (accounting for the piece we just marked)
+    // We must check manually because setJobs() is async and jobs array isn't updated yet
+    if (pieceDone) {
+      const children = parentJob.hasSubtasks
         ? jobs.filter(j => parentJob.subtasks?.includes(j.id))
         : jobs.filter(j => j.parentId === parentJob.id);
-      const benchNames = parentPieces.map(j => j.bench).join(' + ');
-      showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+      const allChildrenDone = children.every(c =>
+        c.id === childJobId ? pieceDone : c.pieceDone
+      );
+      if (allChildrenDone) {
+        // Auto-complete the parent
+        const benchNames = children.map(j => j.bench).join(' + ');
+        showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+      }
     }
   }
 
