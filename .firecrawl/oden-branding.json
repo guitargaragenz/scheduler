@@ -1,0 +1,168 @@
+{
+  "branding": {
+    "colorScheme": "light",
+    "fonts": [
+      {
+        "family": "Poppins",
+        "role": "body"
+      }
+    ],
+    "colors": {
+      "primary": "#021B1D",
+      "secondary": "#6C757D",
+      "accent": "#032224",
+      "background": "#FFFFFF",
+      "textPrimary": "#032224",
+      "link": "#032224"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Poppins",
+        "heading": "Poppins"
+      },
+      "fontStacks": {
+        "heading": [
+          "Great Vibes"
+        ],
+        "body": [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Oxygen-Sans",
+          "Ubuntu",
+          "Cantarell",
+          "Helvetica Neue",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Oxygen-Sans",
+          "Ubuntu",
+          "Cantarell",
+          "Helvetica Neue",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "64px",
+        "h2": "64px",
+        "body": "16px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "4px"
+    },
+    "components": {
+      "input": {
+        "background": "#FFFFFF",
+        "textColor": "#555555",
+        "borderColor": "#CCCCCC",
+        "borderRadius": "4px",
+        "borderRadiusCorners": {
+          "topLeft": "4px",
+          "topRight": "4px",
+          "bottomRight": "4px",
+          "bottomLeft": "4px"
+        },
+        "shadow": "none"
+      }
+    },
+    "images": {
+      "logo": "http://odenguitars.com/wp-content/uploads/2021/10/logoblack2.png",
+      "favicon": "https://odenguitars.com/wp-content/uploads/2021/10/favicon-1-150x150.png",
+      "ogImage": "https://odenguitars.com/wp-content/uploads/2021/09/bannerimage-odenguitars2-scaled-1.jpg",
+      "logoHref": "https://odenguitars.com",
+      "logoAlt": "Oden Guitars"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 2,
+      "reasoning": "Selected #2 because it is visible, large, located in the header, links to the homepage, and matches the brand name 'Oden Guitars'.",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "personality": {
+      "tone": "professional",
+      "energy": "medium",
+      "targetAudience": "musicians and guitar enthusiasts"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0,
+      "colors": 0.9,
+      "overall": 0.45
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 2,
+          "selectedLogoReasoning": "Selected #2 because it is visible, large, located in the header, links to the homepage, and matches the brand name 'Oden Guitars'.",
+          "confidence": 0.95
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": false,
+        "llmSucceeded": false
+      }
+    }
+  },
+  "metadata": {
+    "og:image:height": "1503",
+    "twitter:card": "summary_large_image",
+    "robots": "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+    "ogLocale": "en_US",
+    "og:title": "Home - Oden Guitars",
+    "generator": "WordPress 6.9",
+    "msapplication-TileImage": "https://odenguitars.com/wp-content/uploads/2021/10/favicon-1.png",
+    "ogUrl": "https://odenguitars.com/",
+    "viewport": "width=device-width, initial-scale=1.0",
+    "modifiedTime": "2022-02-25T22:17:45+00:00",
+    "og:url": "https://odenguitars.com/",
+    "og:site_name": "Oden Guitars",
+    "article:modified_time": "2022-02-25T22:17:45+00:00",
+    "og:image:width": "2560",
+    "og:image:type": "image/jpeg",
+    "language": "en-US",
+    "ogImage": "https://odenguitars.com/wp-content/uploads/2021/09/bannerimage-odenguitars2-scaled-1.jpg",
+    "description": "Home - John Oden guitars is a builder of fine custom guitars located in Vista, CA. Handmade quality guitars built from scratch by John Oden.",
+    "ogTitle": "Home - Oden Guitars",
+    "ogSiteName": "Oden Guitars",
+    "title": "Home - Oden Guitars",
+    "og:locale": "en_US",
+    "og:type": "website",
+    "ogDescription": "Home - John Oden guitars is a builder of fine custom guitars located in Vista, CA. Handmade quality guitars built from scratch by John Oden.",
+    "og:description": "Home - John Oden guitars is a builder of fine custom guitars located in Vista, CA. Handmade quality guitars built from scratch by John Oden.",
+    "og:image": "https://odenguitars.com/wp-content/uploads/2021/09/bannerimage-odenguitars2-scaled-1.jpg",
+    "favicon": "https://odenguitars.com/wp-content/uploads/2021/10/favicon-1-150x150.png",
+    "scrapeId": "019f3053-1923-75d9-93c3-6aeb079a465d",
+    "sourceURL": "https://odenguitars.com/",
+    "url": "https://odenguitars.com/",
+    "statusCode": 200,
+    "contentType": "text/html; charset=UTF-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "e85f4ce7-47b4-4a10-8026-c9672ea0ed5e",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": [
+    "https://odenguitars.com/wp-content/uploads/2021/09/guitar-in-building-stage-1.jpeg",
+    "https://odenguitars.com/wp-content/uploads/2021/10/logoblack.png",
+    "http://odenguitars.com/wp-content/uploads/2021/10/logoblack.png",
+    "https://odenguitars.com/wp-content/uploads/2022/02/BF699295-0BAA-40C8-865B-B818269AACF0-768x1024.jpeg",
+    "http://test5.jewel-webdesign.com/wp-content/uploads/2021/09/image4.jpeg",
+    "http://odenguitars.com/wp-content/uploads/2021/10/logoblack2.png",
+    "https://odenguitars.com/wp-content/uploads/2021/09/bannerimage-odenguitars2-scaled-1.jpg",
+    "https://odenguitars.com/wp-content/uploads/2022/02/446B4D4D-EA1C-4A18-8749-E9018ECB1A13-1024x768.jpeg"
+  ]
+}

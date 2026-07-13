@@ -1,0 +1,125 @@
+{
+  "branding": {
+    "colorScheme": "light",
+    "fonts": [
+      {
+        "family": "Libre Franklin",
+        "role": "body"
+      },
+      {
+        "family": "Helvetica Neue",
+        "role": "body"
+      }
+    ],
+    "colors": {
+      "primary": "#DC3232",
+      "secondary": "#CF2E2E",
+      "accent": "#F78DA7",
+      "background": "#FFFFFF",
+      "textPrimary": "#222222",
+      "link": "#F78DA7"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Libre Franklin",
+        "heading": "Libre Franklin"
+      },
+      "fontStacks": {
+        "heading": [
+          "Libre Franklin",
+          "Helvetica Neue",
+          "helvetica",
+          "arial",
+          "sans-serif"
+        ],
+        "body": [
+          "Libre Franklin",
+          "Helvetica Neue",
+          "helvetica",
+          "arial",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Libre Franklin",
+          "Helvetica Neue",
+          "helvetica",
+          "arial",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "36px",
+        "h2": "14px",
+        "body": "16px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "2px"
+    },
+    "components": {},
+    "images": {
+      "favicon": "https://guitarrepairs.co.nz/wp-content/uploads/2018/07/cropped-Neil-custom-guitar-made-32x32.jpg",
+      "ogImage": null
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": -1,
+      "reasoning": "No valid brand logo - only large hero image and tiny/invisible icons. None match the brand 'The Fret Shop'.",
+      "confidence": 0.3,
+      "rejected": true,
+      "source": "llm"
+    },
+    "personality": {
+      "tone": "professional",
+      "energy": "medium",
+      "targetAudience": "musicians and guitar enthusiasts"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0,
+      "colors": 0.9,
+      "overall": 0.45
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": -1,
+          "selectedLogoReasoning": "No valid brand logo - only large hero image and tiny/invisible icons. None match the brand 'The Fret Shop'.",
+          "confidence": 0.3
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": false,
+        "llmSucceeded": false
+      }
+    }
+  },
+  "metadata": {
+    "viewport": "width=device-width, initial-scale=1.0",
+    "robots": "max-image-preview:large",
+    "generator": "WordPress 7.0",
+    "msapplication-TileImage": "https://guitarrepairs.co.nz/wp-content/uploads/2018/07/cropped-Neil-custom-guitar-made-270x270.jpg",
+    "title": "The Fret Shop – Custom Guitars and Guitar Repairs",
+    "language": "en-NZ",
+    "favicon": "https://guitarrepairs.co.nz/wp-content/uploads/2018/07/cropped-Neil-custom-guitar-made-32x32.jpg",
+    "scrapeId": "019f3054-bc73-705a-8e10-9d51dcffee31",
+    "sourceURL": "https://guitarrepairs.co.nz/",
+    "url": "https://guitarrepairs.co.nz/",
+    "statusCode": 200,
+    "contentType": "text/html; charset=UTF-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "d4efd033-94ca-430c-86e7-bf45b9e7394c",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": [
+    "https://guitarrepairs.co.nz/wp-content/uploads/2018/07/Rowan-Pink-Swirl-Guitar.png"
+  ]
+}

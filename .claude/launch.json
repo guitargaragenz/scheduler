@@ -13,6 +13,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "guitargaragenz-desktop",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/admin/Desktop/GuitarGarageNZ", "-p", "4174", "--no-clipboard"],
+      "port": 4174
     }
   ]
 }

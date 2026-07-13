@@ -1,4 +1,4 @@
-import { parseCSV } from '../data/jobs.js';
+import { parseCSV, canInvoiceJob } from '../data/jobs.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
 import { isFirebaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJobMaster } from '../utils/firebase.js';
 import { getWeekDays } from '../utils/calendar.js';
@@ -271,11 +271,48 @@ export function useJobs({
     showToast(`Logged ${session.pomos} pomo${session.pomos !== 1 ? 's' : ''} for #${jobRef?.job ?? jobId}`);
   }
 
+  function handleMarkPieceDone(parentJobId, childJobId, pieceDone) {
+    let updatedChild = null;
+    let parentJob = null;
+
+    // Update the child's pieceDone state
+    setJobs(prev => prev.map(j => {
+      if (j.id === childJobId) {
+        updatedChild = { ...j, pieceDone };
+        return updatedChild;
+      }
+      if (j.id === parentJobId) {
+        parentJob = j;
+      }
+      return j;
+    }));
+
+    if (!updatedChild || !parentJob) return;
+
+    // Persist to Firestore
+    if (isFirebaseConfigured()) {
+      justSavedAt.current = Date.now();
+      batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }]);
+    }
+
+    // Check if all pieces are now done
+    const allChildrenDone = canInvoiceJob(parentJob, jobs);
+    if (allChildrenDone && pieceDone) {
+      // Auto-complete the parent
+      const parentPieces = parentJob.hasSubtasks
+        ? jobs.filter(j => parentJob.subtasks?.includes(j.id))
+        : jobs.filter(j => j.parentId === parentJob.id);
+      const benchNames = parentPieces.map(j => j.bench).join(' + ');
+      showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+    }
+  }
+
   return {
     handleSaveDrawer,
     handleMarkDone,
     handleCsvUpload,
     handleOpenPomo,
     handleLogPomoSession,
+    handleMarkPieceDone,
   };
 }

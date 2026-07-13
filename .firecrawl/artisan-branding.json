@@ -1,0 +1,209 @@
+{
+  "branding": {
+    "colorScheme": "dark",
+    "fonts": [
+      {
+        "family": "Lato",
+        "role": "body"
+      }
+    ],
+    "colors": {
+      "primary": "#F3A924",
+      "secondary": "#724F11",
+      "accent": "#C2871D",
+      "background": "#000000",
+      "textPrimary": "#000000",
+      "link": "#A250F5"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Lato",
+        "heading": "Lato"
+      },
+      "fontStacks": {
+        "heading": [
+          "Lato",
+          "sans-serif"
+        ],
+        "body": [
+          "Lato",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Lato",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "36px",
+        "h2": "41px",
+        "body": "18px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "4px"
+    },
+    "components": {
+      "input": {
+        "background": "#FFFFFF",
+        "textColor": "#555555",
+        "borderColor": null,
+        "borderRadius": "0px",
+        "borderRadiusCorners": {
+          "topLeft": "0px",
+          "topRight": "0px",
+          "bottomRight": "0px",
+          "bottomLeft": "0px"
+        },
+        "shadow": "none"
+      },
+      "buttonPrimary": {
+        "background": "#C2871D",
+        "textColor": "#FFFFFF",
+        "borderColor": "#FFFFFF",
+        "borderRadius": "20px",
+        "borderRadiusCorners": {
+          "topLeft": "20px",
+          "topRight": "20px",
+          "bottomRight": "20px",
+          "bottomLeft": "20px"
+        },
+        "shadow": "none"
+      },
+      "buttonSecondary": {
+        "background": "#A250F5",
+        "textColor": "#FFFFFF",
+        "borderColor": "#735011",
+        "borderRadius": "20px",
+        "borderRadiusCorners": {
+          "topLeft": "20px",
+          "topRight": "20px",
+          "bottomRight": "20px",
+          "bottomLeft": "20px"
+        },
+        "shadow": "none"
+      }
+    },
+    "images": {
+      "logo": "https://www.artisanluthiers.com/images/logo-white-small.png",
+      "favicon": "https://www.artisanluthiers.com/images/icons/apple-touch-icon.png",
+      "ogImage": "https://www.artisanluthiers.com/images/guitar-repair-marietta-kennesaw-ga.png",
+      "logoHref": "https://www.artisanluthiers.com/index.html",
+      "logoAlt": "Artisan Luthiers"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 0,
+      "reasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand name 'Artisan Luthiers'.",
+      "confidence": 0.9,
+      "source": "llm"
+    },
+    "__llm_button_reasoning": {
+      "primary": {
+        "index": 2,
+        "text": "Book An Appointment",
+        "reasoning": "Button #2 ('Book An Appointment') is the primary CTA due to its action-oriented text and distinct vibrant color (#C2871D), which stands out as a call-to-action."
+      },
+      "secondary": {
+        "index": 0,
+        "text": "Explore Repair Services",
+        "reasoning": "Button #0 ('Explore Repair Services') is chosen as secondary due to its different color group (#A250F5) and supportive action text."
+      },
+      "confidence": 0.95
+    },
+    "personality": {
+      "tone": "professional",
+      "energy": "medium",
+      "targetAudience": "musicians and instrument enthusiasts"
+    },
+    "designSystem": {
+      "framework": "bootstrap",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0.95,
+      "colors": 0.9,
+      "overall": 0.925
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 0,
+          "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand name 'Artisan Luthiers'.",
+          "confidence": 0.9
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": true,
+        "llmSucceeded": true
+      }
+    }
+  },
+  "metadata": {
+    "og:description": "Artisan Luthiers - Guitar repair, maintenance, modifications and custom services for electric guitars and bass guitars. Affordable guitar repair prices, prompt turnaround, local pickup and delivery.",
+    "og:image": "https://www.artisanluthiers.com/images/guitar-repair-marietta-kennesaw-ga.png",
+    "ogSiteName": "Artisan Luthiers - Kennesaw, GA",
+    "name": "Artisan Luthiers - Kennesaw, GA",
+    "og:type": "article",
+    "theme-color": "#000000",
+    "p:domain_verify": "d5a5974a4023f0bfa6589135374d2722",
+    "msapplication-TileColor": "#000000",
+    "language": "en-us",
+    "ICBM": "34.02995, -84.608733",
+    "description": "Luthiers for guitar setup, repair, maintenance, mods, service for acoustic, electric guitar, bass guitar, mandolin, ukulele, banjo, dulcimer. Local shop with affordable guitar repair prices, prompt turnaround, local pickup and delivery. Atlanta vintage guitars restoration luthiers., Luthiers for guitar setup, repair, maintenance, mods, service for acoustic, electric guitar, bass guitar, mandolin, ukulele. Local shop with affordable guitar repair prices, prompt turnaround, local pickup and delivery. Atlanta vintage guitar restoration luthiers.",
+    "format-detection": "telephone=yes",
+    "geo.position": "34.02995;-84.608733",
+    "image": "https://www.artisanluthiers.com/images/guitar-repair-marietta-kennesaw-ga.png",
+    "viewport": "width=device-width, initial-scale=1.0",
+    "og:site_name": "Artisan Luthiers - Kennesaw, GA",
+    "og:url": "https://www.artisanluthiers.com/index.html",
+    "ahrefs-site-verification": "87e9e15960fcba277a137902eb744e19f2488297d0484680002b95ce7103dd24",
+    "geo.placename": "Kennesaw",
+    "title": "Luthier Kennesaw GA - Marietta, Woodstock, Acworth, Canton",
+    "og:locale": "en_US",
+    "msapplication-config": "https://www.artisanluthiers.com/images/icons/browserconfig.xml",
+    "geo.region": "US",
+    "og:title": "Luthier Kennesaw GA - Marietta, Woodstock, Acworth, Canton",
+    "scrapeId": "019f3052-2604-70b2-bc27-619b9cd1463b",
+    "sourceURL": "https://www.artisanluthiers.com/",
+    "url": "https://www.artisanluthiers.com/",
+    "statusCode": 200,
+    "contentType": "text/html",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "6f81a73c-8cc1-4db8-9c27-1a1b79a53526",
+    "creditsUsed": 1,
+    "concurrencyLimited": true,
+    "concurrencyQueueDurationMs": 6132
+  },
+  "images": [
+    "https://www.artisanluthiers.com/image/icons/favicon.ico",
+    "https://www.artisanluthiers.com/images/customers/garrett.webp",
+    "https://www.artisanluthiers.com/images/icons/apple-touch-icon.png",
+    "https://www.artisanluthiers.com/images/guitar-repair-woodstock-ga.jpg",
+    "https://www.artisanluthiers.com/images/customers/jerome-h.webp",
+    "https://www.artisanluthiers.com/images/logo-white-small.png",
+    "https://www.artisanluthiers.com/images/customers/r-gilbert.jpg",
+    "https://www.artisanluthiers.com/images/customers/c-smith.jpg",
+    "https://www.artisanluthiers.com/images/customers/r-gilbert.webp",
+    "https://www.artisanluthiers.com/images/customers/jim-a.webp",
+    "https://www.artisanluthiers.com/images/customers/jim-a.jpg",
+    "https://www.artisanluthiers.com/images/customers/dennisd.png",
+    "https://www.artisanluthiers.com/images/customers/thomas-m.png",
+    "https://www.artisanluthiers.com/images/customers/thomas-m.webp",
+    "https://www.artisanluthiers.com/images/customers/jerome-h.png",
+    "https://www.artisanluthiers.com/images/customers/garrett.png",
+    "https://www.artisanluthiers.com/images/customers/c-smith.webp",
+    "https://www.artisanluthiers.com/images/icons/favicon-16x16.png",
+    "https://www.artisanluthiers.com/images/icons/android-chrome-96x96.png",
+    "https://www.artisanluthiers.com/images/customers/dennisd.webp",
+    "https://www.artisanluthiers.com/images/guitar-repair-shop.jpg",
+    "https://www.artisanluthiers.com/images/guitar-repair-marietta-kennesaw-ga.png",
+    "https://www.artisanluthiers.com/images/customers/thomas-m.jpg",
+    "https://www.artisanluthiers.com/images/icons/safari-pinned-tab.svg"
+  ],
+  "warning": "This scrape job was throttled at your current concurrency limit. If you'd like to scrape faster, you can upgrade your plan."
+}

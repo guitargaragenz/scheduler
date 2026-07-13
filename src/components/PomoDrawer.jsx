@@ -36,7 +36,7 @@ function reducer(state, action) {
   }
 }
 
-export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onRemove }) {
+export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onMarkPieceDone, onRemove, parentJob }) {
   const [workMins, setWorkMins] = useState(DEFAULT_WORK_MINS);
   const workSecs = workMins * 60;
 
@@ -320,6 +320,26 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onR
               </button>
             </div>
           </>
+        )}
+
+        {/* Mark piece done (split pieces) */}
+        {onMarkPieceDone && job.parentId && parentJob && (isIdle || isDone) && (
+          <button
+            onClick={() => {
+              onMarkPieceDone(job.parentId, job.id, !job.pieceDone);
+              handleClose();
+            }}
+            style={{
+              width: '100%', marginTop: 14, padding: '10px 0',
+              background: job.pieceDone ? '#1e3a1a' : '#14532d',
+              color: job.pieceDone ? '#666' : '#4ade80',
+              border: `1px solid ${job.pieceDone ? '#333' : '#166534'}`,
+              borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            {job.pieceDone ? '✓ Piece done' : 'Mark piece done'}
+          </button>
         )}
 
         {/* Mark job as done */}
