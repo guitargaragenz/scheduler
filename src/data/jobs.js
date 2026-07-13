@@ -11,6 +11,7 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const act = (action || '').trim().toUpperCase();
   if (status === 'In Transit') return 'Admin';
   if (status === 'Waiting' && !['INC', 'CI'].includes(act)) return 'Admin';
+  if (status === 'On Hold') return 'Admin';
 
   const d = (desc + ' ' + model).toLowerCase();
   const m = mfr.toLowerCase();

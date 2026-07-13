@@ -263,6 +263,7 @@ def infer_bench(desc, status, action, model, mfr):
     act = (action or '').strip().upper()
     if status == 'In Transit': return 'Admin'
     if status == 'Waiting' and act not in ('INC', 'CI'): return 'Admin'
+    if status == 'On Hold': return 'Admin'
     d = (desc + ' ' + model).lower()
     m = mfr.lower()
     def rx(bench): return re.compile('|'.join(DEFAULT_KEYWORDS[bench]))
