@@ -52,6 +52,31 @@ memory file — this file loads automatically, every time, for every session and
 
 ---
 
+## Agent-Team Protocol — Non-Negotiable
+
+**Any work touching these blast-radius files MUST run through the full agent-team protocol. No exceptions.**
+
+**Blast-radius files:**
+- `scheduledSlots` (Firestore state)
+- `calendarSlot` (job field)
+- `useGoogleCalendar.js`
+- `useFirebase.js`
+- `jobs[]` shape/identity
+
+**The protocol:**
+1. **Brief** — written, scope-locked, posted to `.claude/pending-brief.md`, Trevor approves ("yp")
+2. **Council** — two independent agents review, weigh in on design decisions
+3. **Builder Agent** — executes the build on staging branch, supervised from main conversation
+4. **Independent Verifier** — separate agent runs the checklist (never the builder)
+5. **Browser Test** — click through Vercel preview, confirm it works
+6. **Merge** — Trevor approves ("yp"), merged to main
+
+**Before your first commit:** Check `.claude/pending-brief.md` for a brief entry covering this work. No brief entry, no commit. If you're unsure whether work is "blast-radius" (multi-file, complex, touches shared state), default to running it through the full protocol rather than solo.
+
+**Why this matters:** This protocol is the reason Trevor doesn't babysit builds. Skipping it means he has to come back mid-session and manually redirect work, which defeats the whole point. Don't skip it.
+
+---
+
 ## Project Context
 
 ### Devices
