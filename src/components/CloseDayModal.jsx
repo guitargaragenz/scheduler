@@ -24,22 +24,37 @@ const ACTION_EXPLANATIONS = {
   completed: 'marks done and invoices',
 };
 
+// Same detail JobCard.jsx already shows on a split's calendar card — which
+// bench piece this is (note/label, falling back to a trimmed desc) so a
+// split job isn't just an anonymous bench name here.
 function BenchChips({ splits }) {
   if (!splits.length) return null;
   return (
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
       {splits.map((s, i) => {
         const colors = BENCH_COLORS[s.bench] || BENCH_COLORS.Admin;
+        const detail = s.sessionNote || s.label
+          || (() => { const t = s.splitDesc ?? s.desc; return t ? t.slice(0, 60) + (t.length > 60 ? '…' : '') : null; })();
         return (
-          <span
-            key={i}
-            style={{
-              background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`,
-              borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600,
-            }}
-          >
-            {s.bench}{s.hours ? ` · ${s.hours}h` : ''}
-          </span>
+          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`,
+                borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600, flexShrink: 0,
+              }}
+            >
+              {s.bench}{s.hours ? ` · ${s.hours}h` : ''}
+              {s.sessionIndex && s.sessionTotal > 1 ? ` (${s.sessionIndex}/${s.sessionTotal})` : ''}
+            </span>
+            {detail && (
+              <span style={{
+                fontSize: 11, color: s.sessionNote ? '#fbbf24' : 'rgba(255,255,255,0.5)',
+                fontStyle: s.sessionNote ? 'italic' : 'normal',
+              }}>
+                {detail}
+              </span>
+            )}
+          </div>
         );
       })}
     </div>
