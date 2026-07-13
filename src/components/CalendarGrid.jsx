@@ -7,9 +7,9 @@ import JobCard from './JobCard.jsx';
 const TIME_COL_WIDTH = 56;
 const SLOT_HEIGHT = 32; // each 30-min half-slot
 
-// All slots: day hours 10am–6pm (both halves) + evening 9pm–11pm (both halves)
+// All slots: day hours 10am–6pm (both halves) + evening 9pm–12am (both halves)
 const DAY_HOURS    = [10,11,12,13,14,15,16,17,18];
-const EVENING_HOURS = [21, 22];
+const EVENING_HOURS = [21, 22, 23];
 const ALL_SLOTS = [
   ...DAY_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),

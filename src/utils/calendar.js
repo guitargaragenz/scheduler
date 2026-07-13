@@ -9,9 +9,9 @@ export function localDateKey(date = new Date()) {
 
 // Work hours config
 export const WORK_HOURS = {
-  weekday:  { start: 10, end: 23 }, // 10am–6pm + 9pm–11pm Mon–Fri
-  saturday: { start: 10, end: 23 }, // 10am–11pm Sat (extended for catch-up)
-  sunday:   { start: 10, end: 23 }, // 10am–11pm Sun (extended for catch-up)
+  weekday:  { start: 10, end: 24 }, // 10am–6pm + 9pm–12am Mon–Fri
+  saturday: { start: 10, end: 24 }, // 10am–12am Sat (extended for catch-up)
+  sunday:   { start: 10, end: 24 }, // 10am–12am Sun (extended for catch-up)
 };
 
 // Hours that exist in the weekday work range but are not bookable (the gap 7pm-9pm)
