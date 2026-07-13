@@ -6,7 +6,7 @@ import {
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
-import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJobMaster } from './utils/firebase.js';
+import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJobMaster, deleteJobState } from './utils/firebase.js';
 import { pickMasterFields } from './data/joinJobs.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -210,14 +210,31 @@ export default function App() {
     showToast, addChangelog,
   });
 
+  // A split-piece orphan (item.parentId set — surfaced by the jobsMaster/
+  // jobsState union-join when its parent's bench/desc changed and no longer
+  // regenerates this exact child id) has no live meaning once resolved
+  // either way. Resolving the review item alone used to leave its jobsState
+  // doc behind indefinitely — if the parent's bench ever happened to
+  // regenerate this same child id again later, that stale doc could get
+  // silently re-claimed as if it were current. Deleting it on resolution
+  // closes that off for good instead of just dismissing the notification.
+  function cleanupResolvedOrphan(item) {
+    if (item.parentId && isFirebaseConfigured()) {
+      justSavedAt.current = Date.now();
+      deleteJobState(item.id);
+    }
+  }
+
   const handleRevenueReviewDone = useCallback((item, amount) => {
     jobOps.handleMarkDone(item, amount);
     resolvePendingRevenueReviewItem(item.id);
+    cleanupResolvedOrphan(item);
   }, [jobOps, resolvePendingRevenueReviewItem]);
 
   const handleRevenueReviewCancelled = useCallback((item, note) => {
     addChangelog(`#${item.job ?? item.id} ${item.mfr ?? ''} ${item.model ?? ''} — cancelled${note ? `: ${note}` : ''}`);
     resolvePendingRevenueReviewItem(item.id);
+    cleanupResolvedOrphan(item);
   }, [addChangelog, resolvePendingRevenueReviewItem]);
 
   // Deep-link: ?job=XXXX opens that job's drawer on load
