@@ -2,7 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { BENCH_COLORS } from '../data/jobs.js';
 
-export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick }) {
+export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob }) {
   const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -34,7 +34,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} onClick={onClick}>
       {compact ? (
         /* Calendar card: Mfr + Model primary, job number as small tag */
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4, position: 'relative' }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 11, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {job.mfr} {job.model}
@@ -67,9 +67,27 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
               </div>
             )}
           </div>
-          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.6)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            #{job.job}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end', flexShrink: 0 }}>
+            {onMarkPieceDone && job.parentId && parentJob && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onMarkPieceDone(job.parentId, job.id, !job.pieceDone);
+                }}
+                title={`Click to mark ${job.bench} ${job.pieceDone ? 'undone' : 'done'}`}
+                style={{
+                  background: 'none', border: 'none', fontSize: 11, fontWeight: 700,
+                  color: job.pieceDone ? '#4ade80' : '#666', cursor: 'pointer', padding: 0,
+                  textDecoration: job.pieceDone ? 'line-through' : 'none',
+                }}
+              >
+                {job.pieceDone ? '✓' : '○'}
+              </button>
+            )}
+            <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
+              #{job.job}
+            </span>
+          </div>
         </div>
       ) : (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>

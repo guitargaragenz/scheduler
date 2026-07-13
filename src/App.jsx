@@ -547,6 +547,8 @@ export default function App() {
                 activeJobId={scheduler.activeJob?.id ?? null}
                 onJobClick={jobOps.handleOpenPomo}
                 onRemoveAdHocTask={removeAdHocTask}
+                onMarkPieceDone={jobOps.handleMarkPieceDone}
+                jobs={jobs}
               />
               <Sidebar
                 jobs={jobs}

@@ -15,7 +15,7 @@ const ALL_SLOTS = [
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
 ];
 
-function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick, onRemoveAdHocTask }) {
+function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, jobs = [] }) {
   const key = slotKey(date, hour, minute);
   const { setNodeRef, isOver } = useDroppable({ id: key, data: { dayIdx, hour, minute } });
 
@@ -60,7 +60,16 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
           background: colors.bg, borderLeft: `3px solid ${isDone ? '#22c55e' : colors.border}`,
           opacity: isDone ? 0.5 : 1,
         }}>
-          <JobCard job={job} slotKey={key} inCalendar dragMode="regular" compact onClick={() => onJobClick(job)} />
+          <JobCard
+            job={job}
+            slotKey={key}
+            inCalendar
+            dragMode="regular"
+            compact
+            onClick={() => onJobClick(job)}
+            onMarkPieceDone={onMarkPieceDone}
+            parentJob={job.parentId ? jobs.find(j => j.id === job.parentId) : null}
+          />
           {isDone && (
             <div style={{
               position: 'absolute', top: 1, right: 2,
@@ -163,7 +172,7 @@ function LunchSlot({ dayIdx, minute }) {
   );
 }
 
-export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, onRemoveAdHocTask, scrollToCurrentHour = true }) {
+export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, jobs = [], scrollToCurrentHour = true }) {
 
   const scrollRef = useRef(null);
   const todayStr = new Date().toDateString();
@@ -326,6 +335,8 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                       activeJobId={activeJobId}
                       onJobClick={onJobClick}
                       onRemoveAdHocTask={onRemoveAdHocTask}
+                      onMarkPieceDone={onMarkPieceDone}
+                      jobs={jobs}
                     />
                   </div>
                 );
