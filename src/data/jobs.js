@@ -70,9 +70,9 @@ export function createSubtasks(job, benchHours = {}) {
     if (hasFinish) deduct += fixedFinish;
     const luthierHours = Math.max(Math.round((job.hours - deduct) * 2) / 2, 0.5);
 
-    cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id });
-    if (hasFinish) cards.push({ ...job, id: `${job.id}-FN`, bench: 'Finishing', hours: fixedFinish, hoursRange: hoursRange(fixedFinish), label: 'Finishing',    parentId: job.id });
-    if (hasSetup)  cards.push({ ...job, id: `${job.id}-S`,  bench: 'Setup',     hours: fixedSetup,  hoursRange: hoursRange(fixedSetup),  label: 'Setup',        parentId: job.id });
+    cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: luthierHours, hoursRange: hoursRange(luthierHours), label: 'Luthier work', parentId: job.id, pieceDone: false });
+    if (hasFinish) cards.push({ ...job, id: `${job.id}-FN`, bench: 'Finishing', hours: fixedFinish, hoursRange: hoursRange(fixedFinish), label: 'Finishing',    parentId: job.id, pieceDone: false });
+    if (hasSetup)  cards.push({ ...job, id: `${job.id}-S`,  bench: 'Setup',     hours: fixedSetup,  hoursRange: hoursRange(fixedSetup),  label: 'Setup',        parentId: job.id, pieceDone: false });
 
     return cards.length >= 2 ? cards : null;
   }
@@ -84,8 +84,8 @@ export function createSubtasks(job, benchHours = {}) {
     if (!hasWiring || !hasSetup) return null;
     const half = Math.max(Math.round(job.hours / 2 * 2) / 2, 0.5);
     return [
-      { ...job, id: `${job.id}-ST`, bench: 'Setup',  hours: half, hoursRange: hoursRange(half), label: 'Setup',  parentId: job.id },
-      { ...job, id: `${job.id}-WR`, bench: 'Wiring', hours: half, hoursRange: hoursRange(half), label: 'Wiring', parentId: job.id },
+      { ...job, id: `${job.id}-ST`, bench: 'Setup',  hours: half, hoursRange: hoursRange(half), label: 'Setup',  parentId: job.id, pieceDone: false },
+      { ...job, id: `${job.id}-WR`, bench: 'Wiring', hours: half, hoursRange: hoursRange(half), label: 'Wiring', parentId: job.id, pieceDone: false },
     ];
   }
 
@@ -109,15 +109,15 @@ export function createSubtasks(job, benchHours = {}) {
     if (hasRefret) {
       // 50/50 split between Refret and Level/Crown/Polish
       const half = Math.max(Math.round(fretworkHours / 2 * 2) / 2, 0.5);
-      cards.push({ ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Refret',                parentId: job.id });
-      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Level, Crown & Polish', parentId: job.id });
+      cards.push({ ...job, id: `${job.id}-R`,  bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Refret',                parentId: job.id, pieceDone: false });
+      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: half, hoursRange: hoursRange(half), label: 'Level, Crown & Polish', parentId: job.id, pieceDone: false });
     } else {
-      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: fretworkHours, hoursRange: hoursRange(fretworkHours), label: 'Level, Crown & Polish', parentId: job.id });
+      cards.push({ ...job, id: `${job.id}-LC`, bench: 'Fretwork', hours: fretworkHours, hoursRange: hoursRange(fretworkHours), label: 'Level, Crown & Polish', parentId: job.id, pieceDone: false });
     }
 
-    if (hasLuthier) cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: fixedLuthier, hoursRange: hoursRange(fixedLuthier), label: 'Luthier work',     parentId: job.id });
-    if (hasSetup)   cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup',     hours: fixedSetup,   hoursRange: hoursRange(fixedSetup),   label: 'Setup / Restring', parentId: job.id });
-    if (hasWiring)  cards.push({ ...job, id: `${job.id}-WR`, bench: 'Wiring',    hours: fixedWiring,  hoursRange: hoursRange(fixedWiring),  label: 'Wiring',           parentId: job.id });
+    if (hasLuthier) cards.push({ ...job, id: `${job.id}-LU`, bench: 'Luthier',   hours: fixedLuthier, hoursRange: hoursRange(fixedLuthier), label: 'Luthier work',     parentId: job.id, pieceDone: false });
+    if (hasSetup)   cards.push({ ...job, id: `${job.id}-SU`, bench: 'Setup',     hours: fixedSetup,   hoursRange: hoursRange(fixedSetup),   label: 'Setup / Restring', parentId: job.id, pieceDone: false });
+    if (hasWiring)  cards.push({ ...job, id: `${job.id}-WR`, bench: 'Wiring',    hours: fixedWiring,  hoursRange: hoursRange(fixedWiring),  label: 'Wiring',           parentId: job.id, pieceDone: false });
 
     return cards.length >= 2 ? cards : null;
   }
@@ -204,6 +204,7 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
       parentId: null,
       subtasks: null,
       hasSubtasks: false,
+      pieceDone: false,
     };
 
     const subtasks = createSubtasks(baseJob, benchHours);
@@ -266,6 +267,49 @@ export const BENCH_COLORS = {
   Finishing:   { bg: '#92400e', border: '#d97706', text: '#fef3c7' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
 };
+
+export function canInvoiceJob(job, jobs) {
+  if (!job) return false;
+
+  // If this is a split child, check the parent
+  if (job.parentId) {
+    const parent = jobs.find(j => j.id === job.parentId);
+    return canInvoiceJob(parent, jobs);
+  }
+
+  // This is a top-level job
+  if (job.hasSubtasks || job.isSplit) {
+    // Get all split pieces
+    const children = job.hasSubtasks
+      ? jobs.filter(j => job.subtasks?.includes(j.id))
+      : jobs.filter(j => j.parentId === job.id);
+    return children.every(c => c.pieceDone === true);
+  }
+
+  // Non-split job
+  return job.pieceDone === true;
+}
+
+export function getUndonePieces(job, jobs) {
+  if (!job) return [];
+
+  // If this is a split child, get parent's undone pieces
+  if (job.parentId) {
+    const parent = jobs.find(j => j.id === job.parentId);
+    return getUndonePieces(parent, jobs);
+  }
+
+  // This is a top-level job
+  if (job.hasSubtasks || job.isSplit) {
+    const children = job.hasSubtasks
+      ? jobs.filter(j => job.subtasks?.includes(j.id))
+      : jobs.filter(j => j.parentId === job.id);
+    return children.filter(c => !c.pieceDone);
+  }
+
+  // Non-split job
+  return job.pieceDone ? [] : [job];
+}
 
 export const HOURS_BUCKETS = [
   { label: '< 1hr',  key: 'lt1',  test: h => h > 0 && h < 1 },

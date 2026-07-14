@@ -1,0 +1,231 @@
+{
+  "branding": {
+    "colorScheme": "light",
+    "fonts": [
+      {
+        "family": "Roobert-SemiBold",
+        "role": "heading"
+      },
+      {
+        "family": "Roobert-Medium",
+        "role": "body"
+      },
+      {
+        "family": "SharpGrotesk-Bold",
+        "role": "display"
+      }
+    ],
+    "colors": {
+      "primary": "#4E64DF",
+      "secondary": "#49495A",
+      "accent": "#4E64DF",
+      "background": "#F4F4F5",
+      "textPrimary": "#151523",
+      "link": "#2B2B3B"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Roobert-Medium",
+        "heading": "Roobert-SemiBold"
+      },
+      "fontStacks": {
+        "heading": [
+          "SharpGrotesk-Bold",
+          "Arial Black",
+          "Helvetica",
+          "sans-serif"
+        ],
+        "body": [
+          "Roobert-Medium",
+          "Helvetica",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Roobert-Medium",
+          "Helvetica",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "24px",
+        "h2": "24px",
+        "body": "16px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "0px"
+    },
+    "components": {
+      "input": {
+        "background": "#FFFFFF",
+        "textColor": "#151523",
+        "borderColor": null,
+        "borderRadius": "12px",
+        "borderRadiusCorners": {
+          "topLeft": "12px",
+          "topRight": "0px",
+          "bottomRight": "0px",
+          "bottomLeft": "12px"
+        },
+        "shadow": "none"
+      },
+      "buttonPrimary": {
+        "background": "#4E64DF",
+        "textColor": "#FFFFFF",
+        "borderRadius": "12px",
+        "borderRadiusCorners": {
+          "topLeft": "12px",
+          "topRight": "12px",
+          "bottomRight": "12px",
+          "bottomLeft": "12px"
+        },
+        "shadow": "none"
+      },
+      "buttonSecondary": {
+        "background": "#151523",
+        "textColor": "#FFFFFF",
+        "borderColor": "#6C7EE4",
+        "borderRadius": "8px",
+        "borderRadiusCorners": {
+          "topLeft": "8px",
+          "topRight": "8px",
+          "bottomRight": "8px",
+          "bottomLeft": "8px"
+        },
+        "shadow": "none"
+      }
+    },
+    "images": {
+      "logo": "https://files.sitestatic.net/ImageFile/648c2bc683449_Logo%20Mega188.png",
+      "favicon": "https://files.sitestatic.net/ImageFile/648c2e157f797_Favicon%20Mega188.png",
+      "ogImage": "/mega188.png",
+      "logoHref": "https://joyland-ai.com/",
+      "logoAlt": "MEGA188 Logo"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 0,
+      "reasoning": "Selected #0 because it is visible, located in the header, and links to the homepage, matching the brand inferred from the URL and page title.",
+      "confidence": 0.9,
+      "source": "llm"
+    },
+    "__llm_button_reasoning": {
+      "primary": {
+        "index": 0,
+        "text": "BUAT AKUN",
+        "reasoning": "Button #7 with text 'BUAT AKUN' uses the vibrant brand color #4E64DF, making it a strong candidate for the primary CTA due to its visibility and action-oriented text."
+      },
+      "secondary": {
+        "index": 1,
+        "text": "Shop All Designs",
+        "reasoning": "Button #0 with text 'Shop All Designs' uses a different color group (#151523) and serves as a secondary action, complementing the primary CTA."
+      },
+      "confidence": 0.95
+    },
+    "personality": {
+      "tone": "modern",
+      "energy": "medium",
+      "targetAudience": "tech-savvy individuals interested in AI and virtual characters"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0.95,
+      "colors": 0.9,
+      "overall": 0.925
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 0,
+          "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, and links to the homepage, matching the brand inferred from the URL and page title.",
+          "confidence": 0.9
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": true,
+        "llmSucceeded": true
+      }
+    }
+  },
+  "metadata": {
+    "cloudinary_cloud_name": "teepublic",
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=1",
+    "ogTitle": "MEGA188 Joyland-AI : Inovasi AI Interaktif untuk Menciptakan Karakter Virtual yang Unik",
+    "product:price:currency": "USD",
+    "og:price:amount": "10.00",
+    "product:retailer_item_id": "74165272D1V",
+    "product:condition": "new",
+    "apple-mobile-web-app-title": "TeePublic",
+    "og:price:currency": "USD",
+    "csrf-param": "authenticity_token",
+    "description": "MEGA188 Joyland-AI adalah platform berbasis kecerdasan buatan yang memungkinkan pengguna membuat dan berinteraksi dengan karakter virtual sesuai preferensi masing-masing.",
+    "csrf-token": "undefined",
+    "ogUrl": "https://joyland-ai.com/",
+    "product:price:amount": "80.00",
+    "product:availability": "in stock",
+    "og:type": "website",
+    "og:image": "/mega188.png",
+    "robots": "index, follow",
+    "referrer": "origin",
+    "ogDescription": "MEGA188 Joyland-AI adalah platform berbasis kecerdasan buatan yang memungkinkan pengguna membuat dan berinteraksi dengan karakter virtual sesuai preferensi masing-masing.",
+    "og:url": "https://joyland-ai.com/",
+    "og:site_name": "TeePublic",
+    "og:title": "MEGA188 Joyland-AI : Inovasi AI Interaktif untuk Menciptakan Karakter Virtual yang Unik",
+    "title": "MEGA188 Joyland-AI : Inovasi AI Interaktif untuk Menciptakan Karakter Virtual yang Unik",
+    "ogSiteName": "TeePublic",
+    "product:brand": "TeePublic",
+    "msvalidate.01": "F9EF52AA90C6458518CEE48CF835744E",
+    "og:description": "MEGA188 Joyland-AI adalah platform berbasis kecerdasan buatan yang memungkinkan pengguna membuat dan berinteraksi dengan karakter virtual sesuai preferensi masing-masing.",
+    "language": "en-US",
+    "ogImage": "/mega188.png",
+    "favicon": "https://files.sitestatic.net/ImageFile/648c2e157f797_Favicon%20Mega188.png",
+    "scrapeId": "019f3052-24c5-728e-995d-2bead043ac07",
+    "sourceURL": "http://www.flatguitars.com/",
+    "url": "https://joyland-ai.com/",
+    "statusCode": 200,
+    "contentType": "text/html",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "9618fde6-19c3-4650-99fa-8d80d41b1b46",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": [
+    "https://assets.teepublic.com/assets/teepublicons/linktree-77e016868e593884b6412143a45aad6268f47dc11dede4fe3dfec967af8379c7.svg",
+    "https://assets.teepublic.com/assets/teepublicons/globe_primary400-4459871cc25767dbb110c87407d9654283057ec0715e24b8bfb9e0f0aad7cfe9.svg",
+    "https://assets.teepublic.com/assets/teepublicons/star_warning400-140c727473c9c31e0f5d9ffc791a31dc3ba8dfccc44380702fd86fd805ef817d.svg",
+    "https://assets.teepublic.com/assets/misc/quality-bbd87f5f7d7e01a131fc7d2f5da9e1d8ee462b7006cee1f3abaefb50459cf3aa.avif",
+    "https://assets.teepublic.com/assets/vendors/payment-methods-domestic-e3efe0cf0b9636c5ed76d563d87735104df12cf15afda7d20911d95bdbf6e360.png",
+    "https://assets.teepublic.com/assets/teepublicons/reddit-a08812dd6e957c987946f6fa3808df6dada5b1f95e538017767af02adfda49b8.svg",
+    "https://assets.teepublic.com/assets/misc/quality-105f88ff211ef8ffbcf207c25f6af68585f8713382fdd7662c0ba7a0f50a105e.png",
+    "https://assets.teepublic.com/assets/teepublicons/tumblr-72746366fce360d1a23b94973d204278af451141b23aebe1dd3671bfff083f2a.svg",
+    "https://files.sitestatic.net/ImageFile/648c2bc683449_Logo%20Mega188.png",
+    "https://assets.teepublic.com/assets/teepublicons/user_primary400-cbe4923027a0625a846acda949725368bbe52ac03f2bde950bf4891a338de0a5.svg",
+    "https://assets.teepublic.com/assets/vendors/trustpilot_desktop-9723522af2d213ec514dc25b3223a75a28b98a96287000fa51cea10bc533ff48.png",
+    "https://assets.teepublic.com/assets/teepublicons/star_half_warning400-9c7cfa17d17f2c09f38dcb6a7a16abe5c16e8a8b4153c91472d7d8ac39798e4e.svg",
+    "https://www.gstatic.com/verifiedreviews/orange_stars_large.png",
+    "https://assets.teepublic.com/assets/teepublicons/heart_outline_neutral500-d0f44092d0f4b0ebf862fd41310088de645ae521b8525b1ab75997142f61e9a5.svg",
+    "https://files.sitestatic.net/ImageFile/648c2e157f797_Favicon%20Mega188.png",
+    "https://assets.teepublic.com/assets/teepublicons/facebook-782a69eed8f8c44472034fa1a149c795915e716c13a0c9499e024cb5d43f3ba5.svg",
+    "https://www.gstatic.com/verifiedreviews/gray_stars_large.png",
+    "https://assets.teepublic.com/assets/teepublicons/truck_primary200-71f9f7038a26ec24cb8c157dca28eb42731aaeb528dacc4cbd3493371be19d8b.svg",
+    "https://www.gstatic.com/verifiedreviews/en/gcr_logo_stacked.png",
+    "https://assets.teepublic.com/assets/teepublicons/hanger_primary500-626f3e1864da84e8e4c6f756207b72ced5d4f2cb5912d613828546eb0bf8c478.svg",
+    "https://assets.teepublic.com/assets/teepublicons/search_white-dfea27fafd855fea17a6c1835adec7b24d92ae54796f2c4251028698a51cc679.svg",
+    "https://assets.teepublic.com/assets/teepublicons/chevron_round-65095dd1f1baa03d093ded395b217a5a2ca9f13e816a72e5690adab871c8eebf.svg",
+    "https://assets.teepublic.com/assets/misc/quality-82ed70decf30530cfacab675c1abe90f87af861c6185313a378f7d22fb3a8905.webp",
+    "https://assets.teepublic.com/assets/teepublicons/arrow_right_neutral900-2a0eae4c27392751071e1b2af2fb4575bdba340ee7bc9d7dfdd54da1d291348a.svg",
+    "https://joyland-ai.com/mega188.png",
+    "https://assets.teepublic.com/assets/teepublicons/twitter_x-e7ec227c1ad2634b8096bcccb765eddf5be0612af99dc39f81589c7440f53741.svg",
+    "https://assets.teepublic.com/assets/teepublicons/pinterest-bf44b194464a76e11f21f63eedb266534dafbdd4d28f646eb1f731f0737f1d27.svg",
+    "https://assets.teepublic.com/assets/vendors/bbb-f6c79431393cee623e1d7db1c8d5623312fe5c7de4f48a47d04fb4b0c435c5c0.png",
+    "https://assets.teepublic.com/assets/vendors/trustpilot_mobile-e60b09ffbab08a2d7f2bd55d0a0b073a8991b9e080677f2431e5b5c24bac4f51.png",
+    "https://assets.teepublic.com/assets/teepublicons/x_close_neutral400-c1926221e50e7f6686d23ac344405449054e43f23d0f3306f15d8dfd546f999a.svg"
+  ]
+}

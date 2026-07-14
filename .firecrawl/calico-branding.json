@@ -1,0 +1,191 @@
+{
+  "branding": {
+    "colorScheme": "light",
+    "fonts": [
+      {
+        "family": "Open Sans",
+        "role": "body"
+      },
+      {
+        "family": "Roboto",
+        "role": "heading"
+      }
+    ],
+    "colors": {
+      "primary": "#3F6CA2",
+      "secondary": "#EF3F56",
+      "accent": "#325D88",
+      "background": "#FFFFFF",
+      "textPrimary": "#325D88",
+      "link": "#325D88"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Open Sans",
+        "heading": "Roboto"
+      },
+      "fontStacks": {
+        "heading": [
+          "Open Sans",
+          "sans-serif"
+        ],
+        "body": [
+          "Open Sans",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Roboto",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "14px",
+        "h2": "40px",
+        "body": "14px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "4px"
+    },
+    "components": {
+      "input": {
+        "background": "#1C1C1C",
+        "textColor": "#FFFFFF",
+        "borderColor": null,
+        "borderRadius": "0px",
+        "borderRadiusCorners": {
+          "topLeft": "0px",
+          "topRight": "0px",
+          "bottomRight": "0px",
+          "bottomLeft": "0px"
+        },
+        "shadow": "none"
+      }
+    },
+    "images": {
+      "logo": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Transparent-White-Horizontal-300x86.png",
+      "favicon": "https://calicoguitarworks.com/wp-content/uploads/2023/09/cropped-Cat-Only-Black-copy-32x32.png",
+      "ogImage": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Vertical-Black-979x1024.png",
+      "logoHref": "https://calicoguitarworks.com/",
+      "logoAlt": "Calico Guitarworks"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 0,
+      "reasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and the alt text matches the brand name 'Calico Guitarworks'.",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "personality": {
+      "tone": "professional",
+      "energy": "medium",
+      "targetAudience": "musicians and guitar enthusiasts"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0,
+      "colors": 0.9,
+      "overall": 0.45
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 0,
+          "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and the alt text matches the brand name 'Calico Guitarworks'.",
+          "confidence": 0.95
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": false,
+        "llmSucceeded": false
+      }
+    }
+  },
+  "metadata": {
+    "description": "Expert Quality Guitar Setups, modification, and Guitar Repair. By appointment only. The shop is dedicated to providing quick, honest, and reliable service. ",
+    "og:locale": "en_US",
+    "viewport": [
+      "width=device-width, initial-scale=1",
+      "width=device-width, initial-scale=1",
+      "width=device-width, initial-scale=1",
+      "width=device-width, initial-scale=1"
+    ],
+    "twitter:image": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Vertical-Black-979x1024.png",
+    "twitter:card": "summary_large_image",
+    "og:image:width": "979",
+    "ogUrl": "https://calicoguitarworks.com/",
+    "generator": [
+      "Site Kit by Google 1.182.0",
+      "Elementor 4.1.4; features: additional_custom_breakpoints; settings: css_print_method-external, google_font-enabled, font_display-auto",
+      "WP Rocket 3.22.0.3"
+    ],
+    "og:type": "website",
+    "og:url": "https://calicoguitarworks.com/",
+    "article:published_time": "2019-09-06T19:56:04+00:00",
+    "ogDescription": "Expert Quality Guitar Setups, modification, and Guitar Repair. Conveniently located in Ronkonkokoma N.Y. Guitar, Bass, Banjo, Mandolin, Ukulele repair.",
+    "og:image:secure_url": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Vertical-Black-979x1024.png",
+    "og:site_name": "Calico Guitarworks",
+    "og:video": "https://www.youtube.com/embed/y_z7M04V01Y",
+    "twitter:creator": "@guitarrepairli",
+    "language": "en-US",
+    "publishedTime": "2019-09-06T19:56:04+00:00",
+    "robots": [
+      "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+      "noindex",
+      "noindex",
+      "noindex"
+    ],
+    "og:image:height": "1024",
+    "ya:ovs:upload_date": "2023-08-22T16:11:03-07:00",
+    "twitter:description": "Expert Quality Guitar Setups, modification, and Guitar Repair. Conveniently located in Ronkonkokoma N.Y. Guitar, Bass, Banjo, Mandolin, Ukulele repair.",
+    "twitter:site": "@guitarrepairli",
+    "og:image:alt": "guitar repair",
+    "og:image:type": "image/png",
+    "ogImage": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Vertical-Black-979x1024.png",
+    "modifiedTime": "2026-06-13T12:43:28+00:00",
+    "og:updated_time": "2026-06-13T12:43:28+00:00",
+    "og:description": "Expert Quality Guitar Setups, modification, and Guitar Repair. Conveniently located in Ronkonkokoma N.Y. Guitar, Bass, Banjo, Mandolin, Ukulele repair.",
+    "og:title": "Guitar Repair - Expert Guitar & Bass Setups, Maintenance, Modification",
+    "title": "Guitar Repair - Expert Guitar & Bass Setups, Maintenance, Modification",
+    "twitter:title": "Guitar Repair - Expert Guitar & Bass Setups, Maintenance, Modification",
+    "ogVideo": "https://www.youtube.com/embed/y_z7M04V01Y",
+    "ogLocale": "en_US",
+    "video:duration": "40",
+    "ogSiteName": "Calico Guitarworks",
+    "article:modified_time": "2026-06-13T12:43:28+00:00",
+    "msapplication-TileImage": "https://calicoguitarworks.com/wp-content/uploads/2023/09/cropped-Cat-Only-Black-copy-270x270.png",
+    "ya:ovs:allow_embed": "true",
+    "og:image": "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Vertical-Black-979x1024.png",
+    "ogTitle": "Guitar Repair - Expert Guitar & Bass Setups, Maintenance, Modification",
+    "favicon": "https://calicoguitarworks.com/wp-content/uploads/2023/09/cropped-Cat-Only-Black-copy-32x32.png",
+    "scrapeId": "019f3052-24c1-7571-aaa9-84f6050dba2e",
+    "sourceURL": "https://calicoguitarworks.com/",
+    "url": "https://calicoguitarworks.com/",
+    "statusCode": 200,
+    "contentType": "text/html; charset=UTF-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "e5c4064f-e037-4029-9fd1-b374acab7e97",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": [
+    "https://calicoguitarworks.com/wp-content/uploads/2023/08/Calico-Transparent-White-Horizontal-300x86.png",
+    "https://i.ytimg.com/vi_webp/liTc-rxhTgM/maxresdefault.webp",
+    "https://i.ytimg.com/vi_webp/y_z7M04V01Y/maxresdefault.webp",
+    "https://calicoguitarworks.com/wp-content/uploads/2019/09/electronics.jpg",
+    "https://calicoguitarworks.com/wp-content/uploads/2019/09/nuts-saddles.jpg",
+    "https://calicoguitarworks.com/wp-content/uploads/2019/09/instrument-maintenance.jpg",
+    "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+    "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%202048%20585'%3E%3C/svg%3E",
+    "https://maps.googleapis.com/maps/api/js/StaticMapService.GetMapImage?1m2&1i4979059&2i6300126&2e1&3u16&4m2&1u799&2u450&5m6&1e0&5sen-US&6sus&10b1&12b1&14i47083502&8e1&key=AIzaSyCmL18misQw9KdwqGaw3zHkitj8vG6QF2Y&token=101097",
+    "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%201024%201024'%3E%3C/svg%3E",
+    "https://i.ytimg.com/vi_webp/y_z7M04V01Y/default.webp"
+  ]
+}

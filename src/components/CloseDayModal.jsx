@@ -1,7 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS } from '../data/jobs.js';
+import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS, canInvoiceJob, getUndonePieces } from '../data/jobs.js';
 
 const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
+
+function PieceStatusLine({ job, jobs, onMarkPieceDone }) {
+  if (!job || (!job.hasSubtasks && !job.isSplit)) return null;
+
+  const children = job.hasSubtasks
+    ? jobs.filter(j => job.subtasks?.includes(j.id))
+    : jobs.filter(j => j.parentId === job.id);
+
+  if (children.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+      {children.map(child => (
+        <button
+          key={child.id}
+          onClick={() => onMarkPieceDone(job.id, child.id, !child.pieceDone)}
+          title={`Click to mark ${child.bench} ${child.pieceDone ? 'undone' : 'done'}`}
+          style={{
+            background: child.pieceDone ? '#1a2e1a' : 'transparent',
+            border: `1px solid ${child.pieceDone ? '#4a9e5a' : '#444'}`,
+            color: child.pieceDone ? '#4a9e5a' : '#666',
+            borderRadius: 6,
+            padding: '4px 8px',
+            fontSize: 11,
+            fontWeight: 500,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            transition: 'all 0.15s',
+            textDecoration: child.pieceDone ? 'line-through' : 'none',
+          }}
+          onMouseEnter={e => {
+            if (!child.pieceDone) e.currentTarget.style.borderColor = '#666';
+          }}
+          onMouseLeave={e => {
+            if (!child.pieceDone) e.currentTarget.style.borderColor = '#444';
+          }}
+        >
+          {child.pieceDone ? '✓' : '○'} {child.bench}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const ACTION_STYLES = {
   kept:      { background: '#1a2e1a', color: '#4a9e5a' },
@@ -98,22 +143,32 @@ function JobStatusNote({ job, completedRecord, hasJobId }) {
   return null;
 }
 
-function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amount, onAmountChange }) {
+function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amount, onAmountChange, jobs = [] }) {
   const showInvoice = selected === 'completed' && invoiceJob;
+  const canInvoice = !invoiceJob || canInvoiceJob(invoiceJob, jobs);
+  const undonePieces = invoiceJob ? getUndonePieces(invoiceJob, jobs) : [];
+  const invoiceBlockReason = undonePieces.length > 0
+    ? `Waiting for: ${undonePieces.map(p => p.bench).join(', ')}`
+    : null;
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 8 }}>
         {ACTIONS.map(action => {
           const isSelected = selected === action;
+          const isInvoiceAction = action === 'completed';
+          const isDisabled = isInvoiceAction && !canInvoice;
+
           return (
             <button
               key={action}
-              onClick={() => onSelect(action)}
+              onClick={() => !isDisabled && onSelect(action)}
+              title={isDisabled ? invoiceBlockReason : ''}
               style={{
                 ...ACTION_STYLES[action],
                 border: 'none', borderRadius: 6, padding: '6px 14px',
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                opacity: selected === null || isSelected ? 1 : 0.4,
+                fontSize: 13, fontWeight: 500, cursor: isDisabled ? 'not-allowed' : 'pointer',
+                opacity: (selected === null || isSelected) && !isDisabled ? 1 : isDisabled ? 0.4 : 0.4,
                 transition: 'opacity 0.15s',
                 outline: isSelected ? `1px solid ${ACTION_STYLES[action].color}` : 'none',
               }}
@@ -161,7 +216,7 @@ function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amo
   );
 }
 
-export default function CloseDayModal({ bullets = [], jobs = [], completedJobs = [], onJobComplete, onClose }) {
+export default function CloseDayModal({ bullets = [], jobs = [], completedJobs = [], onJobComplete, onClose, onMarkPieceDone }) {
   // Split bullets into whole-bullet resolution (no checklist, or empty checklist)
   // vs per-item resolution (checklist bullets — only their unresolved 'todo' items need a decision).
   const wholeBullets = bullets.filter(b =>
@@ -348,6 +403,13 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
                 <BenchChips splits={splits} />
                 <BulletMeta meta={bullet.meta} />
                 <JobStatusNote job={job} completedRecord={completedRecord} hasJobId={!!bullet.jobId} />
+                {job && (job.hasSubtasks || job.isSplit) && (
+                  <PieceStatusLine
+                    job={job}
+                    jobs={jobs}
+                    onMarkPieceDone={onMarkPieceDone}
+                  />
+                )}
                 {!job && !completedRecord && bullet.jobId && selected === 'completed' && (
                   <input
                     type="number"
@@ -368,6 +430,7 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
                   invoiceJob={job}
                   amount={invoiceAmounts[bullet.id]}
                   onAmountChange={value => setInvoiceAmount(bullet.id, value)}
+                  jobs={jobs}
                 />
               </div>
             );

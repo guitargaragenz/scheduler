@@ -547,6 +547,8 @@ export default function App() {
                 activeJobId={scheduler.activeJob?.id ?? null}
                 onJobClick={jobOps.handleOpenPomo}
                 onRemoveAdHocTask={removeAdHocTask}
+                onMarkPieceDone={jobOps.handleMarkPieceDone}
+                jobs={jobs}
               />
               <Sidebar
                 jobs={jobs}
@@ -671,9 +673,11 @@ export default function App() {
       {pomoJob && (
         <PomoDrawer
           job={pomoJob}
+          parentJob={pomoJob.parentId ? jobs.find(j => j.id === pomoJob.parentId) : null}
           onClose={() => setPomoJob(null)}
           onLogSession={session => jobOps.handleLogPomoSession(pomoJob.id, session)}
           onMarkDone={jobOps.handleMarkDone}
+          onMarkPieceDone={jobOps.handleMarkPieceDone}
           onRemove={scheduler.unscheduleJob}
         />
       )}
@@ -748,6 +752,7 @@ export default function App() {
           jobs={jobs}
           completedJobs={completedJobs}
           onJobComplete={(job, amount) => jobOps.handleMarkDone(job, amount)}
+          onMarkPieceDone={jobOps.handleMarkPieceDone}
           onClose={migrations => {
             closeDay(migrations);
             setShowCloseDay(false);

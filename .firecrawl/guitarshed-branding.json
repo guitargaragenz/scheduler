@@ -1,0 +1,140 @@
+{
+  "branding": {
+    "colorScheme": "light",
+    "fonts": [
+      {
+        "family": "Roboto",
+        "role": "body"
+      },
+      {
+        "family": "Anton",
+        "role": "heading"
+      },
+      {
+        "family": "Source Sans Pro",
+        "role": "body"
+      }
+    ],
+    "colors": {
+      "primary": "#D80028",
+      "secondary": "#A5ABBD",
+      "accent": "#1D2E59",
+      "background": "#FFFFFF",
+      "textPrimary": "#000000",
+      "link": "#1D2E59"
+    },
+    "typography": {
+      "fontFamilies": {
+        "primary": "Roboto",
+        "heading": "Anton"
+      },
+      "fontStacks": {
+        "heading": [
+          "Anton",
+          "sans-serif"
+        ],
+        "body": [
+          "Roboto",
+          "sans-serif"
+        ],
+        "paragraph": [
+          "Roboto",
+          "sans-serif"
+        ]
+      },
+      "fontSizes": {
+        "h1": "49px",
+        "h2": "27px",
+        "body": "20px"
+      }
+    },
+    "spacing": {
+      "baseUnit": 4,
+      "borderRadius": "5px"
+    },
+    "components": {},
+    "images": {
+      "logo": "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_logo.png",
+      "favicon": "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_favicon-75x75.png",
+      "ogImage": null,
+      "logoHref": "https://www.guitarshed.co.nz/",
+      "logoAlt": "Guitar Shed NZ"
+    },
+    "__llm_logo_reasoning": {
+      "selectedIndex": 0,
+      "reasoning": "Selected #0 because it is visible, medium-sized, located in the header, links to the homepage, and the alt text matches the brand name 'Guitar Shed NZ'.",
+      "confidence": 0.95,
+      "source": "llm"
+    },
+    "personality": {
+      "tone": "professional",
+      "energy": "medium",
+      "targetAudience": "musicians and guitar enthusiasts"
+    },
+    "designSystem": {
+      "framework": "custom",
+      "componentLibrary": ""
+    },
+    "confidence": {
+      "buttons": 0,
+      "colors": 0.9,
+      "overall": 0.45
+    },
+    "__llm_metadata": {
+      "logoSelection": {
+        "llmCalled": true,
+        "llmSucceeded": true,
+        "finalSource": "llm",
+        "rawLogoSelection": {
+          "selectedLogoIndex": 0,
+          "selectedLogoReasoning": "Selected #0 because it is visible, medium-sized, located in the header, links to the homepage, and the alt text matches the brand name 'Guitar Shed NZ'.",
+          "confidence": 0.95
+        }
+      },
+      "buttonClassification": {
+        "llmCalled": false,
+        "llmSucceeded": false
+      }
+    }
+  },
+  "metadata": {
+    "viewport": "width=device-width, initial-scale=1",
+    "name": "Guitar Shed",
+    "msapplication-TileImage": "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_favicon.png",
+    "robots": "max-image-preview:large",
+    "keywords": "guitar,repair,auckland,bass,setup,intonation,action,strings,pedalboard,capacitors,potentiometers,switches,luthier,frets,maintenance",
+    "url": "https://www.guitarshed.co.nz/",
+    "description": "North Shore, Auckland NZ based Guitar & Bass Setup, Repairs, Upgrades, Pedalboard Builds & Maintenance.",
+    "language": "en-NZ",
+    "title": "Guitar Shed NZ – Electric Guitar & Bass Setups, Repairs, Upgrades – Guitar Setups, repairs, upgrades and builds",
+    "favicon": "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_favicon-75x75.png",
+    "scrapeId": "019f3054-bcaa-77a2-a42c-f872457a8dee",
+    "sourceURL": "https://www.guitarshed.co.nz/",
+    "statusCode": 200,
+    "contentType": "text/html; charset=UTF-8",
+    "timezone": "America/New_York",
+    "proxyUsed": "basic",
+    "indexId": "73b81487-b792-4f1f-b8a8-b8258aa1a566",
+    "creditsUsed": 1,
+    "concurrencyLimited": false
+  },
+  "images": [
+    "https://www.guitarshed.co.nz/wp-content/uploads/2020/02/instagram_icon.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2022/03/IMG-0478-3-1024x768.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.31.04-AM-1.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_logo-150x150.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/12/pickup-background.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/guitar-shed_logo.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.29.55-AM.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/12/trade-me_color_over.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.28.59-AM-1.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/12/trade-me.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2022/03/IMG-0479-1024x768.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/11/61973431_454482985303404_8365989108786397184_n.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.31.32-AM.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.26.47-AM.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2019/12/guitar-setup-2.jpg",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2021/02/Screen-Shot-2021-02-13-at-10.30.28-AM.png",
+    "https://www.guitarshed.co.nz/wp-content/uploads/2020/02/facebook_icon.jpg"
+  ]
+}
