@@ -275,18 +275,36 @@ export function useJobs({
   function handleMarkPieceDone(parentJobId, childJobId, pieceDone, onAllPiecesDone) {
     let updatedChild = null;
     let parentJob = null;
+    let allChildrenDone = false;
+    let children = [];
 
-    // Update the child's pieceDone state
-    setJobs(prev => prev.map(j => {
-      if (j.id === childJobId) {
-        updatedChild = { ...j, pieceDone };
-        return updatedChild;
+    // Compute the child update, parent lookup, and all-children-done check
+    // all from the SAME fresh array (`next`) inside one updater call. Doing
+    // the all-children check against the outer `jobs` closure instead (as a
+    // previous version did) is a real race: `jobs` is the array from this
+    // hook's last render, which is stale if two pieces get marked in quick
+    // succession (faster than a React re-render round-trip) — e.g. clicking
+    // through several split pieces back to back. That stale read can make
+    // the very-last piece's completion check see the previous piece as
+    // still not-done, silently skipping the invoice prompt. Reading
+    // everything from `next` eliminates the race regardless of click timing.
+    setJobs(prev => {
+      const next = prev.map(j => {
+        if (j.id === childJobId) {
+          updatedChild = { ...j, pieceDone };
+          return updatedChild;
+        }
+        return j;
+      });
+      parentJob = next.find(j => j.id === parentJobId) || null;
+      if (parentJob && pieceDone) {
+        children = parentJob.hasSubtasks
+          ? next.filter(j => parentJob.subtasks?.includes(j.id))
+          : next.filter(j => j.parentId === parentJob.id);
+        allChildrenDone = children.length > 0 && children.every(c => c.pieceDone);
       }
-      if (j.id === parentJobId) {
-        parentJob = j;
-      }
-      return j;
-    }));
+      return next;
+    });
 
     if (!updatedChild || !parentJob) return;
 
@@ -296,22 +314,12 @@ export function useJobs({
       batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }]);
     }
 
-    // Check if all pieces are now done (accounting for the piece we just marked)
-    // We must check manually because setJobs() is async and jobs array isn't updated yet
-    if (pieceDone) {
-      const children = parentJob.hasSubtasks
-        ? jobs.filter(j => parentJob.subtasks?.includes(j.id))
-        : jobs.filter(j => j.parentId === parentJob.id);
-      const allChildrenDone = children.every(c =>
-        c.id === childJobId ? pieceDone : c.pieceDone
-      );
-      if (allChildrenDone) {
-        // Auto-complete the parent — trigger invoicing flow
-        const benchNames = children.map(j => j.bench).join(' + ');
-        showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
-        // Call the callback so App.jsx can open the invoice dialog
-        if (onAllPiecesDone) onAllPiecesDone(parentJob);
-      }
+    if (allChildrenDone) {
+      // Auto-complete the parent — trigger invoicing flow
+      const benchNames = children.map(j => j.bench).join(' + ');
+      showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+      // Call the callback so App.jsx can open the invoice dialog
+      if (onAllPiecesDone) onAllPiecesDone(parentJob);
     }
   }
 
