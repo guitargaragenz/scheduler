@@ -272,7 +272,7 @@ export function useJobs({
     showToast(`Logged ${session.pomos} pomo${session.pomos !== 1 ? 's' : ''} for #${jobRef?.job ?? jobId}`);
   }
 
-  function handleMarkPieceDone(parentJobId, childJobId, pieceDone) {
+  function handleMarkPieceDone(parentJobId, childJobId, pieceDone, onAllPiecesDone) {
     let updatedChild = null;
     let parentJob = null;
 
@@ -306,9 +306,11 @@ export function useJobs({
         c.id === childJobId ? pieceDone : c.pieceDone
       );
       if (allChildrenDone) {
-        // Auto-complete the parent
+        // Auto-complete the parent — trigger invoicing flow
         const benchNames = children.map(j => j.bench).join(' + ');
         showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+        // Call the callback so App.jsx can open the invoice dialog
+        if (onAllPiecesDone) onAllPiecesDone(parentJob);
       }
     }
   }

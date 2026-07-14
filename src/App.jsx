@@ -202,6 +202,13 @@ export default function App() {
     onBumpDetected: handleBumpDetected,
   });
 
+  // When all pieces of a split job are done, open the invoice dialog
+  const handleAllPiecesDone = useCallback((parentJob) => {
+    // Open close-day modal showing this job for invoicing
+    setShowCloseDay(true);
+    setPomoJob(null); // Close any open pomo drawer
+  }, []);
+
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
     doneJobIds, completedJobs, setCompletedJobs, setDoneJobIds,
@@ -209,6 +216,11 @@ export default function App() {
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
   });
+
+  // Wrapper for handleMarkPieceDone that includes the invoicing callback
+  const handleMarkPieceDoneWithInvoicing = useCallback((parentJobId, childJobId, pieceDone) => {
+    jobOps.handleMarkPieceDone(parentJobId, childJobId, pieceDone, handleAllPiecesDone);
+  }, [jobOps, handleAllPiecesDone]);
 
   // A split-piece orphan (item.parentId set — surfaced by the jobsMaster/
   // jobsState union-join when its parent's bench/desc changed and no longer
@@ -547,7 +559,7 @@ export default function App() {
                 activeJobId={scheduler.activeJob?.id ?? null}
                 onJobClick={jobOps.handleOpenPomo}
                 onRemoveAdHocTask={removeAdHocTask}
-                onMarkPieceDone={jobOps.handleMarkPieceDone}
+                onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
                 jobs={jobs}
               />
               <Sidebar
@@ -679,7 +691,7 @@ export default function App() {
             onClose={() => setPomoJob(null)}
             onLogSession={session => jobOps.handleLogPomoSession(currentJob.id, session)}
             onMarkDone={jobOps.handleMarkDone}
-            onMarkPieceDone={jobOps.handleMarkPieceDone}
+            onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
             onRemove={scheduler.unscheduleJob}
           />
         );
@@ -755,7 +767,7 @@ export default function App() {
           jobs={jobs}
           completedJobs={completedJobs}
           onJobComplete={(job, amount) => jobOps.handleMarkDone(job, amount)}
-          onMarkPieceDone={jobOps.handleMarkPieceDone}
+          onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
           onClose={migrations => {
             closeDay(migrations);
             setShowCloseDay(false);
