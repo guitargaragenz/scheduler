@@ -124,12 +124,14 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
       <div style={{
         width: isOpen ? 300 : 0,
         minWidth: 0,
-        overflow: 'hidden',
+        overflowX: 'hidden',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         transition: 'width 0.3s ease',
         display: 'flex', flexDirection: 'column',
         background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100vh',
       }}>
-        <div style={{ width: 300, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <div style={{ width: 300, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
           {/* Search / focus banner */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #3b82f6' }}>
             {isFocusMode ? (
