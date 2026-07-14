@@ -670,17 +670,20 @@ export default function App() {
         )
       )}
 
-      {pomoJob && (
-        <PomoDrawer
-          job={pomoJob}
-          parentJob={pomoJob.parentId ? jobs.find(j => j.id === pomoJob.parentId) : null}
-          onClose={() => setPomoJob(null)}
-          onLogSession={session => jobOps.handleLogPomoSession(pomoJob.id, session)}
-          onMarkDone={jobOps.handleMarkDone}
-          onMarkPieceDone={jobOps.handleMarkPieceDone}
-          onRemove={scheduler.unscheduleJob}
-        />
-      )}
+      {pomoJob && (() => {
+        const currentJob = jobs.find(j => j.id === pomoJob.id) || pomoJob;
+        return (
+          <PomoDrawer
+            job={currentJob}
+            parentJob={currentJob.parentId ? jobs.find(j => j.id === currentJob.parentId) : null}
+            onClose={() => setPomoJob(null)}
+            onLogSession={session => jobOps.handleLogPomoSession(currentJob.id, session)}
+            onMarkDone={jobOps.handleMarkDone}
+            onMarkPieceDone={jobOps.handleMarkPieceDone}
+            onRemove={scheduler.unscheduleJob}
+          />
+        );
+      })()}
 
       {showSummary && (
         <WeeklySummaryModal
