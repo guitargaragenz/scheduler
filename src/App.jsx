@@ -28,6 +28,7 @@ import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
+import RevenueBreakdown from './components/RevenueBreakdown.jsx';
 import { useFirebase } from './hooks/useFirebase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
@@ -75,6 +76,7 @@ export default function App() {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [pomoJob, setPomoJob] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [showRevenueBreakdown, setShowRevenueBreakdown] = useState(false);
   const [showParts, setShowParts] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -93,6 +95,8 @@ export default function App() {
   });
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const [conflictEvents, setConflictEvents] = useState([]);
+
+  const revenueTriggerRef = useRef(null);
 
   // Shared refs — written by multiple hooks; must live here to avoid split ownership
   const justSavedAt = useRef(0);
@@ -313,8 +317,11 @@ export default function App() {
   const syncColors = { idle: '#64748b', syncing: '#fbbf24', synced: '#22c55e', error: '#ef4444' };
   const syncLabels = { idle: 'Sync', syncing: 'Syncing…', synced: 'Synced ✓', error: 'Sync Error' };
 
-  const currentWeekKey = weekDays[0]?.toISOString().slice(0, 10);
-  const weekRevenue = completedJobs.filter(r => r.weekKey === currentWeekKey).reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0);
+  // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
+  // the UTC conversion drifts a day off local date for NZ timezones.
+  const currentWeekKey = weekDays[0] ? localDateKey(weekDays[0]) : undefined;
+  const weekRevenueRecords = completedJobs.filter(r => r.weekKey === currentWeekKey);
+  const weekRevenue = weekRevenueRecords.reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0);
   const revenueRatio = weeklyTarget > 0 ? weekRevenue / weeklyTarget : 0;
   const revenueColor = revenueRatio >= 0.8 ? '#4ade80' : revenueRatio >= 0.5 ? '#fbbf24' : '#f87171';
 
@@ -347,7 +354,12 @@ export default function App() {
 
           <div style={{ textAlign: 'center', lineHeight: 1.3, flexShrink: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>
-              <span style={{ color: revenueColor }}>${weekRevenue.toLocaleString()}</span>
+              <span
+                ref={revenueTriggerRef}
+                style={{ color: revenueColor, cursor: 'pointer' }}
+                title="Click to see invoices making up this total"
+                onClick={() => setShowRevenueBreakdown(v => !v)}
+              >${weekRevenue.toLocaleString()}</span>
               <span style={{ color: '#334155' }}> / </span>
               <span
                 style={{ color: '#475569', cursor: 'pointer' }}
@@ -363,6 +375,9 @@ export default function App() {
               >${weeklyTarget.toLocaleString()}</span>
             </div>
             <div style={{ fontSize: 9, color: '#334155', textTransform: 'uppercase', letterSpacing: '.08em' }}>week revenue</div>
+            {showRevenueBreakdown && (
+              <RevenueBreakdown records={weekRevenueRecords} anchorRef={revenueTriggerRef} onClose={() => setShowRevenueBreakdown(false)} />
+            )}
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
@@ -705,6 +720,9 @@ export default function App() {
           jobs={jobs}
           scheduledSlots={scheduledSlots}
           weekDays={weekDays}
+          invoicedRevenue={weekRevenue}
+          weeklyRevenueTarget={weeklyTarget}
+          onTargetChange={t => { setWeeklyTarget(t); localStorage.setItem('weeklyTarget', String(t)); }}
           onClose={() => setShowSummary(false)}
         />
       )}

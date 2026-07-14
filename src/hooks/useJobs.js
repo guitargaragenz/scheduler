@@ -1,7 +1,7 @@
 import { parseCSV, canInvoiceJob } from '../data/jobs.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
 import { isFirebaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJobMaster } from '../utils/firebase.js';
-import { getWeekDays } from '../utils/calendar.js';
+import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 
 // Split children carry their own GCal event(s) once synced. Deleting a child
@@ -190,7 +190,10 @@ export function useJobs({
   }
 
   function handleMarkDone(job, amount) {
-    const weekKey = getWeekDays()[0].toISOString().slice(0, 10);
+    // localDateKey, not toISOString() — the latter converts to UTC first,
+    // which rolls Monday-local-midnight back to Sunday for timezones ahead
+    // of UTC (NZ, UTC+12/+13), stamping the record into the previous week.
+    const weekKey = localDateKey(getWeekDays()[0]);
     const record = {
       id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
       bench: job.bench, hours: job.hours, customer: job.customer || '',

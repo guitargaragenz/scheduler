@@ -11,7 +11,7 @@ function getWeekDatePrefix(date) {
   return `${y}-${mo}-${dy}`;
 }
 
-function computeSummary(jobs, scheduledSlots, weekDays, hourlyRate) {
+function computeSummary(jobs, scheduledSlots, weekDays) {
   // Find job IDs scheduled this week
   const weekPrefixes = new Set(weekDays.map(getWeekDatePrefix));
   const scheduledThisWeek = new Set();
@@ -31,7 +31,6 @@ function computeSummary(jobs, scheduledSlots, weekDays, hourlyRate) {
 
     if (scheduledThisWeek.has(job.id)) {
       summary[bench].planned += job.hours || 0;
-      summary[bench].revenue = (summary[bench].revenue || 0) + (job.price != null ? job.price : (job.hours || 0) * (hourlyRate || 0));
     }
 
     (job.pomoLog || []).forEach(s => {
@@ -46,11 +45,11 @@ function computeSummary(jobs, scheduledSlots, weekDays, hourlyRate) {
   return summary;
 }
 
-export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onClose, hourlyRate = 85, weeklyRevenueTarget = 1500, onTargetChange }) {
+export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onClose, invoicedRevenue = 0, weeklyRevenueTarget = 1500, onTargetChange }) {
   const modalRef = useRef(null);
   const [editingTarget, setEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState(String(weeklyRevenueTarget));
-  const summary = computeSummary(jobs, scheduledSlots, weekDays, hourlyRate);
+  const summary = computeSummary(jobs, scheduledSlots, weekDays);
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -69,7 +68,11 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
   const totalPlanned = benches.reduce((s, b) => s + summary[b].planned, 0);
   const totalActualMins = benches.reduce((s, b) => s + summary[b].actualMins, 0);
   const totalPomos = benches.reduce((s, b) => s + summary[b].actualPomos, 0);
-  const totalRevenue = benches.reduce((s, b) => s + (summary[b].revenue || 0), 0);
+  // Real invoiced revenue for the week (completedJobs), not a scheduled-
+  // hours × rate projection — same source of truth as the header figure,
+  // so there's exactly one "revenue" number in the app, not two disagreeing
+  // ones.
+  const totalRevenue = invoicedRevenue;
   const revenueProgress = weeklyRevenueTarget > 0 ? Math.min(totalRevenue / weeklyRevenueTarget, 1) : 0;
 
   const weekLabel = weekDays.length > 0
@@ -184,7 +187,7 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
         {totalRevenue > 0 && (
           <div style={{ margin: '0 20px 16px', padding: '12px 16px', background: '#0f172a', borderRadius: 10, border: '1px solid #1e293b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Est. Revenue</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Revenue (invoiced)</span>
               <span style={{ fontSize: 18, fontWeight: 800, color: revenueProgress >= 1 ? '#22c55e' : '#f1f5f9' }}>
                 ${Math.round(totalRevenue).toLocaleString()}
               </span>
