@@ -129,7 +129,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
         WebkitOverflowScrolling: 'touch',
         transition: 'width 0.3s ease',
         display: 'flex', flexDirection: 'column',
-        background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100vh',
+        background: '#0f2044', borderLeft: '1px solid #3b82f6', height: '100%',
       }}>
         <div style={{ width: 300, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
           {/* Search / focus banner */}

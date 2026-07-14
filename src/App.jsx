@@ -202,11 +202,14 @@ export default function App() {
     onBumpDetected: handleBumpDetected,
   });
 
-  // When all pieces of a split job are done, open the invoice dialog
+  // When all pieces of a split job are done, open the invoice-amount prompt
+  // for that exact job — PomoDrawer already renders a "Job done? Invoice
+  // amount" input for any job without a parentId (isIdle || isDone state),
+  // so opening it on the parent job gives a direct invoicing prompt instead
+  // of routing through Close Day, which only shows today's bullet-journal
+  // entries and has no notion of "this specific job".
   const handleAllPiecesDone = useCallback((parentJob) => {
-    // Open close-day modal showing this job for invoicing
-    setShowCloseDay(true);
-    setPomoJob(null); // Close any open pomo drawer
+    setPomoJob(parentJob);
   }, []);
 
   const jobOps = useJobs({
