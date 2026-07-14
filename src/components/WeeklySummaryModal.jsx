@@ -189,7 +189,8 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>Revenue (invoiced)</span>
               <span style={{ fontSize: 18, fontWeight: 800, color: revenueProgress >= 1 ? '#22c55e' : '#f1f5f9' }}>
-                ${Math.round(totalRevenue).toLocaleString()}
+                {/* Exact figure, same formatting as the header — no rounding */}
+                ${totalRevenue.toLocaleString()}
               </span>
             </div>
             {/* Progress bar */}

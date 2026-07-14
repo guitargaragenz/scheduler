@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { dayLabel } from '../utils/calendar.js';
 import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS } from '../data/jobs.js';
+import { formatMoney } from '../utils/money.js';
 import ReasonPicker from './ReasonPicker.jsx';
 
 // Same detail JobCard.jsx already shows on a split's calendar card — which
@@ -189,7 +190,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
             <BenchChips splits={splits} />
             {completedRecord && (
               <div style={{ fontSize: 11, color: '#4a9e5a', marginBottom: 12 }}>
-                ✓ Already invoiced ${Number(completedRecord.invoiceAmount).toFixed(0)}
+                ✓ Already invoiced ${formatMoney(completedRecord.invoiceAmount)}
               </div>
             )}
 

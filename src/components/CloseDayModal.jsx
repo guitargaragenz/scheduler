@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS, canInvoiceJob, getUndonePieces } from '../data/jobs.js';
+import { formatMoney } from '../utils/money.js';
 
 const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
 
@@ -128,7 +129,7 @@ function JobStatusNote({ job, completedRecord, hasJobId }) {
   if (completedRecord) {
     return (
       <div style={{ fontSize: 11, color: '#4a9e5a', marginBottom: 12 }}>
-        ✓ Already invoiced ${Number(completedRecord.invoiceAmount).toFixed(0)}
+        ✓ Already invoiced ${formatMoney(completedRecord.invoiceAmount)}
       </div>
     );
   }

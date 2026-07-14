@@ -607,6 +607,7 @@ export default function App() {
               activeJobId={scheduler.activeJob?.id ?? null}
               onCalendarJobClick={jobOps.handleOpenPomo}
               onRemoveAdHocTask={removeAdHocTask}
+              onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
               onScheduleAdHocNote={handleScheduleAdHocNote}
               dragMode={dragMode}
               onDragModeChange={setDragMode}

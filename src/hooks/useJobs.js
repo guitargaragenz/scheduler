@@ -3,6 +3,7 @@ import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
 import { isFirebaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJobMaster } from '../utils/firebase.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
+import { formatMoney } from '../utils/money.js';
 
 // Split children carry their own GCal event(s) once synced. Deleting a child
 // locally (un-split, or re-split dropping it) must also delete its calendar
@@ -208,7 +209,8 @@ export function useJobs({
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
     if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
     setPomoJob(null);
-    showToast(`✓ ${job.mfr} ${job.model} — $${Number(amount).toFixed(0)} invoiced`);
+    // Exact amount entered, not rounded — matches the stored invoiceAmount above.
+    showToast(`✓ ${job.mfr} ${job.model} — $${formatMoney(amount)} invoiced`);
   }
 
   // Pure per-job upsert to jobsMaster — no carry-forward, no collision

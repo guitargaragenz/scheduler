@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
+import { formatMoney } from '../utils/money.js';
 
 // Plain list of the completedJobs records making up a revenue total —
 // job #, date, amount. No bench/customer — just enough to trace a number
@@ -39,6 +40,17 @@ export default function RevenueBreakdown({ records, anchorRef, onClose }) {
 
   if (!pos) return null;
 
+  // Records invoiced via buildManualInvoiceJob (the job vanished entirely
+  // before invoicing — data.js's handleMarkDone-from-bullet-text path)
+  // always have job: null by design. Their id still carries the job number
+  // as a leading digit run (e.g. "1704_Wiring_0"), so fall back to that
+  // instead of showing a bare dash.
+  const jobLabel = (r) => {
+    if (r.job) return `#${r.job}`;
+    const m = /^(\d+)/.exec(String(r.id || ''));
+    return m ? `#${m[1]}` : '—';
+  };
+
   const sorted = [...records].sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
 
   return createPortal(
@@ -65,13 +77,13 @@ export default function RevenueBreakdown({ records, anchorRef, onClose }) {
             padding: '7px 12px', borderBottom: '1px solid #1e293b', fontSize: 12,
           }}>
             <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-              {r.job ? `#${r.job}` : '—'}
+              {jobLabel(r)}
             </span>
             <span style={{ color: '#64748b' }}>
               {r.completedAt ? new Date(r.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' }) : '—'}
             </span>
             <span style={{ color: '#4ade80', fontWeight: 700 }}>
-              ${Number(r.invoiceAmount || 0).toFixed(0)}
+              ${formatMoney(r.invoiceAmount)}
             </span>
           </div>
         ))}

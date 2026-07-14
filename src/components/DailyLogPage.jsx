@@ -668,6 +668,7 @@ export default function DailyLogPage({
   focusList = [],
   onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
   onSetBumpReason,
+  onMarkPieceDone,
 }) {
   const autoCarryRanRef = useRef(false);
   useEffect(() => {
@@ -914,6 +915,8 @@ export default function DailyLogPage({
               activeJobId={activeJobId}
               onJobClick={job => setPeekJob(job)}
               onRemoveAdHocTask={onRemoveAdHocTask}
+              onMarkPieceDone={onMarkPieceDone}
+              jobs={jobs}
               scrollToCurrentHour={isDisplayedDateToday}
             />
             <div
@@ -1304,6 +1307,8 @@ export default function DailyLogPage({
             activeJobId={activeJobId}
             onJobClick={job => setPeekJob(job)}
             onRemoveAdHocTask={onRemoveAdHocTask}
+            onMarkPieceDone={onMarkPieceDone}
+            jobs={jobs}
             scrollToCurrentHour={isDisplayedDateToday}
           />
           {peekJob && (
