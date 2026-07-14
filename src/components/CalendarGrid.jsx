@@ -9,7 +9,7 @@ const SLOT_HEIGHT = 32; // each 30-min half-slot
 
 // All slots: day hours 10am–6pm (both halves) + evening 9pm–12am (both halves)
 const DAY_HOURS    = [10,11,12,13,14,15,16,17,18];
-const EVENING_HOURS = [21, 22, 23];
+const EVENING_HOURS = [21, 22, 23, 24];
 const ALL_SLOTS = [
   ...DAY_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
@@ -287,8 +287,8 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 const jobId = slotJobMap[key]?.id ?? null;
 
                 // Outside work hours
-                if (hour < start || hour >= end) {
-                  const hatched = hour >= 21;
+                if (hour < start || hour > end) {
+                  const hatched = hour >= 21 && hour < 24;
                   return (
                     <div key={dayIdx} style={{
                       flex: 1, height: SLOT_HEIGHT,
