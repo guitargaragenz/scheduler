@@ -309,6 +309,7 @@ export function useJobs({
         // Auto-complete the parent
         const benchNames = children.map(j => j.bench).join(' + ');
         showToast(`✓ #${parentJob.job} (${benchNames}) complete — ready to invoice`);
+        handleMarkDone(parentJobId);
       }
     }
   }
