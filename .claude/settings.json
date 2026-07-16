@@ -17,6 +17,12 @@
       "mcp__Claude_Preview__preview_resize",
       "mcp__Claude_Preview__preview_list",
       "mcp__Claude_Preview__preview_inspect"
+    ],
+    "deny": [
+      "Read(node_modules/**)",
+      "Read(dist/**)",
+      "Edit(node_modules/**)",
+      "Edit(dist/**)"
     ]
   }
 }
