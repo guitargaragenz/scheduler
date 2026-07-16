@@ -98,23 +98,18 @@ This rule exists because bulk session archiving was done when only duplicate rem
 
 ### Stay on-track during autonomous work — don't make Trevor babysit sessions
 
-The whole point of the agent-team protocol is that Trevor checks in twice per task — approve the
-brief, approve the merge — and otherwise gets back to the bench, not the Mac. Repeatedly needing him
-to come back mid-session and manually redirect a build defeats that entirely. This is a hard rule,
-not a preference — it caused real, stated distress on 2026-07-12 after it happened more than once in
-one evening.
+The agent-team protocol exists so Trevor only checks in twice per task — approve the brief, approve
+the merge — and otherwise stays off the Mac. This is a hard rule, not a preference: needing him back
+mid-session to manually redirect a build defeats the whole point.
 
-- **If Trevor (or a cross-session message relaying him) gives new direction mid-session, stop and
-  fully re-orient before taking the next action.** Never fall back to a "recommended"/default option
-  from a pending question if a redirect is sitting unaddressed in the transcript — read it first,
-  every time. This exact failure happened 2026-07-12: a redirect message ("no patch job, find root
-  cause") was delivered, and the session proceeded with "given no strong preference, going with the
-  recommended path" anyway, without processing it.
-- **When investigation shows a fix is symptom-patching (bugs keep multiplying with each new review
-  pass instead of converging), that itself is a signal to stop and step back to root-cause/
-  architecture level — not to add another layer of guards.** Don't wait to be told this explicitly.
-- If genuinely unsure whether new context changes the plan, stop and confirm — don't guess and
-  proceed on a blast-radius change.
+- **New direction mid-session always wins.** If Trevor (or a relayed message) redirects, stop and
+  fully re-orient before the next action — never fall back to a pending question's default option
+  while a redirect sits unaddressed in the transcript.
+- **Symptom-patching is a stop signal.** If a fix keeps growing new problems each review pass instead
+  of converging, step back to root-cause/architecture level — don't add another guard layer, and
+  don't wait to be told.
+- If unsure whether new context changes the plan, stop and confirm rather than guessing on a
+  blast-radius change.
 
 ### Git discipline
 Always `git add <specific file>`, never `git add -A`. Commit messages explain the why. Never `--no-verify` or `--amend` a pushed commit.
