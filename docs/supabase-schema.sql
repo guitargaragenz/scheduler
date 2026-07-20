@@ -117,6 +117,23 @@ CREATE TABLE IF NOT EXISTS completed_jobs (
 
 CREATE INDEX IF NOT EXISTS idx_completed_jobs_job_id ON completed_jobs(job_id);
 
+-- 2026-07-21: Supabase persistence-gap fix — additive columns for split
+-- jobs, session tracking, pomodoro/GCal/done state (see approved Brief in
+-- .claude/pending-brief.md, "Fix Supabase Persistence Gaps"). Nullable/
+-- defaulted only — safe to run without touching existing rows.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS subtasks TEXT[];
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_split BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS no_auto_split BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_subtask BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS session_note TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS session_index INTEGER;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS session_total INTEGER;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS piece_done BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS done BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS gcal_event_ids TEXT[];
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS pomo_log JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS bump_history JSONB DEFAULT '[]'::jsonb;
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
