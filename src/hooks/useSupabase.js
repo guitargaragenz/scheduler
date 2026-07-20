@@ -40,23 +40,27 @@ function normalizeJobsFromDb(dbJobs) {
     BL: j.bl,
     PJ: j.pj,
     hasSubtasks: j.has_subtasks,
+    subtasks: j.subtasks || [],
+    isSplit: j.is_split,
+    noAutoSplit: j.no_auto_split,
+    isSubtask: j.is_subtask,
+    sessionNote: j.session_note,
+    sessionIndex: j.session_index,
+    sessionTotal: j.session_total,
+    pieceDone: j.piece_done,
+    done: j.done,
+    gcalEventIds: j.gcal_event_ids || [],
+    pomoLog: j.pomo_log || [],
+    bumpHistory: j.bump_history || [],
     created_at: j.created_at,
     updated_at: j.updated_at,
   }));
 }
 
-// Transform Supabase scheduledSlots (array) to app format (map)
-function normalizeSlotsFromDb(dbSlots) {
-  const map = {};
-  (dbSlots || []).forEach(s => {
-    map[s.slot_id] = {
-      jobId: s.job_id,
-      bench: s.bench,
-      calendarSlot: s.slot_id,
-    };
-  });
-  return map;
-}
+// NOTE: slot normalization lives in loadScheduledSlots() in utils/supabase.js,
+// which returns the map already shaped as slotKey -> jobId. A duplicate
+// normalizer used to sit here building objects instead; it was dead code and
+// the wrong shape, so it was removed rather than left as a trap.
 
 export function useSupabase({
   jobs,

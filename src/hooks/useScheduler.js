@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { slotKey, getWorkHours, isLunchSlot, isSaturday, isSunday, isGapHour } from '../utils/calendar.js';
 import { slotsNeeded, findAvailableSlots } from '../utils/scheduler.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
+import { isSupabaseConfigured, batchWriteJobsState, saveScheduledSlotsBatch } from '../utils/supabase.js';
+import { jobsStateFieldsFor } from '../data/joinJobs.js';
 
 export function useScheduler({
   jobs,
@@ -82,9 +84,18 @@ export function useScheduler({
     }
   }
 
-  function handleRegularDrop(job, dayIdx, hour, minute, source) {
+  async function handleRegularDrop(job, dayIdx, hour, minute, source) {
     justSavedAt.current = Date.now();
     const needed = slotsNeeded(job);
+
+    // Pre-move snapshots. The UI updates optimistically below; if the DB
+    // write then fails we restore these so what's on screen matches what's
+    // actually stored, rather than leaving a placement that only exists
+    // in this tab. Slots this job currently holds are captured here because
+    // the optimistic update clears them before the write runs.
+    const prevSlots = scheduledSlots;
+    const prevJobs = jobs;
+    const removedSlotKeys = Object.keys(scheduledSlots).filter(k => scheduledSlots[k] === job.id);
 
     const tempSlots = { ...scheduledSlots };
     if (source === 'calendar') {
@@ -149,13 +160,38 @@ export function useScheduler({
     if (isGenuineBump) {
       onBumpDetected?.({ job, fromSlot: previousSlot, toSlot: newCalendarSlot });
     }
+
+    if (isSupabaseConfigured()) {
+      const addRecords = slots.map(({ dayIdx: d, hour: h, minute: m }) => ({
+        slotId: slotKey(weekDays[d], h, m),
+        jobId: job.id,
+        bench: job.bench,
+      }));
+      const updatedJob = { ...job, scheduled: true, calendarSlot: newCalendarSlot };
+      const [slotsResult, jobResult] = await Promise.all([
+        saveScheduledSlotsBatch(addRecords, removedSlotKeys),
+        batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor(updatedJob) }]),
+      ]);
+      if (!slotsResult.ok || !jobResult.ok) {
+        setScheduledSlots(prevSlots);
+        setJobs(prevJobs);
+        showToast(`⚠ Save failed — #${job.job} snapped back, try again`);
+        addChangelog(`Save failed scheduling #${job.job} — reverted to previous position`);
+      } else {
+        justSavedAt.current = Date.now();
+      }
+    }
   }
 
   function handleMobileSchedule(job, dayIdx, hour, minute) {
     handleRegularDrop(job, dayIdx, hour, minute, undefined);
   }
 
-  function handleUrgentDrop(job, dayIdx, hour, minute, source) {
+  async function handleUrgentDrop(job, dayIdx, hour, minute, source) {
+    justSavedAt.current = Date.now();
+    // See handleRegularDrop for why these snapshots exist.
+    const prevSlots = scheduledSlots;
+    const prevJobs = jobs;
     const date = weekDays[dayIdx];
     const { start, end } = getWorkHours(date);
     const needed = slotsNeeded(job);
@@ -235,9 +271,50 @@ export function useScheduler({
       upsertScheduledBullet(job, first.hour, first.minute);
     }
     addChangelog(msg);
+
+    if (isSupabaseConfigured()) {
+      const newCalendarSlot = slotKey(weekDays[first.dayIdx], first.hour, first.minute);
+      const addRecords = slots.map(({ dayIdx: d, hour: h, minute: m }) => ({
+        slotId: slotKey(weekDays[d], h, m),
+        jobId: job.id,
+        bench: job.bench,
+      }));
+      // Slots freed by this move: the ones this job held, plus every slot
+      // held by a job it bumped off the calendar.
+      const removedSlotKeys = Object.keys(prevSlots).filter(k =>
+        prevSlots[k] === job.id || displaced.includes(prevSlots[k])
+      );
+      // The moved job and everything it displaced go in ONE write. Splitting
+      // them risks the urgent job landing while the jobs it kicked out stay
+      // marked as scheduled in the DB, double-booking those slots.
+      const jobWrites = [
+        { id: job.id, data: jobsStateFieldsFor({ ...job, scheduled: true, calendarSlot: newCalendarSlot }) },
+        ...prevJobs
+          .filter(j => displaced.includes(j.id))
+          .map(j => ({ id: j.id, data: jobsStateFieldsFor({ ...j, scheduled: false, calendarSlot: null }) })),
+      ];
+      const [slotsResult, jobsResult] = await Promise.all([
+        saveScheduledSlotsBatch(addRecords, removedSlotKeys),
+        batchWriteJobsState(jobWrites),
+      ]);
+      if (!slotsResult.ok || !jobsResult.ok) {
+        setScheduledSlots(prevSlots);
+        setJobs(prevJobs);
+        showToast(`⚠ Save failed — #${job.job} and any bumped jobs snapped back, try again`);
+        addChangelog(`Save failed on urgent drop of #${job.job} — reverted`);
+      } else {
+        justSavedAt.current = Date.now();
+      }
+    }
   }
 
   function unscheduleJob(job) {
+    justSavedAt.current = Date.now();
+    // See handleRegularDrop for why these snapshots exist.
+    const prevSlots = scheduledSlots;
+    const prevJobs = jobs;
+    const removedSlotKeys = Object.keys(scheduledSlots).filter(k => scheduledSlots[k] === job.id);
+
     setScheduledSlots(prev => {
       const next = { ...prev };
       Object.keys(next).forEach(k => { if (next[k] === job.id) delete next[k]; });
@@ -246,11 +323,39 @@ export function useScheduler({
     setJobs(prev => prev.map(j =>
       j.id === job.id ? { ...j, scheduled: false, calendarSlot: null, gcalEventId: null, gcalEventIds: [] } : j
     ));
-    const idsToDelete = job.gcalEventIds?.length ? job.gcalEventIds : job.gcalEventId ? [job.gcalEventId] : [];
-    if (signedIn) {
-      idsToDelete.forEach(id => deleteEvent(id).catch(e => console.error('deleteEvent failed:', e)));
-    }
     addChangelog(`Unscheduled #${job.job} — moved back to sidebar`);
+
+    const idsToDelete = job.gcalEventIds?.length ? job.gcalEventIds : job.gcalEventId ? [job.gcalEventId] : [];
+    const deleteGcalEvents = () => {
+      if (!signedIn) return;
+      idsToDelete.forEach(id => deleteEvent(id).catch(e => console.error('deleteEvent failed:', e)));
+    };
+
+    if (!isSupabaseConfigured()) {
+      deleteGcalEvents();
+      return;
+    }
+
+    // Not awaited — the drag-end caller is synchronous. Calendar events are
+    // deleted only once the unschedule has actually persisted: a deleted
+    // event can't be restored, so we don't destroy one for a write that
+    // failed and got rolled back.
+    (async () => {
+      const updatedJob = { ...job, scheduled: false, calendarSlot: null, gcalEventId: null, gcalEventIds: [] };
+      const [slotsResult, jobResult] = await Promise.all([
+        saveScheduledSlotsBatch([], removedSlotKeys),
+        batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor(updatedJob) }]),
+      ]);
+      if (!slotsResult.ok || !jobResult.ok) {
+        setScheduledSlots(prevSlots);
+        setJobs(prevJobs);
+        showToast(`⚠ Save failed — #${job.job} is still scheduled, try again`);
+        addChangelog(`Save failed unscheduling #${job.job} — reverted`);
+        return;
+      }
+      justSavedAt.current = Date.now();
+      deleteGcalEvents();
+    })();
   }
 
   return {

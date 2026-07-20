@@ -207,7 +207,11 @@ export function useJobs({
     setCompletedJobs(newRecords);
     setDoneJobIds(newDoneIds);
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
-    if (isSupabaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
+    if (isSupabaseConfigured()) {
+      saveCompletedJobs(newRecords, newDoneIds);
+      justSavedAt.current = Date.now();
+      batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor({ ...job, done: true }) }]);
+    }
     setPomoJob(null);
     // Exact amount entered, not rounded — matches the stored invoiceAmount above.
     showToast(`✓ ${job.mfr} ${job.model} — $${formatMoney(amount)} invoiced`);
