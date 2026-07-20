@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { isFirebaseConfigured } from '../utils/firebase.js';
+import { isSupabaseConfigured } from '../utils/supabase.js';
 import { localDateKey } from '../utils/calendar.js';
 
 // crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — Safari disables it
@@ -128,7 +128,7 @@ export function useDailyLog() {
   const deferredItemsTouchedRef = useRef(false);
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
+    if (!isSupabaseConfigured()) {
       readyRef.current = true;
       setLoading(false);
       return;

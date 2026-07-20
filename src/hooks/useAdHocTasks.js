@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { isFirebaseConfigured, loadAdHocTasks, saveAdHocTasks, subscribeToAdHocTasks } from '../utils/firebase.js';
+import { isSupabaseConfigured, loadAdHocTasks, saveAdHocTasks, subscribeToAdHocTasks } from '../utils/supabase.js';
 import { slotKey, localDateKey, isSaturday, isSunday, isLunchSlot, isGapHour, getWorkHours } from '../utils/calendar.js';
 
 // crypto.randomUUID() only exists in secure contexts — see useDailyLog.js for why.
@@ -30,7 +30,7 @@ export function useAdHocTasks() {
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) { setReady(true); return; }
+    if (!isSupabaseConfigured()) { setReady(true); return; }
     loadAdHocTasks().then(data => { setAdHocTasks(data); setReady(true); });
     const unsub = subscribeToAdHocTasks(data => {
       if (Date.now() - justSavedAt.current < 3000) return;
@@ -40,7 +40,7 @@ export function useAdHocTasks() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isFirebaseConfigured() || !ready) return;
+    if (!isSupabaseConfigured() || !ready) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       justSavedAt.current = Date.now();

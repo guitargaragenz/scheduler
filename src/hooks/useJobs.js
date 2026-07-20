@@ -1,6 +1,6 @@
 import { parseCSV, canInvoiceJob } from '../data/jobs.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isFirebaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJobMaster } from '../utils/firebase.js';
+import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob } from '../utils/supabase.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 import { formatMoney } from '../utils/money.js';
@@ -41,7 +41,7 @@ export function useJobs({
       const sess = row.sessions[0];
       const updated = { hours: Number(sess.hours), sessionNote: sess.note };
       setJobs(prev => prev.map(j => j.id === parentJob.id ? { ...j, ...updated } : j));
-      if (isFirebaseConfigured()) {
+      if (isSupabaseConfigured()) {
         justSavedAt.current = Date.now();
         batchWriteJobsState([{ id: parentJob.id, data: jobsStateFieldsFor({ ...parentJob, ...updated }) }]);
       }
@@ -106,7 +106,7 @@ export function useJobs({
       releaseSlots(new Set(existingChildren.map(j => j.id)));
       cleanupGcalEvents(existingChildren);
 
-      if (isFirebaseConfigured()) {
+      if (isSupabaseConfigured()) {
         justSavedAt.current = Date.now();
         const mergedParent = { ...parentJob, ...parentUpdate };
         const writes = [
@@ -120,7 +120,7 @@ export function useJobs({
         // card) — same exception as the bench-keyword re-infer handler in
         // App.jsx (design decision #2), so it goes to jobsMaster directly.
         if (row.bench !== parentJob.bench) {
-          saveJobMaster(parentJob.id, pickMasterFields(mergedParent));
+          saveJob(parentJob.id, pickMasterFields(mergedParent));
         }
       }
       return;
@@ -173,7 +173,7 @@ export function useJobs({
     setHighlightedJobId(parentJob.id);
     setSidebarOpen(true);
 
-    if (isFirebaseConfigured()) {
+    if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
       const mergedParent = { ...parentJob, ...parentUpdate };
       // ALL creates/updates/deletes for this split-set change land in one
@@ -207,7 +207,7 @@ export function useJobs({
     setCompletedJobs(newRecords);
     setDoneJobIds(newDoneIds);
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
-    if (isFirebaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
+    if (isSupabaseConfigured()) saveCompletedJobs(newRecords, newDoneIds);
     setPomoJob(null);
     // Exact amount entered, not rounded — matches the stored invoiceAmount above.
     showToast(`✓ ${job.mfr} ${job.model} — $${formatMoney(amount)} invoiced`);
@@ -246,7 +246,7 @@ export function useJobs({
         return [...updatedExisting, ...brandNew];
       });
 
-      if (isFirebaseConfigured()) {
+      if (isSupabaseConfigured()) {
         justSavedAt.current = Date.now();
         saveJobsMasterBatch(topLevel.map(j => ({ id: j.id, ...pickMasterFields(j) })));
       }
@@ -269,7 +269,7 @@ export function useJobs({
       mergedJob = { ...j, pomoLog: [...(j.pomoLog || []), session] };
       return mergedJob;
     }));
-    if (isFirebaseConfigured() && mergedJob) {
+    if (isSupabaseConfigured() && mergedJob) {
       justSavedAt.current = Date.now();
       batchWriteJobsState([{ id: jobId, data: jobsStateFieldsFor(mergedJob) }]);
     }
@@ -314,7 +314,7 @@ export function useJobs({
     if (!updatedChild || !parentJob) return;
 
     // Persist to Firestore
-    if (isFirebaseConfigured()) {
+    if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
       batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }]);
     }

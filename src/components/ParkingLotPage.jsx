@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { loadParkingLot, saveParkingLot, subscribeToParkingLot } from '../utils/firebase.js';
-import { isFirebaseConfigured } from '../utils/firebase.js';
+import { loadParkingLot, saveParkingLot, subscribeToParkingLot } from '../utils/supabase.js';
+import { isSupabaseConfigured } from '../utils/supabase.js';
 
 const SESSIONS = [
   '2026-06-13', '2026-06-15', '2026-06-17',
@@ -44,7 +44,7 @@ export default function ParkingLotPage({ onBack }) {
 
   // Load from Firebase or seed with initial items
   useEffect(() => {
-    if (!isFirebaseConfigured()) {
+    if (!isSupabaseConfigured()) {
       setItems(INITIAL_ITEMS);
       setLoaded(true);
       return;
@@ -65,7 +65,7 @@ export default function ParkingLotPage({ onBack }) {
 
   const persist = useCallback((updated) => {
     setItems(updated);
-    if (isFirebaseConfigured()) {
+    if (isSupabaseConfigured()) {
       setSaving(true);
       saveParkingLot(updated).then(() => setSaving(false));
     }

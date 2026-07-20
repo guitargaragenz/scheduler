@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { isFirebaseConfigured, loadFocusList, saveFocusList, subscribeToFocusList } from '../utils/firebase.js';
+import { isSupabaseConfigured, loadFocusList, saveFocusList, subscribeToFocusList } from '../utils/supabase.js';
 
 // Focus list — job IDs Trevor is prioritizing this week, picked from the
 // Sunday board-meeting interview. Kept in its own doc so it never touches
@@ -11,7 +11,7 @@ export function useFocusList() {
   const saveTimerRef = useRef(null);
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) { setReady(true); return; }
+    if (!isSupabaseConfigured()) { setReady(true); return; }
     loadFocusList().then(data => { setFocusList(data); setReady(true); });
     const unsub = subscribeToFocusList(data => {
       if (Date.now() - justSavedAt.current < 3000) return;
@@ -21,7 +21,7 @@ export function useFocusList() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!isFirebaseConfigured() || !ready) return;
+    if (!isSupabaseConfigured() || !ready) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       justSavedAt.current = Date.now();

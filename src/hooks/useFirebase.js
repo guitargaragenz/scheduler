@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import {
-  isFirebaseConfigured,
+  isSupabaseConfigured,
   loadJobsMaster, subscribeToJobsMaster,
   loadJobsState, subscribeToJobsState, batchWriteJobsState,
   loadScheduledSlots, saveScheduledSlots, subscribeToScheduledSlots,
   saveCompletedJobs, subscribeToCompletedJobs,
-} from '../utils/firebase.js';
+} from '../utils/supabase.js';
 import { joinJobsMasterState, jobsStateFieldsFor } from '../data/joinJobs.js';
 
 export { joinJobsMasterState };
@@ -75,7 +75,7 @@ export function useFirebase({
 
   // Load on mount + subscribe to real-time updates from other devices
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isSupabaseConfigured()) return;
 
     Promise.all([loadJobsMaster(), loadJobsState(), loadScheduledSlots()]).then(([master, state, slots]) => {
       masterRef.current = master;
@@ -115,7 +115,7 @@ export function useFirebase({
 
   // Subscribe to completed jobs / done IDs
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isSupabaseConfigured()) return;
     const unsub = subscribeToCompletedJobs(data => {
       setCompletedJobs(data.records || []);
       setDoneJobIds(data.doneJobIds || []);
@@ -129,7 +129,7 @@ export function useFirebase({
   // child's jobsState doc is handleSaveDrawer's job (its own atomic batch),
   // not this generic backstop's.
   useEffect(() => {
-    if (!isFirebaseConfigured() || !firebaseReady) return;
+    if (!isSupabaseConfigured() || !firebaseReady) return;
     clearTimeout(stateSaveTimerRef.current);
     stateSaveTimerRef.current = setTimeout(() => {
       const writes = [];
@@ -150,7 +150,7 @@ export function useFirebase({
   // scheduledSlots — its own single-writer doc, debounced independently.
   const slotsSaveTimerRef = useRef(null);
   useEffect(() => {
-    if (!isFirebaseConfigured() || !firebaseReady) return;
+    if (!isSupabaseConfigured() || !firebaseReady) return;
     clearTimeout(slotsSaveTimerRef.current);
     slotsSaveTimerRef.current = setTimeout(() => {
       justSavedAt.current = Date.now();

@@ -6,7 +6,7 @@ import {
 import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
-import { isFirebaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJobMaster, deleteJobState } from './utils/firebase.js';
+import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -29,7 +29,7 @@ import BumpReasonModal from './components/BumpReasonModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import RevenueBreakdown from './components/RevenueBreakdown.jsx';
-import { useFirebase } from './hooks/useFirebase.js';
+import { useSupabase } from './hooks/useSupabase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
 import { useScheduler } from './hooks/useScheduler.js';
 import { useJobs } from './hooks/useJobs.js';
@@ -72,7 +72,7 @@ export default function App() {
   const [editingJob, setEditingJob] = useState(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [firebaseReady, setFirebaseReady] = useState(false);
+  const [supabaseReady, setFirebaseReady] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [pomoJob, setPomoJob] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
@@ -109,7 +109,7 @@ export default function App() {
 
   // Load unread conflict bump events on startup
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isSupabaseConfigured()) return;
     loadConflictLog().then(events => {
       if (events.length > 0) setConflictEvents(events);
     });
@@ -123,11 +123,11 @@ export default function App() {
   // --- Hooks ---
   const { pendingRevenueReview, addDisappearedJobs, resolveItem: resolvePendingRevenueReviewItem } = usePendingRevenueReview();
 
-  useFirebase({
+  useSupabase({
     jobs, scheduledSlots, setJobs, setScheduledSlots,
     setFirebaseReady, setLastSyncedAt,
     setCompletedJobs, setDoneJobIds,
-    justSavedAt, firebaseReady,
+    justSavedAt, supabaseReady,
     onJobsDisappeared: addDisappearedJobs,
     // Union-join semantics (architecture brief design decision #1): a
     // jobsState split-child doc whose jobsMaster parent has vanished is
@@ -238,9 +238,9 @@ export default function App() {
   // silently re-claimed as if it were current. Deleting it on resolution
   // closes that off for good instead of just dismissing the notification.
   function cleanupResolvedOrphan(item) {
-    if (item.parentId && isFirebaseConfigured()) {
+    if (item.parentId && isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
-      deleteJobState(item.id);
+      deleteJob(item.id);
     }
   }
 
@@ -664,7 +664,7 @@ export default function App() {
         events={conflictEvents}
         onDismiss={() => {
           setConflictEvents([]);
-          if (isFirebaseConfigured()) clearConflictLog();
+          if (isSupabaseConfigured()) clearConflictLog();
         }}
       />
 
@@ -761,9 +761,9 @@ export default function App() {
               if (bench !== j.bench) reinferred.push({ ...j, bench });
               return { ...j, bench };
             }));
-            if (isFirebaseConfigured() && reinferred.length > 0) {
+            if (isSupabaseConfigured() && reinferred.length > 0) {
               justSavedAt.current = Date.now();
-              reinferred.forEach(j => saveJobMaster(j.id, pickMasterFields(j)));
+              reinferred.forEach(j => saveJob(j.id, pickMasterFields(j)));
             }
           }}
           hourlyRate={hourlyRate}
@@ -828,7 +828,7 @@ export default function App() {
             setJobs(prev => prev.map(j =>
               j.id === bumpPrompt.job.id ? { ...j, bumpHistory: [...(j.bumpHistory || []), entry] } : j
             ));
-            if (isFirebaseConfigured()) {
+            if (isSupabaseConfigured()) {
               appendConflictLog([{
                 ts: entry.ts,
                 jobNum: bumpPrompt.job.job,

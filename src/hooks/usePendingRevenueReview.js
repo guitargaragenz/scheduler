@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  isFirebaseConfigured, loadPendingRevenueReview, subscribeToPendingRevenueReview,
+  isSupabaseConfigured, loadPendingRevenueReview, subscribeToPendingRevenueReview,
   addPendingRevenueReviewItems, removePendingRevenueReviewItem,
-} from '../utils/firebase.js';
+} from '../utils/supabase.js';
 import { keyReviewItemsById } from '../data/joinJobs.js';
 
 // Jobs that disappeared from a CSV/Sheet sync without being marked done
@@ -20,7 +20,7 @@ export function usePendingRevenueReview() {
   const justSavedAt = useRef(0);
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) { setReady(true); return; }
+    if (!isSupabaseConfigured()) { setReady(true); return; }
     loadPendingRevenueReview().then(data => { setItems(data); setReady(true); });
     const unsub = subscribeToPendingRevenueReview(data => {
       if (Date.now() - justSavedAt.current < 3000) return;
@@ -33,7 +33,7 @@ export function usePendingRevenueReview() {
     if (!disappearedJobs || disappearedJobs.length === 0) return;
     const stamped = disappearedJobs.map(j => ({ ...j, disappearedAt: new Date().toISOString() }));
     setItems(prev => ({ ...prev, ...keyReviewItemsById(stamped) }));
-    if (isFirebaseConfigured()) {
+    if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
       addPendingRevenueReviewItems(stamped);
     }
@@ -45,7 +45,7 @@ export function usePendingRevenueReview() {
       delete next[String(itemId)];
       return next;
     });
-    if (isFirebaseConfigured()) {
+    if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
       removePendingRevenueReviewItem(itemId);
     }

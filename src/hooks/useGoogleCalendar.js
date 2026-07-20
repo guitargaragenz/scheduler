@@ -5,7 +5,7 @@ import {
 } from '../utils/googleCalendar.js';
 import { slotKey } from '../utils/calendar.js';
 import { findAvailableSlots, slotsNeeded } from '../utils/scheduler.js';
-import { isFirebaseConfigured, appendConflictLog } from '../utils/firebase.js';
+import { isSupabaseConfigured, appendConflictLog } from '../utils/supabase.js';
 
 export function useGoogleCalendar({
   weekDays,
@@ -132,7 +132,7 @@ export function useGoogleCalendar({
               bumpLogEntries.push({ ts: new Date().toISOString(), jobNum: job.job, mfr: job.mfr, model: job.model, newSlot: null, unscheduled: true });
             }
           });
-          if (bumpLogEntries.length > 0 && isFirebaseConfigured()) {
+          if (bumpLogEntries.length > 0 && isSupabaseConfigured()) {
             appendConflictLog(bumpLogEntries);
           }
 
