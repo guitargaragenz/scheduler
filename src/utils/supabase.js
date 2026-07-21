@@ -85,6 +85,7 @@ const JOB_COLUMN_MAP = {
   pieceDone: 'piece_done',
   isSplit: 'is_split',
   isSubtask: 'is_subtask',
+  isDerived: 'is_derived',
   hasSubtasks: 'has_subtasks',
   VB: 'vb',
   BL: 'bl',
@@ -114,9 +115,39 @@ export function toJobRow(fields) {
   return row;
 }
 
+// Deletes every child row of a parent at the DB level, optionally keeping a
+// set of ids. Un-split / re-split used to delete only the children it could
+// see in the in-memory jobs array, which silently leaked rows: any stored
+// child not currently loaded (or a derived card that had been wrongly
+// materialised as a real row before the isDerived guards existed) survived
+// the un-split and reappeared on the next load, re-freezing the split.
+export async function deleteChildJobs(parentId, keepIds = []) {
+  if (!parentId) return;
+  try {
+    let q = getClient().from('jobs').delete().eq('parent_id', parentId);
+    if (keepIds.length > 0) q = q.not('id', 'in', `(${keepIds.map(id => `"${id}"`).join(',')})`);
+    const { error } = await q;
+    if (error) throw error;
+  } catch (e) {
+    console.error(`Supabase delete child jobs of ${parentId} error:`, e);
+  }
+}
+
 export async function upsertJobsBatch(jobsList) {
   try {
-    const transformed = jobsList.map(job => ({
+    // upsertJobsBatch is the CSV/jobsMaster path: top-level jobs only. A
+    // child row arriving here means a split child (manual or, far worse, a
+    // derived auto-split card) is about to be written with its full
+    // CSV-shaped record — the exact corruption that materialises a derived
+    // card as a permanent row. Fail loudly and drop it rather than persist.
+    const children = jobsList.filter(job => job.parentId);
+    if (children.length > 0) {
+      console.error(
+        'upsertJobsBatch: refusing to write %d split child row(s) — split children go through batchWriteJobsState, not the jobsMaster path. ids: %s',
+        children.length, children.map(c => c.id).join(', ')
+      );
+    }
+    const transformed = jobsList.filter(job => !job.parentId).map(job => ({
       id: job.id,
       parent_id: job.parentId || null,
       job: job.job,

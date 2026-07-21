@@ -1,6 +1,6 @@
 import { parseCSV, canInvoiceJob } from '../data/jobs.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob } from '../utils/supabase.js';
+import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs } from '../utils/supabase.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 import { formatMoney } from '../utils/money.js';
@@ -111,9 +111,13 @@ export function useJobs({
         const mergedParent = { ...parentJob, ...parentUpdate };
         const writes = [
           { id: parentJob.id, data: jobsStateFieldsFor(mergedParent) },
-          ...existingChildren.map(c => ({ id: c.id, delete: true })),
         ];
-        batchWriteJobsState(writes); // atomic: parent's un-split state + all child deletes together
+        // Delete by parent_id at the DB level rather than by the in-memory
+        // child list: any child row this client can't currently see (a
+        // derived card wrongly materialised as a real row, or a child added
+        // by another client) would otherwise survive the un-split and
+        // re-freeze the split on the next load.
+        batchWriteJobsState(writes).then(() => deleteChildJobs(parentJob.id));
         // `bench` is CSV-owned in the new schema, but a drawer-driven
         // un-split can carry a deliberate bench override (the drawer lets
         // the tech reassign the bench when collapsing a split back to one
@@ -184,9 +188,13 @@ export function useJobs({
       const writes = [
         { id: parentJob.id, data: jobsStateFieldsFor(mergedParent) },
         ...subtasks.map(s => ({ id: s.id, data: jobsStateFieldsFor(s) })),
-        ...removedChildren.map(c => ({ id: c.id, delete: true })),
       ];
-      batchWriteJobsState(writes);
+      // Same reasoning as the un-split branch: sweep every child row of this
+      // parent at the DB level except the ones we just wrote, so unseen /
+      // wrongly-materialised rows can't survive a re-split. Chained, not
+      // fired in parallel — the sweep must not race ahead of the upserts and
+      // delete a kept child before it exists.
+      batchWriteJobsState(writes).then(() => deleteChildJobs(parentJob.id, [...keptIds]));
     }
   }
 

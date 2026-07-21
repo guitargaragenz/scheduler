@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { joinJobsMasterState, keyReviewItemsById } from './joinJobs.js';
+import { joinJobsMasterState, keyReviewItemsById, expandAutoSplits, jobsStateFieldsFor } from './joinJobs.js';
 
 // Minimal jobsMaster fixture factory — only the fields the join layer and
 // createSubtasks() actually read.
@@ -319,5 +319,123 @@ describe('joinJobsMasterState', () => {
     expect(Object.keys(keyed)).toHaveLength(2);
     expect(keyed['7000']).toBeDefined();
     expect(keyed['8000_Setup_0']).toBeDefined();
+  });
+});
+
+describe('expandAutoSplits (flat single-table Supabase path)', () => {
+  // A Setup job whose desc mentions both setup and wiring qualifies for a
+  // 2-card auto-split via createSubtasks().
+  function splittable(overrides = {}) {
+    return master({
+      id: '2000', job: '2000', bench: 'Setup', hours: 3,
+      desc: 'full setup and rewire scratchy pot', ...overrides,
+    });
+  }
+
+  it('a qualifying job produces fresh derived bench cards', () => {
+    const out = expandAutoSplits([splittable()]);
+
+    const parent = out.find(j => j.id === '2000');
+    const kids = out.filter(j => j.parentId === '2000');
+
+    expect(parent).toMatchObject({ hasSubtasks: true, isSplit: false });
+    expect(parent.subtasks).toEqual(kids.map(k => k.id));
+    expect(kids).toHaveLength(2);
+    kids.forEach(k => {
+      expect(k.isDerived).toBe(true);
+      // Derived cards are never themselves split, and never inherit the
+      // parent's split bookkeeping or done flag.
+      expect(k.isSubtask).toBe(false);
+      expect(k.isSplit).toBe(false);
+      expect(k.hasSubtasks).toBe(false);
+      expect(k.subtasks).toBeNull();
+      expect(k.done).toBe(false);
+      // Explicit defaults, not undefined, for a card never scheduled/logged.
+      expect(k.scheduled).toBe(false);
+      expect(k.calendarSlot).toBeNull();
+      expect(k.gcalEventIds).toEqual([]);
+    });
+    expect(kids.map(k => k.bench).sort()).toEqual(['Setup', 'Wiring']);
+  });
+
+  it('a noAutoSplit job is never regenerated (deliberate un-split is respected)', () => {
+    const out = expandAutoSplits([splittable({ noAutoSplit: true })]);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: '2000', hasSubtasks: false, subtasks: null, isSplit: false });
+    expect(out.some(j => j.isDerived)).toBe(false);
+  });
+
+  it('a job with stored manual children is not auto-split, and the children pass through untouched', () => {
+    // isSubtask is deliberately absent/null on one child: the DB column is
+    // nullable, so parentId != null is the only reliable child test.
+    const flat = [
+      splittable(),
+      { id: '2000_Setup_0', parentId: '2000', isSubtask: true, bench: 'Setup', hours: 1.5, job: '2000', label: 'Setup' },
+      { id: '2000_Wiring_0', parentId: '2000', isSubtask: null, bench: 'Wiring', hours: 1.5, job: '2000', label: 'Wiring' },
+    ];
+    const out = expandAutoSplits(flat);
+
+    expect(out).toHaveLength(3);
+    expect(out.find(j => j.id === '2000')).toMatchObject({ isSplit: true, hasSubtasks: false, subtasks: null });
+    const kids = out.filter(j => j.parentId === '2000');
+    expect(kids.map(k => k.id).sort()).toEqual(['2000_Setup_0', '2000_Wiring_0']);
+    expect(kids.some(k => k.isDerived)).toBe(false);
+    // No derived card ids leaked in alongside the stored ones.
+    expect(out.some(j => j.id === '2000-ST' || j.id === '2000-WR')).toBe(false);
+  });
+
+  it('pomoLog on a derived card survives regeneration, but stale shape fields never beat the fresh ones', () => {
+    // A previously-materialised derived row: it holds real app-owned state
+    // (pomoLog/scheduled) AND stale CSV-shaped fields from before the guards
+    // existed. The state must cross over; the stale shape must not.
+    const stored = {
+      id: '2000-ST', parentId: '2000', isDerived: true,
+      pomoLog: [{ start: '2026-07-22T09:00:00Z', mins: 25 }],
+      scheduled: true, calendarSlot: '2026-07-22-9-0', pieceDone: true,
+      bench: 'Admin', hours: 99,
+    };
+    const out = expandAutoSplits([splittable(), stored]);
+
+    const card = out.find(j => j.id === '2000-ST');
+    expect(card).toBeDefined();
+    expect(card.pomoLog).toEqual(stored.pomoLog);
+    expect(card.scheduled).toBe(true);
+    expect(card.calendarSlot).toBe('2026-07-22-9-0');
+    expect(card.pieceDone).toBe(true);
+    // Fresh from createSubtasks(), not the stale stored values.
+    expect(card.bench).toBe('Setup');
+    expect(card.hours).not.toBe(99);
+    expect(card.isDerived).toBe(true);
+    // The stale derived row is reconciled into the regenerated card, never
+    // emitted twice and never treated as a stored manual child.
+    expect(out.filter(j => j.id === '2000-ST')).toHaveLength(1);
+    expect(out.find(j => j.id === '2000').hasSubtasks).toBe(true);
+  });
+});
+
+describe('jobsStateFieldsFor — derived-card write guard', () => {
+  it('a derived card persists only its app-owned state, never its CSV-shaped body', () => {
+    const card = {
+      id: '2000-ST', parentId: '2000', job: '2000', isDerived: true,
+      bench: 'Setup', hours: 1.5, desc: 'full setup and rewire', label: 'Setup',
+      hoursRange: '1-2', mfr: 'Fender', isSubtask: false, subtasks: null,
+      pomoLog: [{ mins: 25 }], scheduled: true, pieceDone: true,
+    };
+    const out = jobsStateFieldsFor(card);
+
+    expect(out).toEqual({
+      scheduled: true, pieceDone: true, pomoLog: [{ mins: 25 }],
+      job: '2000', parentId: '2000', isDerived: true,
+    });
+    ['bench', 'hours', 'desc', 'label', 'hoursRange', 'mfr', 'isSubtask', 'subtasks']
+      .forEach(f => expect(out).not.toHaveProperty(f));
+  });
+
+  it('a stored manual child still persists its whole record (unchanged behaviour)', () => {
+    const kid = { id: '2000_Setup_0', parentId: '2000', isSubtask: true, bench: 'Setup', hours: 1.5 };
+    const out = jobsStateFieldsFor(kid);
+    expect(out).toMatchObject({ parentId: '2000', isSubtask: true, bench: 'Setup', hours: 1.5 });
+    expect(out).not.toHaveProperty('id');
   });
 });
