@@ -44,8 +44,7 @@ export async function saveJob(jobId, fields) {
   try {
     const { data, error } = await getClient()
       .from('jobs')
-      .update({ ...fields, updated_at: new Date().toISOString() })
-      .eq('id', jobId)
+      .upsert({ ...toJobRow(fields), id: jobId, updated_at: new Date().toISOString() }, { onConflict: 'id' })
       .select();
     if (error) throw error;
     return data?.[0];
@@ -65,6 +64,54 @@ export async function deleteJob(jobId) {
   } catch (e) {
     console.error(`Supabase delete job ${jobId} error:`, e);
   }
+}
+
+// App-shape (camelCase) field name -> jobs table column. The app and the DB
+// disagree on naming, so anything written to the jobs table has to be mapped
+// first — spreading raw app fields into a query makes PostgREST reject the
+// whole request with "column does not exist", which is why pomodoro/done/
+// drawer writes were silently failing after the Supabase migration.
+const JOB_COLUMN_MAP = {
+  parentId: 'parent_id',
+  calendarSlot: 'calendar_slot',
+  gcalEventId: 'gcal_event_id',
+  gcalEventIds: 'gcal_event_ids',
+  pomoLog: 'pomo_log',
+  bumpHistory: 'bump_history',
+  noAutoSplit: 'no_auto_split',
+  sessionNote: 'session_note',
+  sessionIndex: 'session_index',
+  sessionTotal: 'session_total',
+  pieceDone: 'piece_done',
+  isSplit: 'is_split',
+  isSubtask: 'is_subtask',
+  hasSubtasks: 'has_subtasks',
+  VB: 'vb',
+  BL: 'bl',
+  PJ: 'pj',
+};
+
+// Fields whose app name already matches the column name.
+const JOB_PASSTHROUGH_FIELDS = new Set([
+  'id', 'job', 'customer', 'mfr', 'model', 'status', 'bench', 'hours',
+  'scheduled', 'done', 'subtasks', 'desc', 'tag', 'action',
+  'created_at', 'updated_at',
+]);
+
+// Map an app-shape job (or partial job) to a jobs table row. Only keys that
+// are actually present are included — this must never fill in absent keys,
+// because partial state writes (e.g. scheduling a job) would otherwise blank
+// out the CSV-owned columns they didn't mention. Keys with no column (UI-only
+// derived fields such as manualSplits) are dropped rather than sent, since
+// including them would fail the entire write.
+export function toJobRow(fields) {
+  const row = {};
+  Object.keys(fields).forEach(k => {
+    const col = JOB_COLUMN_MAP[k];
+    if (col) row[col] = fields[k];
+    else if (JOB_PASSTHROUGH_FIELDS.has(k)) row[k] = fields[k];
+  });
+  return row;
 }
 
 export async function upsertJobsBatch(jobsList) {
@@ -144,14 +191,14 @@ export async function loadScheduledSlots() {
       return slotsCache;
     }
 
-    // Transform flat array back into Firestore-style map for compatibility
+    // Transform flat array back into the app's slot map: slotKey -> jobId.
+    // The value MUST be the bare job id string, not an object — every reader
+    // (useScheduler.js, scheduler.js:59) compares it directly against job.id,
+    // and the optimistic drag updates write bare ids too. Returning objects
+    // here silently broke slot-clearing on every code path after a reload.
     const slotMap = {};
     (data || []).forEach(slot => {
-      slotMap[slot.slot_id] = {
-        jobId: slot.job_id,
-        bench: slot.bench,
-        calendarSlot: slot.slot_id,
-      };
+      slotMap[slot.slot_id] = slot.job_id;
     });
     slotsCache = slotMap;
     slotsCacheTime = Date.now();
@@ -207,6 +254,33 @@ export async function deleteScheduledSlot(slotId) {
     if (error) throw error;
   } catch (e) {
     console.error(`Supabase delete slot ${slotId} error:`, e);
+  }
+}
+
+// Batch add/remove scheduled slots in one round-trip each (used by
+// calendar drag-and-drop, which moves several slots at once). Removes run
+// before adds so a slot being freed up and re-claimed in the same move
+// doesn't collide with the unique slot_id constraint.
+export async function saveScheduledSlotsBatch(adds, removes) {
+  try {
+    if (removes && removes.length > 0) {
+      const { error } = await getClient()
+        .from('scheduled_slots')
+        .delete()
+        .in('slot_id', removes);
+      if (error) throw error;
+    }
+    if (adds && adds.length > 0) {
+      const records = adds.map(a => ({ slot_id: a.slotId, job_id: a.jobId, bench: a.bench }));
+      const { error } = await getClient()
+        .from('scheduled_slots')
+        .upsert(records, { onConflict: 'slot_id' });
+      if (error) throw error;
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase save scheduled slots batch error:', e);
+    return { ok: false, error: e };
   }
 }
 
@@ -672,23 +746,50 @@ export const subscribeToJobsMaster = subscribeToJobs;
 // Alias: subscribeToJobsState is the same as subscribeToJobs (combined in Supabase)
 export const subscribeToJobsState = subscribeToJobs;
 
-// Batch write for jobsState with atomic updates
+// Batch write for jobsState — upserts (not update-only) so brand-new rows
+// (e.g. freshly created split children) actually persist instead of silently
+// no-oping. Deletes and upserts are each done in one round-trip.
 export async function batchWriteJobsState(writes) {
-  if (!writes || writes.length === 0) return;
+  if (!writes || writes.length === 0) return { ok: true };
+  const upserts = writes.filter(w => !w.delete);
+  const deletes = writes.filter(w => w.delete);
   try {
-    for (const w of writes) {
-      if (w.delete) {
-        await deleteJob(w.id);
-      } else {
-        const { data, error } = await getClient()
+    if (upserts.length > 0) {
+      // Build every row first, then group by its exact set of columns. A
+      // single Supabase upsert with an array sends the UNION of all rows'
+      // keys as the column list and fills any row missing a key with NULL.
+      // That's silently destructive here: a manual split batches the sparse
+      // parent row (state fields only, no `job`) together with full child
+      // rows (which carry `job`), so the parent row gets job=NULL — either
+      // aborting the whole batch on the NOT NULL `job` column (so the split
+      // never persists, the exact bug this fix targets) or blanking a
+      // nullable column a sparser row never meant to touch. Grouping means
+      // every row in a given request has identical columns, so nothing is
+      // NULL-filled. Same-column rows still batch in one round-trip.
+      const groups = new Map();
+      for (const w of upserts) {
+        const row = { ...toJobRow(w.data), id: w.id, updated_at: new Date().toISOString() };
+        const sig = Object.keys(row).sort().join(',');
+        if (!groups.has(sig)) groups.set(sig, []);
+        groups.get(sig).push(row);
+      }
+      for (const records of groups.values()) {
+        const { error } = await getClient()
           .from('jobs')
-          .update({ ...w.data, updated_at: new Date().toISOString() })
-          .eq('id', w.id)
-          .select();
+          .upsert(records, { onConflict: 'id' });
         if (error) throw error;
       }
     }
+    if (deletes.length > 0) {
+      const { error } = await getClient()
+        .from('jobs')
+        .delete()
+        .in('id', deletes.map(w => w.id));
+      if (error) throw error;
+    }
+    return { ok: true };
   } catch (e) {
     console.error('Supabase batch write jobs state error:', e);
+    return { ok: false, error: e };
   }
 }

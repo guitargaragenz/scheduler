@@ -5,7 +5,8 @@ import {
 } from '../utils/googleCalendar.js';
 import { slotKey } from '../utils/calendar.js';
 import { findAvailableSlots, slotsNeeded } from '../utils/scheduler.js';
-import { isSupabaseConfigured, appendConflictLog } from '../utils/supabase.js';
+import { isSupabaseConfigured, appendConflictLog, batchWriteJobsState } from '../utils/supabase.js';
+import { jobsStateFieldsFor } from '../data/joinJobs.js';
 
 export function useGoogleCalendar({
   weekDays,
@@ -190,6 +191,10 @@ export function useGoogleCalendar({
     let failed = 0;
     let authExpired = false;
     const updatedJobs = [...jobs];
+    // Event ids are collected as we go and written in one batch after the
+    // loop. Without this the ids only ever lived in memory, so the next sync
+    // couldn't find the events it had already made and created duplicates.
+    const stateWrites = [];
     for (const job of scheduled) {
       if (authExpired) break;
 
@@ -236,10 +241,23 @@ export function useGoogleCalendar({
       const idx = updatedJobs.findIndex(j => j.id === job.id);
       if (idx >= 0) {
         updatedJobs[idx] = { ...updatedJobs[idx], gcalEventIds: newIds, gcalEventId: newIds[0] || null };
+        stateWrites.push({ id: job.id, data: jobsStateFieldsFor(updatedJobs[idx]) });
       }
       ok++;
     }
     setJobs(updatedJobs);
+
+    if (isSupabaseConfigured() && stateWrites.length > 0) {
+      const result = await batchWriteJobsState(stateWrites);
+      if (!result.ok) {
+        // Deliberately no UI rollback here: the GCal events genuinely exist,
+        // so keeping the ids on screen is more accurate than dropping them.
+        // The next sync will re-link rather than duplicate as long as this
+        // tab stays open; a reload before a successful write loses the link.
+        showToast('⚠ Synced to Google, but saving the event links failed — sync again');
+        addChangelog('Google Calendar sync succeeded but event links failed to save');
+      }
+    }
 
     if (authExpired) {
       setSignedIn(false);

@@ -2,15 +2,17 @@ import { createSubtasks } from './jobs.js';
 
 // Fields written only by the React app (scheduling, pomodoro, done, split
 // bookkeeping) — everything else on a top-level job is CSV/Sheet-owned and
-// lives in jobsMaster. Deliberately does NOT include isSplit/manualSplits:
-// whether a top-level job is "split" is always derived from whether live
-// manual-split-child jobsState docs exist for it (see joinJobsMasterState
-// below), never trusted as a stored flag — that's one whole class of the
-// "flag silently lost, data survives, UI shows it wrong" bugs this migration
-// exists to eliminate.
+// lives in jobsMaster. Under the single-table Supabase schema, the split
+// fields (isSplit/hasSubtasks/subtasks/isSubtask) and the session fields are
+// ALSO app-owned state stored on the job's own row — they're not derived,
+// they're written and must round-trip. Omitting them from this allowlist was
+// the root cause of splits vanishing on reload, since jobsStateFieldsFor()
+// filters every write through this list.
 export const JOBS_STATE_TOP_LEVEL_FIELDS = [
   'scheduled', 'calendarSlot', 'gcalEventId', 'gcalEventIds',
   'pomoLog', 'done', 'noAutoSplit', 'sessionNote', 'bumpHistory',
+  'isSplit', 'hasSubtasks', 'subtasks', 'isSubtask',
+  'sessionIndex', 'sessionTotal', 'pieceDone',
 ];
 
 export function pickTopLevelState(stateDoc = {}) {
