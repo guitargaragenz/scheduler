@@ -291,44 +291,6 @@ def hours_range(h):
     lo, hi = math.floor(h), math.ceil(h)
     return str(h) if lo == hi else f'{lo}-{hi}'
 
-# ── Fetch current jobsMaster document ids from Firestore ───────────────────────
-# We need the full current id set up front so we can compute, after parsing
-# the CSV below, which jobsMaster docs need to be deleted (jobs that dropped
-# out of the accepted-status list). If this fetch fails outright, abort
-# loudly rather than proceed with an incomplete picture of what to delete —
-# same caution as the old script's "abort to protect calendar bookings",
-# just scoped to jobsMaster now (deleting a jobsMaster doc can no longer
-# touch scheduling data, but an incomplete delete pass could still leave
-# stale/duplicate rows the app has to reconcile).
-existing_master_ids = set()
-try:
-    page_token = None
-    while True:
-        list_url = f'{BASE_URL}/jobsMaster?key={FIREBASE_API_KEY}&pageSize=300&mask.fieldPaths=job'
-        if page_token:
-            list_url += f'&pageToken={page_token}'
-        req = urllib.request.Request(list_url, method='GET')
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            page = json.loads(resp.read())
-        for d in page.get('documents', []):
-            name = d.get('name', '')
-            doc_id = name.rsplit('/', 1)[-1]
-            if doc_id:
-                existing_master_ids.add(doc_id)
-        page_token = page.get('nextPageToken')
-        if not page_token:
-            break
-    print(f"Fetched {len(existing_master_ids)} existing jobsMaster doc id(s) from Firestore")
-except urllib.error.HTTPError as e:
-    if e.code == 404:
-        print("No existing jobsMaster documents — will create fresh")
-    else:
-        print(f"ERROR: Could not fetch existing jobsMaster ids ({e.code}) — aborting to protect jobsMaster from an incomplete delete pass")
-        import sys; sys.exit(1)
-except Exception as e:
-    print(f"ERROR: Could not fetch existing jobsMaster ids ({e}) — aborting to protect jobsMaster from an incomplete delete pass")
-    import sys; sys.exit(1)
-
 # ── Parse CSV → job objects ────────────────────────────────────────────────────
 with open(CSV_FILE, newline='', encoding='utf-8') as f:
     raw = [l for l in f if not l.lstrip().startswith('#')]
@@ -337,15 +299,6 @@ rows = list(csv.DictReader(raw))
 ACCEPTED = {'On Hold', 'Waiting', 'To Be Inv', 'In Transit'}
 jobs = []
 skipped = []
-# Job ids skipped ONLY for missing Hours/Days — these are still real, open
-# jobs (e.g. not yet quoted/measured), just not schedulable yet. Their
-# jobsMaster doc must be left alone: not upserted (no new data to write),
-# and — critically — never fed into the delete computation below. A job
-# with no Hours/Days has no jobsState doc yet either, so if its jobsMaster
-# doc were deleted it would vanish from the app with zero trace, not even
-# surface as an orphan. This is tracked separately from the accepted-status
-# filter's "continue" above it, which legitimately means "gone, delete it."
-skipped_incomplete_ids = set()
 for obj in rows:
     status = obj.get('Status', '')
     act    = (obj.get('Action', '') or '').strip().upper()
@@ -368,7 +321,6 @@ for obj in rows:
     # Track the id so the delete pass below can explicitly spare it.
     if not hours or not days:
         skipped.append(f"#{obj['Job']} {obj.get('Mfr','')} {obj.get('Model','')} (missing: {'Hours' if not hours else ''} {'Days' if not days else ''})")
-        skipped_incomplete_ids.add(str(obj['Job']))
         continue
     effective_hours = hours if not (hours == 0 and schedulable) else 1.0
     bench = infer_bench(obj.get('Desc',''), status, obj.get('Action',''), obj.get('Model',''), obj.get('Mfr',''))
@@ -448,77 +400,19 @@ if upsert_errors:
     for e in upsert_errors:
         print(f"  {e}")
 
-# ── Delete jobsMaster docs for jobs that dropped out of the accepted set ───────
-# Previously this was an implicit side effect of rebuilding the whole `jobs`
-# array; now jobsMaster is per-document, so it needs to be explicit. This is
-# safe under the new architecture (unlike the old whole-array-rebuild bug):
-# deleting a jobsMaster doc can no longer delete or orphan anything in
-# jobsState — at worst it surfaces as an orphan in the app's revenue-review
-# banner if real scheduling data still exists for that id, which is the
-# intended safety net, not a bug.
-#
-# EXCEPT: jobs skipped only for missing Hours/Days are real, open jobs with
-# no jobsState doc to surface as an orphan — never delete those (see
-# skipped_incomplete_ids above). They're spared here, not upserted either,
-# so their existing jobsMaster doc is simply left untouched until real
-# Hours/Days data shows up.
-current_job_ids = {j['id'] for j in jobs}
-candidate_delete = (existing_master_ids - current_job_ids) - skipped_incomplete_ids
-spared_incomplete = sorted((existing_master_ids - current_job_ids) & skipped_incomplete_ids)
-if spared_incomplete:
-    print(f"\nSparing {len(spared_incomplete)} jobsMaster doc(s) missing Hours/Days (not deleted, not upserted):")
-    for doc_id in spared_incomplete:
-        print(f"  #{doc_id}")
-
-to_delete = sorted(candidate_delete)
-deleted = 0
-delete_errors = []
-
-# ── Sanity floor: refuse to run the delete pass on a suspiciously empty or
-# suspiciously large-fraction result. A hiccup that leaves `jobs` empty (or
-# near-empty) without raising — a race with the first heredoc's CSV write,
-# a transiently truncated read, etc — must not be read as "every job is
-# gone." Real CSV syncs never legitimately remove a large chunk of active
-# jobs in one pass, so that shape indicates a bad read, not real state.
-# The upsert pass above already ran (new/changed data is still real and
-# safe to write); only the delete pass is gated here.
-DELETE_FRACTION_LIMIT = 0.3  # refuse to delete more than 30% of existing docs in one run
-delete_guard_tripped = None
-if len(jobs) == 0:
-    delete_guard_tripped = "CSV parse produced 0 accepted jobs — likely a transient/truncated read, not a real empty backlog"
-elif existing_master_ids and (len(to_delete) / len(existing_master_ids)) > DELETE_FRACTION_LIMIT:
-    delete_guard_tripped = (
-        f"delete pass would remove {len(to_delete)}/{len(existing_master_ids)} "
-        f"({len(to_delete) / len(existing_master_ids):.0%}) of existing jobsMaster docs in one run "
-        f"— exceeds the {DELETE_FRACTION_LIMIT:.0%} sanity floor"
-    )
-
-if delete_guard_tripped:
-    print(f"\nABORTING delete pass — {delete_guard_tripped}.")
-    print("Upserts above still ran normally. Re-run once the CSV read is confirmed good;")
-    print("no jobsMaster docs were deleted this run.")
-elif to_delete:
-    print(f"\nRemoving {len(to_delete)} jobsMaster doc(s) no longer in the accepted-status set:")
-    for doc_id in to_delete:
-        print(f"  #{doc_id}")
-        try:
-            req = urllib.request.Request(master_url(doc_id), method='DELETE')
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                resp.read()
-            deleted += 1
-        except Exception as e:
-            delete_errors.append(f"#{doc_id}: {e}")
-    if delete_errors:
-        print(f"ERRORS deleting {len(delete_errors)} jobsMaster doc(s):")
-        for e in delete_errors:
-            print(f"  {e}")
-else:
-    print("No jobsMaster docs to remove — nothing dropped out of the accepted set.")
+# ── jobsMaster docs are never deleted by this sync ──────────────────────────────
+# The sync only adds/updates jobs from the Sheet/CSV — it never removes a job
+# from the app, no matter what its status says or whether it drops out of the
+# accepted-status list. The only way a job leaves jobsMaster is Trevor closing
+# or cancelling it directly in the app. (This script used to have an explicit
+# delete pass here, inherited from an older architecture where deleting was an
+# implicit side effect of rewriting one shared document — removed 2026-07-17
+# after it wrongfully deleted job #1619, which was present in both the Sheet
+# and the CSV the whole time.)
 
 print()
 print(f"jobsMaster upserted: {upserted}")
-print(f"jobsMaster deleted:  {deleted}")
-if upsert_errors or delete_errors:
+if upsert_errors:
     print("─────────────────────────────────────────────")
     print("Done with ERRORS — see above. Re-run to retry failed writes.")
     print("─────────────────────────────────────────────")
