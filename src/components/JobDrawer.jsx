@@ -242,13 +242,22 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                     <span style={{ fontSize: 11, color: '#64748b', minWidth: 62, flexShrink: 0 }}>
                       {row.sessions.length > 1 ? `Session ${si + 1}` : 'Hours'}
                     </span>
+                    {/* Hours live on the parent job for a split child / derived
+                        bench card — editing here applies locally then silently
+                        reverts on reload, so it's read-only. */}
                     <input
                       type="number" min="0.5" step="0.5"
                       value={sess.hours}
+                      readOnly={isSubtaskEdit}
+                      disabled={isSubtaskEdit}
+                      title={isSubtaskEdit ? 'Hours come from the parent job — edit them there' : undefined}
                       onChange={e => updateSession(ri, si, 'hours', parseFloat(e.target.value) || 0.5)}
                       style={{
-                        width: 54, background: '#0f172a', border: '1px solid #475569', borderRadius: 4,
-                        padding: '3px 6px', fontSize: 12, color: '#cbd5e1', textAlign: 'center',
+                        width: 54, background: isSubtaskEdit ? '#1e293b' : '#0f172a',
+                        border: '1px solid #475569', borderRadius: 4,
+                        padding: '3px 6px', fontSize: 12,
+                        color: isSubtaskEdit ? '#94a3b8' : '#cbd5e1', textAlign: 'center',
+                        cursor: isSubtaskEdit ? 'not-allowed' : 'auto',
                       }}
                     />
                     <span style={{ fontSize: 11, color: '#475569' }}>h</span>
@@ -278,6 +287,12 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
             >
               + Add bench
             </button>
+          )}
+
+          {isSubtaskEdit && (
+            <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
+              Bench and hours are set on the parent job — edit them there.
+            </div>
           )}
 
           {onSchedule && weekDays.length > 0 && (
