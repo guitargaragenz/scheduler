@@ -108,6 +108,34 @@ export const DERIVED_STATE_FIELDS = [
 // keys off, so a first-ever write for a derived card (e.g. logging a pomodoro
 // on a bench card that has never been touched) would otherwise be rejected
 // outright. Both are immutable identity, not stale-able shape.
+//
+// The SAME `job` treatment is required on the TOP-LEVEL branch, and its
+// absence there is why dragging a job onto the calendar never once persisted
+// after the Supabase migration. It is tempting to assume a top-level job is
+// safe because its row already exists — it isn't. batchWriteJobsState() sends
+// these fields as a PostgREST **upsert** (POST ... on_conflict=id,
+// resolution=merge-duplicates), not a PATCH. Postgres validates NOT NULL
+// against the *proposed insert row* BEFORE it resolves the conflict onto the
+// existing row, so a payload with no `job` value is rejected outright with
+// 23502 ("null value in column \"job\" ... violates not-null constraint"),
+// existing row or not. persistMove() then sees the failed jobs write, returns
+// 'reverted', never attempts the scheduled_slots write, and the card snaps
+// back with "⚠ Save failed" — the exact observed behaviour, reproduced live
+// against production for job 842.
+//
+// `job` is added to the returned payload here and NOT to
+// JOBS_STATE_TOP_LEVEL_FIELDS. That constant also feeds NON_MASTER_FIELDS
+// (above), which strips its members out of CSV-owned jobsMaster rows — adding
+// `job` there would stop the job number ever being written to a master row, a
+// far worse bug than the one being fixed. The fix must stay inside this write
+// helper.
+//
+// If `job` is somehow missing we deliberately do NOT send `job: undefined`.
+// batchWriteJobsState groups rows by column set and sends them as one batch,
+// so a single malformed object would abort the whole batch with an illegible
+// NOT NULL error naming no id. Instead we log loudly with the id and emit the
+// payload unchanged — preserving today's loud-failure behaviour for that one
+// row rather than silently corrupting a shared write.
 export function jobsStateFieldsFor(job) {
   if (job.isDerived) {
     const out = {};
@@ -124,7 +152,14 @@ export function jobsStateFieldsFor(job) {
     const { id, ...rest } = job;
     return rest;
   }
-  return pickTopLevelState(job);
+  if (job.job == null) {
+    console.error(
+      'jobsStateFieldsFor: top-level job %s has no `job` number — omitting the NOT NULL `job` column from its state write. This row will be rejected (23502) and will abort its grouped batch; fix the source object rather than the payload.',
+      job.id
+    );
+    return pickTopLevelState(job);
+  }
+  return { ...pickTopLevelState(job), job: job.job };
 }
 
 // Joins jobsMaster (CSV-owned, top-level jobs only) with jobsState

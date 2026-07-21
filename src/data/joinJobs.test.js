@@ -432,6 +432,35 @@ describe('jobsStateFieldsFor — derived-card write guard', () => {
       .forEach(f => expect(out).not.toHaveProperty(f));
   });
 
+  // The calendar-drag bug: batchWriteJobsState upserts, so Postgres validates
+  // the NOT NULL `job` column on the proposed insert row even when the row
+  // already exists. Omitting `job` made every top-level state write 400, which
+  // is why dragging to the calendar never persisted.
+  it('a top-level job includes its NOT NULL `job` number but no CSV-owned fields', () => {
+    const job = {
+      id: '1000', job: '1000', customer: 'Dave', mfr: 'Fender', model: 'Strat',
+      desc: 'general check', bench: 'Setup', hours: 2, status: 'Active',
+      scheduled: true, calendarSlot: '2026-07-13-9-0', pomoLog: [{ mins: 25 }],
+    };
+    const out = jobsStateFieldsFor(job);
+
+    expect(out.job).toBe('1000');
+    expect(out).toMatchObject({ scheduled: true, calendarSlot: '2026-07-13-9-0' });
+    ['customer', 'mfr', 'model', 'desc', 'bench', 'hours', 'status']
+      .forEach(f => expect(out).not.toHaveProperty(f));
+  });
+
+  it('a top-level job with a null `job` omits the key entirely rather than sending undefined', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const out = jobsStateFieldsFor({ id: '1000', job: null, scheduled: true });
+
+    expect(out).not.toHaveProperty('job');
+    expect(Object.keys(out)).not.toContain('job');
+    expect(out).toMatchObject({ scheduled: true });
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   it('a stored manual child still persists its whole record (unchanged behaviour)', () => {
     const kid = { id: '2000_Setup_0', parentId: '2000', isSubtask: true, bench: 'Setup', hours: 1.5 };
     const out = jobsStateFieldsFor(kid);
