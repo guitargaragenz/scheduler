@@ -41,6 +41,17 @@ export async function loadJobs() {
 }
 
 export async function saveJob(jobId, fields) {
+  // pickMasterFields() returns null when it is handed a split child (stored
+  // or derived) rather than a real top-level job. Writing that would create
+  // a phantom row, so refuse rather than upsert a bare id.
+  if (!fields || Object.keys(fields).length === 0) {
+    console.error(`Supabase save job ${jobId}: refused — empty/rejected field set.`);
+    return null;
+  }
+  if (fields.isDerived || fields.parentId) {
+    console.error(`Supabase save job ${jobId}: refused — split children go through batchWriteJobsState, not saveJob.`);
+    return null;
+  }
   try {
     const { data, error } = await getClient()
       .from('jobs')

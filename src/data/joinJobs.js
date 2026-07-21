@@ -49,9 +49,26 @@ function withTopLevelDefaults(state) {
 const NON_MASTER_FIELDS = new Set([
   'id', ...JOBS_STATE_TOP_LEVEL_FIELDS,
   'isSplit', 'hasSubtasks', 'subtasks', 'manualSplits', 'parentId', 'isSubtask',
+  'isDerived', 'label', 'hoursRange',
 ]);
 
+// Returns null — never a row — for anything that isn't a real top-level,
+// CSV-owned job. This is a hard assertion, not defensiveness: the ONLY way a
+// derived auto-split card can become a permanent phantom top-level row is by
+// reaching this function and then saveJob(). NON_MASTER_FIELDS strips
+// `parentId` and `isDerived`, so the resulting row would land with
+// parent_id = NULL under the derived card's synthetic id and read back
+// forever as a job that doesn't exist. Callers spread the result
+// (`{ ...pickMasterFields(j) }`), where null is a harmless no-op, and
+// saveJob() refuses a null/empty field set outright.
 export function pickMasterFields(job = {}) {
+  if (job.isDerived || job.parentId) {
+    console.error(
+      'pickMasterFields: refusing to build a jobsMaster row for %s split child %s — split children are never CSV-owned.',
+      job.isDerived ? 'derived' : 'stored', job.id
+    );
+    return null;
+  }
   const out = {};
   Object.keys(job).forEach(k => {
     if (!NON_MASTER_FIELDS.has(k)) out[k] = job[k];

@@ -36,14 +36,28 @@ export function useJobs({
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
 
-    if (parentJob.isSubtask) {
+    // Any child — a stored manual child (isSubtask) or a derived auto-split
+    // bench card (isDerived) — takes the single-card edit path. Derived cards
+    // never carry isSubtask, so gating on that alone dropped them into the
+    // parent branches below: saveJob(pickMasterFields(...)) would write the
+    // derived id as a phantom top-level row, and the multi-card branch would
+    // hang invisible grandchildren off it. A derived card must never reach
+    // either.
+    if (parentJob.isSubtask || parentJob.isDerived) {
       const row = rows[0];
       const sess = row.sessions[0];
+      // `hours` is applied to local state so the drawer feels responsive, but
+      // for a derived card it is deliberately NOT persisted (it's absent from
+      // DERIVED_STATE_FIELDS) — hours are regenerated from the parent by
+      // createSubtasks() on every load, so a stored override would be
+      // overwritten anyway and, worse, would pin a stale value. Only
+      // sessionNote actually round-trips on a derived card.
       const updated = { hours: Number(sess.hours), sessionNote: sess.note };
       setJobs(prev => prev.map(j => j.id === parentJob.id ? { ...j, ...updated } : j));
       if (isSupabaseConfigured()) {
         justSavedAt.current = Date.now();
-        batchWriteJobsState([{ id: parentJob.id, data: jobsStateFieldsFor({ ...parentJob, ...updated }) }]);
+        batchWriteJobsState([{ id: parentJob.id, data: jobsStateFieldsFor({ ...parentJob, ...updated }) }])
+          .then(res => { if (!res?.ok) showToast('⚠ Save failed — reload before trusting this card'); });
       }
       return;
     }
@@ -117,7 +131,15 @@ export function useJobs({
         // derived card wrongly materialised as a real row, or a child added
         // by another client) would otherwise survive the un-split and
         // re-freeze the split on the next load.
-        batchWriteJobsState(writes).then(() => deleteChildJobs(parentJob.id));
+        // Gated on res.ok: batchWriteJobsState RESOLVES {ok:false} on failure
+        // rather than rejecting, so an unconditional .then() would run the
+        // destructive sweep even when the parent's un-split state never
+        // persisted — deleting the children while the parent still looks
+        // split, i.e. losing the job's hours entirely.
+        batchWriteJobsState(writes).then(res => {
+          if (!res?.ok) { showToast('⚠ Un-split failed to save — reload; nothing was deleted'); return; }
+          deleteChildJobs(parentJob.id);
+        });
         // `bench` is CSV-owned in the new schema, but a drawer-driven
         // un-split can carry a deliberate bench override (the drawer lets
         // the tech reassign the bench when collapsing a split back to one
@@ -194,7 +216,14 @@ export function useJobs({
       // wrongly-materialised rows can't survive a re-split. Chained, not
       // fired in parallel — the sweep must not race ahead of the upserts and
       // delete a kept child before it exists.
-      batchWriteJobsState(writes).then(() => deleteChildJobs(parentJob.id, [...keptIds]));
+      // Gated on res.ok for the same reason as the un-split branch — and it
+      // matters more here: a re-split that changes child ids would, on a
+      // failed upsert, sweep away every OLD child while none of the new ones
+      // exist, destroying the split outright.
+      batchWriteJobsState(writes).then(res => {
+        if (!res?.ok) { showToast('⚠ Split failed to save — reload; nothing was deleted'); return; }
+        deleteChildJobs(parentJob.id, [...keptIds]);
+      });
     }
   }
 
@@ -218,7 +247,8 @@ export function useJobs({
     if (isSupabaseConfigured()) {
       saveCompletedJobs(newRecords, newDoneIds);
       justSavedAt.current = Date.now();
-      batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor({ ...job, done: true }) }]);
+      batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor({ ...job, done: true }) }])
+        .then(res => { if (!res?.ok) showToast('⚠ Mark-done did not save — reload and re-check this job'); });
     }
     setPomoJob(null);
     // Exact amount entered, not rounded — matches the stored invoiceAmount above.
@@ -283,7 +313,8 @@ export function useJobs({
     }));
     if (isSupabaseConfigured() && mergedJob) {
       justSavedAt.current = Date.now();
-      batchWriteJobsState([{ id: jobId, data: jobsStateFieldsFor(mergedJob) }]);
+      batchWriteJobsState([{ id: jobId, data: jobsStateFieldsFor(mergedJob) }])
+        .then(res => { if (!res?.ok) showToast('⚠ Pomodoro log did not save — reload before trusting the count'); });
     }
     const jobRef = jobs.find(j => j.id === jobId);
     showToast(`Logged ${session.pomos} pomo${session.pomos !== 1 ? 's' : ''} for #${jobRef?.job ?? jobId}`);
@@ -328,7 +359,8 @@ export function useJobs({
     // Persist to Firestore
     if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
-      batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }]);
+      batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }])
+        .then(res => { if (!res?.ok) showToast('⚠ Piece-done did not save — reload before trusting this card'); });
     }
 
     if (allChildrenDone) {

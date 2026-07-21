@@ -41,7 +41,8 @@ function initRows(job, allJobs = []) {
   // createSubtasks() never get isSplit, only hasSubtasks + real children via
   // parentId — checking isSplit alone left auto-split jobs hydrating from
   // stale pre-split bench/hours, hiding the real split from the editor.
-  if (!job.isSubtask) {
+  // isDerived: a derived bench card is a child, never a splittable parent.
+  if (!job.isSubtask && !job.isDerived) {
     const children = allJobs
       .filter(j => j.parentId === job.id)
       .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
@@ -140,7 +141,12 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
     onClose();
   }
 
-  const isSubtaskEdit = !!job.isSubtask;
+  // Derived auto-split bench cards are children too — they just never carry
+  // isSubtask (that flag marks a STORED manual child). Without isDerived
+  // here the drawer offers the full split UI on a derived card, and saving
+  // routes it through the parent branch, which materialises it as a real
+  // top-level row and hangs invisible grandchildren off it.
+  const isSubtaskEdit = !!job.isSubtask || !!job.isDerived;
   const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
   const totalHours = rows.reduce((s, r) => s + r.sessions.reduce((ss, x) => ss + Number(x.hours), 0), 0);
   const bumpHistory = (job.bumpHistory || []).slice(-4).reverse();

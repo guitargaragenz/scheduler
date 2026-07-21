@@ -21,18 +21,28 @@ import { jobsStateFieldsFor } from '../data/joinJobs.js';
 // failure and always claimed "snapped back", even when one of the two writes
 // had already succeeded — so the screen could show the old position while the
 // DB held the new one, and the toast lied about it.
-async function persistMove({ addRecords, removedSlotKeys, undoSlotAdds, undoSlotRemoves, jobWrites, undoJobWrites }) {
-  const [slotsResult, jobResult] = await Promise.all([
-    saveScheduledSlotsBatch(addRecords, removedSlotKeys),
-    batchWriteJobsState(jobWrites),
-  ]);
-  if (slotsResult.ok && jobResult.ok) return 'ok';
-  if (!slotsResult.ok && !jobResult.ok) return 'reverted';
-  // Exactly one write succeeded — compensate so the DB goes back to pre-move.
-  if (slotsResult.ok) {
-    const undo = await saveScheduledSlotsBatch(undoSlotAdds, undoSlotRemoves);
-    return undo.ok ? 'reverted' : 'inconsistent';
+// The two writes are SEQUENCED, jobs first, deliberately — they used to run
+// in Promise.all. `scheduled_slots.job_id` REFERENCES jobs(id), and a derived
+// auto-split bench card has no `jobs` row at all until its first state write
+// lands (that's the point of derived-not-stored). Racing the slot insert
+// against the job upsert means the FK can be checked before the row exists,
+// so the very first drag of a bench card onto the calendar fails. Stored
+// manual children were never exposed to this because their rows already
+// exist by split-save time. Costs one extra round-trip per move; correctness
+// wins.
+// Exported for tests only — the write ORDER here is load-bearing (FK), and a
+// silent reordering would only show up as a failed first drag in production.
+export async function persistMove({ addRecords, removedSlotKeys, undoSlotAdds, undoSlotRemoves, jobWrites, undoJobWrites }) {
+  const jobResult = await batchWriteJobsState(jobWrites);
+  if (!jobResult.ok) {
+    // Nothing was attempted on the slots table, so the DB still holds the
+    // pre-move state — no compensation needed.
+    return 'reverted';
   }
+  const slotsResult = await saveScheduledSlotsBatch(addRecords, removedSlotKeys);
+  if (slotsResult.ok) return 'ok';
+  // The job write landed but the slot write didn't — compensate so the DB
+  // goes back to pre-move.
   const undo = await batchWriteJobsState(undoJobWrites);
   return undo.ok ? 'reverted' : 'inconsistent';
 }

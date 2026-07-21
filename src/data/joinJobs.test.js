@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { joinJobsMasterState, keyReviewItemsById, expandAutoSplits, jobsStateFieldsFor } from './joinJobs.js';
+import { describe, it, expect, vi } from 'vitest';
+import { joinJobsMasterState, keyReviewItemsById, expandAutoSplits, jobsStateFieldsFor, pickMasterFields } from './joinJobs.js';
 
 // Minimal jobsMaster fixture factory — only the fields the join layer and
 // createSubtasks() actually read.
@@ -437,5 +437,44 @@ describe('jobsStateFieldsFor — derived-card write guard', () => {
     const out = jobsStateFieldsFor(kid);
     expect(out).toMatchObject({ parentId: '2000', isSubtask: true, bench: 'Setup', hours: 1.5 });
     expect(out).not.toHaveProperty('id');
+  });
+});
+
+describe('pickMasterFields — derived-card materialisation guard', () => {
+  // The drawer-on-a-derived-card path: a derived bench card IS clickable, and
+  // before the isDerived gating it fell through to the parent save branch,
+  // which called saveJob(id, pickMasterFields(job)). NON_MASTER_FIELDS strips
+  // parentId, so that wrote a full CSV-shaped row under the derived card's
+  // synthetic id with parent_id = NULL — a permanent phantom top-level job.
+  // pickMasterFields is the last line of defence and must refuse outright.
+  const derivedCard = {
+    id: '2000-ST', parentId: '2000', job: '2000', isDerived: true,
+    bench: 'Setup', hours: 1.5, desc: 'full setup and rewire', mfr: 'Fender',
+  };
+
+  it('refuses a derived card, returning null rather than a row', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(pickMasterFields(derivedCard)).toBeNull();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('refuses a stored manual child too', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(pickMasterFields({ id: '2000_Setup_0', parentId: '2000', bench: 'Setup' })).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('null spreads harmlessly at the call sites that spread it', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect({ ...{ id: 'x' }, ...pickMasterFields(derivedCard) }).toEqual({ id: 'x' });
+    spy.mockRestore();
+  });
+
+  it('still returns a real row for a genuine top-level job', () => {
+    const row = pickMasterFields(master({ id: '3000', job: '3000', scheduled: true, isSplit: true, label: 'nope' }));
+    expect(row).toMatchObject({ job: '3000', mfr: 'Fender', bench: 'Setup' });
+    ['id', 'scheduled', 'isSplit', 'label', 'isDerived', 'parentId'].forEach(f =>
+      expect(row).not.toHaveProperty(f));
   });
 });

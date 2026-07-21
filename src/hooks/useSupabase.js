@@ -97,11 +97,12 @@ export function useSupabase({
   const hasSeenFirstSnapshotRef = useRef(false);
 
   // The init useEffect below has `[]` deps, so the realtime subscription
-  // callback closes over whatever benchHours was on first render — Settings
-  // are loaded asynchronously, so that is usually the empty default and the
-  // subscription would regenerate every bench card with the wrong hours
-  // forever. A ref kept current on every render is read instead of the
-  // captured value.
+  // callback closes over whatever benchHours was on FIRST render and keeps it
+  // for the life of the component. That first value is correct (App.jsx reads
+  // benchHours synchronously from localStorage), but it goes stale the moment
+  // the tech changes bench hours in Settings: every subsequent realtime update
+  // would regenerate the bench cards with the old hours, permanently. A ref
+  // kept current on every render is read instead of the captured value.
   const benchHoursRef = useRef(benchHours);
   benchHoursRef.current = benchHours;
 
