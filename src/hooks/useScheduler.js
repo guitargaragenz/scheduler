@@ -5,6 +5,38 @@ import { deleteEvent } from '../utils/googleCalendar.js';
 import { isSupabaseConfigured, batchWriteJobsState, saveScheduledSlotsBatch } from '../utils/supabase.js';
 import { jobsStateFieldsFor } from '../data/joinJobs.js';
 
+// Persists a calendar move. It's two INDEPENDENT Supabase writes — the
+// scheduled_slots table and the jobs table — and Supabase can't run them as
+// one transaction, so either can fail on its own. Returns:
+//   'ok'           — both writes landed; the DB matches the screen.
+//   'reverted'     — nothing is left persisted (both writes failed, OR one
+//                    failed and we successfully undid the other), so the DB
+//                    still holds the pre-move state. The caller can safely snap
+//                    the UI back to where it was.
+//   'inconsistent' — one write landed and the compensating undo ALSO failed, so
+//                    the DB is genuinely half-moved and we could not fix it. The
+//                    caller must tell the user to reload rather than trust what's
+//                    on screen.
+// This distinction is the Blocker-2 fix: the old code reverted the UI on ANY
+// failure and always claimed "snapped back", even when one of the two writes
+// had already succeeded — so the screen could show the old position while the
+// DB held the new one, and the toast lied about it.
+async function persistMove({ addRecords, removedSlotKeys, undoSlotAdds, undoSlotRemoves, jobWrites, undoJobWrites }) {
+  const [slotsResult, jobResult] = await Promise.all([
+    saveScheduledSlotsBatch(addRecords, removedSlotKeys),
+    batchWriteJobsState(jobWrites),
+  ]);
+  if (slotsResult.ok && jobResult.ok) return 'ok';
+  if (!slotsResult.ok && !jobResult.ok) return 'reverted';
+  // Exactly one write succeeded — compensate so the DB goes back to pre-move.
+  if (slotsResult.ok) {
+    const undo = await saveScheduledSlotsBatch(undoSlotAdds, undoSlotRemoves);
+    return undo.ok ? 'reverted' : 'inconsistent';
+  }
+  const undo = await batchWriteJobsState(undoJobWrites);
+  return undo.ok ? 'reverted' : 'inconsistent';
+}
+
 export function useScheduler({
   jobs,
   setJobs,
@@ -168,17 +200,38 @@ export function useScheduler({
         bench: job.bench,
       }));
       const updatedJob = { ...job, scheduled: true, calendarSlot: newCalendarSlot };
-      const [slotsResult, jobResult] = await Promise.all([
-        saveScheduledSlotsBatch(addRecords, removedSlotKeys),
-        batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor(updatedJob) }]),
-      ]);
-      if (!slotsResult.ok || !jobResult.ok) {
-        setScheduledSlots(prevSlots);
-        setJobs(prevJobs);
+      // Surgical revert: touch ONLY this job's row and the exact slots this
+      // move changed, never the whole jobs/slots snapshot. A blanket
+      // setJobs(prevJobs) would also wipe out any UNRELATED change made while
+      // this write was in flight (e.g. another job marked done) — Blocker 3.
+      const revert = () => {
+        setJobs(prev => prev.map(j =>
+          j.id === job.id ? { ...j, scheduled: job.scheduled, calendarSlot: job.calendarSlot } : j
+        ));
+        setScheduledSlots(prev => {
+          const next = { ...prev };
+          addRecords.forEach(r => { if (next[r.slotId] === job.id) delete next[r.slotId]; });
+          removedSlotKeys.forEach(k => { next[k] = prevSlots[k]; });
+          return next;
+        });
+      };
+      const outcome = await persistMove({
+        addRecords, removedSlotKeys,
+        undoSlotAdds: removedSlotKeys.map(k => ({ slotId: k, jobId: prevSlots[k], bench: prevJobs.find(j => j.id === prevSlots[k])?.bench })),
+        undoSlotRemoves: addRecords.map(r => r.slotId),
+        jobWrites: [{ id: job.id, data: jobsStateFieldsFor(updatedJob) }],
+        undoJobWrites: [{ id: job.id, data: jobsStateFieldsFor(job) }],
+      });
+      if (outcome === 'ok') {
+        justSavedAt.current = Date.now();
+      } else if (outcome === 'reverted') {
+        revert();
         showToast(`⚠ Save failed — #${job.job} snapped back, try again`);
         addChangelog(`Save failed scheduling #${job.job} — reverted to previous position`);
       } else {
-        justSavedAt.current = Date.now();
+        revert();
+        showToast(`⚠ Save half-failed for #${job.job} and couldn't be undone — reload before continuing`);
+        addChangelog(`Save INCONSISTENT scheduling #${job.job} — DB half-updated, reload required`);
       }
     }
   }
@@ -293,17 +346,43 @@ export function useScheduler({
           .filter(j => displaced.includes(j.id))
           .map(j => ({ id: j.id, data: jobsStateFieldsFor({ ...j, scheduled: false, calendarSlot: null }) })),
       ];
-      const [slotsResult, jobsResult] = await Promise.all([
-        saveScheduledSlotsBatch(addRecords, removedSlotKeys),
-        batchWriteJobsState(jobWrites),
-      ]);
-      if (!slotsResult.ok || !jobsResult.ok) {
-        setScheduledSlots(prevSlots);
-        setJobs(prevJobs);
+      // Pre-move state for the moved job and every job it displaced — used both
+      // to compensate a half-failed DB write and to surgically snap the UI back
+      // (Blocker 3) without disturbing any unrelated job.
+      const displacedPrev = prevJobs.filter(j => displaced.includes(j.id));
+      const revert = () => {
+        setJobs(prev => prev.map(j => {
+          if (j.id === job.id) return { ...j, scheduled: job.scheduled, calendarSlot: job.calendarSlot };
+          const p = displacedPrev.find(d => d.id === j.id);
+          return p ? { ...j, scheduled: p.scheduled, calendarSlot: p.calendarSlot } : j;
+        }));
+        setScheduledSlots(prev => {
+          const next = { ...prev };
+          addRecords.forEach(r => { if (next[r.slotId] === job.id) delete next[r.slotId]; });
+          removedSlotKeys.forEach(k => { next[k] = prevSlots[k]; });
+          return next;
+        });
+      };
+      const outcome = await persistMove({
+        addRecords, removedSlotKeys,
+        undoSlotAdds: removedSlotKeys.map(k => ({ slotId: k, jobId: prevSlots[k], bench: prevJobs.find(j => j.id === prevSlots[k])?.bench })),
+        undoSlotRemoves: addRecords.map(r => r.slotId),
+        jobWrites,
+        undoJobWrites: [
+          { id: job.id, data: jobsStateFieldsFor(job) },
+          ...displacedPrev.map(j => ({ id: j.id, data: jobsStateFieldsFor(j) })),
+        ],
+      });
+      if (outcome === 'ok') {
+        justSavedAt.current = Date.now();
+      } else if (outcome === 'reverted') {
+        revert();
         showToast(`⚠ Save failed — #${job.job} and any bumped jobs snapped back, try again`);
         addChangelog(`Save failed on urgent drop of #${job.job} — reverted`);
       } else {
-        justSavedAt.current = Date.now();
+        revert();
+        showToast(`⚠ Save half-failed for #${job.job} and couldn't be undone — reload before continuing`);
+        addChangelog(`Save INCONSISTENT on urgent drop of #${job.job} — DB half-updated, reload required`);
       }
     }
   }
@@ -342,13 +421,36 @@ export function useScheduler({
     // failed and got rolled back.
     (async () => {
       const updatedJob = { ...job, scheduled: false, calendarSlot: null, gcalEventId: null, gcalEventIds: [] };
-      const [slotsResult, jobResult] = await Promise.all([
-        saveScheduledSlotsBatch([], removedSlotKeys),
-        batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor(updatedJob) }]),
-      ]);
-      if (!slotsResult.ok || !jobResult.ok) {
-        setScheduledSlots(prevSlots);
-        setJobs(prevJobs);
+      // Surgical revert: restore only this job's row and the slots it freed,
+      // never the whole snapshot, so a concurrent unrelated change survives
+      // a failed unschedule (Blocker 3).
+      const revert = () => {
+        setJobs(prev => prev.map(j =>
+          j.id === job.id
+            ? { ...j, scheduled: job.scheduled, calendarSlot: job.calendarSlot, gcalEventId: job.gcalEventId, gcalEventIds: job.gcalEventIds }
+            : j
+        ));
+        setScheduledSlots(prev => {
+          const next = { ...prev };
+          removedSlotKeys.forEach(k => { next[k] = prevSlots[k]; });
+          return next;
+        });
+      };
+      const outcome = await persistMove({
+        addRecords: [], removedSlotKeys,
+        undoSlotAdds: removedSlotKeys.map(k => ({ slotId: k, jobId: prevSlots[k], bench: prevJobs.find(j => j.id === prevSlots[k])?.bench })),
+        undoSlotRemoves: [],
+        jobWrites: [{ id: job.id, data: jobsStateFieldsFor(updatedJob) }],
+        undoJobWrites: [{ id: job.id, data: jobsStateFieldsFor(job) }],
+      });
+      if (outcome === 'inconsistent') {
+        revert();
+        showToast(`⚠ Save half-failed for #${job.job} and couldn't be undone — reload before continuing`);
+        addChangelog(`Save INCONSISTENT unscheduling #${job.job} — DB half-updated, reload required`);
+        return;
+      }
+      if (outcome === 'reverted') {
+        revert();
         showToast(`⚠ Save failed — #${job.job} is still scheduled, try again`);
         addChangelog(`Save failed unscheduling #${job.job} — reverted`);
         return;

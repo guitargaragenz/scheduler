@@ -755,15 +755,30 @@ export async function batchWriteJobsState(writes) {
   const deletes = writes.filter(w => w.delete);
   try {
     if (upserts.length > 0) {
-      const records = upserts.map(w => ({
-        ...toJobRow(w.data),
-        id: w.id,
-        updated_at: new Date().toISOString(),
-      }));
-      const { error } = await getClient()
-        .from('jobs')
-        .upsert(records, { onConflict: 'id' });
-      if (error) throw error;
+      // Build every row first, then group by its exact set of columns. A
+      // single Supabase upsert with an array sends the UNION of all rows'
+      // keys as the column list and fills any row missing a key with NULL.
+      // That's silently destructive here: a manual split batches the sparse
+      // parent row (state fields only, no `job`) together with full child
+      // rows (which carry `job`), so the parent row gets job=NULL — either
+      // aborting the whole batch on the NOT NULL `job` column (so the split
+      // never persists, the exact bug this fix targets) or blanking a
+      // nullable column a sparser row never meant to touch. Grouping means
+      // every row in a given request has identical columns, so nothing is
+      // NULL-filled. Same-column rows still batch in one round-trip.
+      const groups = new Map();
+      for (const w of upserts) {
+        const row = { ...toJobRow(w.data), id: w.id, updated_at: new Date().toISOString() };
+        const sig = Object.keys(row).sort().join(',');
+        if (!groups.has(sig)) groups.set(sig, []);
+        groups.get(sig).push(row);
+      }
+      for (const records of groups.values()) {
+        const { error } = await getClient()
+          .from('jobs')
+          .upsert(records, { onConflict: 'id' });
+        if (error) throw error;
+      }
     }
     if (deletes.length > 0) {
       const { error } = await getClient()
