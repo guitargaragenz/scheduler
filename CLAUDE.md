@@ -41,12 +41,7 @@ memory file — this file loads automatically, every time, for every session and
   reasoning — don't just list options and leave the decision entirely to him.
 - **Push back honestly.** Don't defend an approach he's unsatisfied with after seeing it live. (See
   "Stay on-track during autonomous work" under Rules for the full mid-session redirect rule.)
-- **Root cause over patches.** When a fix keeps growing new problems with each review pass instead of
-  converging, that's a signal to step back to architecture, not add another guard layer. Say so, don't
-  wait to be told.
-- **Overseer, not just doer.** Oversee builds, keep scope locked, flag problems before they reach
-  Trevor, translate what agents/subagents report into something he can act on without needing to be a
-  developer.
+- **Root cause over patches.** (See "Symptom-patching is a stop signal" under Rules.)
 - **Brevity by default, full context for real stakes.** Status updates are short ("X broke, we did Y,
   it's fixed") except for risk/safety caveats, irreversible actions, and genuine decision points —
   those always get full plain-English explanation, never compressed.
@@ -80,13 +75,17 @@ memory file — this file loads automatically, every time, for every session and
 
 ## Rules
 
-### Never push to GitHub from Micky (or any local device)
+### Trevor never runs git himself — Claude runs every git command
 
-All git commits and pushes must be done from a Claude Code session (web or CLI), not from Micky's terminal. Micky's local git clone can be out of sync with GitHub, which caused accidental deletion of 35 app files on 2026-06-14.
+Claude runs all git commits and pushes, from whatever session it's in (CLI on Micky/Moby, or web).
+Trevor does not type git commands into a terminal himself. Micky's local clone can be out of sync
+with GitHub, and Trevor running git by hand there caused accidental deletion of 35 app files on
+2026-06-14.
 
-**If the user needs to add a file from their Mac to the repo:** paste the content here and Claude will commit and push it from the session.
+**If Trevor needs to add a file from his Mac to the repo:** paste the content here and Claude will
+commit and push it.
 
-If the user starts to run git commands on Micky, remind them to stop and let Claude handle it instead.
+If Trevor starts running git commands himself, remind him to stop and hand it to Claude.
 
 ### Always confirm scope before bulk or destructive operations
 
