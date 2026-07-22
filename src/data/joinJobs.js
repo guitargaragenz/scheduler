@@ -49,9 +49,26 @@ function withTopLevelDefaults(state) {
 const NON_MASTER_FIELDS = new Set([
   'id', ...JOBS_STATE_TOP_LEVEL_FIELDS,
   'isSplit', 'hasSubtasks', 'subtasks', 'manualSplits', 'parentId', 'isSubtask',
+  'isDerived', 'label', 'hoursRange',
 ]);
 
+// Returns null — never a row — for anything that isn't a real top-level,
+// CSV-owned job. This is a hard assertion, not defensiveness: the ONLY way a
+// derived auto-split card can become a permanent phantom top-level row is by
+// reaching this function and then saveJob(). NON_MASTER_FIELDS strips
+// `parentId` and `isDerived`, so the resulting row would land with
+// parent_id = NULL under the derived card's synthetic id and read back
+// forever as a job that doesn't exist. Callers spread the result
+// (`{ ...pickMasterFields(j) }`), where null is a harmless no-op, and
+// saveJob() refuses a null/empty field set outright.
 export function pickMasterFields(job = {}) {
+  if (job.isDerived || job.parentId) {
+    console.error(
+      'pickMasterFields: refusing to build a jobsMaster row for %s split child %s — split children are never CSV-owned.',
+      job.isDerived ? 'derived' : 'stored', job.id
+    );
+    return null;
+  }
   const out = {};
   Object.keys(job).forEach(k => {
     if (!NON_MASTER_FIELDS.has(k)) out[k] = job[k];
@@ -59,16 +76,90 @@ export function pickMasterFields(job = {}) {
   return out;
 }
 
+// The app-owned fields a DERIVED (auto-split) bench card may persist. This is
+// JOBS_STATE_TOP_LEVEL_FIELDS minus every field that describes the card's
+// *shape* (isSplit/hasSubtasks/subtasks/isSubtask) or the parent's split
+// policy (noAutoSplit). A derived card's shape — bench, hours, label,
+// hoursRange, which cards exist at all — is regenerated from the parent by
+// createSubtasks() on every load and must never be stored, or a stale value
+// pins itself permanently (see the long note in joinJobsMasterState below).
+export const DERIVED_STATE_FIELDS = [
+  'scheduled', 'calendarSlot', 'gcalEventId', 'gcalEventIds',
+  'pomoLog', 'done', 'sessionNote', 'bumpHistory',
+  'sessionIndex', 'sessionTotal', 'pieceDone',
+];
+
 // The jobsState fields to persist for a given *joined* (flat, UI-shape) job
-// object. Split children (manual or auto) don't correspond to a real CSV
-// row, so jobsState owns their entire record, not just an app-owned subset.
+// object. Manual split children don't correspond to a real CSV row, so
+// jobsState owns their entire record, not just an app-owned subset.
+//
+// Derived (auto-split) children are the exception and the reason this branch
+// exists at all. Under the old two-collection Firestore schema they were
+// firewalled by living in `jobsState`, a different collection from the
+// CSV-owned `jobsMaster`. The single-table Supabase schema removed that
+// firewall: writing a derived card's full record here would materialise it as
+// a permanent real row in `jobs`, which then reads back as a stored manual
+// child, freezes the auto-split against future parent edits, and turns stale
+// derived ids into fake orphans in pendingRevenueReview. So a derived card
+// persists ONLY its true app-owned state.
+//
+// `job` and `parentId` are included despite not being app-owned state: the
+// `job` column is NOT NULL and `parent_id` is what the delete-by-parent pass
+// keys off, so a first-ever write for a derived card (e.g. logging a pomodoro
+// on a bench card that has never been touched) would otherwise be rejected
+// outright. Both are immutable identity, not stale-able shape.
+//
+// The SAME `job` treatment is required on the TOP-LEVEL branch, and its
+// absence there is why dragging a job onto the calendar never once persisted
+// after the Supabase migration. It is tempting to assume a top-level job is
+// safe because its row already exists — it isn't. batchWriteJobsState() sends
+// these fields as a PostgREST **upsert** (POST ... on_conflict=id,
+// resolution=merge-duplicates), not a PATCH. Postgres validates NOT NULL
+// against the *proposed insert row* BEFORE it resolves the conflict onto the
+// existing row, so a payload with no `job` value is rejected outright with
+// 23502 ("null value in column \"job\" ... violates not-null constraint"),
+// existing row or not. persistMove() then sees the failed jobs write, returns
+// 'reverted', never attempts the scheduled_slots write, and the card snaps
+// back with "⚠ Save failed" — the exact observed behaviour, reproduced live
+// against production for job 842.
+//
+// `job` is added to the returned payload here and NOT to
+// JOBS_STATE_TOP_LEVEL_FIELDS. That constant also feeds NON_MASTER_FIELDS
+// (above), which strips its members out of CSV-owned jobsMaster rows — adding
+// `job` there would stop the job number ever being written to a master row, a
+// far worse bug than the one being fixed. The fix must stay inside this write
+// helper.
+//
+// If `job` is somehow missing we deliberately do NOT send `job: undefined`.
+// batchWriteJobsState groups rows by column set and sends them as one batch,
+// so a single malformed object would abort the whole batch with an illegible
+// NOT NULL error naming no id. Instead we log loudly with the id and emit the
+// payload unchanged — preserving today's loud-failure behaviour for that one
+// row rather than silently corrupting a shared write.
 export function jobsStateFieldsFor(job) {
+  if (job.isDerived) {
+    const out = {};
+    DERIVED_STATE_FIELDS.forEach(f => {
+      if (job[f] !== undefined) out[f] = job[f];
+    });
+    out.job = job.job;
+    out.parentId = job.parentId;
+    out.isDerived = true;
+    return out;
+  }
   if (job.parentId) {
     // eslint-disable-next-line no-unused-vars
     const { id, ...rest } = job;
     return rest;
   }
-  return pickTopLevelState(job);
+  if (job.job == null) {
+    console.error(
+      'jobsStateFieldsFor: top-level job %s has no `job` number — omitting the NOT NULL `job` column from its state write. This row will be rejected (23502) and will abort its grouped batch; fix the source object rather than the payload.',
+      job.id
+    );
+    return pickTopLevelState(job);
+  }
+  return { ...pickTopLevelState(job), job: job.job };
 }
 
 // Joins jobsMaster (CSV-owned, top-level jobs only) with jobsState
@@ -190,6 +281,117 @@ export function joinJobsMasterState(masterDocs = [], stateDocs = [], benchHours 
   }
 
   return { jobs: result, orphans };
+}
+
+// Auto-split expansion for the single-table Supabase schema.
+//
+// `joinJobsMasterState()` above does this as a side effect of joining two
+// Firestore collections. Supabase stores one flat `jobs` table, so the join
+// half is meaningless here — and its union-join/`orphans` machinery is
+// actively wrong on a flat table (every stored child row would look like an
+// unclaimed state doc). This is the same auto-split regeneration, and the
+// same fresh-vs-stale field rules, applied to ONE flat camelCase array.
+//
+// Input and output are both the app's flat UI shape. Stored rows are passed
+// through; derived bench cards are regenerated from their parent on every
+// call and marked `isDerived: true`.
+export function expandAutoSplits(flatJobs = [], benchHours = {}) {
+  const storedById = Object.fromEntries(flatJobs.map(j => [j.id, j]));
+
+  // Stored children = rows with a parent_id that are NOT themselves derived.
+  // `parentId != null` is the child test, deliberately not `isSubtask`: that
+  // column is nullable and auto-split children never carried it, so trusting
+  // it would mis-file real stored children as top-level jobs.
+  //
+  // A row flagged `isDerived` is a leftover materialised bench card (written
+  // before the guards existed, or by an older client). It is NOT treated as a
+  // stored child — it stays in `storedById` so its pomoLog/scheduled state is
+  // merged back onto the freshly regenerated card, and is never emitted
+  // directly. That reconciles the corruption instead of reporting it.
+  const storedChildrenByParent = {};
+  for (const j of flatJobs) {
+    if (j.parentId == null) continue;
+    if (j.isDerived) continue;
+    (storedChildrenByParent[j.parentId] ||= []).push(j);
+  }
+
+  const result = [];
+
+  for (const job of flatJobs) {
+    if (job.parentId != null) continue; // children are emitted with their parent
+
+    const storedKids = storedChildrenByParent[job.id] || [];
+
+    // Manual split — stored children win outright, no auto-split.
+    if (storedKids.length > 0) {
+      result.push({ ...job, isSplit: true, hasSubtasks: false, subtasks: null });
+      for (const kid of storedKids) {
+        result.push({
+          ...kid,
+          scheduled: kid.scheduled ?? false,
+          calendarSlot: kid.calendarSlot ?? null,
+          gcalEventId: kid.gcalEventId ?? null,
+          gcalEventIds: kid.gcalEventIds ?? [],
+        });
+      }
+      continue;
+    }
+
+    // Deliberately un-split by the user — never regenerate.
+    if (job.noAutoSplit) {
+      result.push({ ...job, isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
+      continue;
+    }
+
+    const subtasks = createSubtasks(job, benchHours);
+    if (!subtasks || subtasks.length === 0) {
+      result.push({ ...job, isSplit: false, hasSubtasks: false, subtasks: null, manualSplits: false });
+      continue;
+    }
+
+    result.push({ ...job, isSplit: false, hasSubtasks: true, subtasks: subtasks.map(s => s.id) });
+
+    for (const st of subtasks) {
+      const stored = storedById[st.id] || {};
+      // `st` (fresh from createSubtasks) is always the base: bench, hours,
+      // label, hoursRange and which cards exist at all must reflect the
+      // parent's CURRENT desc/hours/bench on every render. Only the true
+      // app-owned fields cross over from the stored row — see the long note
+      // in joinJobsMasterState above; a stale stored hours/bench must never
+      // beat the fresh createSubtasks() value.
+      //
+      // createSubtasks() spreads the whole parent into each card, so the
+      // parent's own split bookkeeping and done flag ride along. Those are
+      // meaningless (and actively harmful — a derived card inheriting
+      // done:true from its parent, or isSubtask:true, mis-classifies it
+      // everywhere downstream), so they are reset explicitly here before the
+      // stored state is merged on top.
+      const {
+        // eslint-disable-next-line no-unused-vars
+        isSubtask: _is, isSplit: _sp, hasSubtasks: _hs, subtasks: _st, done: _dn,
+        ...base
+      } = st;
+      const merged = {
+        ...base,
+        isDerived: true,
+        done: false,
+        ...pickTopLevelState(stored),
+        scheduled: stored.scheduled ?? false,
+        calendarSlot: stored.calendarSlot ?? null,
+        gcalEventId: stored.gcalEventId ?? null,
+        gcalEventIds: stored.gcalEventIds ?? [],
+      };
+      // A derived card is never itself split, whatever a legacy stored row
+      // may claim — pickTopLevelState() would otherwise carry those back in.
+      merged.isSubtask = false;
+      merged.isSplit = false;
+      merged.hasSubtasks = false;
+      merged.subtasks = null;
+      result.push(merged);
+    }
+  }
+
+  return result;
 }
 
 // Keys a list of pendingRevenueReview candidates (disappeared top-level jobs

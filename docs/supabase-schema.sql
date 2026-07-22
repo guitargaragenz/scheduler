@@ -134,6 +134,15 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS gcal_event_ids TEXT[];
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS pomo_log JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS bump_history JSONB DEFAULT '[]'::jsonb;
 
+-- 2026-07-22: Auto-split regeneration fix (see approved Brief in
+-- .claude/pending-brief.md, "Supabase Auto-Split Regeneration Gap"). Marks a
+-- row as a DERIVED auto-split bench card rather than a real stored child.
+-- The single-table schema removed the jobsMaster/jobsState firewall that used
+-- to keep derived cards out of the CSV-owned collection; this column is what
+-- lets the write guards keep derived cards from being materialised as
+-- permanent rows. Additive and defaulted — safe to run on existing rows.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_derived BOOLEAN DEFAULT FALSE;
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;

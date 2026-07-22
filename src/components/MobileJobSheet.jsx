@@ -43,7 +43,10 @@ function initRows(job, allJobs = []) {
   // createSubtasks() never get isSplit, only hasSubtasks + real children via
   // parentId — checking isSplit alone left auto-split jobs hydrating from
   // stale pre-split bench/hours, hiding the real split from the editor.
-  if (!job.isSubtask) {
+  // isDerived cards are regenerated auto-split bench cards, not editable
+  // parents — they must never hydrate a multi-row split editor (mirrors
+  // JobDrawer.jsx).
+  if (!job.isSubtask && !job.isDerived) {
     const children = allJobs
       .filter(j => j.parentId === job.id)
       .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
@@ -69,6 +72,13 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
 
   // Bench/split tab state
   const [rows, setRows] = useState(() => initRows(job, jobs));
+
+  // A stored split child (isSubtask) or a regenerated auto-split bench card
+  // (isDerived) is a single session of an existing split — it can't be
+  // re-split, re-benched or have its hours changed here. Those live on the
+  // parent job; edits made on the card are dropped by handleSaveDrawer
+  // (useJobs.js) and would silently vanish on reload.
+  const isSubtaskEdit = !!job.isSubtask || !!job.isDerived;
 
   // Slide-up animation
   const [visible, setVisible] = useState(false);
@@ -320,13 +330,16 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                     <div style={{ padding: '10px 12px', background: `${colors.bg}88`, borderBottom: `1px solid ${colors.border}33` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <span style={{ fontSize: 12, color: colors.text, fontWeight: 700 }}>Bench</span>
-                        {rows.length > 1 && (
+                        {rows.length > 1 && !isSubtaskEdit && (
                           <button
                             onClick={() => removeBench(ri)}
                             style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }}
                           >×</button>
                         )}
                       </div>
+                      {isSubtaskEdit ? (
+                        <span style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>{row.bench}</span>
+                      ) : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {ALL_BENCHES.map(b => {
                           const bc = BENCH_COLORS[b] || BENCH_COLORS.Admin;
@@ -345,6 +358,7 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                           );
                         })}
                       </div>
+                      )}
                     </div>
 
                     {/* Sessions */}
@@ -358,17 +372,21 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                         <span style={{ fontSize: 12, color: '#64748b', minWidth: 56 }}>
                           {row.sessions.length > 1 ? `Session ${si + 1}` : 'Hours'}
                         </span>
-                        <button
-                          onClick={() => adjustSessionHours(ri, si, -0.5)}
-                          style={{ width: 32, height: 32, border: '1px solid #334155', borderRadius: 6, background: '#0f172a', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
-                        >−</button>
+                        {!isSubtaskEdit && (
+                          <button
+                            onClick={() => adjustSessionHours(ri, si, -0.5)}
+                            style={{ width: 32, height: 32, border: '1px solid #334155', borderRadius: 6, background: '#0f172a', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+                          >−</button>
+                        )}
                         <span style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', minWidth: 36, textAlign: 'center' }}>
                           {Number(sess.hours)}h
                         </span>
-                        <button
-                          onClick={() => adjustSessionHours(ri, si, 0.5)}
-                          style={{ width: 32, height: 32, border: '1px solid #334155', borderRadius: 6, background: '#0f172a', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
-                        >+</button>
+                        {!isSubtaskEdit && (
+                          <button
+                            onClick={() => adjustSessionHours(ri, si, 0.5)}
+                            style={{ width: 32, height: 32, border: '1px solid #334155', borderRadius: 6, background: '#0f172a', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+                          >+</button>
+                        )}
                         <input
                           type="text"
                           placeholder="Note…"
@@ -386,18 +404,26 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                 );
               })}
 
-              <button
-                onClick={addBench}
-                style={{
-                  width: '100%', padding: '12px 0',
-                  border: '1px dashed #334155', background: 'transparent',
-                  borderRadius: 10, color: '#64748b', fontSize: 13, cursor: 'pointer',
-                }}
-              >+ Add bench</button>
+              {!isSubtaskEdit && (
+                <button
+                  onClick={addBench}
+                  style={{
+                    width: '100%', padding: '12px 0',
+                    border: '1px dashed #334155', background: 'transparent',
+                    borderRadius: 10, color: '#64748b', fontSize: 13, cursor: 'pointer',
+                  }}
+                >+ Add bench</button>
+              )}
 
-              <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center' }}>
-                {totalCards === 1 ? '1 card' : `${totalCards} cards`} · {parseFloat(totalHours.toFixed(1))}h total
-              </div>
+              {isSubtaskEdit ? (
+                <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                  Bench and hours are set on the parent job — edit them there.
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                  {totalCards === 1 ? '1 card' : `${totalCards} cards`} · {parseFloat(totalHours.toFixed(1))}h total
+                </div>
+              )}
 
               <button
                 onClick={handleSave}
@@ -408,7 +434,7 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                   fontSize: 15, fontWeight: 700, cursor: 'pointer',
                 }}
               >
-                {totalCards === 1 ? 'Update' : 'Save Splits'}
+                {isSubtaskEdit || totalCards === 1 ? 'Update' : 'Save Splits'}
               </button>
             </div>
           )}
