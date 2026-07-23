@@ -23,6 +23,11 @@ export function useGoogleCalendar({
   const [signedIn, setSignedIn] = useState(false);
   const [externalEvents, setExternalEvents] = useState([]);
   const [syncStatus, setSyncStatus] = useState('idle');
+  // The dry-run plan awaiting Trevor's approval. null = no preview open.
+  // Computed ONCE by previewSync() from a snapshot of jobs/slots/calendar and
+  // then executed verbatim by executePlan() — the preview and the write share
+  // the exact same plan so the preview can never lie about what gets written.
+  const [syncPlan, setSyncPlan] = useState(null);
   const externalEventsRef = useRef([]);
   const pollRef = useRef(null);
   const lastEventSigRef = useRef('');
@@ -180,24 +185,60 @@ export function useGoogleCalendar({
     return blocks;
   }
 
-  async function handleSync() {
+  // The exact title createEvent()/updateEvent() write for a job event
+  // (googleCalendar.js:177). Kept in lockstep with that helper — the
+  // content-match below compares against this string, so if the event summary
+  // format ever changes there, it must change here too or matching silently
+  // stops finding pre-existing events and duplication returns.
+  function jobEventSummary(job) {
+    return `#${job.job} • ${job.mfr} ${job.model}`;
+  }
+
+  // Looks on the fetched calendar for an event that is this job's block but has
+  // no saved id yet (the pre-fix events that cause first-sync duplicates).
+  // Matches on job identity (summary) + LOCAL start time — same getHours/
+  // getMinutes basis the poller uses (lines 84-89), NOT raw ISO, so a TZ shift
+  // can't make an identical appointment look like a different slot. `consumed`
+  // guards multi-block jobs: two blocks share a summary and are told apart only
+  // by start time, and a match already claimed by an earlier block/id is skipped.
+  function findMatchingEvent(events, job, date, hour, minute, consumed) {
+    const wantSummary = jobEventSummary(job);
+    return events.find(ev => {
+      if (consumed.has(ev.id)) return false;
+      if (ev.summary !== wantSummary) return false;
+      const evStart = new Date(ev.start?.dateTime || ev.start?.date);
+      return evStart.toDateString() === date.toDateString()
+        && evStart.getHours() === hour
+        && evStart.getMinutes() === minute;
+    });
+  }
+
+  // PLAN phase — computes, but does NOT write, exactly what a real sync would
+  // do, then hands it to the preview modal for Trevor to approve. Nothing
+  // touches the calendar here.
+  async function previewSync() {
     if (!signedIn) {
       showToast('⚠ Not connected to Google Calendar. Open Settings to connect.');
       return;
     }
     setSyncStatus('syncing');
-    const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot && !j.isSplit);
-    let ok = 0;
-    let failed = 0;
-    let authExpired = false;
-    const updatedJobs = [...jobs];
-    // Event ids are collected as we go and written in one batch after the
-    // loop. Without this the ids only ever lived in memory, so the next sync
-    // couldn't find the events it had already made and created duplicates.
-    const stateWrites = [];
-    for (const job of scheduled) {
-      if (authExpired) break;
 
+    // Fetch the week's real calendar state once — the plan (and the content
+    // match) is built against this single snapshot.
+    const start = new Date(weekDays[0]);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(weekDays[6]);
+    end.setHours(23, 59, 59, 999);
+    const events = await listEvents(start, end);
+
+    const scheduled = jobs.filter(j => j.scheduled && j.calendarSlot && !j.isSplit);
+    // Every event id the plan lays a claim to — by saved id, by content match,
+    // or as a to-be-deleted removed block. Anything #-tagged left over after
+    // this becomes a "possible leftover" line rather than being touched.
+    const consumed = new Set();
+    const jobPlans = [];
+
+    for (const job of scheduled) {
       const blocks = getJobBlocks(job.id);
       if (!blocks.length) {
         console.warn(`Sync: #${job.job} (${job.id}) is marked scheduled but has no matching scheduledSlots entries — skipping`);
@@ -209,19 +250,103 @@ export function useGoogleCalendar({
         ? job.gcalEventIds
         : job.gcalEventId ? [job.gcalEventId] : [];
 
-      const newIds = [];
-      let jobFailed = false;
+      const planBlocks = [];
       for (let i = 0; i < blocks.length; i++) {
         const { date, hour, minute, durationHours } = blocks[i];
+        let action, matchedEventId = null;
+        if (existingIds[i]) {
+          // Already tagged as ours — a plain update, no dup risk.
+          action = 'update';
+          matchedEventId = existingIds[i];
+          consumed.add(existingIds[i]);
+        } else {
+          // No saved id: adopt a matching untagged event if one exists, else
+          // create. This is the load-bearing anti-duplication step.
+          const match = findMatchingEvent(events, job, date, hour, minute, consumed);
+          if (match) {
+            action = 'update';
+            matchedEventId = match.id;
+            consumed.add(match.id);
+          } else {
+            action = 'create';
+          }
+        }
+        planBlocks.push({ action, matchedEventId, date, hour, minute, durationHours });
+      }
+
+      // Saved events for blocks that no longer exist get deleted on execute
+      // (matches the old handleSync behaviour). They count as consumed so they
+      // aren't also reported as leftovers.
+      const deleteIds = [];
+      for (let i = blocks.length; i < existingIds.length; i++) {
+        deleteIds.push(existingIds[i]);
+        consumed.add(existingIds[i]);
+      }
+
+      jobPlans.push({
+        jobId: job.id,
+        jobNum: job.job,
+        jobLabel: `#${job.job} ${job.mfr} ${job.model}`,
+        job,          // snapshot passed straight to create/updateEvent on execute
+        blocks: planBlocks,
+        deleteIds,
+      });
+    }
+
+    // Leftovers = app-shaped job events ("#<num> • ...") the plan didn't claim.
+    // Only that pattern, so a personal #PERSONAL block (or any hand-made
+    // #-note) is never flagged for deletion. Surfaced for Trevor's eye only —
+    // never auto-touched.
+    const leftovers = events
+      .filter(ev => ev.summary && /^#\d+\s*•/.test(ev.summary) && !consumed.has(ev.id))
+      .map(ev => ({
+        id: ev.id,
+        summary: ev.summary,
+        start: ev.start?.dateTime || ev.start?.date || null,
+      }));
+
+    setSyncStatus('idle');
+
+    if (!jobPlans.length && !leftovers.length) {
+      showToast('Nothing to sync — no scheduled jobs this week');
+      return;
+    }
+
+    setSyncPlan({ jobPlans, leftovers });
+  }
+
+  // EXECUTE phase — writes the already-approved plan verbatim. Does NOT re-read
+  // live jobs/slots/calendar; the plan is the snapshot. Preserves the existing
+  // id-persistence path (stateWrites → batchWriteJobsState) and failure handling.
+  async function executePlan(plan) {
+    if (!plan) return;
+    const { jobPlans } = plan;
+    setSyncStatus('syncing');
+
+    let ok = 0;
+    let failed = 0;
+    let authExpired = false;
+    // Write ids back onto the current jobs (jobsRef, not the plan snapshot) so a
+    // concurrent edit elsewhere isn't clobbered — only the gcalEventIds change.
+    const updatedJobs = [...jobsRef.current];
+    const stateWrites = [];
+
+    for (const jp of jobPlans) {
+      if (authExpired) break;
+
+      const newIds = [];
+      let jobFailed = false;
+      for (let i = 0; i < jp.blocks.length; i++) {
+        const { action, matchedEventId, date, hour, minute, durationHours } = jp.blocks[i];
         try {
-          const result = existingIds[i]
-            ? await updateEvent(existingIds[i], job, date, hour, durationHours, minute)
-            : await createEvent(job, date, hour, durationHours, minute);
+          const result = action === 'update' && matchedEventId
+            ? await updateEvent(matchedEventId, jp.job, date, hour, durationHours, minute)
+            : await createEvent(jp.job, date, hour, durationHours, minute);
           if (result?.id) newIds.push(result.id);
         } catch (e) {
           jobFailed = true;
           if (e?.status === 401) { authExpired = true; break; }
-          console.error(`Sync: failed to sync #${job.job} block ${i}:`, e);
+          console.error(`Sync: failed to sync #${jp.jobNum} block ${i}:`, e);
         }
       }
 
@@ -234,14 +359,14 @@ export function useGoogleCalendar({
       }
 
       // Delete any GCal events from blocks that no longer exist
-      for (let i = blocks.length; i < existingIds.length; i++) {
-        await deleteEvent(existingIds[i]).catch(() => {});
+      for (const id of jp.deleteIds) {
+        await deleteEvent(id).catch(() => {});
       }
 
-      const idx = updatedJobs.findIndex(j => j.id === job.id);
+      const idx = updatedJobs.findIndex(j => j.id === jp.jobId);
       if (idx >= 0) {
         updatedJobs[idx] = { ...updatedJobs[idx], gcalEventIds: newIds, gcalEventId: newIds[0] || null };
-        stateWrites.push({ id: job.id, data: jobsStateFieldsFor(updatedJobs[idx]) });
+        stateWrites.push({ id: jp.jobId, data: jobsStateFieldsFor(updatedJobs[idx]) });
       }
       ok++;
     }
@@ -267,11 +392,24 @@ export function useGoogleCalendar({
     } else {
       setSyncStatus(failed === 0 ? 'synced' : 'error');
       showToast(failed === 0
-        ? `Synced ${ok}/${scheduled.length} jobs to Google Calendar`
-        : `Synced ${ok}/${scheduled.length} jobs — ${failed} failed, check console`);
+        ? `Synced ${ok}/${jobPlans.length} jobs to Google Calendar`
+        : `Synced ${ok}/${jobPlans.length} jobs — ${failed} failed, check console`);
       addChangelog(`Synced ${ok} jobs to Google Calendar${failed ? `, ${failed} failed` : ''}`);
     }
     setTimeout(() => setSyncStatus('idle'), 4000);
+  }
+
+  // Trevor approved the preview → run that exact plan. Close the modal first so
+  // it can't be double-submitted.
+  function confirmSync() {
+    if (!syncPlan) return;
+    const plan = syncPlan;
+    setSyncPlan(null);
+    executePlan(plan);
+  }
+
+  function cancelSync() {
+    setSyncPlan(null);
   }
 
   async function handleSignIn() {
@@ -296,8 +434,11 @@ export function useGoogleCalendar({
     externalEvents,
     externalEventsRef,
     syncStatus,
+    syncPlan,
     buildExternalBlockedSlots,
-    handleSync,
+    previewSync,
+    confirmSync,
+    cancelSync,
     handleSignIn,
     handleSignOut,
   };

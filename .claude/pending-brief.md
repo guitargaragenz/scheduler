@@ -1,138 +1,110 @@
-# Pending Brief — Calendar Drag Never Persists (NOT NULL `job` on state writes)
+# Pending Brief A — Stop Google Calendar sync from creating duplicate events (follow-up item 2)
 
-**Status:** SHIPPED 2026-07-23. Council → Builder (`29dec7c`) → Independent Verifier → live test
-passed ("everything 100%") → confirmed in production Supabase: `scheduled_slots` 0 → 4 rows,
-`jobs` with `scheduled = true` 0 → 3, covering both a top-level job (`1682`) and derived auto-split
-cards (`1689_Luthier_0/1`). Merged to `main` with Trevor's "yp".
-
-**Still untested against production:** un-split / re-split (`deleteChildJobs()`). Real DELETE, no
-undo, never run for real. Needs its own supervised round before use.
-**Session:** 2026-07-22
-**Supersedes:** the auto-split regeneration brief (SHIPPED — auto-splits verified working live on
-branch `fix/supabase-auto-split-regen`; that branch is unmerged and blocked on this bug).
+**Status:** AWAITING TREVOR'S "yp"
+**Date:** 2026-07-24
+**Repo state:** `main` @ `6a24e47`
+**Supersedes:** the un-split / re-split live-test brief — DONE (item 1, live-tested on #1621, both halves
+passed). Kept in git history (`git show 6a24e47:.claude/pending-brief.md`).
+**First of two briefs this round.** Brief B (items 3 + 4) comes after this ships. Item 2 is on its own
+because it's the only one that writes to Trevor's real work calendar.
 
 ---
 
 ## Plain-English summary
 
-Dragging a job onto the calendar never saves. The card snaps back and you get
-"⚠ Save failed — snapped back". This is not a regression from the auto-split branch — calendar
-scheduling has **never** persisted since the Supabase migration. The calendar has been running
-entirely on in-browser state.
+When the app syncs to your Google Calendar, it's meant to *update* the appointments it made last
+time. To do that it has to remember which appointments are its own. An older bug meant it never saved
+those "this is mine" tags. So on a sync, it looks at your calendar, sees no tags it recognises, and
+assumes nothing's there — then **makes fresh copies** of appointments that already exist. That's the
+duplication.
 
-## Root cause — CONFIRMED against live production Supabase, not by code review
+Half of this is **already fixed** since the handoff was written: the app now saves its "this is mine"
+tags after a sync (code at `useGoogleCalendar.js:197–260`). So *going forward* it remembers its own
+events.
 
-A drag writes in two steps: the job's state row first, then the calendar slot row.
+What's still open is the **first sync after the fix.** Any job that already has a real appointment on
+your calendar but no saved tag (made before the fix) will still get duplicated, because the app only
+knows "no tag = make a new one." This brief closes that gap and adds a safety net so it can never
+silently double-book your real calendar again.
 
-`jobsStateFieldsFor()` (`src/data/joinJobs.js:111`) builds the job half. For a **top-level** job it
-returns `pickTopLevelState(job)` — an allowlist of app-owned state fields that deliberately excludes
-`job` (the job number), because `job` is CSV-owned.
+## Why it's careful
 
-`batchWriteJobsState()` (`src/utils/supabase.js:794`) sends that as a PostgREST **upsert**
-(`POST ... on_conflict=id`, `resolution=merge-duplicates`), not a PATCH. Postgres validates NOT NULL
-on the *proposed insert row* before conflict resolution, so a row with no `job` value is rejected
-outright — even though the row already exists.
+It's the only follow-up that writes to your actual work calendar, and cleaning up dupes is manual.
+Everything here gets shown to you *before* it writes.
 
-Reproduced live against production, sending the exact column set a top-level drag sends for real
-job `842`:
+---
 
-```
-POST /rest/v1/jobs?on_conflict=id  →  400
-{"code":"23502","message":"null value in column \"job\" of relation \"jobs\" violates not-null constraint"}
-```
+## Scope — locked
 
-`persistMove()` sees the failed jobs write, returns `'reverted'`, never attempts the slots write, and
-the UI rolls back. That is the exact observed behaviour.
+**In scope (all in `src/hooks/useGoogleCalendar.js`):**
 
-### Why the other paths work
+1. **Dry-run preview before writing.** A "Preview sync" that lists, per job, exactly what a real sync
+   would do — *Create new event* / *Update existing event* / *skip* — and writes nothing until Trevor
+   approves. This is the safety gate that stops silent duplication.
+2. **Match existing events by content, not just by saved tag.** For a job with no saved event ID,
+   before creating, look on the calendar for an event at the same date/time/title. If found, treat it
+   as an *update* and save that event's ID — instead of creating a duplicate. Match on **local**
+   start time (as lines 84–89 already do), not raw ISO, and align matches to `getJobBlocks` order for
+   multi-block jobs.
+3. **Leftover-appointments list in the preview (Council A).** The preview also lists any `#`-tagged
+   calendar event the sync did NOT match to a job — under "Possible leftover — not touched, review /
+   delete." This catches a job that was moved or renamed before this first sync (old event stranded at
+   the old time, new event created = a duplicate the plain preview would miss), and jobs that were
+   split after being synced. It only surfaces them for Trevor's eye; it does not auto-delete.
+4. Rely on the **already-shipped ID persistence** (lines 197–260, confirmed by Council B) — not
+   re-doing it, just building on it. Note: the content-match is **load-bearing**, not optional — it is
+   the only thing that stops re-duplication if a save fails and the tab is reloaded.
 
-- **Manual split children** — the `job.parentId` branch returns the whole record, `job` included.
-- **Derived auto-split cards** — the `job.isDerived` branch explicitly sets `out.job = job.job`, with
-  a comment naming this exact NOT NULL constraint as the reason. The same treatment was simply never
-  applied to the top-level branch.
+**Out of scope** (Brief B or later): the 30-second bump poller not saving (item 3), bullet-journal
+logging on failed saves (item 4), and everything in the handoff's "Also parked" list. No changes to
+`persistMove`, `useScheduler.js`, or `scheduled_slots`.
 
-### Corroborating live evidence (read-only)
+---
 
-- `scheduled_slots` — **0 rows**.
-- `jobs` where `scheduled = true` — **0 rows**.
-- `jobs` — 51 rows, 2 with a `parent_id` (manual splits, both persisted fine), 0 with `is_derived`.
-- No RLS policies exist on any table; every column the drag writes exists; FK enforcement works;
-  no stored job has a null `bench` or `hours`. All eliminated as causes.
+## What the code actually does today
 
-## Scope (locked)
-
-One change, in `jobsStateFieldsFor()`'s top-level branch only:
+`handleSync()` — `src/hooks/useGoogleCalendar.js:183`. Per scheduled job it builds time blocks, then:
 
 ```js
-return { ...pickTopLevelState(job), job: job.job };
+const existingIds = job.gcalEventIds?.length ? job.gcalEventIds
+  : job.gcalEventId ? [job.gcalEventId] : [];
+...
+const result = existingIds[i]
+  ? await updateEvent(existingIds[i], job, date, hour, durationHours, minute)
+  : await createEvent(job, date, hour, durationHours, minute);   // <-- duplicates when tag missing
 ```
 
-**Do NOT add `job` to `JOBS_STATE_TOP_LEVEL_FIELDS`.** That constant is also consumed by the read
-path and by `NON_MASTER_FIELDS` (joinJobs.js:49), which strips its members out of CSV-owned
-`jobsMaster` rows. Adding `job` there would stop the job number being written to master rows — a
-much worse bug. The fix must stay inside the write helper.
+New IDs are now collected and batch-saved (`stateWrites` → `batchWriteJobsState`, lines 197–260), so
+persistence is handled. The remaining hole: `existingIds` empty → straight to `createEvent`, with no
+check for an event already on the calendar and no preview before it fires.
 
-## Out of scope
+### Two specific risks to watch for
 
-- No schema changes. No migration. `job` already exists and is already populated on all 51 rows.
-- No changes to `batchWriteJobsState`, `persistMove`, or the slots write path — they behave correctly
-  given a valid row.
-- No changes to the derived or `parentId` branches — both already correct.
-- Not fixed here (separate briefs, already agreed): the missing `label` column for manual split
-  children; the orphaned `is_derived` row sweep; re-expanding `jobs[]` on bench-hours change.
-- The bullet-journal write firing before a failed save and not being rolled back (`useScheduler.js`
-  ~line 200) is **real but separate** — log it, don't fix it here.
+1. **Content matching must be tight.** Match on date + start time + title (job identity). Too loose
+   and it could adopt an unrelated appointment as "its own" and then overwrite it on a later sync.
+   The preview (item 1) is the backstop — Trevor sees each *Update existing* line and can veto.
+2. **Preview must reflect the real write path.** The preview has to be generated by the *same* logic
+   that then executes, or it lies. Build the plan once, show it, then execute that exact plan — don't
+   compute intentions twice.
 
-## Blast radius
+---
 
-`scheduledSlots`, `calendarSlot`, and the `jobs[]` write shape — full Agent-Team Protocol required.
-Builder works on a branch off `fix/supabase-auto-split-regen` (that branch's auto-split fix is
-verified working and this bug is what blocks its live test).
+## Method — agent-team protocol
 
-## Council outcome (2026-07-22)
+- **Council** — two independent agents review this brief + `handleSync` for anything the preview or
+  the content-match would miss (a job shape that dodges the match, a partial-block case).
+- **Builder** — executes on a staging branch, supervised from the main conversation.
+- **Independent verifier** — a separate agent runs the checklist against the preview: confirms the
+  preview matches what actually gets written, and that a job with a pre-existing untagged event
+  produces an *Update*, not a *Create*.
+- **Live test** — supervised, on ONE low-value job that already has an untagged event on the calendar:
+  run Preview, confirm it says *Update existing* (not *Create*), approve, then confirm no duplicate
+  appeared and the tag saved. Trevor at the keyboard.
+- **Merge** — Trevor's "yp" after the live test.
 
-**Council A (design) — APPROVE, no changes.** `job.job` is present at all 12 call sites (every one
-passes a joined job or a `{...job, ...patch}` spread of one). `job` is in `JOB_PASSTHROUGH_FIELDS`
-so it survives `toJobRow()` verbatim. `id` and `job` are the ONLY NOT NULL columns on `jobs`, so the
-fix is complete. No stale-overwrite risk (`job` is immutable identity for a given `id`). Confirmed
-the brief's `JOBS_STATE_TOP_LEVEL_FIELDS` warning is correct — adding it there would strip the job
-number from every jobsMaster row via `NON_MASTER_FIELDS`. Extend the comment block above
-`jobsStateFieldsFor()` to cover the top-level branch, not just the derived one.
+---
 
-**Council B (risk) — APPROVE WITH CHANGES.** Grouping traced clean: the three branches are disjoint
-by `parent_id`/`is_derived` presence, so adding `job` cannot merge groups or NULL-fill. No CSV column
-becomes newly clobberable. The real risk is what the fix **un-gates** — code gated on
-`batchWriteJobsState` succeeding has never once run against production:
+## Approve?
 
-- `deleteChildJobs()` (`useJobs.js:139/223`, un-split/re-split) — real `DELETE ... WHERE parent_id`,
-  cascading to `scheduled_slots`. **Highest risk, unrecoverable, no backups.**
-- `deleteGcalEvents()` (`useScheduler.js:469`, drag-to-sidebar) — irreversible on the real calendar.
-- `handleSync` (`useGoogleCalendar.js:189`) — historical `gcalEventIds` were never stored, so the
-  first post-fix sync may duplicate rather than update.
-- The 30s GCal bump poller mutates state and never persists — can silently diverge the UI from the DB.
-- `subscribeToScheduledSlots` has no echo suppression; both subscriptions only propagate non-empty
-  results, so clearing the last slot never propagates.
-
-**Required change (folded into scope):** in the top-level branch, if `job.job == null`, `console.error`
-and skip the write rather than send `undefined` — otherwise one malformed object aborts a whole
-grouped batch with an illegible NOT NULL error.
-
-**Must-do pre-merge safety steps (Trevor, before the live test):**
-1. Export `jobs` and `scheduled_slots` to CSV from the Supabase dashboard. Only rollback that exists.
-2. Run the first live drag test signed OUT of Google Calendar.
-3. Do NOT touch un-split/re-split during drag verification — it gets its own supervised round.
-
-**Logged, not fixed here (separate briefs):** GCal poller never persists bumps; slots subscription
-echo/non-empty gaps; bullet-journal write firing before a failed save.
-
-## Verifier checklist
-
-1. Unit test in `joinJobs.test.js`: `jobsStateFieldsFor()` on a top-level job includes `job`, and
-   still excludes CSV-owned fields (`customer`, `mfr`, `model`, `desc`, `bench`, `hours`, `status`).
-2. `pickMasterFields()` still returns `job` on a top-level job (proves `NON_MASTER_FIELDS` untouched).
-3. Existing `joinJobs.test.js` + `useScheduler` suites still green.
-4. **Live**, on the Vercel preview: drag a job to a calendar slot → no "⚠ Save failed" toast → hard
-   refresh → the job is still in the slot.
-5. **Live DB check after step 4**: `scheduled_slots` has a row, and that job has `scheduled = true`.
-   This is the check that has been missing every previous round.
-6. No regression: manual splits still persist; auto-split bench cards still appear.
+Reply **"yp"** to approve this scope. Nothing gets built or written to your calendar before you say so.
+Once approved, first step is standing up the Council review, then the builder on a staging branch.
