@@ -26,6 +26,7 @@ import JobsPage from './components/JobsPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
+import SyncPreviewModal from './components/SyncPreviewModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import RevenueBreakdown from './components/RevenueBreakdown.jsx';
@@ -443,7 +444,7 @@ export default function App() {
             )}
 
             <button
-              onClick={gcal.handleSync}
+              onClick={gcal.previewSync}
               style={{
                 padding: '7px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
                 background: '#166534', color: '#bbf7d0', fontSize: 12, fontWeight: 700,
@@ -842,6 +843,14 @@ export default function App() {
             }
             setBumpPrompt(null);
           }}
+        />
+      )}
+
+      {gcal.syncPlan && (
+        <SyncPreviewModal
+          plan={gcal.syncPlan}
+          onConfirm={gcal.confirmSync}
+          onCancel={gcal.cancelSync}
         />
       )}
     </DndContext>
