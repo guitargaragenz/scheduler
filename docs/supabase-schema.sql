@@ -143,6 +143,31 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS bump_history JSONB DEFAULT '[]'::jsonb
 -- permanent rows. Additive and defaulted — safe to run on existing rows.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_derived BOOLEAN DEFAULT FALSE;
 
+-- 2026-07-25: Sunday Board Meeting Supabase migration (see approved Brief in
+-- .claude/pending-brief.md, Brief D). handleMarkDone() in src/hooks/useJobs.js
+-- has always computed invoiceAmount/weekKey, but saveCompletedJobs()/
+-- loadCompletedJobs() in src/utils/supabase.js never mapped them to/from a
+-- column — this was silently dropped on every mark-done. Additive/nullable,
+-- safe to run on existing rows.
+ALTER TABLE completed_jobs ADD COLUMN IF NOT EXISTS invoice_amount NUMERIC;
+ALTER TABLE completed_jobs ADD COLUMN IF NOT EXISTS week_key TEXT;
+
+-- Parts to order (Sunday board meeting — Brief D). needed_for_job is a plain
+-- TEXT column, NOT a foreign key to jobs(id): a part can be flagged against a
+-- job number that later disappears (job finished/deleted) or against no job
+-- at all (general shop stock), and this table must never fail to insert or
+-- orphan-cascade because of that.
+CREATE TABLE IF NOT EXISTS parts_to_order (
+  id TEXT PRIMARY KEY,
+  description TEXT NOT NULL,
+  category TEXT DEFAULT 'part',
+  needed_for_job TEXT,
+  added_at TIMESTAMPTZ DEFAULT NOW(),
+  resolved BOOLEAN DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_parts_to_order_resolved ON parts_to_order(resolved);
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
@@ -151,3 +176,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE ad_hoc_tasks;
 ALTER PUBLICATION supabase_realtime ADD TABLE focus_list;
 ALTER PUBLICATION supabase_realtime ADD TABLE pending_revenue_review;
 ALTER PUBLICATION supabase_realtime ADD TABLE completed_jobs;
+ALTER PUBLICATION supabase_realtime ADD TABLE parts_to_order;

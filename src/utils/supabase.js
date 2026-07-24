@@ -174,9 +174,16 @@ export async function upsertJobsBatch(jobsList) {
       desc: job.desc,
       tag: job.tag,
       action: job.action,
-      vb: job.VB,
-      bl: job.BL,
-      pj: job.PJ,
+      // job.vb/job.backlog/job.project are the real app-shape fields (set by
+      // parseCSV() in src/data/jobs.js as booleans from the CSV's Y/N
+      // columns) — job.VB/job.BL/job.PJ don't exist on the object, so this
+      // used to always write `undefined` and silently drop the flags on
+      // every CSV sync. The vb/bl/pj DB columns are TEXT (see
+      // docs/supabase-schema.sql), matching the CSV's own Y/N convention, so
+      // write 'Y'/'N' strings rather than raw booleans.
+      vb: job.vb ? 'Y' : 'N',
+      bl: job.backlog ? 'Y' : 'N',
+      pj: job.project ? 'Y' : 'N',
       has_subtasks: job.hasSubtasks,
       created_at: job.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -697,6 +704,108 @@ export function subscribeToPendingRevenueReview(callback) {
   }
 }
 
+// ============ PARTS TO ORDER (Sunday board meeting — Brief D) ============
+//
+// needed_for_job is a plain nullable TEXT column, NOT a foreign key — a part
+// can be needed for a job number that no longer exists in `jobs` (or for no
+// job in particular, e.g. general shop stock), and this table must not fail
+// to insert just because that job row was deleted or never existed.
+
+export async function loadPartsToOrder() {
+  try {
+    const { data, error } = await getClient()
+      .from('parts_to_order')
+      .select('*')
+      .order('added_at', { ascending: false });
+    if (error) throw error;
+
+    // Transform array to map keyed by id, matching loadPendingRevenueReview().
+    const itemsById = {};
+    (data || []).forEach(item => {
+      itemsById[String(item.id)] = {
+        id: item.id,
+        description: item.description,
+        category: item.category,
+        neededForJob: item.needed_for_job,
+        addedAt: item.added_at,
+        resolved: item.resolved,
+      };
+    });
+    return itemsById;
+  } catch (e) {
+    console.error('Supabase load parts to order error:', e);
+    return {};
+  }
+}
+
+export async function addPartsToOrderItems(items) {
+  if (!items || items.length === 0) return;
+  try {
+    const records = items.map(item => ({
+      id: item.id || `pto-${Date.now()}-${Math.random()}`,
+      description: item.description,
+      category: item.category || 'part',
+      needed_for_job: item.neededForJob ?? null,
+      added_at: item.addedAt || new Date().toISOString(),
+      resolved: item.resolved || false,
+    }));
+    const { error } = await getClient()
+      .from('parts_to_order')
+      .insert(records);
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase add parts to order items error:', e);
+  }
+}
+
+export async function removePartsToOrderItem(itemId) {
+  try {
+    const { error } = await getClient()
+      .from('parts_to_order')
+      .delete()
+      .eq('id', String(itemId));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase remove parts to order item error:', e);
+  }
+}
+
+// In-place update rather than delete+re-add — resolving a part is a status
+// flip, not a removal, and the row (description/category/neededForJob) is
+// worth keeping for the next meeting's "what got sorted this week" glance.
+export async function markPartResolved(id, resolved) {
+  try {
+    const { error } = await getClient()
+      .from('parts_to_order')
+      .update({ resolved })
+      .eq('id', String(id));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase mark part resolved error:', e);
+  }
+}
+
+export function subscribeToPartsToOrder(callback) {
+  try {
+    const channel = getClient()
+      .channel('public:parts_to_order')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'parts_to_order' },
+        () => {
+          loadPartsToOrder().then(callback);
+        }
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  } catch (e) {
+    console.error('Supabase subscribe to parts to order error:', e);
+    return () => {};
+  }
+}
+
 // ============ COMPLETED JOBS ============
 
 export async function saveCompletedJobs(records, doneJobIds) {
@@ -711,6 +820,8 @@ export async function saveCompletedJobs(records, doneJobIds) {
       mfr: record.mfr,
       model: record.model,
       hours: record.hours,
+      invoice_amount: record.invoiceAmount,
+      week_key: record.weekKey,
       completed_at: record.completedAt || new Date().toISOString(),
       created_at: new Date().toISOString(),
     }));
@@ -757,14 +868,30 @@ export function subscribeToCompletedJobs(callback) {
   }
 }
 
-async function loadCompletedJobs() {
+// Was missing `export` and returned raw snake_case rows — nothing could
+// actually call this from outside the module, and handleMarkDone()'s
+// invoiceAmount/weekKey would have come back as invoice_amount/week_key had
+// anything tried. Exported and remapped to the same camelCase shape
+// handleMarkDone() builds in src/hooks/useJobs.js.
+export async function loadCompletedJobs() {
   try {
     const { data, error } = await getClient()
       .from('completed_jobs')
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return { records: data || [], doneJobIds: (data || []).map(d => d.job_id) };
+    const records = (data || []).map(row => ({
+      id: row.job_id,
+      job: row.job_number,
+      customer: row.customer,
+      mfr: row.mfr,
+      model: row.model,
+      hours: row.hours,
+      invoiceAmount: row.invoice_amount,
+      completedAt: row.completed_at,
+      weekKey: row.week_key,
+    }));
+    return { records, doneJobIds: (data || []).map(d => d.job_id) };
   } catch (e) {
     console.error('Supabase load completed jobs error:', e);
     return { records: [], doneJobIds: [] };
