@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { isSupabaseConfigured } from '../utils/supabase.js';
+import {
+  isSupabaseConfigured,
+  loadDailyLogs,
+  saveDailyLogDays,
+  saveDeferredItems,
+  subscribeToDailyLogs,
+} from '../utils/supabase.js';
 import { localDateKey } from '../utils/calendar.js';
 
 // crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — Safari disables it
@@ -126,6 +132,10 @@ export function useDailyLog() {
   const readyRef = useRef(false);
   const touchedLogKeysRef = useRef(new Set());
   const deferredItemsTouchedRef = useRef(false);
+  // Last-persisted deferred items — the baseline performSave() diffs against to
+  // produce per-item upserts/deletes (never a whole-array rewrite). Kept in sync
+  // with the server whenever a reload takes server deferred state.
+  const persistedDeferredRef = useRef([]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -134,17 +144,56 @@ export function useDailyLog() {
       return;
     }
 
-    const unsub = onSnapshot(DAILY_LOGS_DOC(), snap => {
-      if (snap.metadata.hasPendingWrites) return;
-      const data = snap.exists() ? snap.data() : {};
-      const next = { logs: data.logs || {}, deferredItems: data.deferredItems || [] };
-      setState(next);
-      pendingStateRef.current = next;
+    let cancelled = false;
+
+    // MERGE-not-replace. Supabase postgres_changes has no hasPendingWrites flag
+    // (Firestore's onSnapshot used it to ignore its own echoes), so on every
+    // server reload we keep any date_key currently mid-write locally and take
+    // server for the rest — never blanket-replacing the atom while a write is
+    // pending. Same for deferredItems: keep local while a deferred change is
+    // pending, otherwise take server (and re-baseline the diff).
+    function applyServer(server) {
+      if (!server) return; // null = read error; never flip ready / blank state
+      setState(prev => {
+        const mergedLogs = { ...server.logs };
+        touchedLogKeysRef.current.forEach(k => {
+          if (prev.logs[k] !== undefined) mergedLogs[k] = prev.logs[k];
+        });
+
+        let deferredItems;
+        if (deferredItemsTouchedRef.current) {
+          deferredItems = prev.deferredItems; // keep pending local change
+        } else {
+          deferredItems = server.deferredItems;
+          persistedDeferredRef.current = server.deferredItems;
+        }
+
+        const next = { logs: mergedLogs, deferredItems };
+        pendingStateRef.current = next;
+        return next;
+      });
+      // Confirmed successful load — safe to open the write gate now.
       readyRef.current = true;
       setLoading(false);
+    }
+
+    // Explicit initial load gates readyRef on a confirmed successful read, so
+    // an error path (loadDailyLogs -> null) never flips ready and re-opens the
+    // 2026-07-05 whole-store-overwrite window.
+    loadDailyLogs().then(server => {
+      if (cancelled) return;
+      applyServer(server);
     });
 
-    return () => unsub();
+    const unsub = subscribeToDailyLogs(server => {
+      if (cancelled) return;
+      applyServer(server);
+    });
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fires the actual write immediately — pulled out of the debounce timeout so
@@ -167,14 +216,31 @@ export function useDailyLog() {
     // overwrite it with a possibly-stale local copy.
     const keys = Array.from(touchedLogKeysRef.current);
     touchedLogKeysRef.current = new Set();
-    const logsPatch = {};
-    keys.forEach(k => { logsPatch[k] = pendingStateRef.current.logs[k]; });
-    const patch = { logs: logsPatch, updatedAt: new Date().toISOString() };
-    if (deferredItemsTouchedRef.current) {
-      patch.deferredItems = pendingStateRef.current.deferredItems;
-      deferredItemsTouchedRef.current = false;
+
+    // Per-date-key upsert of only the touched days (closeDay touches today +
+    // tomorrow; resolveStaleDays touches many) — never a whole-store write.
+    if (keys.length > 0) {
+      const days = keys
+        .map(k => ({ dateKey: k, day: pendingStateRef.current.logs[k] }))
+        .filter(d => d.day !== undefined);
+      if (days.length > 0) saveDailyLogDays(days);
     }
-    setDoc(DAILY_LOGS_DOC(), patch, { merge: true });
+
+    // Deferred items: per-item diff against the last-persisted baseline so a
+    // single add/remove is one upsert or one delete, never an array rewrite.
+    if (deferredItemsTouchedRef.current) {
+      deferredItemsTouchedRef.current = false;
+      const current = pendingStateRef.current.deferredItems || [];
+      const persisted = persistedDeferredRef.current || [];
+      const currentIds = new Set(current.map(d => d.id));
+      const persistedIds = new Set(persisted.map(d => d.id));
+      const removeIds = persisted.filter(d => !currentIds.has(d.id)).map(d => d.id);
+      const upserts = current.filter(d => !persistedIds.has(d.id));
+      if (upserts.length > 0 || removeIds.length > 0) {
+        saveDeferredItems(upserts, removeIds);
+      }
+      persistedDeferredRef.current = current;
+    }
   }
 
   // Eager flush on tab-hide/unload — `visibilitychange` fires reliably on
@@ -197,9 +263,9 @@ export function useDailyLog() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function scheduleSave(next, changedKeys, deferredItemsChanged) {
-    // Guard against writing before the initial Firestore snapshot has loaded —
-    // otherwise a save fired from stale/empty local state can overwrite every
-    // other day's data with a full-document setDoc (2026-07-05 data loss).
+    // Guard against writing before the initial Supabase load has confirmed —
+    // otherwise a save fired from stale/empty local state could overwrite good
+    // days with an empty local snapshot (the 2026-07-05 data-loss class).
     if (!readyRef.current) return;
     pendingStateRef.current = next;
     changedKeys.forEach(k => touchedLogKeysRef.current.add(k));
