@@ -89,3 +89,7 @@ Currently-open items only — grouped by category, not by session date. Complete
 - [ ] **`/read-the-manual` (personal skill, `~/.claude/skills/`) isn't reachable from git-worktree-isolated sessions** — confirmed 2026-07-11 when the build session running on `feature/daily-log-carry-forward` (a worktree) couldn't find the command at all. Personal skills are likely local-session-scoped in a way worktree-isolated sessions don't inherit. Not blocking (worktree sessions get their context from the plan/brief directly instead), but worth understanding/fixing if this skill is meant to be usable from any session type, not just a normal one on Micky.
 
 ---
+
+## Skills / Tooling
+
+- [ ] **Build a "guitar wiring diagram" skill** (parked 2026-07-24) — bottle the approved schemdraw setup (venv, SVG backend, house style: text beside symbols, cap off volume wiper, tone ground faces right, etc.) + `guitar_draft.py` as reference + a render-and-check checklist. Scope narrow to guitar wiring, NOT general electronics. Deliberately parked until the bench switcher schematic is finished so real lessons feed in. Files live in `…/BUILDS/Bench Switcher/`. See memory `reference_schemdraw_wiring.md`.

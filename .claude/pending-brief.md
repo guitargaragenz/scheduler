@@ -1,25 +1,31 @@
-# Pending Brief C — Finish the migration: move the Daily Log (bujo) off Firestore onto Supabase
+# Pending Brief D — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
 
-**Status:** APPROVED ("yp" 2026-07-24) — Council in progress
-**Date:** 2026-07-24
-**Repo state:** `main` @ `b61c509` (Brief B — poller-save + phantom-bullet — SHIPPED & merged)
-**Root-cause fix, not a patch.** Trevor's call (2026-07-24): retire Firestore, don't band-aid it.
+**Status:** COUNCIL COMPLETE, SCOPE AMENDED, RE-APPROVED ("yp" 2026-07-25) — Builder starting
+**Date:** 2026-07-25
+**Repo state:** `main` @ `5cee3db` (Brief C — Firestore fully retired — SHIPPED & merged)
+**Supersedes:** Brief C's slot in this file (Brief C is done; this file was just left stale pointing at it)
 
 ---
 
 ## Plain-English summary
 
-The whole app was meant to be on Supabase. Jobs, calendar slots, parking lot, revenue — all
-moved. **One thing never got migrated: the Daily Log (the bujo).** It's the last piece still living
-on the old Firestore database.
+The Sunday Board Meeting used to be a manual interview Trevor ran with an old Google
+Sheet column. That died when the Sheet was replaced by Supabase — nothing writes a
+Focus list anymore, there's no parts-to-order tracking, and the one attempt at
+automating the meeting (`.claude/workflows/sunday-board-meeting.js`) still reads from
+Firestore, which no longer exists in this app. It would fail on its first step if run
+today.
 
-That leftover split is exactly what caused the bug you found: when you drop a job on today, the
-**calendar slot** saves to Supabase and sticks, but the **bujo line** saves to Firestore on a
-separate path that isn't landing — so a refresh keeps the calendar job but loses the bujo line.
+This Brief rebuilds it as a **live conversational ritual, run in a chat session
+(Claude Code) against real Supabase data** — not a coded UI screen, not an embedded
+AI chat panel in the app. Trevor talks it through with whichever agent is running the
+session; at the end, three things get written into the app so the coming week is
+already set up and all that's left is doing the work, the books in MT, and workshop
+cleanup.
 
-Patching the Firestore write would fix the symptom while keeping a database we're trying to delete.
-Instead: **move the Daily Log onto Supabase like everything else, carry over the existing history,
-and retire Firestore entirely.** Kills this whole class of "one DB saved, the other didn't" bug.
+This was arrived at through direct back-and-forth with Trevor (this chat, 2026-07-25),
+correcting an earlier one-sided/report-only design and an earlier idea to build a
+dedicated UI walkthrough screen — both rejected in favor of this live format.
 
 ---
 
@@ -27,89 +33,150 @@ and retire Firestore entirely.** Kills this whole class of "one DB saved, the ot
 
 **In scope:**
 
-1. **New Supabase home for the Daily Log** — a table (or tables) holding what Firestore holds today:
-   per-day logs (bullets + closedAt + locked), keyed by local date, plus the global `deferredItems`
-   list. Model decided WITH the council (see decision below).
-2. **`load / save / subscribe` functions in `supabase.js`** matching the existing house pattern
-   (`loadParkingLot`/`saveParkingLot`/`subscribeToParkingLot` etc.), BUT per-day-key upserts — NOT
-   the parking-lot "clear-and-re-insert," which would risk wiping log history.
-3. **Rewire `useDailyLog.js`** to read/write Supabase instead of Firestore, preserving every safety
-   property it currently has: the `readyRef` load-gate (no writing before first load — the 2026-07-05
-   data-loss guard), per-date-key merge writes (two devices touching different days don't clobber),
-   the eager flush on tab-hide/refresh, and `deferredItems` written only when actually changed.
-4. **One-time backfill** of the existing Firestore `ggnz/dailyLogs` document (all historical days +
-   deferredItems — the "16 unfinished days" and everything before) into the new Supabase table.
-   Supervised, verified count-match before and after.
-5. **Retire Firestore** — once the Daily Log is confirmed on Supabase and history matches, remove the
-   Firebase/Firestore code path (`firebase.js`, the imports in `useDailyLog.js`). Confirm nothing else
-   imports it (grep already shows `useDailyLog.js` is the ONLY remaining Firestore consumer).
+1. **Rewire the data source off Firestore onto Supabase.** Replace
+   `scripts/board_meeting_export.mjs` (Firestore-only, now dead) with a Supabase read
+   using the existing house pattern in `src/utils/supabase.js` (jobs, `parking_lot`,
+   `pending_revenue_review`, completed-jobs data — whatever the live app already
+   tracks there). No new read-side tables needed for this step.
 
-**Out of scope:** any change to bujo *behaviour/UI* (bullets, checklists, catch-up interview,
-carry-forward logic all stay exactly as-is — this is a storage swap, not a redesign). No touching the
-already-migrated stores. No Brief B code.
+2. **Restructure `.claude/workflows/sunday-board-meeting.js` into the validated
+   10-step shape.** Per Council consensus on the pause-mechanism question: the
+   `Workflow` tool call only owns steps 1, 2, and the auto-reportable pieces of
+   Reports (Ops, Finance, quick-wins, Admin's scan-side candidate lists) — it
+   returns one structured report object and stops. **Steps 3 through 10 — including
+   Triage (8), Parking-lot review (9), and the final writes (10) — are NOT inside
+   any Workflow call.** They run as ordinary turns in this live chat session, using
+   the returned report object as input. This is also the fix for the Triage-seat
+   bug below, since step 8 was never going to work as a scripted `agent()` call.
+   1. Quick wins (short/easy schedulable jobs, smallest-hours-first) — unchanged from
+      today's file
+   2. Completed this week — auto-reported, unchanged
+   3. Not completed (and why) — agent lists candidates, **Trevor gives the reason
+      live in the session** (not auto-inferred)
+   4. Coming up — agent lists candidates, **Trevor flags which have real deadlines**
+      live (no `due:`-marker parsing — rejected earlier as overbuilding)
+   5. Admin — parts to chase / tools to fix or buy / customers needing a call.
+      **Both sourced ways, per Trevor's answer:** scan job data for signals (parts-
+      blocked status, customer-waiting flags — this already exists in the current
+      Admin seat prompt) AND Trevor adds anything live that isn't captured anywhere
+   6. Challenges from the past week — live, agent may ask follow-ups
+   7. Lessons to learn — live
+   8. Triage — urgent pass on the **real job backlog** (not the app/dev parking
+      lot) — what moves, what's dead weight, what's an emergency. This is a
+      correction to the current file, whose "Triage seat" does the wrong thing
+      (it currently triages `admin/context/parking-lot.md`, the app/dev backlog)
+   9. Parking lot review — the app/dev backlog (`admin/context/parking-lot.md`),
+      kept as its own separate step so it doesn't dilute #8
+   10. Plan for the coming week — once Trevor decides, the agent writes:
+       - the week's schedule into `scheduledSlots`/`calendarSlot`
+       - the picked jobs into the existing `focus_list` table (via the existing
+         `saveFocusList`/`useFocusList` pattern — no schema change, just a caller)
+       - the Admin seat's parts-to-chase items into a **new** `parts_to_order` table
+
+3. **New table: `parts_to_order`.** Columns: `id`, `description` (text), `category`
+   (text: `'part' | 'tool' | 'other'`, default `'part'`), `needed_for_job` (plain
+   nullable TEXT — not a foreign key, so removing/completing a job never cascades
+   into deleting a still-open item), `added_at`, `resolved` (bool, default false —
+   renamed from `ordered` since "fix this tool" isn't an "order"). Load/save/subscribe
+   functions in `supabase.js` matching the house pattern (closest precedent:
+   `pending_revenue_review`'s per-item CRUD, not the parking-lot clear-and-reinsert —
+   items should persist individually across weeks until checked off, not get wiped
+   each run). Needs one new function beyond the `pending_revenue_review` precedent:
+   `markPartResolved(id, resolved)` (in-place update — no existing table does this).
+
+4. **Fix two pre-existing Supabase bugs, found independently by both Council
+   reviewers, that would otherwise make the rebuilt meeting non-functional:**
+   - **`backlog` never actually saves.** `upsertJobsBatch()` (`src/utils/supabase.js`)
+     and `src/utils/migrate.js` write `job.VB`/`job.BL`/`job.PJ` (uppercase), but the
+     app's job objects only ever have `job.vb`/`job.backlog`/`job.project` (lowercase
+     — set in `src/data/jobs.js` from the sheet's `BL` column). Confirmed by Trevor:
+     backlog is determined in the Google Sheet column, so this is purely a
+     write-path field-name bug, not a data problem. Since `backlog` is the base
+     filter almost every report step derives from (quick-wins, schedulable,
+     parts-blocked, stuck30/60), this must be fixed or the meeting reports near-empty
+     on real data. Fix: rename the write-path fields to match (`job.vb`/`job.backlog`/
+     `job.project`).
+   - **`completed_jobs` drops invoice data.** The table has no `invoice_amount`/
+     `week_key` columns, and `saveCompletedJobs()` never writes them even though
+     `handleMarkDone()` (`src/hooks/useJobs.js`) computes both locally. Add the two
+     columns and map them in `saveCompletedJobs()`/`loadCompletedJobs()`, or the
+     Finance seat's `invoicedTotal` always reports $0.
+   - **`days` (job age) has no Supabase equivalent** — no column stores it, and
+     Supabase's `created_at` is row-creation time, not job-intake date. Rather than
+     silently reporting wrong "stuck N days" numbers, the Builder should either add
+     a real intake-date column sourced from the CSV import, or explicitly disable
+     stuck30/60-style age reporting and say so plainly in the report text. Trevor's
+     call at Live Test if not obvious — not a silent guess.
+
+**Out of scope:**
+- No new UI screen for the meeting itself (no `BoardMeetingPage`, no walkthrough
+  cards) — an earlier direction in this design process, explicitly superseded.
+- No embedded in-app AI chat panel — explicitly ruled out; the "interaction" is this
+  chat session itself, not a new app feature.
+- No changes to CSV import, PDF-drop, or any other parked idea from the original
+  handoff file.
+- No behavior change to the existing Focus-list read-side UI (Sidebar/JobShelf/
+  DailyLog already highlight focus jobs correctly).
+- Deciding the fate of `scripts/seed_focus_list.mjs` (stale one-off script) — separate
+  call, not bundled here.
 
 ---
 
-## What the code actually does today
+## Why this touches blast-radius files
 
-**Firestore, one document: `ggnz/dailyLogs`** (`useDailyLog.js:31`), shape:
-```
-{ logs: { "2026-07-24": { bullets: [...], closedAt, locked }, ... }, deferredItems: [...] }
-```
-- **Read:** `onSnapshot(DAILY_LOGS_DOC())` real-time listener (`:137`), ignores own pending writes.
-- **Write:** debounced 300ms `performSave()` (`:157`) → `setDoc(..., patch, { merge: true })` with a
-  **per-date-key** `logs` patch + `deferredItems` only when touched. Merge-safe by design.
-- **Guards:** `readyRef` (no write before first load), eager flush on `visibilitychange`/`pagehide`.
-- Gated by `if (!isSupabaseConfigured()) return;` — so it runs Firestore *even in Supabase mode*.
-
-The ONLY remaining Firestore imports in the whole app are `firebase.js` (the plumbing) and
-`useDailyLog.js` (the one consumer). Everything else is Supabase.
-
----
-
-## The real design decisions (for the Council)
-
-1. **Table shape.** Two candidates:
-   - **(A) One row per day** — `daily_logs(date_key PK, bullets JSONB, closed_at, locked, updated_at)`
-     + a separate singleton/table for `deferredItems`. Maps cleanly onto the existing per-date-key
-     merge writes and keeps multi-device safety. Recommended — mirrors how the current code already
-     thinks.
-   - **(B) One JSONB blob row** mirroring the Firestore document exactly (one row holding the whole
-     `{logs, deferredItems}`). Least code change, but re-introduces whole-document writes — the exact
-     clobber risk the per-key merge was built to avoid. Not recommended.
-   Council confirms A vs B and the exact columns/keys before the builder commits.
-
-2. **Realtime vs echo.** The Supabase subscribe pattern here re-loads the whole table on any change
-   (see `subscribeToParkingLot`). Council should confirm this won't fight the local optimistic state /
-   cause a save-echo loop for the Daily Log the way the handoff flagged for `scheduled_slots`.
-
-3. **Backfill mechanics.** How the one-time Firestore→Supabase copy runs (a throwaway script vs a
-   one-shot in-app path), and how we prove no day is dropped (row-count + spot-check specific dates).
+Step 10 writes `scheduledSlots`/`calendarSlot` directly — on the blast-radius list in
+`CLAUDE.md`. Full Agent-Team Protocol applies: Council → Builder (staging branch) →
+Independent Verifier → Live Test → Merge on Trevor's "yp". The `focus_list` write is
+a new caller on an existing, already-safe table (no schema risk). The
+`parts_to_order` table is new but additive and isolated — nothing else in the app
+reads or writes it yet, so its risk is contained to "does the new table/functions
+work," not "did we break something existing."
 
 ## Risks to watch
-- **This is real historical data.** Months of daily logs live in that Firestore doc. Backfill must be
-  verified count-matched; Firestore code is not deleted until Supabase is confirmed to hold everything.
-- One production Supabase DB, no sandbox — every write is real (per handoff). Backfill needs a stated
-  recovery plan (Firestore doc stays untouched as the fallback copy until sign-off).
-- Must not regress the 2026-07-05 data-loss guards (load-gate, no blind whole-doc writes).
+
+- One production Supabase DB, no sandbox — the three end-of-meeting writes are real
+  writes on first live run. Verifier should confirm each write path individually
+  before the first real Sunday run.
+- **Naming collision:** the Supabase `parking_lot` table (`loadParkingLot`/
+  `saveParkingLot` in `supabase.js`, backs the in-app `ParkingLotPage.jsx` —
+  app/product feature ideas) is unrelated to `admin/context/parking-lot.md` (the
+  file steps 8/9 actually need). Builder must not wire step 9 to the Supabase
+  table by mistake — it's the markdown file.
+- `days`/stuck-N-days reporting has no data source post-Firestore (see scope
+  item 4) — Builder must either add a real column or explicitly degrade this
+  report, never guess silently.
+
+## Council findings (resolved into scope above)
+
+Both independent Council reviewers reached the same conclusions on all three
+questions — see scope items 2, 3, and 4 above for the resolutions. Full reviewer
+output available in this session's transcript if a rationale needs re-checking.
 
 ---
 
 ## Method — agent-team protocol
 
-- **Council** — two independent agents. Primary questions: table shape (A vs B), echo/realtime safety,
-  and backfill+verification approach.
-- **Builder** — staging branch, supervised. Adds the Supabase table + functions, rewires
-  `useDailyLog.js`, writes the backfill, does NOT delete Firestore until history is verified.
-- **Independent verifier** — separate agent: confirms a today-drop bujo line now survives a refresh,
-  historical days still load, multi-device per-key writes don't clobber, and the load-gate still holds.
-- **Live test** — Trevor at the keyboard: drop a job on today → refresh → bujo line stays. Open an old
-  day → history intact. Then, only after that passes, Firestore removal.
+- **Council — DONE.** Two independent agents reviewed. Findings folded into scope
+  above (items 2, 3, 4).
+- **Builder — starting now.** Staging branch. Rewires the export, restructures the
+  workflow file per the Workflow/chat split, adds the `parts_to_order` table +
+  functions, fixes the `bl`/`vb`/`pj` write-path bug and the `completed_jobs`
+  invoice/week columns, resolves the `days` gap, wires the three end-of-meeting
+  writes.
+- **Independent verifier** — separate agent: confirms the Supabase read returns
+  equivalent data to the old Firestore export for every field the Reports/Schedule
+  phases use, confirms the Triage seat now targets the real job backlog (not
+  parking-lot.md), confirms all three end-of-meeting writes land correctly and don't
+  collide with existing tables/hooks.
+- **Live test** — Trevor runs the rebuilt meeting live, this Sunday if ready: quick
+  wins/completed/admin auto-report correctly, live-input steps genuinely pause for
+  his input, and after Plan for the coming week, the schedule/focus list/parts list
+  all show up correctly in the actual app.
 - **Merge** — Trevor's "yp".
 
 ---
 
-## Approve?
+## Approved
 
-Reply **"yp"** to approve this scope. First step after approval is the Council on the table-shape /
-backfill questions. Nothing built or written before you say so.
+Scope amendment approved via "yp" (2026-07-25, in response to the two bug findings).
+Builder starts on a staging branch next.
