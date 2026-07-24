@@ -24,9 +24,13 @@ import { createClient } from '@supabase/supabase-js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
-function loadEnvLocal() {
-  const text = readFileSync(join(root, '.env.local'), 'utf8');
-  const env = {};
+function loadEnvFile(name, env) {
+  let text;
+  try {
+    text = readFileSync(join(root, name), 'utf8');
+  } catch {
+    return env; // file may not exist — keys might live in the other one
+  }
   for (const line of text.split('\n')) {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
     if (m) env[m[1]] = m[2].trim();
@@ -34,7 +38,16 @@ function loadEnvLocal() {
   return env;
 }
 
-const env = loadEnvLocal();
+// Keys are split across files on Micky: Firebase in .env.local, Supabase in
+// .env. Load both; .env.local wins on any overlap (Vite convention).
+function loadEnv() {
+  const env = {};
+  loadEnvFile('.env', env);
+  loadEnvFile('.env.local', env);
+  return env;
+}
+
+const env = loadEnv();
 
 // ---- 1. Read the Firestore doc -------------------------------------------
 const app = initializeApp({
