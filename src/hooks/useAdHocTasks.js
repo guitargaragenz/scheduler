@@ -20,8 +20,8 @@ function computeSlotKeys(date, hour, minute, hours) {
 }
 
 // Ad-hoc maintenance tasks — quick bujo notes scheduled onto the calendar
-// without going through the CSV job pipeline. Stored in their own Firestore
-// doc (see utils/firebase.js) so they never touch the `jobs` array or the
+// without going through the CSV job pipeline. Stored in their own Supabase
+// table (see utils/supabase.js) so they never touch the `jobs` array or the
 // CSV drift-safety check.
 export function useAdHocTasks() {
   const [adHocTasks, setAdHocTasks] = useState([]);

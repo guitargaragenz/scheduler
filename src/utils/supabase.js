@@ -771,6 +771,147 @@ async function loadCompletedJobs() {
   }
 }
 
+// ============ DAILY LOG (bujo) ============
+//
+// Two tables: daily_logs (one row per local date_key) + deferred_items (one
+// row per deferred item). Writes are per-key upserts (onConflict), NOT the
+// parking-lot clear-and-re-insert — clearing would wipe months of log history
+// on every save. loadDailyLogs() reconstructs the exact { logs, deferredItems }
+// shape useDailyLog.js expects; the per-key writers touch only the keys/ids the
+// caller changed so two devices editing different days never clobber each other.
+
+export async function loadDailyLogs() {
+  const empty = { logs: {}, deferredItems: [] };
+  try {
+    const [logsRes, deferredRes] = await Promise.all([
+      getClient().from('daily_logs').select('*'),
+      getClient().from('deferred_items').select('*').order('created_at', { ascending: true }),
+    ]);
+    if (logsRes.error) throw logsRes.error;
+    if (deferredRes.error) throw deferredRes.error;
+
+    const logs = {};
+    (logsRes.data || []).forEach(row => {
+      logs[row.date_key] = {
+        bullets: row.bullets || [],
+        closedAt: row.closed_at || null,
+        locked: row.locked || false,
+      };
+    });
+
+    const deferredItems = (deferredRes.data || []).map(row => ({
+      id: row.id,
+      jobId: row.job_id,
+      bulletText: row.bullet_text,
+      text: row.text,
+      reason: row.reason,
+      createdAt: row.created_at,
+    }));
+
+    return { logs, deferredItems };
+  } catch (e) {
+    console.error('Supabase load daily logs error:', e);
+    // Signal failure with null so the hook's load-gate does NOT flip ready on a
+    // failed read (an empty-object fallback would look like a real empty load
+    // and re-open the 2026-07-05 data-loss window).
+    return null;
+  }
+}
+
+// Upsert only the touched date_keys. `days` is an array of
+// { dateKey, day: { bullets, closedAt, locked } } — closeDay touches 2+ days
+// (today + tomorrow) in one flush, resolveStaleDays touches many.
+export async function saveDailyLogDays(days) {
+  if (!days || days.length === 0) return { ok: true };
+  try {
+    const records = days.map(({ dateKey, day }) => ({
+      date_key: dateKey,
+      bullets: day.bullets || [],
+      closed_at: day.closedAt || null,
+      locked: day.locked || false,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await getClient()
+      .from('daily_logs')
+      .upsert(records, { onConflict: 'date_key' });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase save daily log days error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Per-item deferred writes: upsert the items present now, delete the ids that
+// were removed. Never rewrites the whole table.
+export async function saveDeferredItems(upserts, removeIds) {
+  try {
+    if (removeIds && removeIds.length > 0) {
+      const { error } = await getClient()
+        .from('deferred_items')
+        .delete()
+        .in('id', removeIds);
+      if (error) throw error;
+    }
+    if (upserts && upserts.length > 0) {
+      const records = upserts.map(item => ({
+        id: item.id,
+        job_id: item.jobId ?? null,
+        bullet_text: item.bulletText ?? null,
+        text: item.text ?? null,
+        reason: item.reason ?? null,
+        created_at: item.createdAt || new Date().toISOString(),
+      }));
+      const { error } = await getClient()
+        .from('deferred_items')
+        .upsert(records, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase save deferred items error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// On any change, hand the freshly-loaded server state back to the hook, which
+// does the MERGE-not-replace (keep pending local keys, take server for the
+// rest). Deliberately NO `length > 0` non-empty guard — an empty daily log is
+// legitimate, unlike scheduled_slots. loadDailyLogs() returns null only on a
+// read error, which we skip so a transient failure can't blank local state.
+export function subscribeToDailyLogs(callback) {
+  try {
+    const reload = () => {
+      loadDailyLogs().then(state => {
+        if (state) callback(state);
+      }).catch(() => {
+        // Silently handle - RLS may be blocking
+      });
+    };
+    const channel = getClient()
+      .channel('public:daily_logs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_logs' },
+        reload
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deferred_items' },
+        reload
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') reload();
+      });
+    return () => {
+      channel.unsubscribe();
+    };
+  } catch (e) {
+    console.error('Supabase subscribe to daily logs error:', e);
+    return () => {};
+  }
+}
+
 // ============ ALIASES FOR COMPATIBILITY WITH FIREBASE API ============
 
 // Alias: loadJobsMaster is the same as loadJobs

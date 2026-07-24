@@ -1,110 +1,115 @@
-# Pending Brief A — Stop Google Calendar sync from creating duplicate events (follow-up item 2)
+# Pending Brief C — Finish the migration: move the Daily Log (bujo) off Firestore onto Supabase
 
-**Status:** AWAITING TREVOR'S "yp"
+**Status:** APPROVED ("yp" 2026-07-24) — Council in progress
 **Date:** 2026-07-24
-**Repo state:** `main` @ `6a24e47`
-**Supersedes:** the un-split / re-split live-test brief — DONE (item 1, live-tested on #1621, both halves
-passed). Kept in git history (`git show 6a24e47:.claude/pending-brief.md`).
-**First of two briefs this round.** Brief B (items 3 + 4) comes after this ships. Item 2 is on its own
-because it's the only one that writes to Trevor's real work calendar.
+**Repo state:** `main` @ `b61c509` (Brief B — poller-save + phantom-bullet — SHIPPED & merged)
+**Root-cause fix, not a patch.** Trevor's call (2026-07-24): retire Firestore, don't band-aid it.
 
 ---
 
 ## Plain-English summary
 
-When the app syncs to your Google Calendar, it's meant to *update* the appointments it made last
-time. To do that it has to remember which appointments are its own. An older bug meant it never saved
-those "this is mine" tags. So on a sync, it looks at your calendar, sees no tags it recognises, and
-assumes nothing's there — then **makes fresh copies** of appointments that already exist. That's the
-duplication.
+The whole app was meant to be on Supabase. Jobs, calendar slots, parking lot, revenue — all
+moved. **One thing never got migrated: the Daily Log (the bujo).** It's the last piece still living
+on the old Firestore database.
 
-Half of this is **already fixed** since the handoff was written: the app now saves its "this is mine"
-tags after a sync (code at `useGoogleCalendar.js:197–260`). So *going forward* it remembers its own
-events.
+That leftover split is exactly what caused the bug you found: when you drop a job on today, the
+**calendar slot** saves to Supabase and sticks, but the **bujo line** saves to Firestore on a
+separate path that isn't landing — so a refresh keeps the calendar job but loses the bujo line.
 
-What's still open is the **first sync after the fix.** Any job that already has a real appointment on
-your calendar but no saved tag (made before the fix) will still get duplicated, because the app only
-knows "no tag = make a new one." This brief closes that gap and adds a safety net so it can never
-silently double-book your real calendar again.
-
-## Why it's careful
-
-It's the only follow-up that writes to your actual work calendar, and cleaning up dupes is manual.
-Everything here gets shown to you *before* it writes.
+Patching the Firestore write would fix the symptom while keeping a database we're trying to delete.
+Instead: **move the Daily Log onto Supabase like everything else, carry over the existing history,
+and retire Firestore entirely.** Kills this whole class of "one DB saved, the other didn't" bug.
 
 ---
 
 ## Scope — locked
 
-**In scope (all in `src/hooks/useGoogleCalendar.js`):**
+**In scope:**
 
-1. **Dry-run preview before writing.** A "Preview sync" that lists, per job, exactly what a real sync
-   would do — *Create new event* / *Update existing event* / *skip* — and writes nothing until Trevor
-   approves. This is the safety gate that stops silent duplication.
-2. **Match existing events by content, not just by saved tag.** For a job with no saved event ID,
-   before creating, look on the calendar for an event at the same date/time/title. If found, treat it
-   as an *update* and save that event's ID — instead of creating a duplicate. Match on **local**
-   start time (as lines 84–89 already do), not raw ISO, and align matches to `getJobBlocks` order for
-   multi-block jobs.
-3. **Leftover-appointments list in the preview (Council A).** The preview also lists any `#`-tagged
-   calendar event the sync did NOT match to a job — under "Possible leftover — not touched, review /
-   delete." This catches a job that was moved or renamed before this first sync (old event stranded at
-   the old time, new event created = a duplicate the plain preview would miss), and jobs that were
-   split after being synced. It only surfaces them for Trevor's eye; it does not auto-delete.
-4. Rely on the **already-shipped ID persistence** (lines 197–260, confirmed by Council B) — not
-   re-doing it, just building on it. Note: the content-match is **load-bearing**, not optional — it is
-   the only thing that stops re-duplication if a save fails and the tab is reloaded.
+1. **New Supabase home for the Daily Log** — a table (or tables) holding what Firestore holds today:
+   per-day logs (bullets + closedAt + locked), keyed by local date, plus the global `deferredItems`
+   list. Model decided WITH the council (see decision below).
+2. **`load / save / subscribe` functions in `supabase.js`** matching the existing house pattern
+   (`loadParkingLot`/`saveParkingLot`/`subscribeToParkingLot` etc.), BUT per-day-key upserts — NOT
+   the parking-lot "clear-and-re-insert," which would risk wiping log history.
+3. **Rewire `useDailyLog.js`** to read/write Supabase instead of Firestore, preserving every safety
+   property it currently has: the `readyRef` load-gate (no writing before first load — the 2026-07-05
+   data-loss guard), per-date-key merge writes (two devices touching different days don't clobber),
+   the eager flush on tab-hide/refresh, and `deferredItems` written only when actually changed.
+4. **One-time backfill** of the existing Firestore `ggnz/dailyLogs` document (all historical days +
+   deferredItems — the "16 unfinished days" and everything before) into the new Supabase table.
+   Supervised, verified count-match before and after.
+5. **Retire Firestore** — once the Daily Log is confirmed on Supabase and history matches, remove the
+   Firebase/Firestore code path (`firebase.js`, the imports in `useDailyLog.js`). Confirm nothing else
+   imports it (grep already shows `useDailyLog.js` is the ONLY remaining Firestore consumer).
 
-**Out of scope** (Brief B or later): the 30-second bump poller not saving (item 3), bullet-journal
-logging on failed saves (item 4), and everything in the handoff's "Also parked" list. No changes to
-`persistMove`, `useScheduler.js`, or `scheduled_slots`.
+**Out of scope:** any change to bujo *behaviour/UI* (bullets, checklists, catch-up interview,
+carry-forward logic all stay exactly as-is — this is a storage swap, not a redesign). No touching the
+already-migrated stores. No Brief B code.
 
 ---
 
 ## What the code actually does today
 
-`handleSync()` — `src/hooks/useGoogleCalendar.js:183`. Per scheduled job it builds time blocks, then:
-
-```js
-const existingIds = job.gcalEventIds?.length ? job.gcalEventIds
-  : job.gcalEventId ? [job.gcalEventId] : [];
-...
-const result = existingIds[i]
-  ? await updateEvent(existingIds[i], job, date, hour, durationHours, minute)
-  : await createEvent(job, date, hour, durationHours, minute);   // <-- duplicates when tag missing
+**Firestore, one document: `ggnz/dailyLogs`** (`useDailyLog.js:31`), shape:
 ```
+{ logs: { "2026-07-24": { bullets: [...], closedAt, locked }, ... }, deferredItems: [...] }
+```
+- **Read:** `onSnapshot(DAILY_LOGS_DOC())` real-time listener (`:137`), ignores own pending writes.
+- **Write:** debounced 300ms `performSave()` (`:157`) → `setDoc(..., patch, { merge: true })` with a
+  **per-date-key** `logs` patch + `deferredItems` only when touched. Merge-safe by design.
+- **Guards:** `readyRef` (no write before first load), eager flush on `visibilitychange`/`pagehide`.
+- Gated by `if (!isSupabaseConfigured()) return;` — so it runs Firestore *even in Supabase mode*.
 
-New IDs are now collected and batch-saved (`stateWrites` → `batchWriteJobsState`, lines 197–260), so
-persistence is handled. The remaining hole: `existingIds` empty → straight to `createEvent`, with no
-check for an event already on the calendar and no preview before it fires.
+The ONLY remaining Firestore imports in the whole app are `firebase.js` (the plumbing) and
+`useDailyLog.js` (the one consumer). Everything else is Supabase.
 
-### Two specific risks to watch for
+---
 
-1. **Content matching must be tight.** Match on date + start time + title (job identity). Too loose
-   and it could adopt an unrelated appointment as "its own" and then overwrite it on a later sync.
-   The preview (item 1) is the backstop — Trevor sees each *Update existing* line and can veto.
-2. **Preview must reflect the real write path.** The preview has to be generated by the *same* logic
-   that then executes, or it lies. Build the plan once, show it, then execute that exact plan — don't
-   compute intentions twice.
+## The real design decisions (for the Council)
+
+1. **Table shape.** Two candidates:
+   - **(A) One row per day** — `daily_logs(date_key PK, bullets JSONB, closed_at, locked, updated_at)`
+     + a separate singleton/table for `deferredItems`. Maps cleanly onto the existing per-date-key
+     merge writes and keeps multi-device safety. Recommended — mirrors how the current code already
+     thinks.
+   - **(B) One JSONB blob row** mirroring the Firestore document exactly (one row holding the whole
+     `{logs, deferredItems}`). Least code change, but re-introduces whole-document writes — the exact
+     clobber risk the per-key merge was built to avoid. Not recommended.
+   Council confirms A vs B and the exact columns/keys before the builder commits.
+
+2. **Realtime vs echo.** The Supabase subscribe pattern here re-loads the whole table on any change
+   (see `subscribeToParkingLot`). Council should confirm this won't fight the local optimistic state /
+   cause a save-echo loop for the Daily Log the way the handoff flagged for `scheduled_slots`.
+
+3. **Backfill mechanics.** How the one-time Firestore→Supabase copy runs (a throwaway script vs a
+   one-shot in-app path), and how we prove no day is dropped (row-count + spot-check specific dates).
+
+## Risks to watch
+- **This is real historical data.** Months of daily logs live in that Firestore doc. Backfill must be
+  verified count-matched; Firestore code is not deleted until Supabase is confirmed to hold everything.
+- One production Supabase DB, no sandbox — every write is real (per handoff). Backfill needs a stated
+  recovery plan (Firestore doc stays untouched as the fallback copy until sign-off).
+- Must not regress the 2026-07-05 data-loss guards (load-gate, no blind whole-doc writes).
 
 ---
 
 ## Method — agent-team protocol
 
-- **Council** — two independent agents review this brief + `handleSync` for anything the preview or
-  the content-match would miss (a job shape that dodges the match, a partial-block case).
-- **Builder** — executes on a staging branch, supervised from the main conversation.
-- **Independent verifier** — a separate agent runs the checklist against the preview: confirms the
-  preview matches what actually gets written, and that a job with a pre-existing untagged event
-  produces an *Update*, not a *Create*.
-- **Live test** — supervised, on ONE low-value job that already has an untagged event on the calendar:
-  run Preview, confirm it says *Update existing* (not *Create*), approve, then confirm no duplicate
-  appeared and the tag saved. Trevor at the keyboard.
-- **Merge** — Trevor's "yp" after the live test.
+- **Council** — two independent agents. Primary questions: table shape (A vs B), echo/realtime safety,
+  and backfill+verification approach.
+- **Builder** — staging branch, supervised. Adds the Supabase table + functions, rewires
+  `useDailyLog.js`, writes the backfill, does NOT delete Firestore until history is verified.
+- **Independent verifier** — separate agent: confirms a today-drop bujo line now survives a refresh,
+  historical days still load, multi-device per-key writes don't clobber, and the load-gate still holds.
+- **Live test** — Trevor at the keyboard: drop a job on today → refresh → bujo line stays. Open an old
+  day → history intact. Then, only after that passes, Firestore removal.
+- **Merge** — Trevor's "yp".
 
 ---
 
 ## Approve?
 
-Reply **"yp"** to approve this scope. Nothing gets built or written to your calendar before you say so.
-Once approved, first step is standing up the Council review, then the builder on a staging branch.
+Reply **"yp"** to approve this scope. First step after approval is the Council on the table-shape /
+backfill questions. Nothing built or written before you say so.
