@@ -49,6 +49,29 @@ export function hoursRange(h) {
   return lo === hi ? String(h) : `${lo}-${hi}`;
 }
 
+// Status-derived flags shared by the CSV importer (parseCSV below) and any
+// other reader that has to reconstruct them from a stored job row that only
+// carries status/action/backlog (e.g. scripts/board_meeting_export.mjs,
+// which reads Supabase rows rather than freshly-parsed CSV lines). Pulled out
+// as its own function so both places derive readyToStart/awaiting/inTransit/
+// schedulable from the exact same rule, rather than a second ad-hoc copy
+// silently drifting from this one over time.
+//
+// `backlog` here is already a boolean (obj.BL === 'Y' at CSV-parse time, or
+// the `bl` column read back as 'Y'/'N' from Supabase) — not the raw 'Y'/'N'
+// string.
+export function deriveJobStatusFlags(status, action, backlog) {
+  const act = (action || '').trim().toUpperCase();
+  // On Hold + BL=Y + GTS → graduated to schedulable (parts arrived / good to start)
+  const readyToStart = status === 'On Hold' && backlog === true && act === 'GTS';
+  // Waiting + INC or CI → awaiting customer/incubating (visible but locked)
+  const awaiting = status === 'Waiting' && ['INC', 'CI'].includes(act);
+  // In Transit → visible but locked
+  const inTransit = status === 'In Transit';
+  const schedulable = ['Active', 'Booked In'].includes(status) || readyToStart;
+  return { readyToStart, awaiting, inTransit, schedulable };
+}
+
 export function createSubtasks(job, benchHours = {}) {
   const d = (job.desc || '').toLowerCase();
 
@@ -160,17 +183,10 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
     headers.forEach((h, idx) => { obj[h] = cells[idx] || ''; });
 
     const status = obj.Status || '';
-    const act    = (obj.Action || '').trim().toUpperCase();
     const hours  = parseFloat(obj.Hours) || 0;
 
-    // On Hold + BL=Y + GTS → graduated to schedulable (parts arrived / good to start)
-    const readyToStart = status === 'On Hold' && obj.BL === 'Y' && act === 'GTS';
-    // Waiting + INC or CI → awaiting customer/incubating (visible but locked)
-    const awaiting     = status === 'Waiting' && ['INC', 'CI'].includes(act);
-    // In Transit → visible but locked
-    const inTransit    = status === 'In Transit';
-
-    const schedulable  = ['Active', 'Booked In'].includes(status) || readyToStart;
+    const { readyToStart, awaiting, inTransit, schedulable } =
+      deriveJobStatusFlags(status, obj.Action, obj.BL === 'Y');
 
     const accepted = ['On Hold', 'Waiting', 'To Be Inv', 'In Transit'];
     if (!schedulable && !accepted.includes(status)) continue;
