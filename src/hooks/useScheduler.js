@@ -195,15 +195,24 @@ export function useScheduler({
 
     const firstSlot = slots[0];
     const firstDate = weekDays[firstSlot.dayIdx];
-    if (upsertScheduledBullet && isToday(firstDate)) {
-      upsertScheduledBullet(job, firstSlot.hour, firstSlot.minute);
-    }
+    // Deferred until a confirmed-good save (or the no-Supabase path) so a
+    // reverted/inconsistent write never leaves a phantom Daily Log bullet for a
+    // placement that didn't actually stick.
+    const logBullet = () => {
+      if (upsertScheduledBullet && isToday(firstDate)) {
+        upsertScheduledBullet(job, firstSlot.hour, firstSlot.minute);
+      }
+    };
 
     if (isGenuineBump) {
       onBumpDetected?.({ job, fromSlot: previousSlot, toSlot: newCalendarSlot });
     }
 
-    if (isSupabaseConfigured()) {
+    if (!isSupabaseConfigured()) {
+      logBullet();
+      return;
+    }
+    {
       const addRecords = slots.map(({ dayIdx: d, hour: h, minute: m }) => ({
         slotId: slotKey(weekDays[d], h, m),
         jobId: job.id,
@@ -234,6 +243,7 @@ export function useScheduler({
       });
       if (outcome === 'ok') {
         justSavedAt.current = Date.now();
+        logBullet();
       } else if (outcome === 'reverted') {
         revert();
         showToast(`⚠ Save failed — #${job.job} snapped back, try again`);
@@ -330,12 +340,20 @@ export function useScheduler({
       : `🚨 #${job.job} scheduled ${dayName} ${timeStr}${splitNote}`;
     showToast(msg);
 
-    if (upsertScheduledBullet && isToday(firstDate)) {
-      upsertScheduledBullet(job, first.hour, first.minute);
-    }
+    // Deferred until a confirmed-good save (or the no-Supabase path) so a
+    // reverted/inconsistent write never leaves a phantom Daily Log bullet.
+    const logBullet = () => {
+      if (upsertScheduledBullet && isToday(firstDate)) {
+        upsertScheduledBullet(job, first.hour, first.minute);
+      }
+    };
     addChangelog(msg);
 
-    if (isSupabaseConfigured()) {
+    if (!isSupabaseConfigured()) {
+      logBullet();
+      return;
+    }
+    {
       const newCalendarSlot = slotKey(weekDays[first.dayIdx], first.hour, first.minute);
       const addRecords = slots.map(({ dayIdx: d, hour: h, minute: m }) => ({
         slotId: slotKey(weekDays[d], h, m),
@@ -385,6 +403,7 @@ export function useScheduler({
       });
       if (outcome === 'ok') {
         justSavedAt.current = Date.now();
+        logBullet();
       } else if (outcome === 'reverted') {
         revert();
         showToast(`⚠ Save failed — #${job.job} and any bumped jobs snapped back, try again`);

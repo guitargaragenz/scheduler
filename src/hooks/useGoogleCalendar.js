@@ -7,6 +7,11 @@ import { slotKey } from '../utils/calendar.js';
 import { findAvailableSlots, slotsNeeded } from '../utils/scheduler.js';
 import { isSupabaseConfigured, appendConflictLog, batchWriteJobsState } from '../utils/supabase.js';
 import { jobsStateFieldsFor } from '../data/joinJobs.js';
+// persistMove is a module-level primitive exported from useScheduler.js (same
+// import pattern as appendConflictLog above). The poll now writes bumps through
+// it so a GCal-driven reschedule survives a reload, exactly like a drag does.
+// No import cycle: useScheduler.js does not import this file.
+import { persistMove } from './useScheduler.js';
 
 export function useGoogleCalendar({
   weekDays,
@@ -31,6 +36,10 @@ export function useGoogleCalendar({
   const externalEventsRef = useRef([]);
   const pollRef = useRef(null);
   const lastEventSigRef = useRef('');
+  // Reentrancy guard for the 30s poll's DB write. The poll now persists bumps,
+  // and a slow write must not overlap the next tick's write (they'd race on the
+  // same rows). Set true before the persistMove await, reset in finally.
+  const pollWritingRef = useRef(false);
 
   useEffect(() => { externalEventsRef.current = externalEvents; }, [externalEvents]);
 
@@ -73,14 +82,23 @@ export function useGoogleCalendar({
       const end = new Date(weekDays[6]);
       end.setHours(23, 59, 59, 999);
       const events = await listEvents(start, end);
+      // Only run the bump+persist path when the calendar actually changed since
+      // last poll. Without this the block below would re-evaluate (and now
+      // re-write to the DB) every 30s even when nothing moved — the thrash guard.
+      let calendarChanged = false;
       if (events && events.length > 0) {
         const sig = events.map(e => `${e.id}:${e.updated}`).sort().join(',');
         if (sig !== lastEventSigRef.current) {
           lastEventSigRef.current = sig;
           setExternalEvents(events);
           externalEventsRef.current = events;
+          calendarChanged = true;
         }
       }
+      if (!calendarChanged) return;
+      // A previous cycle's DB write is still in flight — skip this tick rather
+      // than race it on the same slot/job rows.
+      if (pollWritingRef.current) return;
 
       // Build blocked slots from freshly fetched events
       const appointmentBlocked = new Set();
@@ -108,9 +126,18 @@ export function useGoogleCalendar({
           const jobMap    = Object.fromEntries(currentJobs.map(j => [j.id, j]));
           const updatedJobs = { ...jobMap };
 
+          // Batched persist arrays — one persistMove call carries every bumped
+          // job (relocated AND "no room") this cycle. Mirrors the urgent-drop
+          // handler's shape (useScheduler.js handleUrgentDrop).
+          const removedSlotKeys = [];   // conflicting slots freed
+          const addRecords = [];        // new slot rows for relocated jobs
+          const jobWrites = [];         // DB writes for every bumped job
+          const undoJobWrites = [];     // pre-poll DB state, for rollback
+
           const bumped = new Set();
           conflicts.forEach(([key, jobId]) => {
             delete nextSlots[key];
+            removedSlotKeys.push(key);
             bumped.add(jobId);
           });
 
@@ -118,13 +145,21 @@ export function useGoogleCalendar({
           bumped.forEach(jobId => {
             const job = jobMap[jobId];
             if (!job) return;
+            undoJobWrites.push({ id: jobId, data: jobsStateFieldsFor(job) });
             const needed = slotsNeeded(job);
             const newSlots = findAvailableSlots(0, 0, 0, needed, nextSlots, weekDays, appointmentBlocked);
             if (newSlots.length >= needed) {
               newSlots.forEach(({ dayIdx: d, hour: h, minute: m }) => {
-                nextSlots[slotKey(weekDays[d], h, m)] = jobId;
+                const k = slotKey(weekDays[d], h, m);
+                nextSlots[k] = jobId;
+                addRecords.push({ slotId: k, jobId, bench: job.bench });
               });
               const { hour: fh, minute: fm, dayIdx: fd } = newSlots[0];
+              const newCalendarSlot = slotKey(weekDays[fd], fh, fm);
+              // Persist the new anchor so screen and DB agree after reload — the
+              // slots move, so the job's calendarSlot must move with them.
+              updatedJobs[jobId] = { ...job, scheduled: true, calendarSlot: newCalendarSlot };
+              jobWrites.push({ id: jobId, data: jobsStateFieldsFor(updatedJobs[jobId]) });
               const newDay = weekDays[fd].toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric' });
               const msg = `#${job.job} ${job.mfr} ${job.model} bumped by GCal appointment → moved to ${newDay} ${fh}:${String(fm).padStart(2,'0')}`;
               addChangelog(msg);
@@ -132,6 +167,7 @@ export function useGoogleCalendar({
               bumpLogEntries.push({ ts: new Date().toISOString(), jobNum: job.job, mfr: job.mfr, model: job.model, newSlot: `${newDay} ${fh}:${String(fm).padStart(2,'0')}`, unscheduled: false });
             } else {
               updatedJobs[jobId] = { ...job, scheduled: false, calendarSlot: null };
+              jobWrites.push({ id: jobId, data: jobsStateFieldsFor(updatedJobs[jobId]) });
               const msg = `#${job.job} ${job.mfr} ${job.model} bumped by GCal appointment — no room this week, reschedule manually`;
               addChangelog(msg);
               showToast(`Job #${job.job} bumped by appointment — no room left this week`);
@@ -142,8 +178,36 @@ export function useGoogleCalendar({
             appendConflictLog(bumpLogEntries);
           }
 
+          // Optimistic screen update — then persist, and roll BOTH slots and
+          // jobs back to the pre-poll snapshot on any non-ok outcome so the
+          // screen never claims a bump the DB didn't accept.
           setScheduledSlots(nextSlots);
           setJobs(currentJobs.map(j => updatedJobs[j.id] || j));
+
+          if (isSupabaseConfigured() && jobWrites.length > 0) {
+            pollWritingRef.current = true;
+            try {
+              const outcome = await persistMove({
+                addRecords,
+                removedSlotKeys,
+                undoSlotAdds: removedSlotKeys.map(k => ({ slotId: k, jobId: currentSlots[k], bench: jobMap[currentSlots[k]]?.bench })),
+                undoSlotRemoves: addRecords.map(r => r.slotId),
+                jobWrites,
+                undoJobWrites,
+              });
+              if (outcome !== 'ok') {
+                setScheduledSlots(currentSlots);
+                setJobs(currentJobs);
+                // Force the next poll to re-evaluate this same calendar state
+                // (sig is unchanged, so without this the retry would be gated).
+                lastEventSigRef.current = '';
+                showToast('⚠ Calendar bump could not be saved — reverted, will retry');
+                addChangelog(`GCal bump save ${outcome} — reverted on-screen bump to pre-poll state`);
+              }
+            } finally {
+              pollWritingRef.current = false;
+            }
+          }
         }
       }
     };
