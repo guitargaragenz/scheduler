@@ -1,14 +1,18 @@
 # Pending Brief D — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
 
-**Status:** Items 5 and 6 independently re-verified (all PASS). Supabase SQL migration RUN and
-confirmed working. Item 7 (focus-list auto-wipe) fixed, independently verified (items 1–4, 6, 8
-PASS; item 7 flagged, then re-fixed in `a0133e3`), build clean. **Live Test PASSED 2026-07-25** at
-runtime, not by code reading — a blocked `loadFocusList()` read logged the read-only warning,
-attempted **zero** writes to `focus_list`, and left all 10 rows intact; a negative control with the
-`ready` gate removed attempted `DELETE` + restore `POST`, proving the gate is what prevents the
-wipe. Awaiting Trevor's "yp" to merge.
+**Status:** **SHIPPED & MERGED to `main` 2026-07-25** — Trevor approved the merge; all 10 staging
+commits fast-forwarded onto `main` at `da1d9af`, pushed, production build clean. Items 5 and 6 were
+independently re-verified (all PASS). Supabase SQL migration RUN and confirmed working. Item 7
+(focus-list auto-wipe) fixed, independently verified (items 1–4, 6, 8 PASS; item 7 flagged, then
+re-fixed in `a0133e3`), build clean. **Live Test PASSED 2026-07-25** at runtime, not by code
+reading — a blocked `loadFocusList()` read logged the read-only warning, attempted **zero** writes
+to `focus_list`, and left all 10 rows intact; a negative control with the `ready` gate removed
+attempted `DELETE` + restore `POST`, proving the gate is what prevents the wipe. One protocol step
+was deliberately skipped and disclosed: no Vercel preview click-through — testing ran on the dev
+server against the real Supabase database instead, which is the harder test. **Remaining:** Trevor
+runs the rebuilt Sunday board meeting live (Sunday 26 July 2026) — now off `main`.
 **Date:** 2026-07-25
-**Repo state:** `main` @ `5cee3db` (Brief C — Firestore fully retired — SHIPPED & merged)
+**Repo state:** `main` @ `da1d9af` (was `46a10ab` pre-merge; Brief C shipped earlier at `5cee3db`)
 **Supersedes:** Brief C's slot in this file (Brief C is done; this file was just left stale pointing at it)
 
 ---
