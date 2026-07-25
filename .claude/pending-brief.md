@@ -1,6 +1,12 @@
 # Pending Brief D — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
 
-**Status:** Items 5 and 6 independently re-verified (all PASS). Supabase SQL migration RUN and confirmed working. Item 7 (focus-list auto-wipe) fixed, build clean, not yet independently verified — ready for Live Test
+**Status:** Items 5 and 6 independently re-verified (all PASS). Supabase SQL migration RUN and
+confirmed working. Item 7 (focus-list auto-wipe) fixed, independently verified (items 1–4, 6, 8
+PASS; item 7 flagged, then re-fixed in `a0133e3`), build clean. **Live Test PASSED 2026-07-25** at
+runtime, not by code reading — a blocked `loadFocusList()` read logged the read-only warning,
+attempted **zero** writes to `focus_list`, and left all 10 rows intact; a negative control with the
+`ready` gate removed attempted `DELETE` + restore `POST`, proving the gate is what prevents the
+wipe. Awaiting Trevor's "yp" to merge.
 **Date:** 2026-07-25
 **Repo state:** `main` @ `5cee3db` (Brief C — Firestore fully retired — SHIPPED & merged)
 **Supersedes:** Brief C's slot in this file (Brief C is done; this file was just left stale pointing at it)
@@ -286,6 +292,93 @@ end to end ahead of Sunday. Verified in-app: pill reads "🎯 Focus (10)" and
 filters correctly. The shelf lists 7 of them, not 10 — #1626, #1698 and #1702
 are done and already on the calendar, so the shelf (jobs *waiting*) excludes
 them by design. These 10 are a placeholder; Sunday's meeting replaces them.
+
+**Live Test result, 2026-07-25 (the one thing item 7 still needed).** Proven at runtime, with
+Trevor at the keyboard, that a *failed read* refuses to arm the auto-save — previously only
+verified by reading the code. Method: a temporary `index.html` fetch shim rejected only
+`loadFocusList()`'s request (the one carrying `order=created_at`), leaving `saveFocusList()`'s
+own select/delete/insert fully live, so a broken gate would really have wiped the table.
+
+- **Fix in place:** the expected `Focus list failed to load — auto-save disabled this session…`
+  error logged, **zero** write requests to `focus_list` were attempted, and the table still held
+  all 10 rows.
+- **Negative control** (gate deliberately removed to re-create the pre-fix bug, writes blocked at
+  the shim so live data was never at risk): the app attempted `DELETE /focus_list?id=neq.` — the
+  wipe — followed by the restore `POST …on_conflict=id`, three times, then correctly stopped at
+  the 3-consecutive-failure cap. This proves the `ready` gate is what prevents the wipe, so the
+  clean run's "no writes" is a real pass and not a vacuous one. It also exercised the restore
+  path and confirmed it uses `upsert`.
+- Clean reload afterwards: pill back to "🎯 Focus (10)", zero console errors, table untouched at
+  10 rows. Both temporary edits reverted; `git status` clean apart from pre-existing untracked
+  handoff notes.
+
+**Pill-count decision — Trevor, 2026-07-25:** the pill should count **only the jobs it actually
+shows**, so the label always matches what appears when you click it. The focus list itself still
+stores all 10. **BUILT 2026-07-25** at Trevor's explicit go-ahead, in all three call sites — each
+already computes a `focusSet`, so the count now comes from that filtered list instead of
+`focusList.length`:
+
+- `src/components/JobShelf.jsx` — counts against `topLevel` (drops done + scheduled) → reads **7**
+- `src/components/Sidebar.jsx` — counts against `unscheduled` → reads **7**. Named
+  `focusPillCount`, because `focusCount` was already taken further down the file for the
+  focus-mode split count.
+- `src/components/DailyLogPage.jsx` — counts against `availableJobs` → reads **7** (see the
+  app-wide rule below; `availableJobs` now drops done + scheduled)
+
+Each gate (`focusList.length > 0`) was switched to the new count too, so a pill never renders with
+nothing behind it.
+
+**Follow-on fix — Trevor, 2026-07-25:** Trevor spotted that Week View's number was still 10 and
+called it: the sidebar was counting completed jobs. Root cause was not the pill — `unscheduled` in
+`src/components/Sidebar.jsx` filtered `!j.scheduled && !j.parentId` with **no `!j.done`**, so
+finished jobs were padding *every* section of the drag-onto-the-calendar list, not just the focus
+filter. The Job Shelf had always dropped them; the sidebar was the odd one out. Added `&& !j.done`.
+
+Verified live 2026-07-25: shelf pill reads "🎯 Focus (7)" and clicking it reveals exactly those 7
+(#1520, #1582, #1505, #1703, #1621, #1632, #1679); Week View sidebar pill now reads **7** and
+reveals the same 7; with the focus filter off the sidebar lists 44, matching the shelf's
+"44 JOBS WAITING" (it used to be padded with the done ones). Zero console errors,
+`npm run build` clean.
+
+**App-wide rule — Trevor, 2026-07-25:** *"A job completed is a job completed everywhere. Nothing
+should be tracking a completed job."* This supersedes the per-view reasoning above (I had argued the
+counts could legitimately differ per list, and that the phone Daily Log could keep done jobs because
+you might log against a just-finished job — Trevor rejected both). The pill now reads the same
+number on every device because every list starts from the same pool rule: **no done jobs, no
+scheduled jobs, no subtask children.**
+
+Swept every job-derived list in `src/` (`grep` for `jobs.filter` / `.done`) and fixed the four that
+were tracking finished work:
+
+- `src/components/JobShelf.jsx` — already correct (`!j.done` since it was written)
+- `src/components/Sidebar.jsx:62` — added `&& !j.done` (the root cause of the wrong Week View count)
+- `src/components/DailyLogPage.jsx:804` — `availableJobs` now `!j.done && !j.scheduled`
+- `src/components/JobsPage.jsx:17` — `topLevel` now `!j.parentId && !j.done`
+- `src/components/ProjectsPage.jsx:133` — `projects` now `!j.done`. No done project jobs exist right
+  now, so nothing visibly changed — this one is preventative.
+
+Deliberately left as-is, with reasons:
+
+- `src/components/CalendarGrid.jsx:29` (`isDone`) — renders the "✓ done" badge on work already on the
+  calendar. That's a *record* of what happened, not a list tracking outstanding work.
+- `src/hooks/useFirebase.js:22` and `src/hooks/useSupabase.js:25` — `!j.done` inside
+  deletion-detection guards. Blast-radius, untouched.
+- `src/App.jsx:789`, `src/hooks/useDailyLog.js`, `src/components/CatchUpInterview.jsx` — these are
+  `bullet.done` (log lines), a different thing from `job.done`.
+- `src/hooks/useGoogleCalendar.js:298` — filters scheduled jobs for calendar sync, same
+  record-not-list reasoning as CalendarGrid.
+- Everything else the grep turned up is a lookup by `id` / `parentId` (subtask expansion, deep
+  links, pomodoro), not a tracking list.
+
+Verified live 2026-07-25 against the database (4 done jobs: #1702, #1698, #1626, #1671):
+
+- Job Shelf (desktop): "🎯 Focus (7)", 44 jobs waiting
+- Week View sidebar: "🎯 Focus (7)", same 7, total 44 with focus off
+- Daily Log (phone, 375×812): "🎯 Focus (7)", tapping it reveals exactly those 7
+- Jobs register (phone): lists **45** — matching the 45 live top-level jobs in the DB, and none of
+  the four done ones. It listed 49 before.
+- Projects: 4 jobs, matching the 4 live top-level project jobs in the DB
+- Zero console errors, `npm run build` clean (672.56 kB / 1.67s)
 
 ## Council findings (resolved into scope above)
 

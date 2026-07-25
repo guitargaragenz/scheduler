@@ -56,13 +56,22 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     );
   };
 
-  const unscheduled   = jobs.filter(j => !j.scheduled && !j.parentId);
+  // Done jobs have no business in the drag-onto-the-calendar pool — the Job Shelf
+  // already drops them, this list was the odd one out and was padding every section
+  // (and the focus pill) with finished work.
+  const unscheduled   = jobs.filter(j => !j.scheduled && !j.parentId && !j.done);
   const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
   const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
   const readyToStart  = unscheduled.filter(j => j.readyToStart);
   const awaiting      = unscheduled.filter(j => j.awaiting);
   const inTransit     = unscheduled.filter(j => j.inTransit);
   const onHold        = unscheduled.filter(j => !j.schedulable && !j.awaiting && !j.inTransit);
+
+  // Count only the focus jobs the sidebar can actually list, so the pill's number
+  // matches what clicking it reveals. `unscheduled` has already dropped the done and
+  // scheduled ones, which is why this reads lower than focusList.length.
+  // Named apart from `focusCount` below, which is the split-count in focus mode.
+  const focusPillCount = unscheduled.filter(j => focusSet.has(String(j.job))).length;
 
   const isFocusMode = !!highlightedJobId;
 
@@ -171,7 +180,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
           </div>
 
           {/* Focus list toggle — jobs picked in the Sunday board-meeting interview */}
-          {focusList.length > 0 && !isFocusMode && (
+          {focusPillCount > 0 && !isFocusMode && (
             <div style={{ padding: '10px 16px 0' }}>
               <button
                 onClick={() => setShowFocusOnly(v => !v)}
@@ -183,7 +192,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                   color: showFocusOnly ? '#fcd34d' : '#94a3b8',
                 }}
               >
-                🎯 Focus ({focusList.length}){showFocusOnly ? ' — showing only these' : ''}
+                🎯 Focus ({focusPillCount}){showFocusOnly ? ' — showing only these' : ''}
               </button>
             </div>
           )}

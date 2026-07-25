@@ -12,7 +12,9 @@ export default function JobsPage({ jobs, onJobClick }) {
 
   // Show top-level jobs only (no subtask children as separate rows).
   // Subtask children have parentId set — they're accessible via expand toggle.
-  const topLevel = jobs.filter(j => !j.parentId);
+  // Done work is out: a completed job is completed everywhere, so it shouldn't
+  // pad the register, the bench filters, or the counts.
+  const topLevel = jobs.filter(j => !j.parentId && !j.done);
 
   // Which benches actually have top-level jobs
   const activeBenches = ['All', ...BENCH_ORDER.filter(b => topLevel.some(j => j.bench === b))];

@@ -797,12 +797,19 @@ export default function DailyLogPage({
 
   const pulledJobIds = new Set(bullets.map(b => b.jobId).filter(Boolean));
 
-  // Jobs available in the log job list (parent jobs only, not subtasks)
-  const availableJobs = jobs.filter(j => j.id && !j.parentId);
+  // Jobs available in the log job list (parent jobs only, not subtasks).
+  // Same pool rule as the Job Shelf and the Week View sidebar, so the focus count
+  // reads the same on every device: done work is finished, and work already booked
+  // on the calendar shows up in TODAY above rather than in this picker.
+  const availableJobs = jobs.filter(j => j.id && !j.parentId && !j.done && !j.scheduled);
 
   const benches = [...new Set(availableJobs.map(j => j.bench).filter(Boolean))].sort();
 
   const focusSet = new Set(focusList.map(String));
+  // Count only the focus jobs this list can actually show, so the pill's number
+  // matches what clicking it reveals. `availableJobs` has already dropped the done
+  // and scheduled ones, which is why this reads lower than focusList.length.
+  const focusCount = availableJobs.filter(j => focusSet.has(String(j.job))).length;
 
   const q = search.toLowerCase();
   const filteredJobs = availableJobs
@@ -1070,7 +1077,7 @@ export default function DailyLogPage({
                 display: 'flex', gap: 6, padding: '0 16px 10px',
                 overflowX: 'auto',
               }}>
-                {focusList.length > 0 && (
+                {focusCount > 0 && (
                   <button
                     onClick={() => setFocusOnly(v => !v)}
                     style={{
@@ -1082,7 +1089,7 @@ export default function DailyLogPage({
                       fontFamily: 'inherit', fontWeight: 700,
                     }}
                   >
-                    🎯 Focus ({focusList.length})
+                    🎯 Focus ({focusCount})
                   </button>
                 )}
                 {benches.map(b => {

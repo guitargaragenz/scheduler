@@ -129,8 +129,9 @@ export default function ProjectsPage({ jobs }) {
 
   const today = new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
 
-  // Only top-level project jobs
-  const projects = jobs.filter(j => j.project && !j.parentId);
+  // Only top-level project jobs, and only ones still live — a completed job is
+  // completed everywhere, so it shouldn't sit in a section or stretch the timeline.
+  const projects = jobs.filter(j => j.project && !j.parentId && !j.done);
 
   // Apply filter
   const filtered = actionFilter

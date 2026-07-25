@@ -70,6 +70,11 @@ export default function JobShelf({
     count: topLevel.filter(j => j.bench === bench).length,
   }));
 
+  // Count only the focus jobs this shelf can actually list, so the pill's number
+  // always matches what clicking it reveals. `topLevel` has already dropped the
+  // done and scheduled ones, which is why this reads lower than focusList.length.
+  const focusCount = topLevel.filter(j => focusSet.has(String(j.job))).length;
+
   const q = search.trim().toLowerCase();
   const searching = q.length > 0;
   const active = searching || !!selectedBench || focusOnly;
@@ -161,7 +166,7 @@ export default function JobShelf({
             }}
           />
         </div>
-        {focusList.length > 0 && (
+        {focusCount > 0 && (
           <button
             onClick={() => setFocusOnly(v => !v)}
             style={{
@@ -172,7 +177,7 @@ export default function JobShelf({
               color: focusOnly ? '#fcd34d' : '#94a3b8',
             }}
           >
-            🎯 Focus ({focusList.length}){focusOnly ? ' — showing only these' : ''}
+            🎯 Focus ({focusCount}){focusOnly ? ' — showing only these' : ''}
           </button>
         )}
         {!searching && !focusOnly && (
