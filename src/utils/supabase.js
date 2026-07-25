@@ -98,9 +98,19 @@ const JOB_COLUMN_MAP = {
   isSubtask: 'is_subtask',
   isDerived: 'is_derived',
   hasSubtasks: 'has_subtasks',
-  VB: 'vb',
-  BL: 'bl',
-  PJ: 'pj',
+};
+
+// vb/backlog/project are booleans on the app-shape job but stored as 'Y'/'N'
+// TEXT columns (vb/bl/pj) — same convention upsertJobsBatch() uses on the
+// CSV-import write path. A stale uppercase VB/BL/PJ key set used to sit in
+// JOB_COLUMN_MAP here, but app jobs have never had those keys (jobs.js has
+// always produced lowercase vb/backlog/project), so it silently matched
+// nothing and these three fields were dropped from every partial write that
+// went through toJobRow().
+const JOB_BOOLEAN_YN_COLUMN_MAP = {
+  vb: 'vb',
+  backlog: 'bl',
+  project: 'pj',
 };
 
 // Fields whose app name already matches the column name.
@@ -119,6 +129,8 @@ const JOB_PASSTHROUGH_FIELDS = new Set([
 export function toJobRow(fields) {
   const row = {};
   Object.keys(fields).forEach(k => {
+    const ynCol = JOB_BOOLEAN_YN_COLUMN_MAP[k];
+    if (ynCol) { row[ynCol] = fields[k] ? 'Y' : 'N'; return; }
     const col = JOB_COLUMN_MAP[k];
     if (col) row[col] = fields[k];
     else if (JOB_PASSTHROUGH_FIELDS.has(k)) row[k] = fields[k];
