@@ -1,6 +1,6 @@
 # Pending Brief D — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
 
-**Status:** COUNCIL COMPLETE, SCOPE AMENDED, RE-APPROVED ("yp" 2026-07-25) — Builder starting
+**Status:** VERIFIER COMPLETE (items 5 and 6 both independently re-verified, all PASS) — ready for Supabase SQL migration + Live Test
 **Date:** 2026-07-25
 **Repo state:** `main` @ `5cee3db` (Brief C — Firestore fully retired — SHIPPED & merged)
 **Supersedes:** Brief C's slot in this file (Brief C is done; this file was just left stale pointing at it)
@@ -145,6 +145,66 @@ work," not "did we break something existing."
 - `days`/stuck-N-days reporting has no data source post-Firestore (see scope
   item 4) — Builder must either add a real column or explicitly degrade this
   report, never guess silently.
+
+## Scope item 5 — Verifier finding, folded in via "yp" 2026-07-25
+
+**`normalizeJobsFromDb()` in `src/hooks/useSupabase.js` builds job objects with
+uppercase `VB`/`BL`/`PJ` property names, but the rest of the app has always read
+lowercase `job.vb`/`job.backlog`/`job.project`** (set in `src/data/jobs.js` at
+CSV-parse time — confirmed by Trevor: the *column* names have always been
+uppercase `VB`/`BL`/`PJ`, that's not new; what's wrong is this one function's
+output shape doesn't match what `JobCard.jsx`, `Sidebar.jsx`, and
+`ProjectsPage.jsx` actually read). Every job loaded from Supabase currently gets
+`job.vb`/`job.backlog`/`job.project` = `undefined` — the VB badge, the Sidebar
+active/backlog split, and the Projects page all silently see nothing, on every
+load, in the live app (not just the export script).
+
+Also confirmed by Verifier: `normalizeJobsFromDb()` never sets `schedulable`/
+`readyToStart`/`awaiting`/`inTransit` at all — these are the flags
+`deriveJobStatusFlags()` (added in commit `79b7f47`) computes, but nothing calls
+it from the Supabase read path.
+
+**Fix:** in `normalizeJobsFromDb()`, map `j.vb`/`j.bl`/`j.pj` to lowercase
+`vb`/`backlog`/`project` (matching `jobs.js`'s shape), and call
+`deriveJobStatusFlags(status, action, backlog)` per row to set `schedulable`/
+`readyToStart`/`awaiting`/`inTransit`, the same way `jobs.js` already does.
+Pre-existing bug, outside Brief D's original scope, folded in because it
+directly affects whether the board meeting's Supabase reads are accurate in the
+live app UI, not just in the export script.
+
+Fixed in commit `1cc0e43`. **Independently re-verified — all 5 checks PASS.**
+
+## Scope item 6 — found while cleaning up after item 5, 2026-07-25
+
+**`toJobRow()` / `JOB_COLUMN_MAP` in `src/utils/supabase.js` had the same
+uppercase-vs-lowercase mismatch, on the *write* side.** `JOB_COLUMN_MAP` still
+carried stale `VB`/`BL`/`PJ` keys, which never match a real app-shape job (always
+lowercase `vb`/`backlog`/`project` per `src/data/jobs.js:214-216`). So every
+partial write going through `toJobRow()` silently dropped those three fields
+instead of writing them to the `vb`/`bl`/`pj` columns.
+
+Found while investigating whether the Verifier's "harmless dead code" call on
+`toJobRow()` was safe to clean up. **The Verifier's dead-code claim was wrong** —
+`toJobRow()` is live, called from `saveJob()` (`supabase.js:58`) and
+`batchWriteJobsState()` (`supabase.js:1093`), with a real caller chain through
+`App.jsx:767` → `pickMasterFields()` → `saveJob()` → `toJobRow()`. Not
+destructive (columns omitted from a Supabase upsert aren't nulled, just left
+untouched), but real functionality loss on every partial save.
+
+**Fix:** added `JOB_BOOLEAN_YN_COLUMN_MAP` (`vb`→`vb`, `backlog`→`bl`,
+`project`→`pj`) with a boolean→`'Y'`/`'N'` transform in `toJobRow()`, checked
+before the `JOB_COLUMN_MAP` lookup — matching the `'Y'`/`'N'` convention
+`upsertJobsBatch()` already uses on the CSV-import write path
+(`supabase.js:196-198`), and what `normalizeJobsFromDb()` reads back
+(`useSupabase.js:35,60,62`). Committed as `978940f`.
+
+**Independently re-verified 2026-07-25 — all 7 checks PASS, verdict READY TO
+MERGE.** Verifier confirmed: the bug was real, the Y/N convention matches both
+the existing write path and the read path end-to-end, the caller chain is live
+(not dead code), full writes don't regress, and a partial write that omits `vb`
+entirely does *not* get coerced to `'N'` (`Object.keys(fields).forEach` only
+touches keys actually present). `npm run build` clean; only
+`src/utils/supabase.js` touched.
 
 ## Council findings (resolved into scope above)
 
