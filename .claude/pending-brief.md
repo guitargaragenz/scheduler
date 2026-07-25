@@ -1,6 +1,6 @@
 # Pending Brief D — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
 
-**Status:** VERIFIER COMPLETE (items 5 and 6 both independently re-verified, all PASS) — ready for Supabase SQL migration + Live Test
+**Status:** Items 5 and 6 independently re-verified (all PASS). Supabase SQL migration RUN and confirmed working. Item 7 (focus-list auto-wipe) fixed, build clean, not yet independently verified — ready for Live Test
 **Date:** 2026-07-25
 **Repo state:** `main` @ `5cee3db` (Brief C — Firestore fully retired — SHIPPED & merged)
 **Supersedes:** Brief C's slot in this file (Brief C is done; this file was just left stale pointing at it)
@@ -205,6 +205,55 @@ the existing write path and the read path end-to-end, the caller chain is live
 entirely does *not* get coerced to `'N'` (`Object.keys(fields).forEach` only
 touches keys actually present). `npm run build` clean; only
 `src/utils/supabase.js` touched.
+
+## Scope item 7 — focus-list auto-wipe, found 2026-07-25, approved ("yp to all")
+
+**Context:** Trevor noticed the Focus list had disappeared. Investigation showed
+the *historical* cause was the Firestore→Supabase migration in Brief C: the list
+lived at Firestore `ggnz/focusList`, only the Daily Log was migrated, no
+focus-list migration script was ever written, and the Supabase `focus_list`
+table has been empty since it was created. Trevor called this correctly ("it was
+there with firestore so must have dropped out when we scrapped firestore"); my
+initial lean toward the bug below as the cause was wrong. Recovered read-only
+from Firestore: 15 job IDs, `updatedAt` 2026-07-22 — **10 still map to live jobs,
+5 no longer exist.** Nothing has been written to Supabase; restoring them is a
+separate open decision for Trevor.
+
+**Separate real bug found during that investigation** (a *future* risk, not the
+historical cause, but it directly threatens this Brief's final step of writing
+picked jobs to `focus_list`): a single failed read on startup permanently
+deleted the entire focus list 500ms later.
+
+- `loadFocusList()` returned `[]` on error — indistinguishable from a genuinely
+  empty list.
+- `useFocusList.js` set `ready = true` regardless, arming the debounced
+  auto-save.
+- `saveFocusList()` clears the whole table before inserting, so that auto-save
+  wrote the bogus empty list over the real rows. Non-recoverable.
+- `clearFocusList()` swallowed its own errors, and a failed insert *after* a
+  successful clear left the table empty with no restore.
+
+**Fix** (`src/utils/supabase.js`, `src/hooks/useFocusList.js`):
+1. `loadFocusList()` returns `null` on genuine failure, `[]` only for a real
+   empty list.
+2. `useFocusList` only sets `ready` after a successful read — a failed read
+   leaves the session read-only (logged) rather than arming a destructive write.
+   A reload retries.
+3. `subscribeToFocusList()` drops realtime events whose re-read failed instead
+   of handing `null` to the caller.
+4. `saveFocusList()` snapshots existing rows, restores them if the insert fails,
+   refuses a non-array argument, and returns a success boolean.
+5. `clearFocusList()` now throws instead of swallowing, so a failed clear aborts
+   the save rather than inserting on top of rows it assumed were gone.
+6. `useFocusList` tracks the last-persisted value and skips the redundant
+   write-back that previously fired immediately after every load.
+
+Fixed directly rather than via subagent, same as item 6: contained to two
+functions plus one hook, and none of the blast-radius files (`scheduledSlots`,
+`calendarSlot`, `useGoogleCalendar.js`, `useFirebase.js`, `jobs[]` shape) are
+touched. `npm run build` clean; `git status --short` shows only the two intended
+files. **Not yet independently verified — pending Trevor's call on whether it
+needs a Verifier pass or can be eyeballed at Live Test.**
 
 ## Council findings (resolved into scope above)
 

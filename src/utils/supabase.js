@@ -565,6 +565,11 @@ export function subscribeToAdHocTasks(callback) {
 
 // ============ FOCUS LIST ============
 
+// Returns an array of job IDs on success, or null if the read genuinely
+// failed. The null/[] distinction matters: callers must never treat a failed
+// read as "the focus list is empty" and then persist that emptiness back —
+// saveFocusList() clears the table before inserting, so one bad read followed
+// by an auto-save would permanently destroy the list.
 export async function loadFocusList() {
   try {
     const { data, error } = await getClient()
@@ -575,37 +580,62 @@ export async function loadFocusList() {
     return (data || []).map(d => d.job_id);
   } catch (e) {
     console.error('Supabase load focus list error:', e);
-    return [];
+    return null;
   }
 }
 
+// Replaces the whole list. Snapshots the existing rows first and restores them
+// if the insert fails, so a half-completed write can't leave the table empty.
+// Returns true on success, false on failure.
 export async function saveFocusList(jobIds) {
+  if (!Array.isArray(jobIds)) {
+    console.error('Supabase save focus list refused: expected an array, got', jobIds);
+    return false;
+  }
+  let previousRows = null;
   try {
+    const { data: prev, error: prevError } = await getClient()
+      .from('focus_list')
+      .select('*');
+    if (prevError) throw prevError;
+    previousRows = prev || [];
+
     await clearFocusList();
+
     const records = jobIds.map((jobId, idx) => ({
       id: `fl-${Date.now()}-${idx}`,
       job_id: jobId,
       created_at: new Date().toISOString(),
     }));
-    const { error } = await getClient()
-      .from('focus_list')
-      .insert(records);
-    if (error) throw error;
+    if (records.length) {
+      const { error } = await getClient()
+        .from('focus_list')
+        .insert(records);
+      if (error) throw error;
+    }
+    return true;
   } catch (e) {
     console.error('Supabase save focus list error:', e);
+    if (previousRows && previousRows.length) {
+      try {
+        await getClient().from('focus_list').insert(previousRows);
+        console.error('Supabase save focus list: restored previous rows after failed write');
+      } catch (restoreError) {
+        console.error('Supabase save focus list: RESTORE FAILED', restoreError);
+      }
+    }
+    return false;
   }
 }
 
+// Throws on failure — saveFocusList() needs to know the clear didn't happen
+// so it can abort rather than insert on top of rows it thinks are gone.
 async function clearFocusList() {
-  try {
-    const { error } = await getClient()
-      .from('focus_list')
-      .delete()
-      .neq('id', '');
-    if (error) throw error;
-  } catch (e) {
-    console.error('Supabase clear focus list error:', e);
-  }
+  const { error } = await getClient()
+    .from('focus_list')
+    .delete()
+    .neq('id', '');
+  if (error) throw error;
 }
 
 export function subscribeToFocusList(callback) {
@@ -616,7 +646,11 @@ export function subscribeToFocusList(callback) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'focus_list' },
         () => {
-          loadFocusList().then(callback);
+          // null means the re-read failed — drop the event rather than hand
+          // the caller a bogus value it might persist back over good data.
+          loadFocusList().then(data => {
+            if (data !== null) callback(data);
+          });
         }
       )
       .subscribe();
