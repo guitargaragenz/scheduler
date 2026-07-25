@@ -7,6 +7,7 @@ import {
   appendConflictLog,
 } from '../utils/supabase.js';
 import { expandAutoSplits } from '../data/joinJobs.js';
+import { deriveJobStatusFlags } from '../data/jobs.js';
 
 // Detect top-level jobs that disappeared from the jobs table
 // (e.g., CSV sync removed them without marking done in-app)
@@ -30,45 +31,54 @@ function detectDisappearedJobs(prevJobs, incomingJobs) {
 // not optional bookkeeping: auto-split cards are derived-not-stored by
 // design, so without it big jobs simply never break into bench cards.
 function normalizeJobsFromDb(dbJobs, benchHours = {}) {
-  const mapped = dbJobs.map(j => ({
-    id: j.id,
-    parentId: j.parent_id || null,
-    job: j.job,
-    customer: j.customer,
-    mfr: j.mfr,
-    model: j.model,
-    status: j.status,
-    bench: j.bench,
-    // Coerced: a NUMERIC column can come back as a string over PostgREST,
-    // and every split calculation in createSubtasks() is arithmetic — a
-    // string here turns the derived cards' hours into NaN.
-    hours: j.hours == null ? j.hours : Number(j.hours),
-    scheduled: j.scheduled,
-    calendarSlot: j.calendar_slot || null,
-    gcalEventId: j.gcal_event_id || null,
-    desc: j.desc,
-    tag: j.tag,
-    action: j.action,
-    VB: j.vb,
-    BL: j.bl,
-    PJ: j.pj,
-    hasSubtasks: j.has_subtasks,
-    subtasks: j.subtasks || [],
-    isSplit: j.is_split,
-    noAutoSplit: j.no_auto_split,
-    isSubtask: j.is_subtask,
-    isDerived: j.is_derived || false,
-    sessionNote: j.session_note,
-    sessionIndex: j.session_index,
-    sessionTotal: j.session_total,
-    pieceDone: j.piece_done,
-    done: j.done,
-    gcalEventIds: j.gcal_event_ids || [],
-    pomoLog: j.pomo_log || [],
-    bumpHistory: j.bump_history || [],
-    created_at: j.created_at,
-    updated_at: j.updated_at,
-  }));
+  const mapped = dbJobs.map(j => {
+    const backlog = j.bl === 'Y' || j.bl === true;
+    const statusFlags = deriveJobStatusFlags(j.status, j.action, backlog);
+
+    return {
+      id: j.id,
+      parentId: j.parent_id || null,
+      job: j.job,
+      customer: j.customer,
+      mfr: j.mfr,
+      model: j.model,
+      status: j.status,
+      bench: j.bench,
+      // Coerced: a NUMERIC column can come back as a string over PostgREST,
+      // and every split calculation in createSubtasks() is arithmetic — a
+      // string here turns the derived cards' hours into NaN.
+      hours: j.hours == null ? j.hours : Number(j.hours),
+      scheduled: j.scheduled,
+      calendarSlot: j.calendar_slot || null,
+      gcalEventId: j.gcal_event_id || null,
+      desc: j.desc,
+      tag: j.tag,
+      action: j.action,
+      // Lowercase to match the shape src/data/jobs.js has always produced
+      // (job.vb/job.backlog/job.project) — the uppercase VB/BL/PJ here was
+      // dead weight nothing downstream ever read.
+      vb: j.vb === 'Y' || j.vb === true,
+      backlog,
+      project: j.pj === 'Y' || j.pj === true,
+      ...statusFlags,
+      hasSubtasks: j.has_subtasks,
+      subtasks: j.subtasks || [],
+      isSplit: j.is_split,
+      noAutoSplit: j.no_auto_split,
+      isSubtask: j.is_subtask,
+      isDerived: j.is_derived || false,
+      sessionNote: j.session_note,
+      sessionIndex: j.session_index,
+      sessionTotal: j.session_total,
+      pieceDone: j.piece_done,
+      done: j.done,
+      gcalEventIds: j.gcal_event_ids || [],
+      pomoLog: j.pomo_log || [],
+      bumpHistory: j.bump_history || [],
+      created_at: j.created_at,
+      updated_at: j.updated_at,
+    };
+  });
 
   return expandAutoSplits(mapped, benchHours);
 }
