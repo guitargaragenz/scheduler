@@ -618,7 +618,13 @@ export async function saveFocusList(jobIds) {
     console.error('Supabase save focus list error:', e);
     if (previousRows && previousRows.length) {
       try {
-        await getClient().from('focus_list').insert(previousRows);
+        // upsert, not insert: the failure may have been the clear itself, in
+        // which case the rows are still present and an insert would collide on
+        // the primary key. upsert restores in both cases.
+        const { error: restoreError } = await getClient()
+          .from('focus_list')
+          .upsert(previousRows, { onConflict: 'id' });
+        if (restoreError) throw restoreError;
         console.error('Supabase save focus list: restored previous rows after failed write');
       } catch (restoreError) {
         console.error('Supabase save focus list: RESTORE FAILED', restoreError);

@@ -17,6 +17,14 @@ export function useFocusList() {
   // Serialized copy of what the database is known to hold, so the save effect
   // can skip the no-op write that otherwise fires immediately after load.
   const persistedRef = useRef(null);
+  // Bumped after every completed save so the save effect re-runs and re-diffs
+  // against whatever state exists *now*. Without this, a change made while a
+  // save was in flight could match the pre-save `persistedRef`, skip, and then
+  // be left stranded when the save updated `persistedRef` underneath it.
+  const [saveTick, setSaveTick] = useState(0);
+  // Consecutive failed saves. Caps the retry loop so a persistently failing
+  // database can't be hammered every 500ms forever.
+  const failedSavesRef = useRef(0);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) { setReady(true); return; }
@@ -41,15 +49,26 @@ export function useFocusList() {
     if (!isSupabaseConfigured() || !ready) return;
     const next = JSON.stringify(focusList);
     if (next === persistedRef.current) return;
+    if (failedSavesRef.current >= 3) {
+      console.error('Focus list: 3 consecutive failed saves — auto-save stopped. Reload to retry.');
+      return;
+    }
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       justSavedAt.current = Date.now();
       saveFocusList(focusList).then(ok => {
-        if (ok) persistedRef.current = next;
+        if (ok) {
+          persistedRef.current = next;
+          failedSavesRef.current = 0;
+        } else {
+          failedSavesRef.current += 1;
+        }
+        // Re-diff against current state: it may have changed mid-flight.
+        setSaveTick(t => t + 1);
       });
     }, 500);
     return () => clearTimeout(saveTimerRef.current);
-  }, [focusList, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [focusList, ready, saveTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { focusList, setFocusList };
 }

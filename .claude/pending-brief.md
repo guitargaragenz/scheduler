@@ -252,8 +252,40 @@ Fixed directly rather than via subagent, same as item 6: contained to two
 functions plus one hook, and none of the blast-radius files (`scheduledSlots`,
 `calendarSlot`, `useGoogleCalendar.js`, `useFirebase.js`, `jobs[]` shape) are
 touched. `npm run build` clean; `git status --short` shows only the two intended
-files. **Not yet independently verified — pending Trevor's call on whether it
-needs a Verifier pass or can be eyeballed at Live Test.**
+files.
+
+**Independently verified 2026-07-25 — items 1, 2, 3, 4, 6, 8 PASS; item 7 FAIL;
+verdict NEEDS WORK.** The original destructive wipe is genuinely fixed, but the
+Verifier found a real lost-update introduced by the `persistedRef` skip: with
+persisted = X, a save of Y in flight, and the user reverting to X mid-flight,
+the effect saw `next === persistedRef` and skipped, then the resolving save set
+`persistedRef = Y` — leaving local X, DB Y, nothing scheduled, and the realtime
+echo suppressed by the 3000ms `justSavedAt` window. It also flagged that the
+restore path used `insert`, which is guaranteed to collide on the primary key
+when the *clear* was what failed (rows still present).
+
+**Follow-up fix (commit below):**
+- `saveTick` state bumped after every completed save, added to the effect deps,
+  so the save effect re-diffs against current state once a save resolves —
+  closing the lost-update window.
+- `failedSavesRef` caps consecutive failed saves at 3, so the new retry-on-tick
+  behaviour can't hammer a failing database every 500ms.
+- Restore path switched from `insert` to `upsert(..., { onConflict: 'id' })`,
+  so it works whether the rows were deleted or are still present.
+
+Verifier's remaining open notes, accepted and NOT fixed here: (B) a failed save
+is console-only with no UI signal, and (C) a realtime event resolving before the
+initial load can pin stale data until reload. Both are low severity, and per
+`App.jsx:194` only `focusList` is consumed — `setFocusList` has no UI caller
+today, so neither can fire until this Brief wires board-meeting picks in. Worth
+revisiting when that lands.
+
+**Focus list restored 2026-07-25:** the 10 recovered IDs that still map to live
+jobs were written to `focus_list` at Trevor's request, to confirm the pill works
+end to end ahead of Sunday. Verified in-app: pill reads "🎯 Focus (10)" and
+filters correctly. The shelf lists 7 of them, not 10 — #1626, #1698 and #1702
+are done and already on the calendar, so the shelf (jobs *waiting*) excludes
+them by design. These 10 are a placeholder; Sunday's meeting replaces them.
 
 ## Council findings (resolved into scope above)
 
