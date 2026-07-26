@@ -116,7 +116,7 @@ const JOB_BOOLEAN_YN_COLUMN_MAP = {
 // Fields whose app name already matches the column name.
 const JOB_PASSTHROUGH_FIELDS = new Set([
   'id', 'job', 'customer', 'mfr', 'model', 'status', 'bench', 'hours',
-  'scheduled', 'done', 'subtasks', 'desc', 'tag', 'action',
+  'scheduled', 'done', 'subtasks', 'desc', 'tag', 'action', 'days',
   'created_at', 'updated_at',
 ]);
 
@@ -186,6 +186,15 @@ export async function upsertJobsBatch(jobsList) {
       desc: job.desc,
       tag: job.tag,
       action: job.action,
+      // Job age. Written on every CSV sync so it survives a page reload — it
+      // had no column at all until 2026-07-27, so `days` lived in memory only
+      // and every refresh silently reset every job to "unknown age".
+      // `?? null` keeps the key present on EVERY row of the batch: a Supabase
+      // upsert with an array sends the union of all rows' keys, so omitting
+      // `days` on the blank rows would NULL-fill it anyway. The blank-never-
+      // overwrites-good guard therefore has to happen before this call, in
+      // handleCsvUpload — see the read-merge there.
+      days: job.days ?? null,
       // job.vb/job.backlog/job.project are the real app-shape fields (set by
       // parseCSV() in src/data/jobs.js as booleans from the CSV's Y/N
       // columns) — job.VB/job.BL/job.PJ don't exist on the object, so this
@@ -854,6 +863,115 @@ export function subscribeToPartsToOrder(callback) {
     };
   } catch (e) {
     console.error('Supabase subscribe to parts to order error:', e);
+    return () => {};
+  }
+}
+
+// ============ JOB STATUS SINCE (stuck clock — Brief E) ============
+//
+// One row per top-level job: when it last entered its current status+action.
+//
+// Deliberately NOT modelled on the focus list. saveFocusList() clears the whole
+// table and rewrites it, which is why it needs a snapshot-and-restore guard —
+// one bad read there can destroy every row. This table is per-row: an upsert
+// touches only the jobs that actually changed and a delete names its ids
+// explicitly, so that failure mode does not exist and copying the pattern would
+// import the risk for no benefit. There is no table-wipe function here on
+// purpose — no bare .neq('job_id', ''), ever.
+
+// Returns { [jobId]: { status, action, since } } on success, or null if the
+// read genuinely failed. The null/{} distinction is load-bearing, exactly as it
+// is for loadFocusList(): it is what lets useJobStatusSince refuse to arm any
+// write after a failed read. An empty object means "no job has a clock yet"
+// (true on day one); null means "we don't know", and a caller that treats those
+// the same will re-stamp since=now over every real stuck age in the shop.
+export async function loadStatusSince() {
+  try {
+    const { data, error } = await getClient()
+      .from('job_status_since')
+      .select('*');
+    if (error) throw error;
+    const byJobId = {};
+    (data || []).forEach(r => {
+      byJobId[String(r.job_id)] = { status: r.status, action: r.action, since: r.since };
+    });
+    return byJobId;
+  } catch (e) {
+    console.error('Supabase load job status since error:', e);
+    return null;
+  }
+}
+
+// Per-row upsert, keyed on job_id. Resolves { ok: boolean } rather than
+// throwing — same convention as batchWriteJobsState(), so callers can gate on
+// res?.ok and surface a failure to the user instead of an unhandled rejection.
+export async function upsertStatusSince(rows) {
+  if (!Array.isArray(rows)) {
+    console.error('Supabase upsert job status since refused: expected an array, got', rows);
+    return { ok: false };
+  }
+  if (rows.length === 0) return { ok: true };
+  try {
+    const records = rows.map(r => ({
+      job_id: String(r.jobId ?? r.job_id),
+      status: r.status ?? '',
+      action: r.action ?? null,
+      since: r.since || new Date().toISOString(),
+    }));
+    const { error } = await getClient()
+      .from('job_status_since')
+      .upsert(records, { onConflict: 'job_id' });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase upsert job status since error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Deletes the named rows and nothing else. The id list is required and an empty
+// list is a no-op, never a wipe: a bug that produced an empty array must not be
+// able to clear the table.
+export async function clearStatusSince(jobIds) {
+  if (!Array.isArray(jobIds)) {
+    console.error('Supabase clear job status since refused: expected an array, got', jobIds);
+    return { ok: false };
+  }
+  if (jobIds.length === 0) return { ok: true };
+  try {
+    const { error } = await getClient()
+      .from('job_status_since')
+      .delete()
+      .in('job_id', jobIds.map(String));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase clear job status since error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+export function subscribeToStatusSince(callback) {
+  try {
+    const channel = getClient()
+      .channel('public:job_status_since')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'job_status_since' },
+        () => {
+          // null means the re-read failed — drop the event rather than hand the
+          // caller an empty picture it might reconcile against and overwrite.
+          loadStatusSince().then(data => {
+            if (data !== null) callback(data);
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  } catch (e) {
+    console.error('Supabase subscribe to job status since error:', e);
     return () => {};
   }
 }

@@ -48,6 +48,11 @@ function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       // and every split calculation in createSubtasks() is arithmetic — a
       // string here turns the derived cards' hours into NaN.
       hours: j.hours == null ? j.hours : Number(j.hours),
+      // Job age. `null` stays `null` — an unknown age must not read back as 0,
+      // or a brand-new job and a job of unknown age become indistinguishable
+      // again (the whole point of the days column). `|| null` would be wrong
+      // here: it would turn a genuine 0-day job into "unknown".
+      days: j.days == null ? null : Number(j.days),
       scheduled: j.scheduled,
       calendarSlot: j.calendar_slot || null,
       gcalEventId: j.gcal_event_id || null,

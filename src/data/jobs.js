@@ -34,6 +34,81 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   return 'Admin';
 }
 
+// Job age from the CSV's `Days` column. A blank cell means Multitrack does not
+// know how old the job is — that is NOT the same as "zero days old", and the
+// old `parseInt(obj.Days) || 0` collapsed the two into an identical `0`, so a
+// guitar booked in this morning and a guitar of unknown age both read "0d".
+// Blank (and any non-numeric junk) stays `null` so every downstream reader can
+// tell "unknown" from "brand new" and render nothing rather than a wrong number.
+export function parseDays(raw) {
+  const s = (raw == null ? '' : String(raw)).trim();
+  if (!s) return null;
+  const n = parseInt(s, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+// A blank job age never overwrites an age we already know.
+//
+// Multitrack intermittently exports an empty `Days` cell for a job that
+// definitely has an age (jobs 1708 and 1710 on the 2026-07-27 file). The CSV
+// path is upsert-only, so without this a single bad export writes null over a
+// real age and it is gone — MT won't send it again.
+//
+// Matched on job NUMBER, not id: the id of a top-level job is its job number,
+// but matching on `job` says out loud that this is about the same physical
+// guitar across two imports, not about row identity.
+//
+// A *changed* populated value still wins. This only defends against blanks —
+// if MT says the job is now 300 days old, it is.
+//
+// Lives here rather than inside upsertJobsBatch because the batch cannot fix
+// it: a Supabase array upsert sends the union of all rows' keys and NULL-fills
+// any row missing one, so "just leave `days` off the blank rows" would write
+// the nulls anyway. It has to be merged before the write, where both the
+// incoming row and the current in-memory job are visible.
+export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
+  const prevByJobNo = {};
+  existingJobs.forEach(j => {
+    if (j && !j.parentId && j.days != null) prevByJobNo[j.job] = j.days;
+  });
+  return parsedTopLevel.map(j => (
+    j.days == null && prevByJobNo[j.job] != null
+      ? { ...j, days: prevByJobNo[j.job] }
+      : j
+  ));
+}
+
+// Which quiet pile a blocked job belongs in, or null if it is workable today.
+//
+// SINGLE SOURCE OF TRUTH. Sidebar, JobsPage, JobShelf, CalendarGrid and
+// inferBench all read this one function rather than each keeping its own copy
+// of "is this job blocked" — four copies drifting apart is exactly how the
+// current three-locked-sections sprawl happened, and it is what makes a job
+// show up as blocked on one screen and workable on another.
+//
+// 'planning' is `INC` alone, deliberately status-independent (settled at
+// council 2026-07-27). On the live data the only two INC jobs are 393 and 693,
+// both `Booked In`, so gating on `Waiting + INC` as the spec originally said
+// would have matched zero jobs and shipped an empty pile. INC is what MT
+// actually uses to mean "needs a quote or a plan written first", whatever the
+// status column says — so a future `Active + INC` job leaving the active list
+// is intended, not a regression.
+//
+// `readyToStart` (On Hold + BL=Y + GTS — parts arrived, good to start) is NOT
+// blocked: it is the one On Hold case that is genuinely schedulable.
+export function blockedPile(job) {
+  if (!job) return null;
+  const act = (job.action || '').trim().toUpperCase();
+  if (act === 'INC') return 'planning';
+
+  const status = job.status || '';
+  const { readyToStart } = deriveJobStatusFlags(status, job.action, job.backlog === true);
+  if (readyToStart) return null;
+
+  if (status === 'In Transit' || status === 'Waiting' || status === 'On Hold') return 'waiting';
+  return null;
+}
+
 export function inferTag(h) {
   if (!h || h <= 0) return 'EZ';
   if (h <= 1.5) return 'EZ';
@@ -204,7 +279,7 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
       readyToStart,
       awaiting,
       inTransit,
-      days: parseInt(obj.Days) || 0,
+      days: parseDays(obj.Days),
       tag: obj.Tag || inferTag(effectiveHours),
       hours: effectiveHours,
       hoursRange: hoursRange(effectiveHours),
@@ -232,7 +307,11 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
     }
   }
 
-  return jobs.sort((a, b) => b.days - a.days);
+  // Oldest first. `?? -1` rather than `?? 0`: a job of unknown age sorts BELOW
+  // a genuine 0-day job, so blanks land at the newest end instead of being
+  // shuffled in among the jobs booked in today. Rows loaded back from Supabase
+  // can carry a real null here too, not just freshly-parsed CSV rows.
+  return jobs.sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 }
 
 // Full bench breakdown for a job — a single entry for a plain job, or one
