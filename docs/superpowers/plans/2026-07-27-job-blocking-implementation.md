@@ -64,24 +64,42 @@ already funnel `In Transit`, `Waiting` (non-INC/CI) and `On Hold` to Admin delib
 change is to return **no bench** instead, which is a smaller edit than the spec implies, but it
 means `bench` becomes nullable everywhere downstream. Task 4 covers the fallout.
 
-### 4. `parts_to_order` is dead code — the parts features cannot be built as written
+### 4. `parts_to_order` is empty, not dead — the parts features are premature, not impossible
 
-The spec's "Parts talk to jobs" section assumes a working parts-to-order list. There isn't one:
+**CORRECTED 2026-07-27.** This finding originally read "`parts_to_order` is dead code" on the
+grounds that nothing in `src/` writes to it. **That was the wrong test and the wrong verdict.**
+The conclusion — cut both parts items from this build — still stands, but for a different
+reason, and the distinction matters because "dead" invites deleting the table and its five
+Supabase functions.
 
-- `loadPartsToOrder`, `addPartsToOrderItems`, `removePartsToOrderItem`, `markPartResolved` and
-  `subscribeToPartsToOrder` all exist in `supabase.js` (lines 766–860) and **have zero callers
-  anywhere in `src/`**.
-- There is no hook, no UI, and nothing that ever sets `needed_for_job`.
-- `PartsDrawer.jsx` is the **PartsBox inventory** drawer — a different system entirely
-  (`utils/partsbox.js`). It has nothing to do with `parts_to_order`.
+**The writer is not in `src/`.** The Sunday board meeting feeds this list.
+`.claude/workflows/sunday-board-meeting.js` says so in its own header at lines 12 and 16: the
+three end-of-meeting writes are schedule → `scheduledSlots`, picked jobs → `focus_list`, and
+**new parts → `parts_to_order`**, all as live chat turns outside any Workflow call. Line 73
+reads the list back and line 95 hands it to the Admin seat. Searching `src/` for callers was
+always going to return zero and prove nothing.
 
-So "show the part as the reason" would read a permanently empty table, and "nudge when a part
-is resolved" has no button to fire from. Building the parts-to-order list UI is a feature in
-its own right, not a line item inside this one.
+**Verified live 2026-07-27** (read-only probe): `parts_to_order` exists in Supabase with all
+six columns — `id`, `description`, `category`, `needed_for_job`, `added_at`, `resolved`.
+`completed_jobs` has `invoice_amount` and `week_key`. `scripts/board_meeting_export.mjs` runs
+clean end to end. The Brief D migration was already run; the two "still-unrun" notes in
+`docs/briefs/re-fresh-brief-d-sunday-board-meeting.md` were stale and are corrected.
 
-**Recommendation: cut both parts items from this build** and keep the generic reason labels.
-They go on the backlog behind a real parts-to-order list. This is flagged as a decision for
-Trevor, not something the plan quietly drops — see "Decisions needed" at the end.
+**The table is empty because the first board meeting has not run yet.** Confirmed with Trevor
+2026-07-27: the Sunday meeting is deliberately held until after the job-blocking build merges.
+
+One part of the original finding does still hold: `PartsDrawer.jsx` is the **PartsBox
+inventory** drawer, a different system (`utils/partsbox.js`), unrelated to `parts_to_order`.
+Also unrelated: `admin/context/GGNZ Parts Shopping List.csv`, a May 2026 component-level
+restoration BOM (capacitors and resistors by value, with board references). Trevor was unaware
+it existed. Do not migrate it into `parts_to_order` — different granularity, different purpose.
+
+**Recommendation unchanged: cut both parts items from this build.** The reason is sequencing,
+not deadness — the list is empty until the first meeting populates it, so building the UI now
+ships a feature that displays nothing and cannot be tested against real data. Parked as its own
+brief: [../../briefs/parked-parts-as-a-stuck-reason.md](../../briefs/parked-parts-as-a-stuck-reason.md),
+which waits on the first meeting run. **Do not delete the table or its five Supabase
+functions** on the strength of the superseded "dead code" reading.
 
 ---
 
@@ -620,6 +638,14 @@ to start" — MT's tagging, not the app's, but expect the question.
 - **The red 14-day flag cannot fire for two weeks after deploy.** `job_status_since` starts
   empty, so the first reconcile stamps `since: now` on all 45 jobs and every `stuckDays` reads 0.
   Expected — but it will read as broken unless stated up front.
+- **There is nothing to backfill the stuck clock from. Checked 2026-07-27; do not re-investigate.**
+  The question was whether past board-meeting exports recorded which jobs were Waiting each week,
+  which would let the flag be real from day one. They don't, on two counts. First, no board meeting
+  has ever run — Trevor is holding the first one until this build merges. Second, even once they do
+  run, nothing saves the output: `.claude/workflows/sunday-board-meeting.js` builds its report and
+  hands it to the chat session, and no file is written. There is no history anywhere in the repo.
+  MT's `Days` can't seed it either — that is total job age, not time-in-status. The fortnight of
+  dormancy is unavoidable.
 - **Task 8's `JobCard.jsx:149` note is half right.** `<span>📅 {job.days}d</span>` — JSX drops a
   null value but the literal `📅 ` and `d` still render, so a blank age currently shows `📅 d`,
   not nothing. The guard must wrap the whole span.

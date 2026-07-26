@@ -18,6 +18,12 @@ code before acting on it.
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
 | [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | Scopes two unbuilt features: the Sunday board meeting rebuild, and in-app PDF drop to replace the CSV pipeline. Both need the full protocol. |
 
+## Parked — agreed in principle, waiting on something
+
+| Brief | Date | Waiting on |
+|-------|------|------------|
+| [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | 2026-07-27 | The first Sunday board meeting run. Parts captured at the bench, shown as the stuck reason on the job. Split out of Brief E — the `parts_to_order` list is empty until the meeting fills it, so the UI would ship showing nothing. Not approved, not scoped. |
+
 ## History — completed or superseded
 
 | Brief | Date | What happened |

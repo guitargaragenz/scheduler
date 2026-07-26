@@ -85,10 +85,17 @@ conversation, not from the code, and five of its assumptions don't hold.
 3. **`inferBench` already routes blocked jobs to Admin** deliberately, so the change is
    smaller than the spec implies — but `bench` becomes nullable everywhere downstream, and
    that fallout is listed in the plan.
-4. **`parts_to_order` is dead code.** Full Supabase CRUD, zero callers anywhere in `src/`,
-   no UI, nothing ever sets `needed_for_job`. `PartsDrawer.jsx` is the unrelated PartsBox
-   inventory drawer. Both parts features would read a permanently empty table.
-   **Recommendation: cut them.**
+4. ~~**`parts_to_order` is dead code.**~~ **CORRECTED 2026-07-27 — it is empty, not dead.**
+   Searching `src/` for callers was the wrong test: the writer is the Sunday board meeting,
+   not the app. `.claude/workflows/sunday-board-meeting.js` lines 12 and 16 name "new parts
+   → `parts_to_order`" as one of its three end-of-meeting writes. Verified live: the table
+   exists with all six columns and the board-meeting export runs clean. It is empty only
+   because the first meeting hasn't run — Trevor is holding it until this build merges.
+   `PartsDrawer.jsx` is still the unrelated PartsBox inventory drawer.
+   **Recommendation still cut them, for sequencing not deadness:** the list is empty until
+   the first meeting, so building the UI now ships something that displays nothing.
+   Parked as [docs/briefs/parked-parts-as-a-stuck-reason.md](../docs/briefs/parked-parts-as-a-stuck-reason.md).
+   **Do not delete the table or its Supabase functions.**
 5. **The Planning pile as specced matches zero jobs.** `Waiting + INC` — the only two `INC`
    jobs (393, 693) are both `Booked In`, and none of the five `Waiting` jobs carry `INC`.
    It would ship empty while the two real planning jobs sat in the schedulable lists.
