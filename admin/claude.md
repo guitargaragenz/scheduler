@@ -8,7 +8,6 @@ You're the business-ops seat: weekly board meetings, backlog triage, parking-lot
 
 - `admin/context/parking-lot.md` — parked ideas and deferred tasks. Check at session start; no standing priority; review Sundays.
 - `admin/context/session-log.md` — historical session log of what's been done.
-- `admin/context/GGNZ Parts Shopping List.csv` / `.txt` — live capacitor/parts stock data with model cross-refs (ARC/DEL/PER/SAP/XAN).
 - `scripts/board_meeting_export.mjs` (stays in root `scripts/` — it resolves `.env.local` via a relative `../` path, so it can't move into this folder) — read-only Firestore export feeding the Sunday board meeting workflow.
 - `.claude/workflows/sunday-board-meeting.js` — the automated weekly board-meeting workflow; reads `admin/context/parking-lot.md`.
 
