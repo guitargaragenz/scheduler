@@ -384,6 +384,41 @@ Verified live 2026-07-25 against the database (4 done jobs: #1702, #1698, #1626,
 - Projects: 4 jobs, matching the 4 live top-level project jobs in the DB
 - Zero console errors, `npm run build` clean (672.56 kB / 1.67s)
 
+## Scope item 8 — focus-list write path, 2026-07-26
+
+**Gap found (by grep, not assumed):** the focus list was fully readable and safely persisted
+(items 7 above), but nothing in the UI could set it. `useFocusList()` returned `setFocusList`
+with zero callers outside the hook, and `App.jsx:194` destructured only `focusList`, dropping the
+setter. `Sidebar.jsx`, `JobShelf.jsx`, `DailyLogPage.jsx` all read the list; `CatchUpInterview.jsx`
+had no focus handling at all. So the 10 IDs in the table were the placeholder written manually
+during recovery (item 7) — nothing in the app could change them.
+
+**Fix — Phase 1 (the smallest thing that makes Sunday's meeting picks stick):**
+- `App.jsx` now destructures `setFocusList` and adds `toggleFocusJob(jobId)` — a pure add/remove
+  of one ID in the array (string-compared, ID stored in whatever type it already is, matching
+  `saveFocusList`'s raw `job_id` storage and the `.map(String)` comparisons already used by
+  `Sidebar`/`JobShelf`). Everything else — debounce, persistence, failure recovery — is unchanged,
+  already covered by item 7's fix.
+- A 🎯 toggle button was added to both job detail views — `JobDrawer.jsx` (desktop) and
+  `MobileJobSheet.jsx` (phone) — next to the close button, since every `JobCard` click already
+  opens one of these two, giving one write path that reaches every job from every list. Not added
+  directly on `JobCard` because the whole card carries drag-and-drop listeners; a nested button
+  there would fight the drag handlers.
+- Not blast-radius work — `useFocusList.js`, `supabase.js`'s focus functions, `scheduledSlots`,
+  `calendarSlot`, `useGoogleCalendar.js`, `useFirebase.js`, and `jobs[]` shape are all untouched.
+  Built directly, no Council/Verifier cycle.
+
+`npm run build` clean. Only `src/App.jsx`, `src/components/JobDrawer.jsx`,
+`src/components/MobileJobSheet.jsx` touched.
+
+**Live Test — pending.** Trevor to confirm: toggle in reload persists, toggle out reload clears,
+Supabase `focus_list` table matches, and the network-cut check (auto-save disables itself on a
+failed read, table keeps all rows) — the last one only ever verified by reading the code until now.
+
+**Phase 2 — not started.** A "Plan the coming week" step in `CatchUpInterview.jsx` that presents
+candidates at the end of the ritual and writes through the same `setFocusList`/`toggleFocusJob`
+path. Deliberately held until Trevor has seen Phase 1 working.
+
 ## Council findings (resolved into scope above)
 
 Both independent Council reviewers reached the same conclusions on all three

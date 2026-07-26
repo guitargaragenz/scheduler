@@ -63,7 +63,7 @@ function initRows(job, allJobs = []) {
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, onSave, onClose, onRemove }) {
+export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, onSave, onClose, onRemove, isFocused = false, onToggleFocus }) {
   const [tab, setTab] = useState('schedule');
 
   // Schedule tab state
@@ -196,10 +196,24 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                 </div>
               )}
             </div>
-            <button
-              onClick={close}
-              style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 24, cursor: 'pointer', padding: '0 0 0 12px', lineHeight: 1 }}
-            >×</button>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, paddingLeft: 12 }}>
+              {onToggleFocus && (
+                <button
+                  onClick={onToggleFocus}
+                  title={isFocused ? 'Remove from focus list' : 'Add to focus list'}
+                  style={{
+                    background: isFocused ? '#78350f' : 'none',
+                    border: `1px solid ${isFocused ? '#f59e0b' : '#334155'}`,
+                    borderRadius: 6, color: isFocused ? '#fbbf24' : '#64748b',
+                    fontSize: 16, cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
+                  }}
+                >🎯</button>
+              )}
+              <button
+                onClick={close}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 24, cursor: 'pointer', padding: 0, lineHeight: 1 }}
+              >×</button>
+            </div>
           </div>
 
           {/* Tab bar */}

@@ -59,7 +59,7 @@ function initRows(job, allJobs = []) {
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule }) {
+export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus }) {
   const [rows, setRows] = useState(() => initRows(job, jobs));
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
@@ -181,10 +181,24 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
               </div>
             )}
           </div>
-          <button onClick={onClose} style={{
-            background: 'none', border: 'none', color: '#64748b', fontSize: 22,
-            cursor: 'pointer', padding: 0, marginLeft: 12, lineHeight: 1, alignSelf: 'flex-start',
-          }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginLeft: 12 }}>
+            {onToggleFocus && (
+              <button
+                onClick={onToggleFocus}
+                title={isFocused ? 'Remove from focus list' : 'Add to focus list'}
+                style={{
+                  background: isFocused ? '#78350f' : 'none',
+                  border: `1px solid ${isFocused ? '#f59e0b' : '#334155'}`,
+                  borderRadius: 6, color: isFocused ? '#fbbf24' : '#64748b',
+                  fontSize: 15, cursor: 'pointer', padding: '3px 7px', lineHeight: 1,
+                }}
+              >🎯</button>
+            )}
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: '#64748b', fontSize: 22,
+              cursor: 'pointer', padding: 0, lineHeight: 1, alignSelf: 'flex-start',
+            }}>×</button>
+          </div>
         </div>
 
         {/* Bench rows */}

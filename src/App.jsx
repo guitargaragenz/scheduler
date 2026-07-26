@@ -191,7 +191,19 @@ export default function App() {
   }, [setJobs]);
 
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
-  const { focusList } = useFocusList();
+  const { focusList, setFocusList } = useFocusList();
+
+  // Pure add/remove of a job ID in the focus list array — the hook handles
+  // debounce, persistence, and failure recovery. IDs are kept in whatever
+  // type they already are (matching saveFocusList's raw job_id storage);
+  // comparisons elsewhere in the app already coerce with String().
+  const toggleFocusJob = useCallback((jobId) => {
+    setFocusList(prev => {
+      const idStr = String(jobId);
+      const exists = prev.some(id => String(id) === idStr);
+      return exists ? prev.filter(id => String(id) !== idStr) : [...prev, jobId];
+    });
+  }, [setFocusList]);
 
   const schedulerWeekDays = showWeekView ? weekDays : [displayedDate];
 
@@ -688,6 +700,8 @@ export default function App() {
             onSave={jobOps.handleSaveDrawer}
             onClose={() => setEditingJob(null)}
             onRemove={scheduler.unscheduleJob}
+            isFocused={focusList.some(id => String(id) === String(editingJob.id))}
+            onToggleFocus={() => toggleFocusJob(editingJob.id)}
           />
         ) : (
           <JobDrawer
@@ -698,6 +712,8 @@ export default function App() {
             weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
             onRemove={scheduler.unscheduleJob}
+            isFocused={focusList.some(id => String(id) === String(editingJob.id))}
+            onToggleFocus={() => toggleFocusJob(editingJob.id)}
           />
         )
       )}
