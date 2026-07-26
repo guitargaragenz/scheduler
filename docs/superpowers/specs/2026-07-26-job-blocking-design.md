@@ -130,12 +130,25 @@ additions:
 
 Two different clocks, and they are not interchangeable:
 
-- **Job age** — how long since the job came in. This is a **manually maintained field**,
-  not something the app can parse. Multitrack's "jobs by age" export carries the date, but
-  the med search output the pipeline actually uses does not. Trevor types the add-date in
-  weekly against the existing data, and in future may do it as part of the Sunday board
-  meeting. It therefore joins `Action`/`BL`/`PJ`/`VB` as a manual field that has to be
-  editable inside the Scheduler.
+- **Job age** — how long since the job came in. Multitrack's two exports each hold half of
+  this and neither is complete on its own:
+
+  | Export | Job entered date | Customer name |
+  |--------|------------------|---------------|
+  | Jobs by age (old input) | yes | no |
+  | Med search (current weekly input) | no | yes |
+
+  Trevor currently types the add-date in by hand each week to bridge the gap.
+
+  **Recommended: join the two on job number instead.** Both exports key on the same job
+  number, so matching them yields a complete record — date *and* customer — and removes
+  the manual entry. A job's entered date never changes, so the app only needs to learn it
+  once: first sighting wins, and it is never re-read after that. In practice jobs-by-age
+  would only need dropping when there are new jobs, so monthly rather than weekly.
+
+  Whichever route is chosen, the date field must be **editable in the Scheduler**,
+  alongside `Action`/`BL`/`PJ`/`VB` — for corrections and for jobs that predate either
+  export.
 
   **A manually entered date must never be overwritten by a blank from an import.**
   `handleCsvUpload` is upsert-only, and the med search PDF has no date column, so an
@@ -190,8 +203,14 @@ import path. It is blast-radius work under CLAUDE.md. Before any commit: a brief
 `.claude/pending-brief.md` approved by Trevor, two council agents, a builder on a staging
 branch, an independent verifier, and a browser test on the Vercel preview.
 
-**Confirm before building:** where `To Be Invoiced` jobs should live, and whether the
-add-date is edited on the job drawer, in the board meeting, or both.
+**Confirm before building:** where `To Be Invoiced` jobs should live, whether the
+two-export join is taken or the date stays hand-typed, and where the add-date is edited
+(job drawer, board meeting, or both).
+
+**Locate first:** Trevor has uploaded all closed/completed jobs with customer names to
+somewhere in the cloud — location unconfirmed. That is the historical back-catalogue and
+could backfill entered dates for existing jobs in one pass instead of by hand. Find it
+before anyone reconstructs job history from scratch.
 
 ## Follow-on work (not this spec)
 
