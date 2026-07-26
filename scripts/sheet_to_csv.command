@@ -259,6 +259,19 @@ DEFAULT_KEYWORDS = {
 # DEFAULT_BENCH_KEYWORDS/inferBench() (JS side is authoritative — this is the
 # CSV/Sheet pipeline's copy). Keep the setup-priority-before-Electronics rule
 # below aligned with the JS version if either changes.
+#
+# KNOWN DIVERGENCE as of 2026-07-27 (job-blocking build, Brief E task 4):
+# the JS inferBench no longer returns 'Admin' for blocked work or for
+# "nothing matched" — it returns null in both cases, and decides "is this
+# blocked" by calling blockedPile() rather than testing status strings. It also
+# takes a 7th `backlog` argument so On Hold + BL=Y + GTS ("parts arrived, good
+# to start") is correctly treated as workable.
+#
+# This Python copy has NOT been ported, deliberately: the Sheet pipeline is
+# retired (Multitrack + Scheduler only) and porting it means re-testing a script
+# nothing currently runs. If this script is ever brought back into service it
+# MUST be ported first — as it stands it would write 'Admin' benches back over
+# the nulls the app now relies on.
 def infer_bench(desc, status, action, model, mfr):
     act = (action or '').strip().upper()
     if status == 'In Transit': return 'Admin'
