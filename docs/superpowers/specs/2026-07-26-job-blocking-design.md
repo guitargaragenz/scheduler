@@ -63,7 +63,7 @@ Parts on order, customer input, instruments in transit. MT statuses `Waiting` (A
   not "I forgot this job exists" but "that part order died three weeks ago and nobody
   chased it."
 
-### 2. Needs a plan — you owe yourself a decision
+### 2. Planning — you owe yourself a decision
 
 MT status `Waiting` with Action `INC`. Trevor's own definition: *"a job I'm trying to get
 my head around."*
@@ -104,7 +104,7 @@ and more rows is the density failure mode.
 | Waiting (parts, customer) | Admin | no bench — Waiting pile |
 | In Transit | Admin | no bench — Waiting pile |
 | On Hold / BL | Admin | no bench — Waiting pile |
-| Needs a plan (`INC`) | Admin | no bench — Needs-a-plan pile |
+| Planning (`INC`) | Admin | no bench — Planning pile |
 | Couldn't classify | Admin | **Needs a bench** — see below |
 
 Admin then holds only genuine admin tasks, and empties on its own without any
@@ -119,7 +119,7 @@ after the main change.
 
 ### Visibility
 
-Waiting and Needs-a-plan jobs are **hidden** from the lists that answer "what can I touch
+Waiting and Planning jobs are **hidden** from the lists that answer "what can I touch
 right now" (Jobs page, Sidebar work sections, job shelf), collapsed into their two Sidebar
 lines. They remain visible on **the calendar** if already scheduled into a day — hiding
 work out of a day Trevor planned would be worse than the noise it removes.
@@ -135,7 +135,7 @@ shown to Trevor, not the raw codes:
 | Status + Action        | Shown as                |
 |------------------------|-------------------------|
 | Waiting + `CI`         | waiting on the customer |
-| Waiting + `INC`        | needs a plan            |
+| Waiting + `INC`        | planning                |
 | In Transit             | in transit              |
 | On Hold                | on hold                 |
 | On Hold + `BL=Y` + `GTS` | (not blocked — ready) |
