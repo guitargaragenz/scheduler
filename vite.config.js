@@ -48,5 +48,14 @@ export default defineConfig(({ mode }) => {
       'firebase/firestore',
     ],
   },
+  test: {
+    // Agent worktrees under .claude/ hold whole stale copies of the repo,
+    // including old copies of the test files. Vitest's default glob walks into
+    // them, so `npm test` was running joinJobs.test.js twice — once live, once
+    // from a July 21 snapshot on an abandoned branch. That inflates the count
+    // and, once the snapshot drifts, fails against code that no longer exists.
+    // Excluded rather than deleted: the worktrees are still registered with git.
+    exclude: ['**/node_modules/**', '**/dist/**', '.claude/worktrees/**'],
+  },
   }
 })
