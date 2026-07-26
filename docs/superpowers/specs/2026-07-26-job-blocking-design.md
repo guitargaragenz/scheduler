@@ -140,15 +140,20 @@ Two different clocks, and they are not interchangeable:
 
   Trevor currently types the add-date in by hand each week to bridge the gap.
 
-  **Recommended: join the two on job number instead.** Both exports key on the same job
-  number, so matching them yields a complete record — date *and* customer — and removes
-  the manual entry. A job's entered date never changes, so the app only needs to learn it
-  once: first sighting wins, and it is never re-read after that. In practice jobs-by-age
-  would only need dropping when there are new jobs, so monthly rather than weekly.
+  **Recommended: don't solve this. Sort by job number.** Multitrack numbers jobs
+  sequentially — job 1 is March 2010, job 1704 is mid-2026 — so the job number is already a
+  faithful age ordering, available on every export, needing no data entry and no join.
+  Anywhere this feature wants "oldest first," the job number is sufficient.
 
-  Whichever route is chosen, the date field must be **editable in the Scheduler**,
-  alongside `Action`/`BL`/`PJ`/`VB` — for corrections and for jobs that predate either
-  export.
+  A real date is only needed to render an absolute figure ("47 days") rather than a
+  position in a queue. This design does not need one, so job age is descoped: **use the job
+  number.**
+
+  If an absolute date is wanted later, the route is to join the two exports on job number
+  (jobs-by-age supplies the date, med search the customer). A job's entered date never
+  changes, so first sighting wins and it is never re-read — meaning jobs-by-age would only
+  need dropping when there are new jobs. The field should be editable in the Scheduler for
+  corrections either way. Out of scope here.
 
   **A manually entered date must never be overwritten by a blank from an import.**
   `handleCsvUpload` is upsert-only, and the med search PDF has no date column, so an
@@ -203,19 +208,26 @@ import path. It is blast-radius work under CLAUDE.md. Before any commit: a brief
 `.claude/pending-brief.md` approved by Trevor, two council agents, a builder on a staging
 branch, an independent verifier, and a browser test on the Vercel preview.
 
-**Confirm before building:** where `To Be Invoiced` jobs should live, whether the
-two-export join is taken or the date stays hand-typed, and where the add-date is edited
-(job drawer, board meeting, or both).
-
-**Locate first:** Trevor has uploaded all closed/completed jobs with customer names to
-somewhere in the cloud — location unconfirmed. That is the historical back-catalogue and
-could backfill entered dates for existing jobs in one pass instead of by hand. Find it
-before anyone reconstructs job history from scratch.
+**Confirm before building:** where `To Be Invoiced` jobs should live.
 
 ## Follow-on work (not this spec)
 
 1. **Steps within a job** — a short per-job stage checklist (strip → fret level → finish →
    setup) so a card shows the *next step*, not the whole job. Trevor confirmed he wants
    this. The most focus-window-shaped of the three ideas; deserves its own design.
-2. **Real job-to-job links** — no evidence yet that A-before-B bites weekly on a one-bench
+2. **Import the closed-jobs archive.** `SCHEDULER_old/Closed Jobs.pdf` holds 1,654 closed
+   jobs (numbers 1–1704, March 2010 onward) in the med-search layout. It has no dates, so
+   it cannot backfill entered dates — but it is the direct answer to the upsert-only
+   import leaving finished jobs open forever, which is why two closed jobs lingered.
+   Feeds the unbuilt `pendingRevenueReview` UI.
+
+   **It is not clean.** Trevor's assessment: a few empty jobs and a large number of
+   cancelled ones. The Status column carries both `Closed` and `Cancelled` (e.g. job 15),
+   and these must not be collapsed — `usePendingRevenueReview` already distinguishes a
+   Done+invoiced call from a Cancelled one, and a cancelled job is not completed work.
+   Any import needs a cleanup pass: drop empty rows, and carry Closed vs Cancelled through
+   as distinct outcomes rather than "not open."
+3. **Customer history.** The same archive is fifteen years of who brought what in. Showing
+   a customer's previous jobs when they return is a real feature and now clearly possible.
+4. **Real job-to-job links** — no evidence yet that A-before-B bites weekly on a one-bench
    workshop. Revisit only if it does.
