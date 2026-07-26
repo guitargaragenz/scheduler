@@ -215,19 +215,23 @@ branch, an independent verifier, and a browser test on the Vercel preview.
 1. **Steps within a job** — a short per-job stage checklist (strip → fret level → finish →
    setup) so a card shows the *next step*, not the whole job. Trevor confirmed he wants
    this. The most focus-window-shaped of the three ideas; deserves its own design.
-2. **Import the closed-jobs archive.** `SCHEDULER_old/Closed Jobs.pdf` holds 1,654 closed
-   jobs (numbers 1–1704, March 2010 onward) in the med-search layout. It has no dates, so
-   it cannot backfill entered dates — but it is the direct answer to the upsert-only
-   import leaving finished jobs open forever, which is why two closed jobs lingered.
-   Feeds the unbuilt `pendingRevenueReview` UI.
+2. **The closed-jobs archive is reference data, not app data.**
+   `SCHEDULER_old/Closed Jobs.pdf` holds 1,654 closed jobs (numbers 1–1704, March 2010
+   onward) in the med-search layout, with no dates.
 
-   **It is not clean.** Trevor's assessment: a few empty jobs and a large number of
-   cancelled ones. The Status column carries both `Closed` and `Cancelled` (e.g. job 15),
-   and these must not be collapsed — `usePendingRevenueReview` already distinguishes a
-   Done+invoiced call from a Cancelled one, and a cancelled job is not completed work.
-   Any import needs a cleanup pass: drop empty rows, and carry Closed vs Cancelled through
-   as distinct outcomes rather than "not open."
-3. **Customer history.** The same archive is fifteen years of who brought what in. Showing
-   a customer's previous jobs when they return is a real feature and now clearly possible.
-4. **Real job-to-job links** — no evidence yet that A-before-B bites weekly on a one-bench
+   **Trevor's decision: it is never imported into the Scheduler's job list.** It becomes a
+   standalone database for board meetings, CRM and future use — fifteen years of who
+   brought what in, and what was wrong with it. The Scheduler's job list stays a picture of
+   live work only.
+
+   **It needs cleaning first.** Trevor's assessment: a few empty jobs and a large number of
+   cancelled ones. The Status column carries both `Closed` and `Cancelled` (e.g. job 15)
+   and these must not be collapsed — a cancelled job is not completed work, a distinction
+   `usePendingRevenueReview` already makes. Cleanup pass: drop empty rows, keep Closed and
+   Cancelled as distinct outcomes.
+
+   Consequence: **the archive is not the fix for jobs that vanish from Multitrack and stay
+   open forever.** That problem keeps its own open decision — ask in the import preview, or
+   auto-mark done but never delete. Not this spec.
+3. **Real job-to-job links** — no evidence yet that A-before-B bites weekly on a one-bench
    workshop. Revisit only if it does.
