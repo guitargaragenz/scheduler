@@ -86,8 +86,36 @@ makes the count and the red warning meaningless, and the count is the entire saf
 `Active`, `Booked In`, and `On Hold + BL=Y + GTS`. No change.
 
 `To Be Invoiced` stays outside all three: it is not blocked and nobody is owed — it is an
-admin task Trevor can action himself. **Open question for the build brief:** it currently
-has no home of its own. Out of scope here.
+admin task Trevor can action himself. Where it lives is settled below.
+
+### Admin stops being the catch-all
+
+Admin fills up because the word does two unrelated jobs: a real **bench** (invoicing,
+chasing a supplier — hands, hours, bookable time) and a **dumping ground** (can't be worked
+on, or couldn't classify). A job waiting on a customer is not Admin work, it is *not work*,
+so it should have no bench at all.
+
+Sub-benches were considered and rejected: they subdivide the mess rather than removing it,
+and more rows is the density failure mode.
+
+| What | Bench today | Where it goes |
+|------|-------------|---------------|
+| To Be Invoiced | Admin | **Admin bench** — real bookable work |
+| Waiting (parts, customer) | Admin | no bench — Waiting pile |
+| In Transit | Admin | no bench — Waiting pile |
+| On Hold / BL | Admin | no bench — Waiting pile |
+| Needs a plan (`INC`) | Admin | no bench — Needs-a-plan pile |
+| Couldn't classify | Admin | **Needs a bench** — see below |
+
+Admin then holds only genuine admin tasks, and empties on its own without any
+reorganisation.
+
+**"Needs a bench" — the unclassified pile.** `inferBench` ends in `return 'Admin'`
+([src/data/jobs.js:34](../../../src/data/jobs.js)) for anything no keyword matched. Those
+jobs are not Admin work; nothing recognised them. Today they are invisible among real Admin
+jobs. They get their own flagged pile so Trevor can see and correct them — which also
+surfaces the missing keywords. Trevor approved this. Scoped here, low priority, may ship
+after the main change.
 
 ### Visibility
 
@@ -114,7 +142,51 @@ shown to Trevor, not the raw codes:
 
 Parts are not a distinct MT status. A job waiting on parts shows as `On Hold` or `Waiting`.
 Where a `parts_to_order` row has `needed_for_job` matching the job, the reason becomes
-**"waiting on parts: <description>"** — the parts list supplies the detail MT cannot.
+**"waiting on parts: <description>"** — the parts list is Scheduler-native data, so this
+duplicates nothing.
+
+### The detailed reason stays in Multitrack
+
+An earlier draft of this section proposed a free-text "why is this stuck" field in the
+Scheduler. **Rejected — MT already has one.** Its job view carries a large `Comments` box
+("eg. Ship to. Order parts.") where Trevor already writes exactly this. A second field
+would be the `job_blocks` mistake again: two places to type the same thing, drifting apart
+the moment he is busy.
+
+**What the export actually carries** — the CSV header is the whole bridge:
+
+```
+Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL, PJ
+```
+
+`Desc` is the Fault Description only. **`Comments`, `Date Created`, `Priority`,
+`Serial Number` and `Assigned To` are all on the MT job view and none of them cross.** This
+reframes the date problem in the section below: MT *has* the entered date on every job
+(e.g. job 1582, 25/10/2025) — the export drops it.
+
+**Open, cheap, worth checking before building anything:** whether MT's job search can be
+told to include more columns. If `Date Created` and `Comments` can be exported, the manual
+date typing dies and the reason arrives for free, with no new UI at all. mTrack serves a
+404 to unauthenticated requests, so this cannot be checked from a session — Trevor has to
+look at Search Jobs.
+
+Even if `Comments` does export, it will not parse into a tidy reason. Job 1582's holds
+footprint measurements, a budget figure and three URLs — it is a working notebook. It would
+be shown as a note to read, never as input to the red-count logic.
+
+### Deep link to the mTrack job
+
+Instead of copying MT's fields, link to them. mTrack job pages are addressable:
+
+```
+https://www.multitrack.co.nz/guitarg/vw_job.php?sw=1&jb=<job number>
+```
+
+Confirmed from Trevor's address bar. An "open in mTrack" link on the job card gives the
+full live picture — Comments, Priority, Date Created, time and parts — in one click, always
+current, duplicated nowhere. It opens in his already-signed-in browser.
+
+Smallest item in this design and arguably the highest value per line of code.
 
 ### Parts talk to jobs
 
@@ -130,8 +202,9 @@ additions:
 
 Two different clocks, and they are not interchangeable:
 
-- **Job age** — how long since the job came in. Multitrack's two exports each hold half of
-  this and neither is complete on its own:
+- **Job age** — how long since the job came in. **MT holds this on every job** — the job
+  view shows `Date Created` (job 1582: 25/10/2025). It is the *exports* that lose it, and
+  the two available exports each hold half the record:
 
   | Export | Job entered date | Customer name |
   |--------|------------------|---------------|
@@ -149,7 +222,9 @@ Two different clocks, and they are not interchangeable:
   position in a queue. This design does not need one, so job age is descoped: **use the job
   number.**
 
-  If an absolute date is wanted later, the route is to join the two exports on job number
+  If an absolute date is wanted later, the first thing to try is **getting `Date Created`
+  into the export** (see above) — that removes the manual typing outright and beats every
+  other route. Failing that, join the two exports on job number
   (jobs-by-age supplies the date, med search the customer). A job's entered date never
   changes, so first sighting wins and it is never re-read — meaning jobs-by-age would only
   need dropping when there are new jobs. The field should be editable in the Scheduler for
@@ -196,10 +271,13 @@ plus supabase.js functions (`loadStatusSince`, `upsertStatusSince`, `clearStatus
 `subscribeToStatusSince`).
 
 Touched: `Sidebar` (collapse three sections into two lines), `JobsPage`, `JobShelf` (hide
-blocked), `JobCard`, `JobDrawer`, `MobileJobSheet` (show reason and stuck age),
-`CalendarGrid` (tag on scheduled blocked jobs), `PartsDrawer` (resolve nudge), and the
-importer in `useJobs.js` for the status-change stamp and the blank-date guard. The build
-brief confirms the exact filter sites — this design does not assume it has found them all.
+blocked), `JobCard`, `JobDrawer`, `MobileJobSheet` (blocked label, stuck age, mTrack link),
+`CalendarGrid` (tag on scheduled blocked jobs), `PartsDrawer` (resolve nudge), the importer
+in `useJobs.js` for the status-change stamp and the blank-date guard, and `inferBench` in
+`src/data/jobs.js` for the Admin routing and the unclassified flag. The build brief confirms
+the exact filter sites — this design does not assume it has found them all.
+
+The mTrack deep link is a pure URL template and touches no data.
 
 ## Blast radius
 
@@ -208,7 +286,12 @@ import path. It is blast-radius work under CLAUDE.md. Before any commit: a brief
 `.claude/pending-brief.md` approved by Trevor, two council agents, a builder on a staging
 branch, an independent verifier, and a browser test on the Vercel preview.
 
-**Confirm before building:** where `To Be Invoiced` jobs should live.
+`inferBench` now also changes what bench a job gets, which affects every bench-filtered
+view. That widens the blast radius rather than narrowing it — treat the Admin routing as
+part of the same protocol run, not a tidy-up commit alongside it.
+
+**Check before building:** whether MT's job search can export `Date Created` and
+`Comments`. A yes removes work from this spec; it does not add any.
 
 ## Follow-on work (not this spec)
 
