@@ -208,21 +208,37 @@ Two different clocks, and they are not interchangeable:
   ```
 
   Verified against MT: job 1582 shows `Days = 274`, and its MT `Date Created` is 25/10/2025
-  — exactly 274 days before 2026-07-26. The recent rows are internally consistent and
-  monotonic with job number (1604 → 172, 1621 → 146, 1635 → 122, 1676 → 50, 1703 → 23).
+  — exactly 274 days before 2026-07-26.
 
-  So job age needs no join, no manual typing, and no export change. **Use `Days`.** The
-  previous recommendation — sort by job number as a proxy — is withdrawn as unnecessary.
+  So job age needs no join, no manual typing, and no export change. **Use `Days`.**
 
-  **Two caveats the build must handle, not ignore:**
+  **This also kills the job-number fallback.** An earlier draft recommended sorting by job
+  number as an age proxy, on the assumption that numbers are handed out in order. A handful
+  of rows break that assumption — job 592 reads 2502 days against job 341's 2363, and job
+  1582 reads 274 against job 1544's 242. Both look like bad data and neither is.
 
-  1. **The old backlog rows are not trustworthy.** Job 592 shows 2502 days while job 341
-     shows 2363, which would make the later job the older one. Somewhere below roughly job
-     1175 the values stop being consistent. Sort and display `Days` where it is sane; fall
-     back to job-number order rather than printing a figure that is visibly wrong.
-  2. **`Days` is blank on the newest jobs** (1708, 1710 in the current file). A blank age
-     must render as blank, never as zero — a brand-new job reading "0 days" and an
-     unknown-age job reading "0 days" are different facts.
+  The cause is **rebooking**. Trevor's description: a job waits a long time for customer
+  input or parts, he gets what he needs and finishes that work, then finds something else is
+  needed. Rather than close the job and open a fresh one, he rebooks it — **a new job number
+  carrying the original history, including the date the instrument first arrived.** The
+  result is a late job number sitting on an early date. (Closing the old job first is the
+  protocol now, so this is a legacy pattern, not an ongoing one.)
+
+  This points the opposite way from how it first looks:
+
+  - `Days` is **not** the suspect field. It is reporting those jobs honestly — and it is
+    answering the more useful question, *how long has this instrument been in the shop*,
+    rather than *how long since I raised this ticket*. That is the meeting number.
+  - **The job number is the suspect field** for age purposes, and is unusable as an
+    ordering.
+
+  So: sort by `Days`, always. Do not fall back to job number when a value looks odd — an
+  odd-looking value is more likely to be a genuine rebooked job than an error.
+
+  **One caveat the build must handle:** `Days` is blank on the newest jobs (1708, 1710 in
+  the current file). A blank age must render as blank, never as zero — a brand-new job
+  reading "0 days" and an unknown-age job reading "0 days" are different facts. Blank rows
+  sort to the newest end.
 
   **A populated `Days` must never be overwritten by a blank from an import.**
   `handleCsvUpload` is upsert-only, so an unguarded import would silently erase a good
@@ -287,9 +303,14 @@ branch, an independent verifier, and a browser test on the Vercel preview.
 view. That widens the blast radius rather than narrowing it — treat the Admin routing as
 part of the same protocol run, not a tidy-up commit alongside it.
 
-**Check before building:** that the `Days` values in the live `jobs.csv` still behave as
-described above — populated and monotonic for recent jobs, unreliable for the old backlog.
-The rule for handling them does not change either way; only the cut-off point might.
+**Already checked:** nothing in the app sorts by job number. Three places already sort on
+`days` descending — `src/data/jobs.js:235`, `JobShelf.jsx:97`, `DailyLogPage.jsx:824` — so
+age ordering is wired correctly today and needs no change.
+
+One small bug found while looking: `jobs.js:235` sorts with `b.days - a.days` and no null
+guard, so the blank-`Days` rows (1708, 1710) produce `NaN` and land in an undefined
+position. The other two sites use `(b.days ?? 0)` and are fine. Worth fixing in the same
+pass — one-line change, same file the Admin routing already touches.
 
 ## Follow-on work (not this spec)
 
