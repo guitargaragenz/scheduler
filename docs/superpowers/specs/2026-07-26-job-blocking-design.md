@@ -130,9 +130,19 @@ additions:
 
 Two different clocks, and they are not interchangeable:
 
-- **Job age** — how long since the job came in. The new Multitrack output now carries a
-  job-entered date (the old "jobs by age" export did not, which is why `FirstSeen` has
-  always been blank). Read it from the PDF; no storage needed.
+- **Job age** — how long since the job came in. This is a **manually maintained field**,
+  not something the app can parse. Multitrack's "jobs by age" export carries the date, but
+  the med search output the pipeline actually uses does not. Trevor types the add-date in
+  weekly against the existing data, and in future may do it as part of the Sunday board
+  meeting. It therefore joins `Action`/`BL`/`PJ`/`VB` as a manual field that has to be
+  editable inside the Scheduler.
+
+  **A manually entered date must never be overwritten by a blank from an import.**
+  `handleCsvUpload` is upsert-only, and the med search PDF has no date column, so an
+  unguarded import would silently erase what Trevor typed last Sunday — the same
+  blank-beats-good shape as the PDF truncation incident. The importer must leave a
+  populated date alone when the incoming value is empty. This is a hard requirement, not
+  a nicety.
 - **Stuck age** — how long since this job entered its current blocked status. This is the
   number the red count needs, and MT does not provide it. A job entered in January that
   only went to Waiting last week must not read as six months stuck.
@@ -170,7 +180,7 @@ plus supabase.js functions (`loadStatusSince`, `upsertStatusSince`, `clearStatus
 Touched: `Sidebar` (collapse three sections into two lines), `JobsPage`, `JobShelf` (hide
 blocked), `JobCard`, `JobDrawer`, `MobileJobSheet` (show reason and stuck age),
 `CalendarGrid` (tag on scheduled blocked jobs), `PartsDrawer` (resolve nudge), and the
-importer in `useJobs.js` for the job-entered date and the status-change stamp. The build
+importer in `useJobs.js` for the status-change stamp and the blank-date guard. The build
 brief confirms the exact filter sites — this design does not assume it has found them all.
 
 ## Blast radius
@@ -180,8 +190,8 @@ import path. It is blast-radius work under CLAUDE.md. Before any commit: a brief
 `.claude/pending-brief.md` approved by Trevor, two council agents, a builder on a staging
 branch, an independent verifier, and a browser test on the Vercel preview.
 
-**Confirm before building:** that the new Multitrack PDF's job-entered date actually
-survives the parser, and where `To Be Invoiced` jobs should live.
+**Confirm before building:** where `To Be Invoiced` jobs should live, and whether the
+add-date is edited on the job drawer, in the board meeting, or both.
 
 ## Follow-on work (not this spec)
 
