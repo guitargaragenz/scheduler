@@ -145,34 +145,31 @@ Where a `parts_to_order` row has `needed_for_job` matching the job, the reason b
 **"waiting on parts: <description>"** — the parts list is Scheduler-native data, so this
 duplicates nothing.
 
-### The detailed reason stays in Multitrack
+### No detailed reason field — the meeting is the reason
 
-An earlier draft of this section proposed a free-text "why is this stuck" field in the
-Scheduler. **Rejected — MT already has one.** Its job view carries a large `Comments` box
-("eg. Ship to. Order parts.") where Trevor already writes exactly this. A second field
-would be the `job_blocks` mistake again: two places to type the same thing, drifting apart
-the moment he is busy.
+An earlier draft proposed a free-text "why is this stuck" field in the Scheduler, then a
+route to import MT's `Comments` box so the app could show the detail itself. **Both are
+cut.** Trevor's own correction, and it is the right one:
 
-**What the export actually carries** — the CSV header is the whole bridge:
+> "Waiting and on hold jobs etc are sorted once a week in upcoming meetings."
 
-```
-Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL, PJ
-```
+Blocked jobs are already reviewed weekly, face to face. Building machinery to explain a
+blocked job mid-week answers a question that is already answered on Sunday. This is the
+scope line for the whole design:
 
-`Desc` is the Fault Description only. **`Comments`, `Date Created`, `Priority`,
-`Serial Number` and `Assigned To` are all on the MT job view and none of them cross.** This
-reframes the date problem in the section below: MT *has* the entered date on every job
-(e.g. job 1582, 25/10/2025) — the export drops it.
+- **Between meetings** the app's only job is to get blocked work *out of the way*, so
+  nothing unworkable competes for attention on a Tuesday. That is the Admin routing and the
+  two counted Sidebar lines.
+- **At the meeting** the app's only job is to *hand over the list* — what is blocked, and
+  how long it has been blocked. The detail is one click away in mTrack.
 
-**Open, cheap, worth checking before building anything:** whether MT's job search can be
-told to include more columns. If `Date Created` and `Comments` can be exported, the manual
-date typing dies and the reason arrives for free, with no new UI at all. mTrack serves a
-404 to unauthenticated requests, so this cannot be checked from a session — Trevor has to
-look at Search Jobs.
+Consequently these are all out of scope: a Scheduler-side reason field, importing
+`Comments`, a second PDF source, hunting for extra export columns, and the `#CM`-style
+comment tagging scheme Trevor was experimenting with. The plain-English label above plus
+the stuck age is the whole reason display.
 
-Even if `Comments` does export, it will not parse into a tidy reason. Job 1582's holds
-footprint measurements, a budget figure and three URLs — it is a working notebook. It would
-be shown as a note to read, never as input to the red-count logic.
+Note this lands on the **Board Meeting screen already in the backlog** — the two piles are
+that meeting's agenda, not a feature of their own. Worth building them with that in mind.
 
 ### Deep link to the mTrack job
 
@@ -202,46 +199,46 @@ additions:
 
 Two different clocks, and they are not interchangeable:
 
-- **Job age** — how long since the job came in. **MT holds this on every job** — the job
-  view shows `Date Created` (job 1582: 25/10/2025). It is the *exports* that lose it, and
-  the two available exports each hold half the record:
+- **Job age** — how long since the job came in. Earlier drafts of this spec treated this as
+  missing, because `FirstSeen` is always blank. **It is not missing. The `Days` column is
+  already populated and already crosses the bridge.**
 
-  | Export | Job entered date | Customer name |
-  |--------|------------------|---------------|
-  | Jobs by age (old input) | yes | no |
-  | Med search (current weekly input) | no | yes |
+  ```
+  Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL, PJ
+  ```
 
-  Trevor currently types the add-date in by hand each week to bridge the gap.
+  Verified against MT: job 1582 shows `Days = 274`, and its MT `Date Created` is 25/10/2025
+  — exactly 274 days before 2026-07-26. The recent rows are internally consistent and
+  monotonic with job number (1604 → 172, 1621 → 146, 1635 → 122, 1676 → 50, 1703 → 23).
 
-  **Recommended: don't solve this. Sort by job number.** Multitrack numbers jobs
-  sequentially — job 1 is March 2010, job 1704 is mid-2026 — so the job number is already a
-  faithful age ordering, available on every export, needing no data entry and no join.
-  Anywhere this feature wants "oldest first," the job number is sufficient.
+  So job age needs no join, no manual typing, and no export change. **Use `Days`.** The
+  previous recommendation — sort by job number as a proxy — is withdrawn as unnecessary.
 
-  A real date is only needed to render an absolute figure ("47 days") rather than a
-  position in a queue. This design does not need one, so job age is descoped: **use the job
-  number.**
+  **Two caveats the build must handle, not ignore:**
 
-  If an absolute date is wanted later, the first thing to try is **getting `Date Created`
-  into the export** (see above) — that removes the manual typing outright and beats every
-  other route. Failing that, join the two exports on job number
-  (jobs-by-age supplies the date, med search the customer). A job's entered date never
-  changes, so first sighting wins and it is never re-read — meaning jobs-by-age would only
-  need dropping when there are new jobs. The field should be editable in the Scheduler for
-  corrections either way. Out of scope here.
+  1. **The old backlog rows are not trustworthy.** Job 592 shows 2502 days while job 341
+     shows 2363, which would make the later job the older one. Somewhere below roughly job
+     1175 the values stop being consistent. Sort and display `Days` where it is sane; fall
+     back to job-number order rather than printing a figure that is visibly wrong.
+  2. **`Days` is blank on the newest jobs** (1708, 1710 in the current file). A blank age
+     must render as blank, never as zero — a brand-new job reading "0 days" and an
+     unknown-age job reading "0 days" are different facts.
 
-  **A manually entered date must never be overwritten by a blank from an import.**
-  `handleCsvUpload` is upsert-only, and the med search PDF has no date column, so an
-  unguarded import would silently erase what Trevor typed last Sunday — the same
-  blank-beats-good shape as the PDF truncation incident. The importer must leave a
-  populated date alone when the incoming value is empty. This is a hard requirement, not
-  a nicety.
+  **A populated `Days` must never be overwritten by a blank from an import.**
+  `handleCsvUpload` is upsert-only, so an unguarded import would silently erase a good
+  value — the same blank-beats-good shape as the PDF truncation incident. The importer must
+  leave a populated value alone when the incoming one is empty. Hard requirement.
 - **Stuck age** — how long since this job entered its current blocked status. This is the
   number the red count needs, and MT does not provide it. A job entered in January that
   only went to Waiting last week must not read as six months stuck.
 
-Stuck age needs one small table, following the `focus_list` precedent of living outside
-the `jobs` array so a Multitrack import cannot wipe it:
+**Stuck age is the only thing in this design that needs new plumbing.** Everything else —
+the Admin routing, the two piles, the deep link, job age — reads data that already exists.
+It earns the table because "this has been waiting eleven weeks" is the fact that makes a
+Sunday meeting actually decide something, and nothing else in the system knows it.
+
+It needs one small table, following the `focus_list` precedent of living outside the `jobs`
+array so a Multitrack import cannot wipe it:
 
 ```
 job_status_since
@@ -290,8 +287,9 @@ branch, an independent verifier, and a browser test on the Vercel preview.
 view. That widens the blast radius rather than narrowing it — treat the Admin routing as
 part of the same protocol run, not a tidy-up commit alongside it.
 
-**Check before building:** whether MT's job search can export `Date Created` and
-`Comments`. A yes removes work from this spec; it does not add any.
+**Check before building:** that the `Days` values in the live `jobs.csv` still behave as
+described above — populated and monotonic for recent jobs, unreliable for the old backlog.
+The rule for handling them does not change either way; only the cut-off point might.
 
 ## Follow-on work (not this spec)
 
