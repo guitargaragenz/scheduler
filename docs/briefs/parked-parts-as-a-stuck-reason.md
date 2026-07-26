@@ -98,11 +98,12 @@ Trevor asked for a recommendation rather than picking. This is it:
 
 - `PartsDrawer.jsx` is the **PartsBox inventory** drawer (`utils/partsbox.js`), a different
   system entirely. Unrelated to `parts_to_order` despite the name.
-- `admin/context/GGNZ Parts Shopping List.csv` — a May 2026 component-level restoration BOM
-  (capacitors and resistors by value, with board references). **Trevor was unaware it existed**
-  until it surfaced on 2026-07-27. Different granularity, different purpose. **Do not migrate
-  it into `parts_to_order`.** Worth a separate conversation about whether it is still wanted at
-  all; not this brief's problem.
+- `admin/context/GGNZ Parts Shopping List.csv` (and its `.txt` twin) — **not business data at
+  all.** Confirmed with Trevor 2026-07-27: it is the parts list for his personal pedalboard
+  build, misfiled into `admin/context/` during the May department reorganisation. **Do not
+  migrate it into `parts_to_order`, do not read it as shop stock, do not use it as a schema
+  reference.** If a future agent finds it and starts reasoning about it, that agent has gone
+  wrong.
 - Do not delete `parts_to_order` or its five Supabase functions (`loadPartsToOrder`,
   `addPartsToOrderItems`, `removePartsToOrderItem`, `markPartResolved`,
   `subscribeToPartsToOrder`, `supabase.js` lines 766–860) on the strength of the superseded
