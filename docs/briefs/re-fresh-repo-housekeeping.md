@@ -115,6 +115,12 @@ git worktree prune
 to clear the stale registration. Expect `+ jobsmaster-jobsstate-build` in `git branch` to
 become a normal branch afterwards.
 
+**One contradiction to be aware of:** the comment in `vite.config.js` says *"Excluded rather
+than deleted: the worktrees are still registered with git."* That was written earlier the same
+day, **before** the gitdir was checked and the registration turned out to point at a path that
+no longer exists. This brief supersedes it. Once `git worktree prune` has run, fix that comment
+so the next reader isn't warned off a directory that's already gone.
+
 ### 1e. `pipeline.log`
 
 4 KB at the repo root, untracked, `*.log` is gitignored, regenerates on its own. Delete.
