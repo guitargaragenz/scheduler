@@ -2,7 +2,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { BENCH_COLORS } from '../data/jobs.js';
 
-export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob }) {
+export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus }) {
   const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -103,7 +103,20 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
             </span>
           )}
         </span>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          {onToggleFocus && (
+            <button
+              onClick={e => { e.stopPropagation(); onToggleFocus(); }}
+              onPointerDown={e => e.stopPropagation()}
+              title={isFocused ? 'Remove from focus list' : 'Add to focus list'}
+              style={{
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                fontSize: 12, lineHeight: 1, opacity: isFocused ? 1 : 0.3,
+              }}
+            >
+              🎯
+            </button>
+          )}
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.1)', color: colors.text }}>
             {job.bench}
           </span>

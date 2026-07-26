@@ -665,7 +665,7 @@ export default function DailyLogPage({
   dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
-  focusList = [],
+  focusList = [], onToggleFocus,
   onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
   onSetBumpReason,
   onMarkPieceDone,
@@ -753,7 +753,7 @@ export default function DailyLogPage({
 
   function resizeShelf(dx) {
     setColWidths(prev => ({
-      ...prev, shelf: Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, prev.shelf + dx)),
+      ...prev, shelf: Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, prev.shelf - dx)),
     }));
   }
 
@@ -1296,6 +1296,7 @@ export default function DailyLogPage({
             onJobClick={onJobClick}
             lastSyncedAt={lastSyncedAt}
             focusList={focusList}
+            onToggleFocus={onToggleFocus}
             deferredItems={deferredItems}
             onPullBackIn={onPullBackIn}
           />

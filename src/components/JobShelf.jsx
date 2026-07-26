@@ -35,7 +35,7 @@ function formatSyncedAt(lastSyncedAt) {
 export default function JobShelf({
   jobs, dragMode, onDragModeChange, onCsvUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
-  focusList = [], deferredItems = [], onPullBackIn,
+  focusList = [], deferredItems = [], onPullBackIn, onToggleFocus,
 }) {
   const [selectedBench, setSelectedBench] = useState(() => localStorage.getItem('jobShelfBench') || null);
   const [search, setSearch] = useState('');
@@ -107,6 +107,8 @@ export default function JobShelf({
           dragMode={dragMode}
           isHighlighted={job.id === highlightedJobId}
           onClick={() => onJobClick(job)}
+          isFocused={focusSet.has(String(job.job))}
+          onToggleFocus={onToggleFocus && !indent ? () => onToggleFocus(job.job) : undefined}
         />
         <DeferredItemsList items={jobDeferredItems} onPullBackIn={onPullBackIn} />
         {subtasks.length > 0 && (

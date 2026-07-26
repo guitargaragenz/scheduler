@@ -3,7 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [] }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
@@ -38,7 +38,14 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
     const isExpanded = expandedJobs[job.id];
     return (
       <div key={job.id}>
-        <JobCard job={job} dragMode={dragMode} isHighlighted={highlighted} onClick={() => onJobClick(job)} />
+        <JobCard
+          job={job}
+          dragMode={dragMode}
+          isHighlighted={highlighted}
+          onClick={() => onJobClick(job)}
+          isFocused={focusSet.has(String(job.job))}
+          onToggleFocus={onToggleFocus ? () => onToggleFocus(job.job) : undefined}
+        />
         {(job.hasSubtasks || job.isSplit) && subtaskList.length > 0 && (
           <div
             onClick={() => toggleExpand(job.id)}

@@ -605,6 +605,7 @@ export default function App() {
                 onToggle={() => setSidebarOpen(o => !o)}
                 lastSyncedAt={lastSyncedAt}
                 focusList={focusList}
+                onToggleFocus={toggleFocusJob}
               />
             </>
           ) : (
@@ -643,6 +644,7 @@ export default function App() {
               }}
               onRequestCloseDay={() => setShowCloseDay(true)}
               focusList={focusList}
+              onToggleFocus={toggleFocusJob}
               onAutoCarryForward={handleAutoCarryForward}
               catchUpNeeded={catchUpNeeded}
               onRequestCatchUp={() => setShowCatchUp(true)}

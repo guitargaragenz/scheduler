@@ -415,6 +415,34 @@ during recovery (item 7) — nothing in the app could change them.
 Supabase `focus_list` table matches, and the network-cut check (auto-save disables itself on a
 failed read, table keeps all rows) — the last one only ever verified by reading the code until now.
 
+## Scope item 9 — two small UI fixes, 2026-07-26
+
+Both reported by Trevor after seeing item 8 live. Neither is blast-radius work; built directly.
+
+- **Day-view resize handle was inverted.** `DailyLogPage.jsx`'s `resizeShelf` did
+  `prev.shelf + dx`, so dragging the handle left (negative `dx`) *shrank* the Jobs column instead
+  of widening it. The handle sits to the *left* of the Jobs column, so moving it left must grow
+  that column: changed to `prev.shelf - dx`. `resizeSchedule` was already correct — its handle
+  sits to the left of the Schedule column and already used `- dx`.
+- **Focus toggle moved onto the card itself.** Item 8 put the 🎯 only in the job detail views, so
+  setting focus cost a tap to open the drawer first. A 🎯 button now renders in the header row of
+  every non-compact `JobCard` (dim when off, solid when on), using the same
+  `e.stopPropagation()` pattern the existing `onMarkPieceDone` button already proves safe inside a
+  draggable card — plus `onPointerDown` stopPropagation so a tap never starts a drag. The
+  drawer/sheet toggles stay as they are.
+  - Keyed on `String(job.job)`, matching the `focusSet` comparisons already in `Sidebar.jsx` and
+    `JobShelf.jsx` — *not* `job.id`, which is suffixed on split-piece children and would miss.
+  - Only rendered on top-level cards. Sub-task/split-piece cards share their parent's job number,
+    so a toggle there would be a duplicate control for the same list entry.
+  - `toggleFocusJob` now threads `App.jsx` → `Sidebar` and `App.jsx` → `DailyLogPage` → `JobShelf`;
+    previously those got `focusList` read-only.
+
+`npm run build` clean. Touched `src/App.jsx`, `src/components/DailyLogPage.jsx`,
+`src/components/JobCard.jsx`, `src/components/JobShelf.jsx`, `src/components/Sidebar.jsx`.
+
+Self-verified in the browser: on-card 🎯 took the Focus pill 7 → 8 and back to 7 without opening
+the drawer; a left-drag of the day-view handle grew the Jobs column from 280px to 380px.
+
 **Phase 2 — not started.** A "Plan the coming week" step in `CatchUpInterview.jsx` that presents
 candidates at the end of the ritual and writes through the same `setFocusList`/`toggleFocusJob`
 path. Deliberately held until Trevor has seen Phase 1 working.
