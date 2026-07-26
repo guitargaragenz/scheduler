@@ -54,7 +54,9 @@ export default defineConfig(({ mode }) => {
     // them, so `npm test` was running joinJobs.test.js twice — once live, once
     // from a July 21 snapshot on an abandoned branch. That inflates the count
     // and, once the snapshot drifts, fails against code that no longer exists.
-    // Excluded rather than deleted: the worktrees are still registered with git.
+    // The dead worktree directories were deleted and pruned from git on 2026-07-27.
+    // This exclude line stays anyway — costs nothing and stops the problem
+    // recurring if another worktree is ever created under .claude/.
     exclude: ['**/node_modules/**', '**/dist/**', '.claude/worktrees/**'],
   },
   }
