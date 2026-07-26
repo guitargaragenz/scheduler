@@ -10,6 +10,16 @@ GGNZ is organized into departments, each with its own `claude.md` + `context/` f
 - **Admin** — [admin/claude.md](admin/claude.md) (board meetings, backlog, parts/procurement)
 - North star: [northstar.md](northstar.md)
 
+## Where things live
+
+- **Session briefs and handoffs** — `docs/briefs/`, with an index at
+  [docs/briefs/README.md](docs/briefs/README.md) marking which are live and which are
+  history. A brief says *what to do next*.
+- **Designs and specs** — `docs/superpowers/specs/`. A spec says *what we agreed to build*.
+- **Scripts** — `scripts/`.
+
+Don't leave new briefs loose at the repo root; they get lost there.
+
 ## Starting a New Session
 
 1. **Micky / Moby** — open terminal, `cd` into the scheduler project folder, run `claude`. The repo context is automatic.
