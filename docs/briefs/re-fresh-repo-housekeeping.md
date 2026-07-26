@@ -10,10 +10,10 @@ deleted or moved yet.** This brief is a list of candidates plus what's been prov
 ## STOP — read this before touching anything
 
 **A different session is mid-build in this same working tree.** Branch `staging/job-blocking`,
-Brief E (job blocking), agent-team protocol in progress. No agent is currently running, but the
-builder's work is **sitting uncommitted** in the tree — `src/App.jsx`, `src/data/jobs.js` and
-`scripts/sheet_to_csv.command` are all modified and unstaged. Touching those files, or running
-anything that stages or discards changes, would destroy work that hasn't been saved anywhere.
+Brief E (job blocking), agent-team protocol in progress. No agent is running, and as of `beda052`
+the builder's round-2 work is **committed**, so the tree is clean — nothing is at risk of being
+lost. But the build is **not finished**: the independent verifier and the browser test still have
+to run, and it hasn't merged to `main`.
 
 **Do not touch, at all:**
 
