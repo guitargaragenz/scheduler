@@ -15,6 +15,7 @@ code before acting on it.
 | Brief | Date | What it's for |
 |-------|------|---------------|
 | [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | **Current.** Job blocking: get Brief E approved, run council on the four decisions, then build. The plan is written; nothing is built. Micky only. |
+| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27 | **Fresh session, run it separately.** Clear out misplaced, dead and stale files — 267 MB of broken worktrees, a personal parts list, a client's design doc, three spent one-off scripts. Nothing deleted yet. **Read its STOP section first: the job-blocking build shares this working tree.** |
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
 | [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | Scopes two unbuilt features: the Sunday board meeting rebuild, and in-app PDF drop to replace the CSV pipeline. Both need the full protocol. |
 
