@@ -145,3 +145,52 @@ path and a schema change on the live `jobs` table. Full protocol applies.
 6. **Merge** — Trevor's "yp".
 
 **No commits before step 1 is approved.**
+
+---
+
+## Amendment — Round 3 (2026-07-27)
+
+**Status:** Awaiting Trevor's "yp" before any commit.
+**Trigger:** Independent verifier returned DO NOT SHIP against the round-2 build. All three
+blockers re-checked by hand and confirmed real. One root cause: `inferBench` was taught to
+return `null` for blocked jobs, but nothing else in the app was taught what a bench-less job
+looks like. This finishes that job — it does not reopen the locked scope above.
+**Full context:** [docs/briefs/re-fresh-brief-e-round3.md](../docs/briefs/re-fresh-brief-e-round3.md)
+
+### Scope — locked to exactly these six items
+
+1. Blocked job cards become **non-draggable** (no `disabled` flag currently passed to
+   `useDraggable` in `JobCard.jsx`). The moment a job is unblocked, drag returns to today's
+   normal behaviour — no new mode, no half-state. Add a tooltip/cursor so it's visibly
+   inert, not just dead to the touch. **Decision settled 2026-07-27 (Trevor): "blocked jobs
+   should never be dnd until not blocked then normal."** Do not loosen the
+   `scheduled_slots.bench TEXT NOT NULL` constraint — that alternative was rejected.
+2. Wire up the existing `NO_BENCH_COLORS` / `benchColors()` helper (`src/data/jobs.js:417-422`)
+   at all ~17 render sites currently falling back to `BENCH_COLORS[job.bench] || BENCH_COLORS.Admin`
+   (JobCard, JobsPage, CalendarGrid, JobShelf, ProjectsPage, MobileJobSheet, SplitDrawer,
+   PomoDrawer, DailyLogPage, WeeklySummaryModal, CloseDayModal, JobDrawer, CatchUpInterview).
+3. Stop `googleCalendar.js:178,204` writing a literal `Bench: null` line into calendar events
+   — omit the line when bench is null.
+4. Make Sidebar/Jobs/Shelf subtract `blockedPile()` so the old status rule
+   (`useSupabase.js:36`, `deriveJobStatusFlags`) and the new one agree on jobs 393/693 —
+   council amendment A, never built in round 2.
+5. Move the `CI` check ahead of the status check in `blockedReason()` (`jobs.js:145`) so job
+   1175 reads "waiting on the customer" instead of "on hold" once the corrected CSV is
+   uploaded.
+6. Tests for all five items above — current 84 tests cover none of this behaviour.
+
+**Explicitly not touched:** `DEFAULT_BENCH_KEYWORDS`, manufacturer regex lists, `inferBench`'s
+core logic, the `bench NOT NULL` schema constraint, anything in `SCHEDULER_old/` or the PDF
+pipeline.
+
+### Method — same six-step protocol as the parent brief, restarting at step 3
+
+1. Brief *(this amendment)*
+2. Council — already effectively done via the round-2 verifier's findings; no new council
+   pass needed unless Trevor wants one.
+3. **Builder** — staging branch `staging/job-blocking`, supervised from main conversation. ← next
+4. **Independent verifier** — fresh agent, never the builder.
+5. **Browser test** — Vercel preview, including uploading the corrected `jobs.csv` via 📂.
+6. **Merge** — Trevor's "yp".
+
+**No commits before Trevor approves this amendment.**
