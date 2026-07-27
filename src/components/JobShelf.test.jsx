@@ -27,15 +27,17 @@ globalThis.localStorage = {
 const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER } = await import('./JobShelf.jsx');
 const { blockedPile } = await import('../data/jobs.js');
 
-// One of each: a Planning job (INC), two Waiting jobs (On Hold / In Transit),
-// and a normal workable Setup job. `days` keeps the sort deterministic.
+// One of each: a Planning job (INC), a Hold job (On Hold), a Transit job
+// (In Transit), a genuine Waiting job (Waiting), and a normal workable
+// Setup job. `days` keeps the sort deterministic.
 const PLANNING = { id: 'p1', job: 393, status: 'Booked In', action: 'INC', bench: null, mfr: 'Fender', model: 'Stratocaster', days: 4 };
-const WAITING_HOLD = { id: 'w1', job: 1175, status: 'On Hold', action: 'CI', bench: null, mfr: 'Gibson', model: 'LesPaul', days: 3 };
-const WAITING_TRANSIT = { id: 'w2', job: 1176, status: 'In Transit', action: 'CI', bench: null, mfr: 'Gretsch', model: 'Duojet', days: 2 };
-const WORKABLE = { id: 'n1', job: 1001, status: 'Active', action: 'CI', bench: 'Setup', mfr: 'Ibanez', model: 'RGSeven', days: 1 };
+const HOLD_JOB = { id: 'w1', job: 1175, status: 'On Hold', action: '', bench: null, mfr: 'Gibson', model: 'LesPaul', days: 3 };
+const TRANSIT_JOB = { id: 'w2', job: 1176, status: 'In Transit', action: '', bench: null, mfr: 'Gretsch', model: 'Duojet', days: 2 };
+const WAITING_PARTS = { id: 'w3', job: 1177, status: 'Waiting', action: '', bench: null, mfr: 'PRS', model: 'CE24', days: 6 };
+const WORKABLE = { id: 'n1', job: 1001, status: 'Active', action: '', bench: 'Setup', mfr: 'Ibanez', model: 'RGSeven', days: 1 };
 // The double-count case: went On Hold in Supabase but kept its stale bench,
 // because useSupabase takes bench verbatim and never re-runs inferBench.
-const STALE_BENCH = { id: 's1', job: 1200, status: 'On Hold', action: 'CI', bench: 'Setup', mfr: 'Yamaha', model: 'Pacifica', days: 5 };
+const STALE_BENCH = { id: 's1', job: 1200, status: 'On Hold', action: '', bench: 'Setup', mfr: 'Yamaha', model: 'Pacifica', days: 5 };
 
 const noop = () => {};
 function render(jobs, storedSelection = null) {
@@ -57,47 +59,67 @@ beforeEach(() => { delete store.jobShelfBench; });
 describe('fixture sanity — blockedPile agrees with what these tests assume', () => {
   it('classifies the fixtures into the piles the tests expect', () => {
     expect(blockedPile(PLANNING)).toBe('planning');
-    expect(blockedPile(WAITING_HOLD)).toBe('waiting');
-    expect(blockedPile(WAITING_TRANSIT)).toBe('waiting');
+    expect(blockedPile(HOLD_JOB)).toBe('hold');
+    expect(blockedPile(TRANSIT_JOB)).toBe('transit');
+    expect(blockedPile(WAITING_PARTS)).toBe('waiting');
     expect(blockedPile(WORKABLE)).toBe(null);
-    expect(blockedPile(STALE_BENCH)).toBe('waiting');
+    expect(blockedPile(STALE_BENCH)).toBe('hold');
   });
 });
 
 describe('pile chip counts', () => {
   it('counts each pile exactly as blockedPile() does', () => {
-    const jobs = [PLANNING, WAITING_HOLD, WAITING_TRANSIT, WORKABLE];
+    const jobs = [PLANNING, HOLD_JOB, TRANSIT_JOB, WAITING_PARTS, WORKABLE];
     const markup = render(jobs);
     expect(chipCount(markup, 'Waiting')).toBe(jobs.filter(j => blockedPile(j) === 'waiting').length);
     expect(chipCount(markup, 'Planning')).toBe(jobs.filter(j => blockedPile(j) === 'planning').length);
+    expect(chipCount(markup, 'Hold')).toBe(jobs.filter(j => blockedPile(j) === 'hold').length);
+    expect(chipCount(markup, 'In Transit')).toBe(jobs.filter(j => blockedPile(j) === 'transit').length);
   });
 
   it('hides a pile chip when its count is zero', () => {
     const markup = render([WORKABLE]);
     expect(chipCount(markup, 'Waiting')).toBe(null);
     expect(chipCount(markup, 'Planning')).toBe(null);
+    expect(chipCount(markup, 'Hold')).toBe(null);
+    expect(chipCount(markup, 'In Transit')).toBe(null);
   });
 
   it('does not double-count a blocked job that kept a stale bench', () => {
     // STALE_BENCH is On Hold but still carries bench 'Setup'. It belongs to
-    // Waiting only — Setup must not claim it too, or the chips stop summing.
+    // Hold only — Setup must not claim it too, or the chips stop summing.
     const markup = render([WORKABLE, STALE_BENCH]);
     expect(chipCount(markup, 'Setup')).toBe(1);
-    expect(chipCount(markup, 'Waiting')).toBe(1);
+    expect(chipCount(markup, 'Hold')).toBe(1);
   });
 });
 
 describe('selecting a pile filters the list', () => {
-  it('shows only that pile’s jobs', () => {
-    const markup = render([PLANNING, WAITING_HOLD, WAITING_TRANSIT, WORKABLE], 'pile:waiting');
-    expect(markup).toContain('LesPaul');
-    expect(markup).toContain('Duojet');
+  it('shows only the Waiting pile’s jobs', () => {
+    const markup = render([PLANNING, HOLD_JOB, TRANSIT_JOB, WAITING_PARTS, WORKABLE], 'pile:waiting');
+    expect(markup).toContain('CE24');
+    expect(markup).not.toContain('LesPaul');
+    expect(markup).not.toContain('Duojet');
     expect(markup).not.toContain('Stratocaster');
     expect(markup).not.toContain('RGSeven');
   });
 
+  it('shows only the Hold pile’s jobs', () => {
+    const markup = render([PLANNING, HOLD_JOB, TRANSIT_JOB, WORKABLE], 'pile:hold');
+    expect(markup).toContain('LesPaul');
+    expect(markup).not.toContain('Duojet');
+    expect(markup).not.toContain('Stratocaster');
+  });
+
+  it('shows only the In Transit pile’s jobs', () => {
+    const markup = render([PLANNING, HOLD_JOB, TRANSIT_JOB, WORKABLE], 'pile:transit');
+    expect(markup).toContain('Duojet');
+    expect(markup).not.toContain('LesPaul');
+    expect(markup).not.toContain('Stratocaster');
+  });
+
   it('keeps the piles separate', () => {
-    const markup = render([PLANNING, WAITING_HOLD, WORKABLE], 'pile:planning');
+    const markup = render([PLANNING, HOLD_JOB, WORKABLE], 'pile:planning');
     expect(markup).toContain('Stratocaster');
     expect(markup).not.toContain('LesPaul');
   });
@@ -130,8 +152,8 @@ describe('a pile is never treated as a real bench', () => {
   });
 
   it('keeps a valid stored pile selection', () => {
-    render([WAITING_HOLD], 'pile:waiting');
-    expect(store.jobShelfBench).toBe('pile:waiting');
+    render([HOLD_JOB], 'pile:hold');
+    expect(store.jobShelfBench).toBe('pile:hold');
   });
 });
 

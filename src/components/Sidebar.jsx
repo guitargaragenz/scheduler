@@ -282,7 +282,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
             {!isFocusMode && displayedAwaiting.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#6366f1', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #312e81' }}>
-                  📞 AWAITING ({displayedAwaiting.length})
+                  📞 WAITING ({displayedAwaiting.length})
                 </div>
                 {displayedAwaiting.map(job => renderJob(job))}
               </div>
