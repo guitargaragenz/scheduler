@@ -29,10 +29,16 @@ job-age column once and was patched with `preserveKnownDays()`.
 actually says; everything else is his, and the import can never touch it.
 
 **One thing the council found that nobody had noticed:** there is currently **no way to type
-Tag, Action, VB or BL into the app at all**. They have only ever arrived from the Sheet
-(verified — the word `tag` does not appear in `JobDrawer.jsx`, `MobileJobSheet.jsx` or
-`JobsPage.jsx`). So a PDF-dropped job would land with four blank fields and nowhere to fill
-them in. Adding those editors is therefore part of this build, not a later nicety.
+Action, VB or BL into the app at all**. They have only ever arrived from the Sheet. So a
+PDF-dropped job would land with three blank fields and nowhere to fill them in. Adding those
+editors is therefore part of this build, not a later nicety. Action matters most — it is what
+sorts jobs into the Planning and Waiting piles.
+
+**Tag turned out not to be a problem at all** (Trevor, 2026-07-28). Tag is *effort* — Easy,
+Medium, Tricky, High — and its only job is to become an Hours number. That conversion happens in
+the Google Sheet, never in this app; the app just receives the finished hours. The cards show
+hours, not tags. So under PDF-drop there is nothing to replace: Trevor sets the hours on the card
+directly, which he already does. Tag needs no editor and no inference.
 
 ---
 
@@ -52,8 +58,28 @@ were re-verified against the live tree before this brief was written.
   column signature** so a sparse row is never NULL-filled by a fuller one in the same request.
   The pattern is in production and commented. The PDF path does not need a new writer invented.
 - Every job upsert conflicts on `id`, and for a top-level job **`id` is the job number**.
-- `parseCSV(csvText, benchKeywords, benchHours)` already derives bench and hours from the
-  description text. Hours is not purely hand-typed today.
+- **Hours is NOT inferred from the description.** `parseCSV()` reads it straight from the CSV's
+  Hours column (`parseFloat(obj.Hours) || 0`, `src/data/jobs.js:322`), then defaults to **1h** for
+  a schedulable job with no hours (:329). `inferBench()` infers the *bench* from description
+  keywords; `benchHours` only sizes split subtask cards in `createSubtasks()`. An earlier draft of
+  this brief claimed hours were keyword-inferred — that was wrong, corrected 2026-07-28.
+- **Tag is effort/difficulty, not a workflow code** (Trevor, 2026-07-28): Easy / Medium / Tricky /
+  High, stored as `EZ` / `M` / `T` / `H`. The workflow codes INC/CI/RS/RS-C/DG/GTS live in the
+  **Action** column — a different field. Do not conflate them.
+- **Tag drives Hours, and that conversion happens in the Google Sheet, not in this app.** Trevor
+  sets the effort in the Sheet; the Sheet turns it into a number; the app only ever receives the
+  finished Hours. There is no Tag→Hours mapping anywhere in the codebase.
+- **`job.tag` is vestigial.** It appears in exactly two live lines — written at
+  `src/utils/supabase.js:187`, read back at `src/hooks/useSupabase.js:67`. Nothing displays it and
+  nothing branches on it. The job cards show **hours**, not the tag. (`helpArticles.js:154` claims
+  cards show difficulty tags — stale doc.)
+- **`inferTag()` (`src/data/jobs.js:172`) has T and M swapped** (confirmed by Trevor). It reads
+  EZ ≤1.5h → T ≤3h → M ≤5.5h → H, but Tricky is *more* work than Medium, so it should be
+  EZ ≤1.5h → M ≤3h → T ≤5.5h → H. Dormant today because nothing reads `job.tag`; it also only
+  fires when the Tag cell is blank, and the Sheet fills it.
+- **`SKP` (Skip) does not exist in the code.** It appears in pre-migration backup data only. Per
+  Trevor, every SKP job is already On Hold or Waiting, so it is already handled as blocked —
+  **do not add SKP handling; it would risk breaking blocked-pile behaviour for no gain.**
 - Ownership of master vs state fields is decided by JS constants in `src/data/joinJobs.js`
   (`NON_MASTER_FIELDS`, `DERIVED_STATE_FIELDS`) — **not** by a database migration.
 - **No in-app editor exists for Tag, Action, VB or BL.** Hours is editable in `JobDrawer.jsx`.
@@ -65,9 +91,16 @@ were re-verified against the live tree before this brief was written.
    *physically absent* from the write — not "preserved", not "merged". Nothing to get wrong.
    Rejected: a second `preserveKnownDays()`-style guard. Per CLAUDE.md, symptom-patching is a
    stop signal, and a preserve-merge still reads, still sends, and still can be wrong.
-2. **New jobs — blank, except bench and hours.** Run the existing bench-keyword inference on the
-   PDF description, exactly as the CSV path already does. Tag, Action, VB, BL start visibly empty.
-   Rejected: inferring Tag from fault text — a wrong Tag looks filled-in and never gets reviewed.
+2. **New jobs — bench inferred, hours default to 1h, the rest blank.** Run the existing
+   `inferBench()` keyword inference on the PDF description, exactly as the CSV path does. Hours
+   takes the existing 1h default for a schedulable job and **Trevor adjusts it on the job card**,
+   which he already does today and is happy to keep doing (his call, 2026-07-28). Action, VB and
+   BL start visibly empty.
+   **Tag is not a hand-entry field and gets no editor.** The effort→hours conversion lives in the
+   Google Sheet; the app has never done it. Under PDF-drop, Hours *is* the effort — Trevor sets it
+   directly on the card instead of setting an effort code that something else converts.
+   Rejected: inferring Action from fault text — a wrong Action looks filled-in, never gets
+   reviewed, and would mis-sort the Planning and Waiting piles.
 3. **Do NOT move the five fields to the app-owned side in this build.** Three advisors wanted it;
    four of five reviewers backed the Executor's dissent and the chairman sided with them. It is
    cheaper than assumed (a constant, not a migration) but Build 1 does not need it to be safe.
@@ -132,7 +165,11 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 2. **Six-column sparse PDF writer** — reuse the `toJobRow` + column-signature-grouping pattern from
    `batchWriteJobsState()`. Explicit six-name allow-list. Do **not** call `upsertJobsBatch()`.
 3. **Widen `preserveKnownDays()`** to cover tag + action + vb + bl + days on the CSV path.
-4. **Editors for Tag, Action, VB, BL** in the job drawer, alongside the existing Hours field.
+4. **Editors for Action, VB, BL** in the job drawer, alongside the existing Hours field.
+   Not Tag — see decision 2. Action is a picker (INC/CI/RS/RS-C/DG/GTS + blank), not free text,
+   because it drives the Planning and Waiting piles.
+4b. **Fix the `inferTag()` T/M swap** — one line, `src/data/jobs.js:172`. Dormant today, but a
+   wrong-way-round threshold sitting in the code is a trap for the next session that surfaces Tag.
 5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
 6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
 7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
@@ -144,7 +181,11 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 - Moving Tag/Hours/Action/VB/BL to the app-owned side of `joinJobs.js`. Build 2.
 - Any snapshot/restore or undo button.
 - Auto-deleting or auto-completing jobs missing from the PDF.
-- Inferring Tag from fault text; provenance/"suggested vs confirmed" flags; a hours-estimate
+- **Any SKP (Skip) handling.** Per Trevor, every SKP job is already On Hold or Waiting and is
+  therefore already treated as blocked. Adding SKP logic risks breaking blocked-pile behaviour
+  for no gain. Leave it alone.
+- A Tag editor, or a Tag→Hours conversion inside the app. See decision 2.
+- Inferring Action from fault text; provenance/"suggested vs confirmed" flags; a hours-estimate
   learning loop; a daily triage screen with inline editing. All proposed by one advisor, all
   rejected as Build-1 scope creep that would require Trevor to babysit the build.
 - Anything in `SCHEDULER_old/`. Anything touching scheduling, calendar slots or bench assignment.
