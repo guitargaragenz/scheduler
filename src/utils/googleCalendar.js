@@ -156,6 +156,13 @@ export async function listEvents(timeMin, timeMax) {
   }
 }
 
+// Blocked jobs carry bench: null (round-3 blocking work). A calendar event
+// description of "Bench: null" is confusing, so omit the bench line entirely
+// when there's no bench to report.
+export function buildEventDescription(job) {
+  return job.bench ? `Bench: ${job.bench}\nDesc: ${job.desc}` : `Desc: ${job.desc}`;
+}
+
 const BENCH_COLOR_ID = {
   Luthier:     '2',  // Sage
   Electronics: '9',  // Blueberry
@@ -175,7 +182,7 @@ export async function createEvent(job, date, hour, durationHours, minute = 0) {
 
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
-    description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
+    description: buildEventDescription(job),
     colorId: BENCH_COLOR_ID[job.bench] || '8',
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
@@ -201,7 +208,7 @@ export async function updateEvent(eventId, job, date, hour, durationHours, minut
 
   const event = {
     summary: `#${job.job} • ${job.mfr} ${job.model}`,
-    description: `Bench: ${job.bench}\nDesc: ${job.desc}`,
+    description: buildEventDescription(job),
     colorId: BENCH_COLOR_ID[job.bench] || '8',
     start: { dateTime: start.toISOString(), timeZone: 'Pacific/Auckland' },
     end: { dateTime: end.toISOString(), timeZone: 'Pacific/Auckland' },
