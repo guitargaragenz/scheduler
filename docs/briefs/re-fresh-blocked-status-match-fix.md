@@ -153,3 +153,26 @@ another reason, exactly as before. Builder: revert the CI clause added in the fi
 two pre-existing Active+CI-stays-workable tests to passing without modifying their fixtures.
 
 Everything else in the original scope proceeds as written. Builder: proceed.
+
+---
+
+## Post-build correction (2026-07-27, during Browser Test)
+
+The premise above — that the real Multitrack status string is `'Waiting Parts'` — was **wrong**.
+Trevor had shown a UI dropdown label reading "Waiting Parts" earlier in the session, but that's
+display text, not the stored value. A direct read-only query against the live Supabase `jobs` table
+(using jobs 1448, 1604, 1679, 1705 — four real jobs Trevor confirmed are waiting on parts) showed
+their `status` field is literally `'Waiting'`. A full distinct-count of the `status` column across
+the whole table confirmed only four values currently exist in production: `Active`, `Booked In`,
+`On Hold`, `Waiting` — no `'Waiting Parts'` and no `'In Transit'` (that pile is real, just empty
+right now).
+
+Everything the Council and Builder got right — the On Hold / In Transit split into their own piles,
+dropping CI as an independent gate, the INC/tag-vs-status distinction — stands unchanged. Only the
+literal string itself was wrong. Fixed by reverting `'Waiting Parts'` → `'Waiting'` in `blockedPile()`,
+`deriveJobStatusFlags()`, and the CSV accept-list in `src/data/jobs.js`, plus matching test fixtures.
+Full test suite passes (124/124). Commit `c5c743a` on `blocked-status-fix`.
+
+**Lesson for future briefs:** never treat a UI label/dropdown string as proof of the real stored data
+value — query the real source directly before encoding an assumption into shared logic. See project
+memory `multitrack-status-vs-tags`.
