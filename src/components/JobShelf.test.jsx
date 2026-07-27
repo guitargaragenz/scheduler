@@ -138,23 +138,27 @@ describe('a pile is never treated as a real bench', () => {
 
 describe('drag-mode toggle visibility', () => {
   it('hides the toggle when a pile is what is driving the list', () => {
-    expect(dragModeVisible({ selectedPile: 'waiting', searching: false, focusOnly: false })).toBe(false);
+    expect(dragModeVisible({ selectedPile: 'waiting', searching: false })).toBe(false);
   });
 
-  // The round-2 regression: a pile stays selected while search or Focus takes
-  // over the list. Those show ordinary draggable jobs, and the chip row is
-  // hidden while searching — so dropping the toggle there looked like a bug
-  // with nothing on screen to explain it.
+  // The round-2 regression: a pile stays selected while search takes over the
+  // list. Search shows ordinary draggable jobs, and the chip row is hidden
+  // while searching — so dropping the toggle there looked like a bug with
+  // nothing on screen to explain it.
   it('keeps the toggle while search drives the list, even with a pile still selected', () => {
-    expect(dragModeVisible({ selectedPile: 'waiting', searching: true, focusOnly: false })).toBe(true);
+    expect(dragModeVisible({ selectedPile: 'waiting', searching: true })).toBe(true);
   });
 
-  it('keeps the toggle while Focus drives the list, even with a pile still selected', () => {
-    expect(dragModeVisible({ selectedPile: 'waiting', searching: false, focusOnly: true })).toBe(true);
+  // Round 3: the first fix also exempted focusOnly, which was wrong. `visible`
+  // ranks the pile branch ABOVE focusOnly, so turning the Focus pill on while a
+  // pile is selected leaves the list showing blocked cards. Exempting it put
+  // drag controls above undraggable cards — the exact thing C5 prevents.
+  it('still hides the toggle when Focus is on but a pile outranks it', () => {
+    expect(dragModeVisible({ selectedPile: 'waiting', searching: false, focusOnly: true })).toBe(false);
   });
 
   it('keeps the toggle for an ordinary bench selection', () => {
-    expect(dragModeVisible({ selectedPile: null, searching: false, focusOnly: false })).toBe(true);
+    expect(dragModeVisible({ selectedPile: null, searching: false })).toBe(true);
   });
 
   // Search is internal state, so the searching half of the regression is only
@@ -162,11 +166,17 @@ describe('drag-mode toggle visibility', () => {
   // check for the plain case: pile selected, nothing else driving the list.
   it('leaves the toggle out of the markup for a plain pile selection', () => {
     const markup = render([WAITING_HOLD, WORKABLE], 'pile:waiting');
-    expect(markup).not.toContain('Urgent');
+    expect(markup).not.toContain('🚨 Urgent');
   });
 
   it('renders the toggle in the markup for a plain bench selection', () => {
     const markup = render([WAITING_HOLD, WORKABLE], 'Setup');
-    expect(markup).toContain('Urgent');
+    expect(markup).toContain('🚨 Urgent');
   });
+
+  // Not covered: the focusOnly and searching cases at component level. Both are
+  // internal state with no prop to set them, so a static render can't reach
+  // them — dragModeVisible() is tested directly instead, and its correctness
+  // depends on mirroring `visible`'s searching → pile → bench → focusOnly
+  // precedence. Reshuffle that order and this guard goes quietly wrong.
 });

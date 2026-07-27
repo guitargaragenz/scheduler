@@ -17,12 +17,17 @@ export const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:')
 
 // Whether to offer the Regular / 🚨 Urgent drag-mode toggle. Hide it only when
 // a blocked pile is what's actually driving the list, because those cards can't
-// be dragged. A pile can stay *selected* while search or the Focus pill takes
-// over the list — those show ordinary draggable jobs, and since the chip row is
-// hidden while searching, silently dropping the toggle there would look like a
-// bug with nothing on screen to explain it.
-export function dragModeVisible({ selectedPile, searching, focusOnly }) {
-  return !(selectedPile && !searching && !focusOnly);
+// be dragged.
+//
+// This must mirror the precedence in `visible` below: searching → pile → bench
+// → focusOnly. Only `searching` outranks a pile, so only searching can put
+// draggable jobs on screen while a pile is still selected — and because the
+// chip row is hidden while searching, dropping the toggle there would look like
+// a bug with nothing on screen to explain it. The Focus pill ranks *below* the
+// pile, so it never takes the list over; keeping the toggle for it would put
+// drag controls above undraggable cards, the exact thing this guard prevents.
+export function dragModeVisible({ selectedPile, searching }) {
+  return !(selectedPile && !searching);
 }
 
 function getAllSubtasks(job, jobs) {
@@ -296,7 +301,7 @@ export default function JobShelf({
             </div>
 
             {/* Blocked cards can't be dragged, so don't offer a drag mode above them. */}
-            {dragModeVisible({ selectedPile, searching, focusOnly }) && (
+            {dragModeVisible({ selectedPile, searching }) && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
               <button
                 onClick={() => onDragModeChange('regular')}
