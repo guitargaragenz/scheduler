@@ -82,7 +82,11 @@ were re-verified against the live tree before this brief was written.
   **do not add SKP handling; it would risk breaking blocked-pile behaviour for no gain.**
 - Ownership of master vs state fields is decided by JS constants in `src/data/joinJobs.js`
   (`NON_MASTER_FIELDS`, `DERIVED_STATE_FIELDS`) — **not** by a database migration.
-- **No in-app editor exists for Tag, Action, VB or BL.** Hours is editable in `JobDrawer.jsx`.
+- **No in-app editor exists for Tag, Action, VB or BL.**
+- **`JobDrawer.jsx` (400 lines) is the manual split editor** — bench rows, sessions, per-session
+  hours, day picker. Hours is editable there, but as *split/session* hours; for an unsplit job the
+  drawer hydrates a single row from `job.bench`/`job.hours` (:59), so editing it does set the job's
+  hours. This file is **out of scope** — see the warning under "The Jobs Sheet page".
 
 ### The five decisions — resolved
 
@@ -146,9 +150,15 @@ were re-verified against the live tree before this brief was written.
 Google Sheet as a page inside the app. He edits Tag, Hours, Action, VB and BL for every job in one
 grid, presses a commit button, and it saves. Exactly the workflow he has today, minus the Sheet.
 
-**Accepted, and it replaces — not supplements — per-job editors in `JobDrawer.jsx`.** One place to
-edit, not two. Rationale: opening 46 drawers one at a time to set an Action is not a workflow he
-will keep up, and bulk entry is the entire point of a sheet.
+**Accepted. It replaces the council's proposal to add Action/VB/BL fields into `JobDrawer.jsx`.**
+Bulk entry is the entire point of a sheet; opening 46 drawers one at a time to set an Action is not
+a workflow that survives a real week.
+
+> ⚠️ **`JobDrawer.jsx` IS NOT TOUCHED BY THIS BUILD.** It is the **manual split editor** — benches,
+> sessions, per-session hours, day picker — and it is a completely separate concern from job admin.
+> Nothing in it is removed, moved or changed. The "drawer editors" being dropped are three fields
+> that **were never built** — a council proposal, not existing functionality. An earlier phrasing of
+> this brief said "drawer editors are out", which read as removing splits. It does not. Splits stay.
 
 Design constraints:
 
@@ -232,7 +242,9 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 4. **The Jobs Sheet page** — all jobs in a grid; the five app-owned columns editable, the six
    Multitrack columns read-only; Action as a picker; explicit commit button, no autosave; save via
    `batchWriteJobsState()`. See "The Jobs Sheet page" above for the full constraints.
-   **No per-job editors in `JobDrawer.jsx`** — this replaces them.
+   **`JobDrawer.jsx` is not touched.** It is the manual split editor and stays exactly as it is.
+   The council's idea of adding Action/VB/BL fields into it is dropped — those fields were never
+   built, so there is nothing to remove.
 4b. **Fix the `inferTag()` T/M swap** — one line, `src/data/jobs.js:172`. Do this regardless; it
    becomes live if the Tag→Hours question (decision 2) resolves to option (b).
 5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
