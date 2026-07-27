@@ -11,8 +11,13 @@ export const DEFAULT_BENCH_KEYWORDS = {
 // is the raw boolean, not 'Y'/'N'. It exists only so this function can ask
 // blockedPile the question properly: On Hold + BL=Y + GTS ("parts arrived, good
 // to start") is NOT blocked, and without the backlog flag we cannot tell it
-// apart from a genuinely-on-hold job. Job 1175 (Allen & Heath GL2800) is the
-// live case — it used to be forced to Admin and now resolves to Electronics.
+// apart from a genuinely-on-hold job.
+//
+// No live job matches that combination today (checked 2026-07-27 — job 1175 was
+// thought to, but its GTS turned out to be a stale CSV value; it is really CI).
+// Keep the parameter anyway: without it, the first real ready-to-start job would
+// lose its bench here while Sidebar.jsx simultaneously listed it under READY TO
+// START. Two screens, one job, opposite answers — that is the bug being closed.
 export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS, backlog = false) {
   // Blocked work gets NO bench. Deliberately delegated to blockedPile rather
   // than re-testing the status strings here: a second copy of the rule is how

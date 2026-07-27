@@ -534,9 +534,26 @@ code directly and broke the tie. **These four are settled; the builder does not 
    - **`App.jsx:779` is a call site the plan never mentioned, and it is not read-only** —
      line 785 writes every changed bench back to Supabase via `saveJob`. A `null` bench becomes
      a real write. Check it.
-   - Live impact is one job: **1175** (Allen & Heath GL2800), the only `On Hold + BL=Y + GTS`
+   - ~~Live impact is one job: **1175** (Allen & Heath GL2800), the only `On Hold + BL=Y + GTS`
      row. Today [jobs.js:14](../../../src/data/jobs.js) gives it `Admin` even though it is
-     schedulable — an existing bug this fixes. With `backlog` passed it resolves to Electronics.
+     schedulable — an existing bug this fixes. With `backlog` passed it resolves to
+     Electronics.~~
+   - **CORRECTED 2026-07-27 — this premise was wrong, and the verifier must not test against
+     it.** Job 1175's `GTS` was stale data, not a real state. It is **On Hold + CI** — the job
+     is in dispute. The Google Sheet has said `CI` since some point after 26 July 5:39pm; the
+     CSV never picked it up because both pipeline watchers were killed during the truncation
+     incident and never restarted. A read-only Sheet-vs-CSV diff on 27 July found exactly three
+     stale cells (1175 Action, plus Tag/Action on the two new jobs 1708 and 1710) and nothing
+     else. The CSV has been corrected; Supabase still holds `GTS` until Trevor re-uploads.
+   - **Consequence: there are now ZERO live `On Hold + BL=Y + GTS` jobs.** Every On Hold row
+     was re-checked. The `readyToStart` exception has no example in today's data.
+   - **The change is still correct — keep it.** Without `backlog`, `inferBench` would strip the
+     bench off any future ready-to-start job while `Sidebar.jsx` simultaneously listed it under
+     ✅ READY TO START. That self-contradiction is the thing being fixed. It is now a
+     consistency fix with no visible effect today, not a bug fix with a live example.
+   - **New browser-test expectation for 1175:** after the corrected CSV is uploaded, it should
+     move from "✅ Ready to Start, Admin badge" to **blocked, no bench chip, reason "waiting on
+     the customer"**. Do not expect Electronics.
    - `scripts/sheet_to_csv.command:326` has a Python mirror of this logic whose header claims
      the two are hand-kept in sync. It targets Firestore, not Supabase, so it cannot corrupt
      the live DB — but update the comment rather than leaving it claiming a sync that no longer
@@ -666,9 +683,10 @@ to start" — MT's tagging, not the app's, but expect the question.
   is separable and can ship after. Tasks 8, 9, 10 are optional — but 9 (the Multitrack link) is
   worth more per line than 8, so protect it. **The one combination to avoid is shipping 4 without
   a unified `blockedPile`.**
-- **Scale check, for the brief:** under INC-alone, **17 of 45 jobs (38%)** leave the schedulable
-  lists at once — 5 Waiting, 10 On Hold (11 minus ready-to-start 1175), 2 Planning. Right call,
-  but a big visible change on first load.
+- **Scale check, for the brief:** under INC-alone, ~~**17 of 45 jobs (38%)**~~ **18 of 45 jobs
+  (40%)** leave the schedulable lists at once — 5 Waiting, **11** On Hold, 2 Planning. Revised
+  2026-07-27: 1175 is not ready-to-start (see the correction under decision 2), so no On Hold row
+  is subtracted. Right call, but a big visible change on first load.
 
 ## Protocol
 
