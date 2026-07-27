@@ -7,7 +7,7 @@ import {
   appendConflictLog,
 } from '../utils/supabase.js';
 import { expandAutoSplits } from '../data/joinJobs.js';
-import { deriveJobStatusFlags } from '../data/jobs.js';
+import { deriveJobStatusFlags, blockedPile } from '../data/jobs.js';
 
 // Detect top-level jobs that disappeared from the jobs table
 // (e.g., CSV sync removed them without marking done in-app)
@@ -30,10 +30,17 @@ function detectDisappearedJobs(prevJobs, incomingJobs) {
 // regenerate the derived auto-split bench cards. That regeneration step is
 // not optional bookkeeping: auto-split cards are derived-not-stored by
 // design, so without it big jobs simply never break into bench cards.
-function normalizeJobsFromDb(dbJobs, benchHours = {}) {
+export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
   const mapped = dbJobs.map(j => {
     const backlog = j.bl === 'Y' || j.bl === true;
     const statusFlags = deriveJobStatusFlags(j.status, j.action, backlog);
+    // The old status-flag rule (above) doesn't know about blockedPile(), the
+    // newer rule that puts INC-action and waiting/on-hold jobs in the
+    // blocked pile with no bench. Without this, a job like 393/693 (INC)
+    // could read schedulable here while blockedPile() treats it as blocked
+    // everywhere else, so the two screens disagree. Fold blockedPile() in so
+    // ACTIVE/BACKLOG bucketing agrees with the bench-less-job rule.
+    const isBlocked = blockedPile({ status: j.status, action: j.action, backlog }) != null;
 
     return {
       id: j.id,
@@ -66,6 +73,7 @@ function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       backlog,
       project: j.pj === 'Y' || j.pj === true,
       ...statusFlags,
+      schedulable: statusFlags.schedulable && !isBlocked,
       hasSubtasks: j.has_subtasks,
       subtasks: j.subtasks || [],
       isSplit: j.is_split,
