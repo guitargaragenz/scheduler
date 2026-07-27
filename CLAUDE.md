@@ -43,6 +43,10 @@ memory file — this file loads automatically, every time, for every session and
   plan, diagnosis, and technical decision into plain terms before anything else — no jargon, no
   assuming familiarity with code concepts. If a plan file or agent report is dense/technical, read it
   and give the plain-English translation unprompted, don't wait to be asked.
+  **Exception:** don't recap a file back to Trevor if the content originated from him this
+  conversation — something he wrote, dictated, or approved verbatim (e.g. a brief he already read
+  before saying "yp"). He knows what's in it; reading it back is noise, not translation. Only
+  translate content that's new to him.
 - **Answer open-ended prompts for him, don't leave him to formulate them.** When a tool or skill asks
   him to compose a technical summary in his own words, that's a real friction point, not a
   comprehension gap — supply the plain-language answer for him to paste in before he has to ask.
