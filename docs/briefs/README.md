@@ -14,11 +14,11 @@ code before acting on it.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [re-fresh-blocked-status-match-fix.md](re-fresh-blocked-status-match-fix.md) | 2026-07-27 | **Current, DRAFT — needs Trevor's "yp".** Brief F shipped, but its live browser test found `blockedPile()` checks status `'Waiting'`, which no real job has — Multitrack's real status is `'Waiting Parts'`. Fix the string match, make On Hold always win over CI, add separate Hold/In Transit chips. |
+| [re-fresh-brief-g-pdf-drop-build.md](re-fresh-brief-g-pdf-drop-build.md) | 2026-07-28 | **Current — start here.** Brief G (drop the Multitrack PDF into the app; rebuild the Google Sheet as an in-app page) is **approved and scope-locked**; the brief itself is `.claude/pending-brief.md`. No code written yet. Stopped part-way through step 0, the match-key gate. |
 | [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | Superseded — Brief E fully shipped and merged this session. Kept for history on the council decisions and round-2/3 fixes. |
 | [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27 | **Fresh session, run it separately.** Clear out misplaced, dead and stale files — 267 MB of broken worktrees, a personal parts list, a client's design doc, three spent one-off scripts. Nothing deleted yet. **Read its STOP section first: the job-blocking build shares this working tree.** |
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
-| [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | Scopes two unbuilt features: the Sunday board meeting rebuild, and in-app PDF drop to replace the CSV pipeline. Both need the full protocol. |
+| [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | **Half-superseded.** Its PDF-drop half became Brief G — use `re-fresh-brief-g-pdf-drop-build.md` for that, not this. Its *Sunday board meeting rebuild* half is still unscoped and unbuilt, and is the reason this stays Live. |
 
 ## Parked — agreed in principle, waiting on something
 
@@ -31,6 +31,7 @@ code before acting on it.
 
 | Brief | Date | What happened |
 |-------|------|---------------|
+| [re-fresh-blocked-status-match-fix.md](re-fresh-blocked-status-match-fix.md) | 2026-07-27 | Shipped and merged (PR #6, `43a5024`). ⚠️ **This brief contains a wrong fact:** it claims Multitrack's real status is `'Waiting Parts'`. It is **`'Waiting'`** — the dropdown *label* reads "Waiting parts" but the export is master, and `src/data/jobs.js` is correct as-is. Do not act on that line. |
 | [re-fresh-waiting-chip-handoff.md](re-fresh-waiting-chip-handoff.md) | 2026-07-27 | Brief F — Waiting + Planning chips on the bench row. Shipped and merged to main (`ece2197`). Live browser test surfaced the status-match bug now tracked in `re-fresh-blocked-status-match-fix.md`. |
 | [re-fresh-job-blocking-implementation-plan.md](re-fresh-job-blocking-implementation-plan.md) | 2026-07-27 | Turn the job-blocking spec into an implementation plan. Done — plan written, five spec corrections found, Brief E raised. Superseded by `re-fresh-job-blocking-council-and-build.md`. |
 | [brief-d-board-meeting-full-record.md](brief-d-board-meeting-full-record.md) | 2026-07-27 | Brief D's complete working record, archived out of `.claude/pending-brief.md`. Shipped at `da1d9af`. All nine scope items, council findings, verification and live-test notes. History, not instructions. |
