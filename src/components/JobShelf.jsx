@@ -1,9 +1,19 @@
 import { useState } from 'react';
 import JobCard from './JobCard.jsx';
 import DeferredItemsList from './DeferredItemsList.jsx';
-import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
+import { benchColors, HOURS_BUCKETS, blockedPile } from '../data/jobs.js';
 
 const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
+
+// Blocked piles are NOT benches — deliberately kept out of BENCH_ORDER so they
+// can never be treated as a real `job.bench` anywhere downstream. The stored
+// selection is namespaced `pile:*` so it can't collide with a bench name.
+const PILES = [
+  { key: 'waiting', label: 'Waiting' },
+  { key: 'planning', label: 'Planning' },
+];
+const PILE_VALUES = PILES.map(p => `pile:${p.key}`);
+const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:') ? sel.slice(5) : null);
 
 function getAllSubtasks(job, jobs) {
   if (job.hasSubtasks && Array.isArray(job.subtasks)) {
@@ -37,7 +47,15 @@ export default function JobShelf({
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   focusList = [], deferredItems = [], onPullBackIn, onToggleFocus,
 }) {
-  const [selectedBench, setSelectedBench] = useState(() => localStorage.getItem('jobShelfBench') || null);
+  // Validate what comes back out of localStorage: a stale value that is neither
+  // a real bench nor a known pile key would boot the shelf into a dead filter
+  // (active, but nothing can ever match it).
+  const [selectedBench, setSelectedBench] = useState(() => {
+    const stored = localStorage.getItem('jobShelfBench');
+    if (stored && (BENCH_ORDER.includes(stored) || PILE_VALUES.includes(stored))) return stored;
+    if (stored) localStorage.removeItem('jobShelfBench');
+    return null;
+  });
   const [search, setSearch] = useState('');
   const [hoursFilter, setHoursFilter] = useState(null);
   const [focusOnly, setFocusOnly] = useState(false);
@@ -65,9 +83,18 @@ export default function JobShelf({
     return true;
   });
 
+  // Blocked and benched are mutually exclusive here. A job that went On Hold in
+  // Supabase keeps its stale `bench` (useSupabase takes bench verbatim and never
+  // re-runs inferBench), so without this guard it would count in BOTH its old
+  // bench chip and its pile chip.
   const benchCounts = BENCH_ORDER.map(bench => ({
     bench,
-    count: topLevel.filter(j => j.bench === bench).length,
+    count: topLevel.filter(j => j.bench === bench && blockedPile(j) == null).length,
+  }));
+
+  const pileCounts = PILES.map(p => ({
+    ...p,
+    count: topLevel.filter(j => blockedPile(j) === p.key).length,
   }));
 
   // Count only the focus jobs this shelf can actually list, so the pill's number
@@ -78,6 +105,7 @@ export default function JobShelf({
   const q = search.trim().toLowerCase();
   const searching = q.length > 0;
   const active = searching || !!selectedBench || focusOnly;
+  const selectedPile = pileOf(selectedBench);
 
   const matchHours = job => {
     if (!hoursFilter) return true;
@@ -89,11 +117,13 @@ export default function JobShelf({
 
   const visible = (searching
     ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
-    : selectedBench
-      ? topLevel.filter(j => j.bench === selectedBench)
-      : focusOnly
-        ? topLevel.filter(j => focusSet.has(String(j.job)))
-        : []
+    : selectedPile
+      ? topLevel.filter(j => blockedPile(j) === selectedPile)
+      : selectedBench
+        ? topLevel.filter(j => j.bench === selectedBench && blockedPile(j) == null)
+        : focusOnly
+          ? topLevel.filter(j => focusSet.has(String(j.job)))
+          : []
   ).filter(matchHours).sort((a, b) => (b.days ?? 0) - (a.days ?? 0));
 
   function renderJob(job, indent = false) {
@@ -131,7 +161,7 @@ export default function JobShelf({
     }}>
       <div style={{ textAlign: 'center', padding: '14px 14px 12px', borderBottom: '1px solid #232323' }}>
         <div style={{ fontSize: 22, fontWeight: 500, color: '#e2e8f0' }}>{topLevel.length}</div>
-        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>jobs waiting</div>
+        <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>unscheduled</div>
       </div>
 
       <div style={{ padding: '10px 14px 8px' }}>
@@ -186,7 +216,7 @@ export default function JobShelf({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
             {benchCounts.map(({ bench, count }) => {
               const isActive = selectedBench === bench;
-              const colors = BENCH_COLORS[bench] || BENCH_COLORS.Admin;
+              const colors = benchColors(bench);
               return (
                 <span
                   key={bench}
@@ -200,6 +230,33 @@ export default function JobShelf({
                   }}
                 >
                   {bench} <span style={{ opacity: 0.7 }}>{count}</span>
+                </span>
+              );
+            })}
+
+            {/* Blocked piles. Rendered in their own block, never through the
+                bench loop — a pile key passed to benchColors would land on the
+                "no bench" swatch and read as a bench chip. Outlined, not
+                filled, so they read as "not a bench" at a glance. */}
+            {pileCounts.some(p => p.count > 0) && (
+              <div style={{ flexBasis: '100%', height: 0 }} />
+            )}
+            {pileCounts.filter(p => p.count > 0).map(({ key, label, count }) => {
+              const value = `pile:${key}`;
+              const isActive = selectedBench === value;
+              return (
+                <span
+                  key={value}
+                  onClick={() => pickBench(value)}
+                  style={{
+                    fontSize: 9, padding: '4px 9px', borderRadius: 11, fontWeight: 600, cursor: 'pointer',
+                    background: 'transparent',
+                    color: isActive ? '#94a3b8' : '#64748b',
+                    opacity: isActive ? 1 : 0.5,
+                    border: `1px solid ${isActive ? '#475569' : '#334155'}`,
+                  }}
+                >
+                  {label} <span style={{ opacity: 0.7 }}>{count}</span>
                 </span>
               );
             })}
@@ -228,6 +285,8 @@ export default function JobShelf({
               })}
             </div>
 
+            {/* Blocked cards can't be dragged, so don't offer a drag mode above them. */}
+            {!selectedPile && (
             <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
               <button
                 onClick={() => onDragModeChange('regular')}
@@ -246,6 +305,7 @@ export default function JobShelf({
                 }}
               >🚨 Urgent</button>
             </div>
+            )}
           </>
         )}
       </div>
