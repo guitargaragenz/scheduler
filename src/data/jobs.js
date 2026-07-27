@@ -140,8 +140,13 @@ export function blockedReason(job) {
   const act = (job?.action || '').trim().toUpperCase();
   const status = job?.status || '';
 
+  // CI (waiting on the customer) takes priority over the status column,
+  // regardless of what status the job happens to carry. Job 1175 is
+  // On Hold + CI — checking status === 'On Hold' first used to report
+  // "on hold", which just restates the status column. "waiting on the
+  // customer" tells Trevor who to chase, so CI is checked ahead of status.
   if (act === 'INC') return 'planning';
-  if (status === 'Waiting' && act === 'CI') return 'waiting on the customer';
+  if (act === 'CI') return 'waiting on the customer';
   if (status === 'In Transit') return 'in transit';
   if (status === 'On Hold') return 'on hold';
   return 'waiting — see Multitrack';

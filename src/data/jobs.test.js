@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, parseCSV, preserveKnownDays } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS, parseCSV, preserveKnownDays } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -151,5 +151,54 @@ describe('blockedPile', () => {
     expect(blockedPile(null)).toBeNull();
     expect(blockedPile(undefined)).toBeNull();
     expect(blockedPile({})).toBeNull();
+  });
+});
+
+// Brief E, Round 3 — blockedReason's CI-priority fix.
+//
+// Job 1175 is On Hold + CI. The old code checked `status === 'On Hold'`
+// before `action === 'CI'`, so it reported "on hold" — which just restates
+// the status column. CI means "waiting on the customer" and should win
+// regardless of what status the job carries.
+describe('blockedReason — CI takes priority over status', () => {
+  it('reports "waiting on the customer" for On Hold + CI (job 1175)', () => {
+    expect(blockedReason({ status: 'On Hold', action: 'CI' })).toBe('waiting on the customer');
+  });
+
+  it('still reports "waiting on the customer" for Waiting + CI', () => {
+    expect(blockedReason({ status: 'Waiting', action: 'CI' })).toBe('waiting on the customer');
+  });
+
+  it('still reports "on hold" for On Hold with a non-CI action', () => {
+    expect(blockedReason({ status: 'On Hold', action: 'GTS' })).toBe('on hold');
+  });
+
+  it('still reports "planning" for INC regardless of status or action ordering', () => {
+    expect(blockedReason({ status: 'On Hold', action: 'INC' })).toBe('planning');
+  });
+
+  it('returns null for a workable job', () => {
+    expect(blockedReason({ status: 'Active', action: 'CI' })).toBeNull();
+  });
+});
+
+// Brief E, Round 3 — the wired-up bench-less colour helper.
+//
+// Blocked jobs carry bench: null. Every render site used to fall back to
+// `BENCH_COLORS.Admin`, which visually lied — a bench-less job isn't on the
+// Admin bench, it's not on any bench. benchColors() is the single place that
+// answers "what colour is this job's bench chip", including the null case.
+describe('benchColors', () => {
+  it('returns the matching bench palette for a known bench', () => {
+    expect(benchColors('Luthier')).toBe(BENCH_COLORS.Luthier);
+  });
+
+  it('returns the no-bench palette for null/undefined bench, not Admin', () => {
+    expect(benchColors(null)).toBe(NO_BENCH_COLORS);
+    expect(benchColors(undefined)).toBe(NO_BENCH_COLORS);
+  });
+
+  it('returns the no-bench palette for an unrecognised bench string', () => {
+    expect(benchColors('NotARealBench')).toBe(NO_BENCH_COLORS);
   });
 });
