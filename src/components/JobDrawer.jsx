@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
@@ -204,7 +204,7 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
         {/* Bench rows */}
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {rows.map((row, ri) => {
-            const colors = BENCH_COLORS[row.bench] || BENCH_COLORS.Admin;
+            const colors = benchColors(row.bench);
             const rowTotal = row.sessions.reduce((s, x) => s + Number(x.hours), 0);
             return (
               <div key={ri} style={{

@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { benchColors } from '../data/jobs.js';
 
 const BREAK_MINS = 5;
 const DEFAULT_WORK_MINS = 25;
@@ -52,7 +52,7 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onM
   const [manualNote, setManualNote] = useState('');
   const [doneAmount, setDoneAmount] = useState('');
   const startedAtRef = useRef(null);
-  const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+  const colors = benchColors(job.bench);
 
   // Run the clock only when work or break
   useEffect(() => {

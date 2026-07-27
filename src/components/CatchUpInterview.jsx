@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { dayLabel } from '../utils/calendar.js';
-import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS } from '../data/jobs.js';
+import { getJobSplits, buildManualInvoiceJob, benchColors } from '../data/jobs.js';
 import { formatMoney } from '../utils/money.js';
 import ReasonPicker from './ReasonPicker.jsx';
 
@@ -12,7 +12,7 @@ function BenchChips({ splits }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
       {splits.map((s, i) => {
-        const colors = BENCH_COLORS[s.bench] || BENCH_COLORS.Admin;
+        const colors = benchColors(s.bench);
         const detail = s.sessionNote || s.label
           || (() => { const t = s.splitDesc ?? s.desc; return t ? t.slice(0, 60) + (t.length > 60 ? '…' : '') : null; })();
         return (

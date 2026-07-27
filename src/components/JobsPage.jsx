@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
 const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'Admin'];
 
@@ -160,7 +160,7 @@ export default function JobsPage({ jobs, onJobClick }) {
 }
 
 function JobRow({ job, splits, isExpanded, onTap, onToggleExpand }) {
-  const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+  const colors = benchColors(job.bench);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>

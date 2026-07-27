@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { formatHour, isLunchSlot, isSaturday, isSunday, isGapHour, getWorkHours, slotKey } from '../utils/calendar.js';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { benchColors } from '../data/jobs.js';
 import JobCard from './JobCard.jsx';
 
 const TIME_COL_WIDTH = 56;
@@ -25,7 +25,7 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
 
   // Always attach setNodeRef so every slot is a valid drop target regardless of content
   if (job) {
-    const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+    const colors = benchColors(job.bench);
     const isDone = !!job.done;
 
     // Ad-hoc maintenance tasks aren't real jobs — not draggable, no job number,

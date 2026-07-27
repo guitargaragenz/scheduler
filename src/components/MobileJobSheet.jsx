@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
@@ -337,7 +337,7 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
           {tab === 'bench' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {rows.map((row, ri) => {
-                const colors = BENCH_COLORS[row.bench] || BENCH_COLORS.Admin;
+                const colors = benchColors(row.bench);
                 return (
                   <div key={ri} style={{ borderRadius: 10, border: `1px solid ${colors.border}55`, overflow: 'hidden' }}>
                     {/* Bench selector */}
