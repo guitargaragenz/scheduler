@@ -14,7 +14,7 @@ code before acting on it.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [re-fresh-waiting-chip-handoff.md](re-fresh-waiting-chip-handoff.md) | 2026-07-27 | **Current.** Brief E (job blocking) shipped and merged. Brief F: Waiting + Planning chips on the main bench-picker row, since blocked jobs are invisible on that screen. Approved, two chips decided, council complete — findings are in `.claude/pending-brief.md`. Builder next. |
+| [re-fresh-blocked-status-match-fix.md](re-fresh-blocked-status-match-fix.md) | 2026-07-27 | **Current, DRAFT — needs Trevor's "yp".** Brief F shipped, but its live browser test found `blockedPile()` checks status `'Waiting'`, which no real job has — Multitrack's real status is `'Waiting Parts'`. Fix the string match, make On Hold always win over CI, add separate Hold/In Transit chips. |
 | [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | Superseded — Brief E fully shipped and merged this session. Kept for history on the council decisions and round-2/3 fixes. |
 | [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27 | **Fresh session, run it separately.** Clear out misplaced, dead and stale files — 267 MB of broken worktrees, a personal parts list, a client's design doc, three spent one-off scripts. Nothing deleted yet. **Read its STOP section first: the job-blocking build shares this working tree.** |
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
@@ -31,6 +31,7 @@ code before acting on it.
 
 | Brief | Date | What happened |
 |-------|------|---------------|
+| [re-fresh-waiting-chip-handoff.md](re-fresh-waiting-chip-handoff.md) | 2026-07-27 | Brief F — Waiting + Planning chips on the bench row. Shipped and merged to main (`ece2197`). Live browser test surfaced the status-match bug now tracked in `re-fresh-blocked-status-match-fix.md`. |
 | [re-fresh-job-blocking-implementation-plan.md](re-fresh-job-blocking-implementation-plan.md) | 2026-07-27 | Turn the job-blocking spec into an implementation plan. Done — plan written, five spec corrections found, Brief E raised. Superseded by `re-fresh-job-blocking-council-and-build.md`. |
 | [brief-d-board-meeting-full-record.md](brief-d-board-meeting-full-record.md) | 2026-07-27 | Brief D's complete working record, archived out of `.claude/pending-brief.md`. Shipped at `da1d9af`. All nine scope items, council findings, verification and live-test notes. History, not instructions. |
 | [re-fresh-clickup-dependencies-in-scheduler.md](re-fresh-clickup-dependencies-in-scheduler.md) | 2026-07-26 | Started the design conversation that produced the job-blocking spec. Superseded by the spec itself. |

@@ -1,7 +1,16 @@
 # Pending Brief F — "Waiting" chip on the bench-picker row
 
-**Status:** APPROVED by Trevor ("yp") 2026-07-27. Council COMPLETE — see Council Findings below.
-Builder next. Nothing built, nothing committed yet.
+**Status:** SHIPPED. Merged to main 2026-07-27 (`ece2197`). Browser-tested on Vercel preview —
+counts correct, click-to-filter works, blocked cards stay non-draggable, drag-mode toggle hides
+correctly. Trevor approved the merge live in chat.
+
+**Known issue found during Trevor's live review, tracked as a fast follow-up — see
+`docs/briefs/re-fresh-blocked-status-match-fix.md`:** `blockedPile()` compares `status === 'Waiting'`,
+but Multitrack's real status string is **"Waiting Parts"** (confirmed via Trevor's MT screenshot,
+2026-07-27) — so `'Waiting'` never matches a real job. The chip's "Waiting: 16" count this session was
+actually On Hold + In Transit jobs, not parts-waiting jobs. Trevor's corrected rule: On Hold always
+stays its own thing (even with CI); Waiting = Waiting Parts or CI; In Transit is its own thing too, not
+Waiting. Trevor also wants separate Hold and In Transit chips on the same row.
 **Open question — RESOLVED:** Two chips — **"Waiting"** and **"Planning"** — split to match the
 Sidebar's existing two piles. Not one combined chip.
 **Date:** 2026-07-27
