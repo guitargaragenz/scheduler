@@ -73,10 +73,20 @@ were re-verified against the live tree before this brief was written.
   `src/utils/supabase.js:187`, read back at `src/hooks/useSupabase.js:67`. Nothing displays it and
   nothing branches on it. The job cards show **hours**, not the tag. (`helpArticles.js:154` claims
   cards show difficulty tags — stale doc.)
-- **`inferTag()` (`src/data/jobs.js:172`) has T and M swapped** (confirmed by Trevor). It reads
-  EZ ≤1.5h → T ≤3h → M ≤5.5h → H, but Tricky is *more* work than Medium, so it should be
+- **`inferTag()` (`src/data/jobs.js:172`) has T and M swapped** (confirmed by Trevor, twice). It
+  reads EZ ≤1.5h → T ≤3h → M ≤5.5h → H, but Tricky is *more* work than Medium, so it should be
   EZ ≤1.5h → M ≤3h → T ≤5.5h → H. Dormant today because nothing reads `job.tag`; it also only
-  fires when the Tag cell is blank, and the Sheet fills it.
+  fires when the Tag cell is blank, and the Sheet fills it. **Decision 2 below makes it live.**
+  The **same swap is duplicated** in `scripts/sheet_to_csv.command:295-300` (`infer_tag`) and both
+  copies must be fixed together, because Build 1 runs both paths at once.
+- **Hours in the Sheet can be a range, and the pipeline averages it.**
+  `scripts/sheet_to_csv.command:319` — if the raw Hours cell contains `-` (e.g. `2-4`), it takes
+  the mean (3). Trevor uses this. The Jobs Sheet page must accept a range in the Hours cell, or
+  he loses a way of working he has today.
+- ⚠️ **Jobs with no Hours *and* no Days are dropped on the floor today.**
+  `scripts/sheet_to_csv.command:335` skips them entirely — they never reach the app, with no error.
+  A dropped PDF supplies **neither**. So on the PDF path this rule must not apply, or every
+  imported job vanishes silently and it looks like "the import is broken". Covered in scope item 2.
 - **`SKP` (Skip) does not exist in the code.** It appears in pre-migration backup data only. Per
   Trevor, every SKP job is already On Hold or Waiting, so it is already handled as blocked —
   **do not add SKP handling; it would risk breaking blocked-pile behaviour for no gain.**
@@ -103,13 +113,27 @@ were re-verified against the live tree before this brief was written.
    **Tag now gets a column in the Jobs Sheet page** (Trevor: *"I edit sheet in app Tags and
    Actions"*). Superseded the earlier "no Tag editor" line — that was written when field entry
    still meant per-job drawer editors.
-   ⚠️ **OPEN QUESTION — must be answered before this is built.** Today Tag→Hours conversion happens
-   in the Google Sheet, not in the app. When the Sheet goes, that conversion has no home. Either
-   (a) Trevor types Hours directly and Tag is decoration, or (b) picking a Tag auto-fills Hours,
-   still hand-overridable. **(b) is the recommendation** — it keeps his actual workflow and finally
-   makes `job.tag` mean something. But (b) needs the numbers his Sheet formula uses: one hours value
-   per EZ / M / T / H. `inferTag()` only gives ranges, which cannot be reversed. **Ask Trevor.**
-   If (b) is chosen, the `inferTag()` T/M swap stops being dormant and becomes live — fix it first.
+   **DECIDED, 2026-07-28 — option (b): picking a Tag auto-fills Hours, still hand-overridable.**
+   Trevor: *"b as they convert now"*. Tag stops being decoration and finally drives something.
+
+   **The conversion.** Today it lives only as a formula inside the Google Sheet — confirmed absent
+   from both `src/data/jobs.js` and `scripts/sheet_to_csv.command`, which merely read a finished
+   Hours number. Trevor supplied the thresholds, and separately confirmed **M and T are the wrong
+   way round in them**. Corrected, the bands are:
+
+   | Tag | Meaning | Band | Auto-filled Hours |
+   |-----|---------|------|-------------------|
+   | EZ  | Easy    | ≤ 1.5h | 1.5 |
+   | M   | Medium  | ≤ 3h   | 3   |
+   | T   | Tricky  | ≤ 5.5h | 5.5 |
+   | H   | High    | > 5.5h | ⚠️ open — band has no ceiling, needs one number from Trevor |
+
+   The bands are *ceilings*, so each Tag auto-fills the top of its band. Trevor overrides on the
+   job card whenever the estimate is finer than the band — which he already does today.
+   Because (b) is now live, the `inferTag()` M/T swap is **no longer dormant** — see scope item 4b,
+   and the identical swap in `scripts/sheet_to_csv.command:295-300` must be fixed with it or the
+   two paths will disagree while both are running in Build 1.
+
    Rejected: inferring Action from fault text — a wrong Action looks filled-in, never gets
    reviewed, and would mis-sort the Planning and Waiting piles.
 3. ~~Do NOT move the five fields to the app-owned side in this build.~~
@@ -230,6 +254,8 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
    into this repo (JS, `pdfjs-dist`). Six fields out, nothing more.
 2. **Six-column sparse PDF writer** — reuse the `toJobRow` + column-signature-grouping pattern from
    `batchWriteJobsState()`. Explicit six-name allow-list. Do **not** call `upsertJobsBatch()`.
+   **The "no Hours and no Days ⇒ skip the job" rule must not apply on this path** — a PDF has
+   neither, so leaving it in place would silently import nothing. See the ⚠️ note in Verified facts.
 3. **Move ownership of `tag`, `hours`, `action`, `vb`, `bl` app-side** — the constants in
    `src/data/joinJobs.js`, plus stop the CSV import path writing those five columns. No DB
    migration, no data movement. **Do this before step 4**, so the sheet page never ships into a
@@ -245,8 +271,13 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
    **`JobDrawer.jsx` is not touched.** It is the manual split editor and stays exactly as it is.
    The council's idea of adding Action/VB/BL fields into it is dropped — those fields were never
    built, so there is nothing to remove.
-4b. **Fix the `inferTag()` T/M swap** — one line, `src/data/jobs.js:172`. Do this regardless; it
-   becomes live if the Tag→Hours question (decision 2) resolves to option (b).
+   **The Hours cell must accept a range** (`2-4`), averaged the way the Sheet pipeline already
+   does it — Trevor uses ranges today and must not lose them.
+   **Picking a Tag auto-fills Hours** per the table in decision 2, still hand-overridable.
+4b. **Fix the M/T swap in BOTH copies** — `inferTag()` at `src/data/jobs.js:172` and `infer_tag()`
+   at `scripts/sheet_to_csv.command:295-300`. No longer optional: decision 2 resolved to option
+   (b), so the mapping is live. Both must move together — Build 1 runs both paths at once, and
+   fixing only one makes them disagree.
 5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
 6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
 7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
