@@ -3,7 +3,7 @@ import JobCard from './JobCard.jsx';
 import DeferredItemsList from './DeferredItemsList.jsx';
 import { benchColors, HOURS_BUCKETS, blockedPile } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
+export const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
 // Blocked piles are NOT benches — deliberately kept out of BENCH_ORDER so they
 // can never be treated as a real `job.bench` anywhere downstream. The stored

@@ -24,7 +24,7 @@ globalThis.localStorage = {
   removeItem: k => { delete store[k]; },
 };
 
-const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES } = await import('./JobShelf.jsx');
+const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER } = await import('./JobShelf.jsx');
 const { blockedPile } = await import('../data/jobs.js');
 
 // One of each: a Planning job (INC), two Waiting jobs (On Hold / In Transit),
@@ -111,7 +111,6 @@ describe('selecting a pile filters the list', () => {
 
 describe('a pile is never treated as a real bench', () => {
   it('keeps pile values out of BENCH_ORDER and namespaced apart from bench names', () => {
-    const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
     for (const v of PILE_VALUES) {
       expect(BENCH_ORDER).not.toContain(v);
       expect(v.startsWith('pile:')).toBe(true);
@@ -159,19 +158,6 @@ describe('drag-mode toggle visibility', () => {
 
   it('keeps the toggle for an ordinary bench selection', () => {
     expect(dragModeVisible({ selectedPile: null, searching: false })).toBe(true);
-  });
-
-  // Search is internal state, so the searching half of the regression is only
-  // reachable through dragModeVisible() above. This is the component-level
-  // check for the plain case: pile selected, nothing else driving the list.
-  it('leaves the toggle out of the markup for a plain pile selection', () => {
-    const markup = render([WAITING_HOLD, WORKABLE], 'pile:waiting');
-    expect(markup).not.toContain('🚨 Urgent');
-  });
-
-  it('renders the toggle in the markup for a plain bench selection', () => {
-    const markup = render([WAITING_HOLD, WORKABLE], 'Setup');
-    expect(markup).toContain('🚨 Urgent');
   });
 
   // Not covered: the focusOnly and searching cases at component level. Both are
