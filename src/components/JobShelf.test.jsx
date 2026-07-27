@@ -28,12 +28,12 @@ const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER } =
 const { blockedPile } = await import('../data/jobs.js');
 
 // One of each: a Planning job (INC), a Hold job (On Hold), a Transit job
-// (In Transit), a genuine Waiting job (Waiting Parts), and a normal workable
+// (In Transit), a genuine Waiting job (Waiting), and a normal workable
 // Setup job. `days` keeps the sort deterministic.
 const PLANNING = { id: 'p1', job: 393, status: 'Booked In', action: 'INC', bench: null, mfr: 'Fender', model: 'Stratocaster', days: 4 };
 const HOLD_JOB = { id: 'w1', job: 1175, status: 'On Hold', action: '', bench: null, mfr: 'Gibson', model: 'LesPaul', days: 3 };
 const TRANSIT_JOB = { id: 'w2', job: 1176, status: 'In Transit', action: '', bench: null, mfr: 'Gretsch', model: 'Duojet', days: 2 };
-const WAITING_PARTS = { id: 'w3', job: 1177, status: 'Waiting Parts', action: '', bench: null, mfr: 'PRS', model: 'CE24', days: 6 };
+const WAITING_PARTS = { id: 'w3', job: 1177, status: 'Waiting', action: '', bench: null, mfr: 'PRS', model: 'CE24', days: 6 };
 const WORKABLE = { id: 'n1', job: 1001, status: 'Active', action: '', bench: 'Setup', mfr: 'Ibanez', model: 'RGSeven', days: 1 };
 // The double-count case: went On Hold in Supabase but kept its stale bench,
 // because useSupabase takes bench verbatim and never re-runs inferBench.

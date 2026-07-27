@@ -129,7 +129,7 @@ export function blockedPile(job) {
 
   if (status === 'On Hold') return 'hold';
   if (status === 'In Transit') return 'transit';
-  if (status === 'Waiting Parts') return 'waiting';
+  if (status === 'Waiting') return 'waiting';
   return null;
 }
 
@@ -197,8 +197,8 @@ export function deriveJobStatusFlags(status, action, backlog) {
   const act = (action || '').trim().toUpperCase();
   // On Hold + BL=Y + GTS → graduated to schedulable (parts arrived / good to start)
   const readyToStart = status === 'On Hold' && backlog === true && act === 'GTS';
-  // Waiting Parts + INC or CI → awaiting customer/incubating (visible but locked)
-  const awaiting = status === 'Waiting Parts' && ['INC', 'CI'].includes(act);
+  // Waiting + INC or CI → awaiting customer/incubating (visible but locked)
+  const awaiting = status === 'Waiting' && ['INC', 'CI'].includes(act);
   // In Transit → visible but locked
   const inTransit = status === 'In Transit';
   const schedulable = ['Active', 'Booked In'].includes(status) || readyToStart;
@@ -321,7 +321,7 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
     const { readyToStart, awaiting, inTransit, schedulable } =
       deriveJobStatusFlags(status, obj.Action, obj.BL === 'Y');
 
-    const accepted = ['On Hold', 'Waiting Parts', 'To Be Inv', 'In Transit'];
+    const accepted = ['On Hold', 'Waiting', 'To Be Inv', 'In Transit'];
     if (!schedulable && !accepted.includes(status)) continue;
     // Don't drop schedulable jobs just because hours aren't set yet — default to 1h
     const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;

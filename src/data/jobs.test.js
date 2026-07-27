@@ -121,7 +121,7 @@ describe('blockedPile', () => {
     // the only INC jobs (393, 693) are `Booked In`, so the spec's original
     // `Waiting + INC` would have shipped an empty pile.
     expect(blockedPile(job({ status: 'Booked In', action: 'INC' }))).toBe('planning');
-    expect(blockedPile(job({ status: 'Waiting Parts', action: 'INC' }))).toBe('planning');
+    expect(blockedPile(job({ status: 'Waiting', action: 'INC' }))).toBe('planning');
     expect(blockedPile(job({ status: 'Active', action: 'INC' }))).toBe('planning');
     expect(blockedPile(job({ status: 'On Hold', action: 'inc' }))).toBe('planning');
   });
@@ -131,7 +131,7 @@ describe('blockedPile', () => {
   });
 
   it('puts stalled statuses in their own piles', () => {
-    expect(blockedPile(job({ status: 'Waiting Parts', action: '' }))).toBe('waiting');
+    expect(blockedPile(job({ status: 'Waiting', action: '' }))).toBe('waiting');
     expect(blockedPile(job({ status: 'In Transit', action: '' }))).toBe('transit');
     expect(blockedPile(job({ status: 'On Hold', action: '' }))).toBe('hold');
   });
@@ -168,10 +168,11 @@ describe('blockedPile', () => {
   it('does not match status with different casing or stray whitespace (exact-match regression guard)', () => {
     // blockedPile does exact string equality on status (no .trim()/.toUpperCase(),
     // unlike `act`). A future MT export casing/whitespace quirk should fail
-    // loudly here rather than silently reproducing the Waiting/Waiting Parts bug.
+    // loudly here rather than silently reproducing the status-string mismatch
+    // that shipped the original bug.
     expect(blockedPile(job({ status: 'on hold', action: '' }))).toBeNull();
     expect(blockedPile(job({ status: 'On Hold ', action: '' }))).toBeNull();
-    expect(blockedPile(job({ status: 'waiting parts', action: '' }))).toBeNull();
+    expect(blockedPile(job({ status: 'waiting', action: '' }))).toBeNull();
   });
 });
 
@@ -186,8 +187,8 @@ describe('blockedReason — CI takes priority over status', () => {
     expect(blockedReason({ status: 'On Hold', action: 'CI' })).toBe('waiting on the customer');
   });
 
-  it('still reports "waiting on the customer" for Waiting Parts + CI', () => {
-    expect(blockedReason({ status: 'Waiting Parts', action: 'CI' })).toBe('waiting on the customer');
+  it('still reports "waiting on the customer" for Waiting + CI', () => {
+    expect(blockedReason({ status: 'Waiting', action: 'CI' })).toBe('waiting on the customer');
   });
 
   it('still reports "on hold" for On Hold with a non-CI action', () => {
@@ -204,7 +205,7 @@ describe('blockedReason — CI takes priority over status', () => {
 
   it('returns null for an Active job whose action is CI — CI alone does not block an otherwise-workable job', () => {
     // blockedPile no longer treats act === 'CI' as an independent trigger — CI only
-    // matters when the job is already blocked by status (Waiting Parts / In Transit).
+    // matters when the job is already blocked by status (Waiting / In Transit).
     expect(blockedReason({ status: 'Active', action: 'CI' })).toBeNull();
   });
 });
