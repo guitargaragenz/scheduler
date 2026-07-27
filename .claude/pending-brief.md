@@ -1,6 +1,8 @@
 # Pending Brief G — PDF-drop import, Build 1
 
-**Status:** AWAITING TREVOR'S "yp". No code written. No commits until approved.
+**Status:** ✅ **APPROVED by Trevor, 2026-07-28 ("yp").** Scope is locked to what is written below.
+Build proceeds on a staging branch. Anything not in the Scope list is out — bring scope changes back
+here for a fresh "yp" rather than absorbing them mid-build.
 **Date:** 2026-07-28
 **Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
 **Predecessor:** `docs/briefs/re-fresh-pdf-drop-scope-and-council.md` — scope agreed by Trevor;
@@ -126,10 +128,11 @@ were re-verified against the live tree before this brief was written.
    | EZ  | Easy    | ≤ 1.5h | 1.5 |
    | M   | Medium  | ≤ 3h   | 3   |
    | T   | Tricky  | ≤ 5.5h | 5.5 |
-   | H   | High    | > 5.5h | ⚠️ open — band has no ceiling, needs one number from Trevor |
+   | H   | High    | > 5.5h | 6 (Trevor's number, 2026-07-28 — the band is open-ended so it has no ceiling to take) |
 
    The bands are *ceilings*, so each Tag auto-fills the top of its band. Trevor overrides on the
-   job card whenever the estimate is finer than the band — which he already does today.
+   job card whenever the estimate is finer than the band — which he already does today, and will
+   do often for H, since 6 is that band's floor rather than a typical value.
    Because (b) is now live, the `inferTag()` M/T swap is **no longer dormant** — see scope item 4b,
    and the identical swap in `scripts/sheet_to_csv.command:295-300` must be fixed with it or the
    two paths will disagree while both are running in Build 1.
@@ -306,7 +309,7 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 
 ## Method — agent-team protocol
 
-1. **Brief** — this file. ⬜ Awaiting Trevor's "yp".
+1. **Brief** — this file. ✅ Approved by Trevor 2026-07-28.
 2. **Council** — ✅ done 2026-07-28 (llm-council, as-written). Findings above are binding; the
    builder does not reopen them.
 3. **Builder** — staging branch, supervised from the main conversation.
