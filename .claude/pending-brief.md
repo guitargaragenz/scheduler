@@ -96,15 +96,39 @@ were re-verified against the live tree before this brief was written.
    takes the existing 1h default for a schedulable job and **Trevor adjusts it on the job card**,
    which he already does today and is happy to keep doing (his call, 2026-07-28). Action, VB and
    BL start visibly empty.
-   **Tag is not a hand-entry field and gets no editor.** The effort→hours conversion lives in the
-   Google Sheet; the app has never done it. Under PDF-drop, Hours *is* the effort — Trevor sets it
-   directly on the card instead of setting an effort code that something else converts.
+   **Tag now gets a column in the Jobs Sheet page** (Trevor: *"I edit sheet in app Tags and
+   Actions"*). Superseded the earlier "no Tag editor" line — that was written when field entry
+   still meant per-job drawer editors.
+   ⚠️ **OPEN QUESTION — must be answered before this is built.** Today Tag→Hours conversion happens
+   in the Google Sheet, not in the app. When the Sheet goes, that conversion has no home. Either
+   (a) Trevor types Hours directly and Tag is decoration, or (b) picking a Tag auto-fills Hours,
+   still hand-overridable. **(b) is the recommendation** — it keeps his actual workflow and finally
+   makes `job.tag` mean something. But (b) needs the numbers his Sheet formula uses: one hours value
+   per EZ / M / T / H. `inferTag()` only gives ranges, which cannot be reversed. **Ask Trevor.**
+   If (b) is chosen, the `inferTag()` T/M swap stops being dormant and becomes live — fix it first.
    Rejected: inferring Action from fault text — a wrong Action looks filled-in, never gets
    reviewed, and would mis-sort the Planning and Waiting piles.
-3. **Do NOT move the five fields to the app-owned side in this build.** Three advisors wanted it;
-   four of five reviewers backed the Executor's dissent and the chairman sided with them. It is
-   cheaper than assumed (a constant, not a migration) but Build 1 does not need it to be safe.
-   Revisit in Build 2 when the CSV retires.
+3. ~~Do NOT move the five fields to the app-owned side in this build.~~
+   **OVERTURNED BY TREVOR, 2026-07-28. The five fields MOVE app-side in Build 1.**
+
+   The council's answer was correct on the facts it had: leave ownership alone, because nothing in
+   the app could edit those fields anyway, so there was nothing to protect. Trevor then changed the
+   design — see "The Jobs Sheet page" below — and that assumption no longer holds.
+
+   **Why the move is now mandatory, not optional.** With an editable sheet page in the app *and*
+   the CSV still importing those columns, two masters write the same field. Trevor changes Action
+   from `CI` to `GTS` and commits; the next CSV sync still says `CI`; `CI` is a populated value, not
+   a blank, so it wins and his edit silently reverts. A "blank never overwrites good" guard cannot
+   help — nothing is blank, it is two real values disagreeing.
+
+   **Trevor's ruling, verbatim in substance:** *"there can only be one master and after the build it
+   will be the app page."*
+
+   **The change:** `tag`, `hours`, `action`, `vb`, `bl` move to the app-owned side of
+   `src/data/joinJobs.js` (`NON_MASTER_FIELDS` / `DERIVED_STATE_FIELDS`), and the CSV import path
+   stops writing them entirely. This is a JS constant list, **not a database migration** — verified.
+   Existing values already in the `jobs` table stay exactly as they are; the import simply stops
+   overwriting them. No data moves.
 4. **Preview screen, mandatory, before any write.** Three counts and two lists:
    "9 new · 34 already here · 3 in your last drop that aren't in this one", with the names of the
    9 and the names of the 3. Import / Cancel. **No field-level diff** — a line reading
@@ -116,18 +140,50 @@ were re-verified against the live tree before this brief was written.
    also roll back scheduling, pomodoro and split state written since the last import — a direct
    violation of the "scheduling comes out untouched" constraint.
 
-### The CSV back door — must be closed in Build 1
+### The Jobs Sheet page — Trevor's design, replaces the drawer editors
 
-The Contrarian's catch, and the plan fails without it. Both importers are live in Build 1. Trevor
-drops a PDF, gets a new job, types Tag=RS into the app — and the next CSV import blanks it,
-because on that path blank means blank. Build 1 would ship the exact bug it fixes, one pipeline over.
+**Trevor's proposal, 2026-07-28, and it supersedes the council's answer to field entry:** build the
+Google Sheet as a page inside the app. He edits Tag, Hours, Action, VB and BL for every job in one
+grid, presses a commit button, and it saves. Exactly the workflow he has today, minus the Sheet.
 
-**Fix:** generalise `preserveKnownDays()` (`src/data/jobs.js:86`) from days-only to
-days + tag + action + vb + bl. Same rule, same shape, wider column list: blank never overwrites
-good; a changed populated value still wins.
+**Accepted, and it replaces — not supplements — per-job editors in `JobDrawer.jsx`.** One place to
+edit, not two. Rationale: opening 46 drawers one at a time to set an Action is not a workflow he
+will keep up, and bulk entry is the entire point of a sheet.
 
-Rule in one sentence: *if the job is in the Sheet, the Sheet still owns your notes; if it came in
-by PDF drop, the app owns them and nothing can overwrite them.*
+Design constraints:
+
+- **Explicit commit. No autosave.** Trevor's own instinct and the right one — he sees what he
+  typed, presses the button, it goes. Same shape as the import preview screen.
+- **Only the five app-owned columns are editable.** The six Multitrack facts (job, customer, mfr,
+  model, status, desc) render read-only/greyed. Multitrack owns those; the sheet must not offer to
+  fight it.
+- **Action is a picker, not free text** — INC / CI / RS / RS-C / DG / GTS / blank. It drives the
+  Planning and Waiting piles, so a typo would silently mis-sort a job.
+- **The save reuses `batchWriteJobsState()`** (`src/utils/supabase.js:1231`) — already sparse,
+  already column-signature-grouped, already in production. Commit writes only the columns actually
+  edited. **Do not write a new batch writer, and do not call `upsertJobsBatch()`.**
+- **Desktop-first.** Micky is where this gets used. On iPhone the page may be read-only rather than
+  a bad grid; confirm with Trevor before building a mobile editing mode.
+- Note against `trevor-needs-focus-windows` (one-thing-at-a-time, never grids): that rule stands for
+  UI *proposed to* Trevor. This grid is a form factor he has used daily for years and explicitly
+  asked for. Not a violation.
+
+### The CSV back door — closed by the ownership move, not by a guard
+
+The Contrarian's catch: with both importers live, the CSV path would overwrite what Trevor types in
+the app. The council's fix was to widen `preserveKnownDays()` to cover tag + action + vb + bl.
+
+**That fix is now dropped, and this is the better outcome.** Once the CSV import stops writing those
+five columns (decision 3), there is no back door left to guard — the CSV cannot overwrite what it no
+longer sends. Widening the preserve guard would have been a patch on a problem the ownership move
+deletes outright. Per CLAUDE.md: root cause over patches.
+
+`preserveKnownDays()` stays exactly as it is, still covering `days` only. `days` is a Multitrack
+fact that legitimately still arrives by import, and its blank-never-overwrites-good rule is still
+needed there. **Do not widen it. Do not remove it.**
+
+Rule in one sentence: *Multitrack owns the six facts about the guitar; the app page owns everything
+Trevor decides; neither can write the other's columns.*
 
 ### Also binding
 
@@ -164,12 +220,21 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
    into this repo (JS, `pdfjs-dist`). Six fields out, nothing more.
 2. **Six-column sparse PDF writer** — reuse the `toJobRow` + column-signature-grouping pattern from
    `batchWriteJobsState()`. Explicit six-name allow-list. Do **not** call `upsertJobsBatch()`.
-3. **Widen `preserveKnownDays()`** to cover tag + action + vb + bl + days on the CSV path.
-4. **Editors for Action, VB, BL** in the job drawer, alongside the existing Hours field.
-   Not Tag — see decision 2. Action is a picker (INC/CI/RS/RS-C/DG/GTS + blank), not free text,
-   because it drives the Planning and Waiting piles.
-4b. **Fix the `inferTag()` T/M swap** — one line, `src/data/jobs.js:172`. Dormant today, but a
-   wrong-way-round threshold sitting in the code is a trap for the next session that surfaces Tag.
+3. **Move ownership of `tag`, `hours`, `action`, `vb`, `bl` app-side** — the constants in
+   `src/data/joinJobs.js`, plus stop the CSV import path writing those five columns. No DB
+   migration, no data movement. **Do this before step 4**, so the sheet page never ships into a
+   world where the CSV can revert it.
+   ~~Widen `preserveKnownDays()`~~ — dropped, see "The CSV back door" above. Leave it days-only.
+3b. **Cutover check.** The moment the CSV stops writing these columns, whatever is in the `jobs`
+   table becomes the permanent starting point. Before the switch, print the current tag / hours /
+   action / vb / bl for all ~46 jobs beside the Google Sheet's values and confirm with Trevor they
+   match. If the DB is stale anywhere, one final CSV sync fixes it *before* ownership moves.
+4. **The Jobs Sheet page** — all jobs in a grid; the five app-owned columns editable, the six
+   Multitrack columns read-only; Action as a picker; explicit commit button, no autosave; save via
+   `batchWriteJobsState()`. See "The Jobs Sheet page" above for the full constraints.
+   **No per-job editors in `JobDrawer.jsx`** — this replaces them.
+4b. **Fix the `inferTag()` T/M swap** — one line, `src/data/jobs.js:172`. Do this regardless; it
+   becomes live if the Tag→Hours question (decision 2) resolves to option (b).
 5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
 6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
 7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
@@ -178,13 +243,16 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 
 - Retiring the DropBox/watcher/CSV pipeline. That is **Build 2**, a separate brief, after real
   PDFs have imported successfully.
-- Moving Tag/Hours/Action/VB/BL to the app-owned side of `joinJobs.js`. Build 2.
+- ~~Moving Tag/Hours/Action/VB/BL to the app-owned side of `joinJobs.js`.~~ **Now IN scope** —
+  Trevor overturned this 2026-07-28. See decision 3.
 - Any snapshot/restore or undo button.
 - Auto-deleting or auto-completing jobs missing from the PDF.
 - **Any SKP (Skip) handling.** Per Trevor, every SKP job is already On Hold or Waiting and is
   therefore already treated as blocked. Adding SKP logic risks breaking blocked-pile behaviour
   for no gain. Leave it alone.
-- A Tag editor, or a Tag→Hours conversion inside the app. See decision 2.
+- Editing the six Multitrack-owned columns anywhere in the app. Multitrack owns those; if one is
+  wrong, it gets fixed in Multitrack and arrives on the next drop.
+- Writing back to the Google Sheet. The flow is one-way and the Sheet is on its way out.
 - Inferring Action from fault text; provenance/"suggested vs confirmed" flags; a hours-estimate
   learning loop; a daily triage screen with inline editing. All proposed by one advisor, all
   rejected as Build-1 scope creep that would require Trevor to babysit the build.
