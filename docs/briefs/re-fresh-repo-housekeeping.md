@@ -127,6 +127,13 @@ so the next reader isn't warned off a directory that's already gone.
 
 4 KB at the repo root, untracked, `*.log` is gitignored, regenerates on its own. Delete.
 
+**Re-checked 2026-07-27: no `pipeline.log` exists at the repo root any more.** Nothing to do
+— just don't go looking for it elsewhere. The *real* pipeline log is a different file,
+2.5 MB, at `~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/pipeline.log`.
+That one is **forensic evidence** — it holds the list of the 33 job numbers the 26 July
+delete pass removed from the Google Sheet (around line 40640). It is outside this repo and
+outside this brief's scope. Do not delete it.
+
 ---
 
 ## Section 2 — SAFE NOW, but needs Trevor's call on destination
