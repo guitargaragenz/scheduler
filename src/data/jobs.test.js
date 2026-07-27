@@ -126,6 +126,13 @@ describe('blockedPile', () => {
     expect(blockedPile(job({ status: 'On Hold', action: 'inc' }))).toBe('planning');
   });
 
+  it('puts RS and RS-C jobs in Planning too — Trevor, 2026-07-28', () => {
+    // Same still-figuring-it-out phase as INC, whatever the status column says.
+    expect(blockedPile(job({ status: 'Active', action: 'RS' }))).toBe('planning');
+    expect(blockedPile(job({ status: 'Booked In', action: 'RS-C' }))).toBe('planning');
+    expect(blockedPile(job({ status: 'On Hold', action: 'rs-c' }))).toBe('planning');
+  });
+
   it('puts On Hold + INC in Planning — INC is checked first, status-independent', () => {
     expect(blockedPile(job({ status: 'On Hold', action: 'INC' }))).toBe('planning');
   });
