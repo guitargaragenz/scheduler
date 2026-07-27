@@ -126,16 +126,28 @@ describe('blockedPile', () => {
     expect(blockedPile(job({ status: 'On Hold', action: 'inc' }))).toBe('planning');
   });
 
-  it('puts stalled statuses in Waiting', () => {
-    expect(blockedPile(job({ status: 'Waiting' }))).toBe('waiting');
-    expect(blockedPile(job({ status: 'In Transit' }))).toBe('waiting');
-    expect(blockedPile(job({ status: 'On Hold' }))).toBe('waiting');
+  it('puts On Hold + INC in Planning — INC is checked first, status-independent', () => {
+    expect(blockedPile(job({ status: 'On Hold', action: 'INC' }))).toBe('planning');
+  });
+
+  it('puts stalled statuses in their own piles', () => {
+    expect(blockedPile(job({ status: 'Waiting', action: '' }))).toBe('waiting');
+    expect(blockedPile(job({ status: 'In Transit', action: '' }))).toBe('transit');
+    expect(blockedPile(job({ status: 'On Hold', action: '' }))).toBe('hold');
+  });
+
+  it('does not independently block an Active job whose action is CI — CI only matters when a status already blocks it', () => {
+    expect(blockedPile(job({ status: 'Active', action: 'CI' }))).toBeNull();
+  });
+
+  it('On Hold wins over CI — Trevor paused it on purpose', () => {
+    expect(blockedPile(job({ status: 'On Hold', action: 'CI' }))).toBe('hold');
   });
 
   it('leaves workable jobs unblocked', () => {
-    expect(blockedPile(job({ status: 'Active' }))).toBeNull();
-    expect(blockedPile(job({ status: 'Booked In' }))).toBeNull();
-    expect(blockedPile(job({ status: 'To Be Inv' }))).toBeNull();
+    expect(blockedPile(job({ status: 'Active', action: '' }))).toBeNull();
+    expect(blockedPile(job({ status: 'Booked In', action: '' }))).toBeNull();
+    expect(blockedPile(job({ status: 'To Be Inv', action: '' }))).toBeNull();
   });
 
   it('does not block On Hold + BL=Y + GTS — parts arrived, good to start', () => {
@@ -144,13 +156,23 @@ describe('blockedPile', () => {
 
   it('still blocks On Hold + GTS when the backlog flag is not set', () => {
     // readyToStart needs all three; two of three is still stuck.
-    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: false }))).toBe('waiting');
+    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: false }))).toBe('hold');
   });
 
   it('tolerates a missing job without throwing', () => {
     expect(blockedPile(null)).toBeNull();
     expect(blockedPile(undefined)).toBeNull();
     expect(blockedPile({})).toBeNull();
+  });
+
+  it('does not match status with different casing or stray whitespace (exact-match regression guard)', () => {
+    // blockedPile does exact string equality on status (no .trim()/.toUpperCase(),
+    // unlike `act`). A future MT export casing/whitespace quirk should fail
+    // loudly here rather than silently reproducing the status-string mismatch
+    // that shipped the original bug.
+    expect(blockedPile(job({ status: 'on hold', action: '' }))).toBeNull();
+    expect(blockedPile(job({ status: 'On Hold ', action: '' }))).toBeNull();
+    expect(blockedPile(job({ status: 'waiting', action: '' }))).toBeNull();
   });
 });
 
@@ -178,6 +200,12 @@ describe('blockedReason — CI takes priority over status', () => {
   });
 
   it('returns null for a workable job', () => {
+    expect(blockedReason({ status: 'Active', action: '' })).toBeNull();
+  });
+
+  it('returns null for an Active job whose action is CI — CI alone does not block an otherwise-workable job', () => {
+    // blockedPile no longer treats act === 'CI' as an independent trigger — CI only
+    // matters when the job is already blocked by status (Waiting / In Transit).
     expect(blockedReason({ status: 'Active', action: 'CI' })).toBeNull();
   });
 });

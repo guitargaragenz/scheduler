@@ -106,13 +106,18 @@ export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
 // 'planning' is `INC` alone, deliberately status-independent (settled at
 // council 2026-07-27). On the live data the only two INC jobs are 393 and 693,
 // both `Booked In`, so gating on `Waiting + INC` as the spec originally said
-// would have matched zero jobs and shipped an empty pile. INC is what MT
-// actually uses to mean "needs a quote or a plan written first", whatever the
-// status column says — so a future `Active + INC` job leaving the active list
-// is intended, not a regression.
+// would have matched zero jobs and shipped an empty pile. INC is the action
+// code MT uses to mean "Incubating" — the job is still turning over in
+// Trevor's head, nowhere near planning or quoting yet — whatever the status
+// column says, so a future `Active + INC` job leaving the active list is
+// intended, not a regression.
 //
 // `readyToStart` (On Hold + BL=Y + GTS — parts arrived, good to start) is NOT
 // blocked: it is the one On Hold case that is genuinely schedulable.
+//
+// On Hold wins over everything below it, including CI (action code) — Trevor
+// paused the job on purpose, so it stays 'hold' even if the customer is also
+// being chased (2026-07-27 council).
 export function blockedPile(job) {
   if (!job) return null;
   const act = (job.action || '').trim().toUpperCase();
@@ -122,7 +127,9 @@ export function blockedPile(job) {
   const { readyToStart } = deriveJobStatusFlags(status, job.action, job.backlog === true);
   if (readyToStart) return null;
 
-  if (status === 'In Transit' || status === 'Waiting' || status === 'On Hold') return 'waiting';
+  if (status === 'On Hold') return 'hold';
+  if (status === 'In Transit') return 'transit';
+  if (status === 'Waiting') return 'waiting';
   return null;
 }
 

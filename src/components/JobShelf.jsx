@@ -11,6 +11,8 @@ export const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiri
 const PILES = [
   { key: 'waiting', label: 'Waiting' },
   { key: 'planning', label: 'Planning' },
+  { key: 'hold', label: 'Hold' },
+  { key: 'transit', label: 'In Transit' },
 ];
 export const PILE_VALUES = PILES.map(p => `pile:${p.key}`);
 export const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:') ? sel.slice(5) : null);
