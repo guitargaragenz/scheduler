@@ -1,14 +1,28 @@
 # Handoff — PDF import truncation incident, 2026-07-26
 
-Trevor dropped a Multitrack PDF containing 45 jobs. Only 12 reached the Google Sheet
-and the Scheduler. 33 rows were deleted from the Google Sheet. This is the incident
-write-up plus what was found underneath it.
-
-**Status: RESOLVED (confirmed by Trevor 2026-07-28).** Truncation is fixed and the Google
-Sheet has been restored — 46 jobs currently. The diagnosis below is kept as history: it
-explains *why* Multitrack PDFs can silently drop rows (the source PDF's column layout
-changed mid-afternoon without warning), which is still relevant to the in-app PDF-drop
-import being scoped in [re-fresh-pdf-drop-scope-and-council.md](re-fresh-pdf-drop-scope-and-council.md).
+> # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.
+>
+> **Closed 2026-07-28 by Trevor.** Everything in this file describes a situation that no
+> longer exists. It is kept only as a record of what happened. **Nothing below is a live
+> instruction, a live warning, or a live to-do** — including the "Recommended order of
+> work" and "Do not do next" sections, which are both dead.
+>
+> **Corrections Trevor made on 2026-07-28 — these override the body of this file:**
+>
+> | The file says | Actually |
+> |---|---|
+> | Multitrack changed its PDF column layout | **It didn't.** It was a one-off glitch, not a layout change and not a recurring hazard. |
+> | Firestore holds `jobsMaster`; pipeline writes to Firestore | **Firestore is deleted.** Everything runs on Supabase. |
+> | Truncation is unfixed; don't drop a PDF; don't restart the watcher | **Fixed and pushed.** Those warnings are retired. |
+> | 10 Supabase jobs have a blank `mfr` | **Repaired.** Verified 2026-07-28: zero blanks across customer / mfr / model / status / desc / tag / hours / action / vb / bl. |
+>
+> **If you are a session looking for what to do next, this is the wrong file.** Go to
+> [`.claude/pending-brief.md`](../../.claude/pending-brief.md) (Brief G) and the index at
+> [README.md](README.md).
+>
+> *Written because a session on 2026-07-28 read past the one-line "RESOLVED" note into the
+> detail below and started re-testing a problem that was already fixed. The banner is
+> deliberately this loud so that can't happen twice.*
 
 ---
 
@@ -184,7 +198,13 @@ delete passes, not just the Firestore one.
 
 ---
 
-## Recommended order of work
+## ~~Recommended order of work~~ — DEAD LIST, 2026-07-28
+
+> ⛔ **None of the following is outstanding work.** Items 1–4 were done in July 2026.
+> Items 5–6 concern the DropBox/watcher/CSV pipeline, which Brief G retires outright —
+> they are not worth fixing in something being deleted. Item 7 became Brief G and is
+> approved and in build. **This list is here to show what was considered at the time.
+> Do not pick anything up from it.**
 
 1. ~~**Check Supabase state.**~~ **DONE 2026-07-26** — see Damage table above. No data
    lost; 10 blank `mfr` values to repair once the Sheet is restored.
@@ -229,15 +249,18 @@ Outside the repo, on 2026-07-26:
 
 Watchers confirmed not running throughout (`pgrep -fl start_watcher` empty).
 
-## Do not do next
+## ~~Do not do next~~ — RETIRED WARNINGS, 2026-07-28
 
-- **Do not drop another Multitrack PDF** until the parser is fixed (step 6) or replaced
+> ⛔ **These warnings no longer apply and must not be quoted at Trevor as if they do.**
+> The truncation is fixed and pushed. Kept struck through only so the record is complete.
+
+- ~~**Do not drop another Multitrack PDF** until the parser is fixed (step 6) or replaced
   (step 7). A PDF with the 4:51pm column layout re-truncates `jobs.csv` immediately, and
-  the next `sheet_to_csv.command` run then re-wipes the Sheet from that truncated CSV.
-- **Do not restart the watcher** for the same reason — it runs the same delete pass on a
-  2-minute poll, with no one watching.
-- `sheet_to_csv.command` is currently *safe* to run only because CSV and Sheet both hold
-  the same 45 jobs. That safety evaporates the moment a bad PDF lands.
+  the next `sheet_to_csv.command` run then re-wipes the Sheet from that truncated CSV.~~
+- ~~**Do not restart the watcher** for the same reason — it runs the same delete pass on a
+  2-minute poll, with no one watching.~~
+- ~~`sheet_to_csv.command` is currently *safe* to run only because CSV and Sheet both hold
+  the same 45 jobs. That safety evaporates the moment a bad PDF lands.~~
 
 The last commit on `main` is `d0e3a2c` (day-view resize fix + on-card focus toggle),
 pushed and unrelated to this incident.

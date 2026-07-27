@@ -28,26 +28,28 @@ Brief G's scope list starts at **step 0, a gate**: prove the job numbers coming 
 the job numbers already in the `jobs` table character-for-character, *before* writing any import
 code. If they don't match, every job the PDF brings in looks "new" and you get 46 duplicates.
 
-That check was started and then stopped on Trevor's word. Partial result, read-only, nothing
-written anywhere:
+### ✅ Step 0 PASSED — 2026-07-28
 
-- Sample PDF used: `/Users/admin/Downloads/GGNZ Jobs 18 Jul.pdf` (a real Multitrack export, 227 KB).
-  ⚠️ **This file is stale — dated 18 July, and it is now the 28th** (Trevor flagged it). It is
-  adequate for the *format* half of step 0, because job numbers don't change shape over ten days.
-  It is **not** adequate for anything counting jobs: any job booked in since the 18th is missing
-  from it, so new-vs-known counts and the count sanity-check would both be measuring the wrong
-  thing. **Ask Trevor for a fresh export before the browser test**, and before treating any count
-  as real.
-- **50 job numbers found, all 50 distinct.** x-positions clustered at 526.3–533.0, which matches
-  the ported parser's `x >= 500` rule for the job-number column — a good sign the parser's column
-  geometry survives on Trevor's real export.
-- **The comparison against the database was never run.** That is the actual proof and it is still
-  outstanding.
-- Throwaway script: `step0_pdf_refs.py` in the previous session's scratchpad — gone now, and only
-  ~25 lines. Rewrite it rather than hunting for it.
+Run read-only against a **fresh export Trevor dropped that morning**, `~/Downloads/GGNZ Jobs 28 Jul.pdf`.
+Nothing was written anywhere.
 
-**Start here.** Finish step 0, report the result to Trevor in plain English, then proceed down the
-scope list.
+- **46 job numbers in the PDF, all 46 distinct.** The PDF's own footer says "46 Jobs found" — parse
+  count and claimed count agree, which is what scope item 6's short-parse refusal should check against.
+- **45 match `jobs.id` character-for-character. Zero near-misses** (nothing that only matches after
+  trimming spaces or stripping leading zeros). `id == job` on every numeric-id row.
+- **1 genuinely new job: `1711`** — Dean Cronin, Gibson Les Paul Standard, Booked In.
+- **6 in the database but not in the PDF:** `1619`, `1620`, `1626`, `1671`, `1698`, `1702`. These get
+  *reported*, never deleted. Open question for Trevor: `1620` has split subtasks in the app but is off
+  Multitrack's list — probably a finished job that was never closed off.
+- **6 rows in `jobs` have non-numeric ids** (`1620_Electronics_0`, `1689_Luthier_1`, `1621_Fretwork_0/1`
+  …). These are app-side splits. The PDF path must never match, write, or count them.
+- **Fault-text bleed ruled out.** Four job descriptions spill past x=500 into the job-number column,
+  but all sit on `Fault:` lines, which `isFaultLine` catches before column assignment.
+
+**On sample PDFs:** always use a fresh Multitrack export into `~/Downloads`, asked for on the day.
+Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline is being deleted.
+
+**Start at scope item 1** (port the parser), then item 2 (the six-column sparse writer).
 
 ---
 
