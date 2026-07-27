@@ -1,155 +1,166 @@
-# Pending Brief F — "Waiting" chip on the bench-picker row
+# Pending Brief G — PDF-drop import, Build 1
 
-**Status:** SHIPPED. Merged to main 2026-07-27 (`ece2197`). Browser-tested on Vercel preview —
-counts correct, click-to-filter works, blocked cards stay non-draggable, drag-mode toggle hides
-correctly. Trevor approved the merge live in chat.
-
-**Known issue found during Trevor's live review, tracked as a fast follow-up — see
-`docs/briefs/re-fresh-blocked-status-match-fix.md`:** `blockedPile()` compares `status === 'Waiting'`,
-but Multitrack's real status string is **"Waiting Parts"** (confirmed via Trevor's MT screenshot,
-2026-07-27) — so `'Waiting'` never matches a real job. The chip's "Waiting: 16" count this session was
-actually On Hold + In Transit jobs, not parts-waiting jobs. Trevor's corrected rule: On Hold always
-stays its own thing (even with CI); Waiting = Waiting Parts or CI; In Transit is its own thing too, not
-Waiting. Trevor also wants separate Hold and In Transit chips on the same row.
-**Open question — RESOLVED:** Two chips — **"Waiting"** and **"Planning"** — split to match the
-Sidebar's existing two piles. Not one combined chip.
-**Date:** 2026-07-27
-**Repo state:** `main` @ merge of `staging/job-blocking` (Brief E rounds 1–3, fully shipped)
-**Trigger:** Trevor flagged, live on the deployed app, that the main bench-picker screen (`JobShelf.jsx`)
-has no way to see blocked jobs at all — Setup/Luthier/Electronics/Fretwork/Wiring/Finishing/Admin chips,
-but nothing for Waiting/Planning. Brief E deliberately pulled blocked jobs out of Admin and into their
-own piles (visible in the Sidebar and Jobs page), but this particular screen — the one Trevor actually
-works from all day — was never given an equivalent.
+**Status:** AWAITING TREVOR'S "yp". No code written. No commits until approved.
+**Date:** 2026-07-28
+**Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
+**Predecessor:** `docs/briefs/re-fresh-pdf-drop-scope-and-council.md` — scope agreed by Trevor;
+council now run (llm-council, as-written, 5 advisors → anonymised peer review → chairman).
+Brief F (Waiting/Planning chips) shipped and is archived at `docs/briefs/brief-f-waiting-chip-shipped.md`.
 
 ---
 
 ## Plain-English summary
 
-Brief E fixed blocked jobs cluttering up Admin. But it didn't put them anywhere on the screen Trevor
-actually looks at to decide what to work on next — the bench row (Setup 5, Luthier 5, Electronics 13,
-etc). Right now a blocked job is invisible there. Trevor's ask: he doesn't need to *work* a blocked job,
-but he needs to *see* it's stuck, same way he sees Setup has 5 jobs waiting.
+Today the Multitrack PDF goes into a DropBox folder, a background script on Micky picks it up,
+turns it into a CSV, and pushes that into the database. Several moving parts Trevor never sees.
 
-Fix: add a **"Waiting"** chip (and possibly a separate "Planning" chip) to that same row, showing a
-count, same as the real bench chips. Clicking it lists the blocked jobs in that pile — same interaction
-as clicking "Setup." It is not a real bench: it doesn't touch `inferBench`, doesn't make blocked jobs
-schedulable, doesn't change bench colors or the Admin bin problem Brief E just fixed. It's a read-only
-window into the same `blockedPile()` data that already drives the Sidebar/Jobs page piles, surfaced on
-the one screen that was missing it.
+The goal: drop the PDF straight into the Scheduler in the browser and new jobs appear.
 
----
+The catch the council was asked to solve: the PDF only contains **six** things about a job —
+job number, customer, manufacturer, model, status, and the fault description. Five things Trevor
+maintains by hand are **not in the PDF at all**: Tag, Hours, Action, VB, BL.
 
-## Scope — proposed
+The danger, confirmed in the live code: the current save routine writes *every* column on *every*
+job in one go. Dropping a PDF today would blank Tag, Action, VB, BL and job age on all ~46
+existing jobs — weeks of markup gone in one click. This is the same bug that already bit the
+job-age column once and was patched with `preserveKnownDays()`.
 
-1. Import `blockedPile` (and `blockedReason` if needed for the list view) into `src/components/JobShelf.jsx`
-   from `../data/jobs.js` (currently not imported there — confirmed via research pass).
-2. Add **two** chips — "Waiting" and "Planning" (decision locked, see status above) — to the chip row at
-   `JobShelf.jsx:185-204`, alongside the existing `BENCH_ORDER`-driven bench chips. Count = jobs in
-   `topLevel` (the same already-filtered list at `JobShelf.jsx:58-66`) where `blockedPile(job)` matches
-   the relevant pile, not `job.bench === X`.
-3. Clicking the chip filters the job list below to that pile, reusing the same select/filter mechanism
-   already used for bench chips — no new list-rendering component.
-4. Blocked jobs in this list stay **non-draggable** (round 3 already built this at the card level) —
-   this chip is a new *entry point* to already-existing cards, not new card behavior.
-5. No changes to `inferBench`, `BENCH_ORDER`, bench colors, the Admin chip, or the `bench NOT NULL`
-   schema constraint.
-6. Tests: chip count matches `blockedPile()` output; clicking filters correctly; chip does not appear in
-   `BENCH_ORDER` or get treated as a real bench anywhere downstream.
+**The fix, in one sentence Trevor can repeat:** the PDF can only fill in the six things it
+actually says; everything else is his, and the import can never touch it.
 
-**Out of scope — do not build:**
-- Any change to what counts as blocked (`blockedPile()` logic itself is untouched — this is a display
-  layer only).
-- Making blocked jobs draggable or schedulable from this new chip.
-- Repurposing the Admin chip/bench for this — considered and rejected (reintroduces the "Admin as dumping
-  ground" problem Brief E just fixed).
-- A general-purpose "sub-bench" system — this is one specific chip for one specific visibility gap, not
-  new infrastructure.
+**One thing the council found that nobody had noticed:** there is currently **no way to type
+Tag, Action, VB or BL into the app at all**. They have only ever arrived from the Sheet
+(verified — the word `tag` does not appear in `JobDrawer.jsx`, `MobileJobSheet.jsx` or
+`JobsPage.jsx`). So a PDF-dropped job would land with four blank fields and nowhere to fill
+them in. Adding those editors is therefore part of this build, not a later nicety.
 
 ---
 
-## Why this needs the brief process, even though it's small
+## Council verdict — BINDING ON THE BUILDER
 
-Touches `JobShelf.jsx`, one of the ~17 render sites Brief E round 3 already modified for bench-color
-fallbacks, and reads from `blockedPile()` — data path shared with `scheduledSlots`/bench-assignment
-logic. Small blast radius, but the same file family as prior blast-radius work, so it goes through the
-same protocol rather than being patched in ad hoc.
+Run 2026-07-28. Five advisors, anonymised peer review, chairman synthesis. All code claims below
+were re-verified against the live tree before this brief was written.
 
-## Council Findings — BINDING ON THE BUILDER (2026-07-27, two independent reviewers)
+### Verified facts (do not re-litigate)
 
-**Correction to this brief's premise:** the claim that the two chips "match the Sidebar's two piles"
-is FALSE. `Sidebar.jsx:73-75` splits locked jobs three ways off the old `deriveJobStatusFlags`
-booleans (`📞 AWAITING` / `📦 IN TRANSIT` / `🔒 ON HOLD`, `Sidebar.jsx:285,295,305`) and never calls
-`blockedPile()`. `JobsPage.jsx:35-36,150` is a third variant again ("Waiting / On Hold", split on
-`schedulable`). "Waiting" and "Planning" are currently code-only strings (`jobs.js:119,125`) — these
-chips are the first user-facing use of those words. Trevor has been told; three-screen alignment is a
-FOLLOW-UP brief, see `docs/briefs/blocked-pile-naming-alignment.md`. **The builder must NOT touch
-Sidebar or JobsPage in this build.**
+- `upsertJobsBatch()` (`src/utils/supabase.js:159`, aliased as `saveJobsMasterBatch` at :1217)
+  hardcodes ~20 columns on every row of the batch, including `tag`, `action`, `hours`,
+  `vb`, `bl`, `days`. A Supabase array upsert sends the **union** of all rows' keys, so any
+  column named on one row is NULL-filled across the whole batch.
+- **The safe writer already exists.** `batchWriteJobsState()` (`src/utils/supabase.js:1231`)
+  maps only the keys actually present via `toJobRow()` (:129), then **groups rows by their exact
+  column signature** so a sparse row is never NULL-filled by a fuller one in the same request.
+  The pattern is in production and commented. The PDF path does not need a new writer invented.
+- Every job upsert conflicts on `id`, and for a top-level job **`id` is the job number**.
+- `parseCSV(csvText, benchKeywords, benchHours)` already derives bench and hours from the
+  description text. Hours is not purely hand-typed today.
+- Ownership of master vs state fields is decided by JS constants in `src/data/joinJobs.js`
+  (`NON_MASTER_FIELDS`, `DERIVED_STATE_FIELDS`) — **not** by a database migration.
+- **No in-app editor exists for Tag, Action, VB or BL.** Hours is editable in `JobDrawer.jsx`.
 
-Confirmed good: `blockedPile()` does return exactly `'waiting'` / `'planning'` / `null`
-(`jobs.js:116-127`). `topLevel` (`JobShelf.jsx:58-66`) does NOT filter out blocked jobs — counts will
-be non-zero. `selectedBench` (`JobShelf.jsx:40`) is local state, never passed out; grep confirms no
-other file reads it, so **none of Brief E's ~17 bench-colour render sites can break**. Blocked cards
-are already non-draggable (`JobCard.jsx:13,19`) and already render in `NO_BENCH_COLORS` via
-`benchColors(null)` (`JobCard.jsx:21`) — no card work needed. `blockedReason` does NOT need importing.
+### The five decisions — resolved
 
-**Mandatory fixes — all display-layer, all inside existing scope:**
+1. **Existing jobs — never touched.** The PDF write path sends six columns and only six:
+   job/ref, customer, mfr, model, status, desc. Tag, Hours, Action, VB, BL and days are
+   *physically absent* from the write — not "preserved", not "merged". Nothing to get wrong.
+   Rejected: a second `preserveKnownDays()`-style guard. Per CLAUDE.md, symptom-patching is a
+   stop signal, and a preserve-merge still reads, still sends, and still can be wrong.
+2. **New jobs — blank, except bench and hours.** Run the existing bench-keyword inference on the
+   PDF description, exactly as the CSV path already does. Tag, Action, VB, BL start visibly empty.
+   Rejected: inferring Tag from fault text — a wrong Tag looks filled-in and never gets reviewed.
+3. **Do NOT move the five fields to the app-owned side in this build.** Three advisors wanted it;
+   four of five reviewers backed the Executor's dissent and the chairman sided with them. It is
+   cheaper than assumed (a constant, not a migration) but Build 1 does not need it to be safe.
+   Revisit in Build 2 when the CSV retires.
+4. **Preview screen, mandatory, before any write.** Three counts and two lists:
+   "9 new · 34 already here · 3 in your last drop that aren't in this one", with the names of the
+   9 and the names of the 3. Import / Cancel. **No field-level diff** — a line reading
+   "VB: unchanged" teaches nobody. A toast tells him what already happened; that is not enough.
+5. **Nothing is irreversible, so no undo button.** The writer can only insert rows and update six
+   Multitrack facts; nothing Trevor typed can be lost. Log each import batch (timestamp, filename,
+   row count, ids touched) for forensics.
+   **Explicitly rejected: snapshot-and-restore of the `jobs` table.** Restoring the table would
+   also roll back scheduling, pomodoro and split state written since the last import — a direct
+   violation of the "scheduling comes out untouched" constraint.
 
-- **C1 — Never route pile values through the bench chip loop.** `JobShelf.jsx:189` is
-  `BENCH_COLORS[bench] || BENCH_COLORS.Admin`; a pile key falls through to the **Admin swatch**,
-  re-creating the exact "blocked work looks like Admin" mis-read Brief E removed. Render the two pile
-  chips in their OWN block, not inside the `benchCounts.map`. While in here, fix line 189 to
-  `benchColors(bench)`. **Do NOT add pile names to `BENCH_ORDER` (`JobShelf.jsx:6`)** — that is the
-  lazy implementation and it breaks everything below.
-- **C2 — The filter must branch on pile.** `JobShelf.jsx:92-93` is
-  `topLevel.filter(j => j.bench === selectedBench)`. Blocked jobs have `bench === null`, so a pile
-  selection silently renders the empty state at `JobShelf.jsx:259-262` — correct count, empty list.
-  Namespace the stored values as `'pile:waiting'` / `'pile:planning'` (a prefixed value can never
-  collide with a real `job.bench`) and add an explicit `blockedPile(j) === pile` branch ahead of the
-  bench comparison.
-- **C3 — Make blocked EXCLUSIVE, no double-counting.** `inferBench` returns `null` for blocked jobs
-  (`jobs.js:27`) but only runs on the CSV path (`App.jsx:779`); Supabase takes bench verbatim
-  (`useSupabase.js:53`) and does not recompute it, though it DOES recompute `schedulable` against
-  `blockedPile` two lines later (`useSupabase.js:74`). So a job that went On Hold keeps a stale
-  `bench: 'Setup'` and would count in BOTH Setup and Waiting. Fix the bench count
-  (`JobShelf.jsx:70`) and the bench filter (`JobShelf.jsx:93`) to add `&& blockedPile(j) == null`.
-  During the build, report the live count of jobs where `job.bench != null && blockedPile(job) != null`.
-- **C4 — Validate the persisted selection.** `JobShelf.jsx:40,50-51` persists to
-  `localStorage['jobShelfBench']`. On restore, discard any stored value that is neither in
-  `BENCH_ORDER` nor a known `pile:` key, so a stale value can't boot the shelf into a dead filter.
-- **C5 — Suppress drag-mode controls on a pile selection.** `JobShelf.jsx:231-248` renders the
-  Regular / 🚨 Urgent buttons whenever `active` is true (`JobShelf.jsx:80`). With a pile selected that
-  offers drag controls above cards that cannot be dragged. Hide that block for pile selections.
-- **C6 — Header wording (Trevor approved).** Change the caption at `JobShelf.jsx:134` from
-  `jobs waiting` to `unscheduled`. Text only, no logic — removes the collision with the new
-  "Waiting" chip.
+### The CSV back door — must be closed in Build 1
 
-**Placement & style (council recommendation, adopt as spec):**
-- Both chips at the **end** of the row, forced onto their own line via a
-  `<div style={{ flexBasis: '100%', height: 0 }} />` spacer after the `benchCounts.map`, order
-  Waiting then Planning. Prepending would shift every bench chip and break muscle memory; plain
-  appending lets wrap put them in an unstable position.
-- Style: same size/shape/padding as bench chips, but **outlined not filled** — `background:
-  'transparent'`, permanent `border: 1px solid #334155`, `color: '#64748b'`; active state
-  `color: '#94a3b8'`, `borderColor: '#475569'`; same 0.5/1 opacity rule as bench chips. No emoji, no
-  lock icon. This matches the existing `NO_BENCH_COLORS` house convention for "not a bench"
-  (`jobs.js:422`) without inventing a colour, and matches the dim cards the chip reveals.
-- **Empty state: hide the chip at count 0** (precedent: the Focus pill at `JobShelf.jsx:171`). If both
-  are 0, suppress the flex-break spacer too, or the row gains a phantom blank line.
+The Contrarian's catch, and the plan fails without it. Both importers are live in Build 1. Trevor
+drops a PDF, gets a new job, types Tag=RS into the app — and the next CSV import blanks it,
+because on that path blank means blank. Build 1 would ship the exact bug it fixes, one pipeline over.
 
-**Known, accepted, not to be "fixed" in this build:** chip counts ignore the hours-bucket filter
-(`matchHours`, `JobShelf.jsx:97`) — the existing bench chips already behave this way. Upside worth
-noting at verification: blocked jobs are in the `topLevel.length` header (`JobShelf.jsx:133`) but in no
-chip today, so counts have never summed to the header; these two chips close that gap.
+**Fix:** generalise `preserveKnownDays()` (`src/data/jobs.js:86`) from days-only to
+days + tag + action + vb + bl. Same rule, same shape, wider column list: blank never overwrites
+good; a changed populated value still wins.
+
+Rule in one sentence: *if the job is in the Sheet, the Sheet still owns your notes; if it came in
+by PDF drop, the app owns them and nothing can overwrite them.*
+
+### Also binding
+
+- **Missing jobs are reported, never deleted and never auto-completed.** The PDF is a snapshot;
+  a job absent from today's file might be finished, or might be a short parse.
+- **Status from the PDF always wins** — it is Multitrack's fact and it drives the pile colours
+  just merged in PR #7. A status that disagrees with Trevor's Action is information, not a conflict.
+- **Scheduling untouched throughout** — no calendar slots, bench assignments or split state written
+  by any part of this build.
+
+---
+
+## Step 0 — the gate, before any import code
+
+**Prove the job numbers match.** Parse the real Multitrack PDF and print its refs beside the ~46
+job numbers already in Supabase. They must match character for character.
+
+Missed by all five advisors, caught by four of five reviewers. Because `id` *is* the job number
+and the upsert conflicts on `id`, a ref that parses even slightly differently — a trailing space,
+a dropped leading zero, different formatting — does not update the existing job. It **silently
+creates a second one** with five blank fields, and every count on the preview screen still looks
+correct. Duplicate protection, preserve behaviour and the preview counts all assume this lookup works.
+
+Throwaway script, no app changes, decides whether Build 1 is a week or a month.
+**If the refs do not match cleanly, stop and come back to Trevor before building anything.**
+
+---
+
+## Scope — Build 1, in order
+
+0. **Match-key proof** (above). Report the result before writing import code.
+1. **Port the parser** — `lib/parseMultitrackPdf.ts` from
+   `/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/BUILDS/NEW SCHEDULER BUILD/workshop-scheduler/`
+   into this repo (JS, `pdfjs-dist`). Six fields out, nothing more.
+2. **Six-column sparse PDF writer** — reuse the `toJobRow` + column-signature-grouping pattern from
+   `batchWriteJobsState()`. Explicit six-name allow-list. Do **not** call `upsertJobsBatch()`.
+3. **Widen `preserveKnownDays()`** to cover tag + action + vb + bl + days on the CSV path.
+4. **Editors for Tag, Action, VB, BL** in the job drawer, alongside the existing Hours field.
+5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
+6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
+7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
+
+## Out of scope — do not build
+
+- Retiring the DropBox/watcher/CSV pipeline. That is **Build 2**, a separate brief, after real
+  PDFs have imported successfully.
+- Moving Tag/Hours/Action/VB/BL to the app-owned side of `joinJobs.js`. Build 2.
+- Any snapshot/restore or undo button.
+- Auto-deleting or auto-completing jobs missing from the PDF.
+- Inferring Tag from fault text; provenance/"suggested vs confirmed" flags; a hours-estimate
+  learning loop; a daily triage screen with inline editing. All proposed by one advisor, all
+  rejected as Build-1 scope creep that would require Trevor to babysit the build.
+- Anything in `SCHEDULER_old/`. Anything touching scheduling, calendar slots or bench assignment.
+- Deleting dead `useFirebase.js` (noted, separate housekeeping).
+
+---
 
 ## Method — agent-team protocol
 
-1. **Brief** — this file. ✅ Approved by Trevor 2026-07-27.
-2. **Council** — quick pass on placement/wording/edge cases. The one-vs-two question is already settled
-   (two chips); council does not reopen it.
-3. **Builder** — staging branch, supervised.
-4. **Independent verifier** — separate agent.
-5. **Browser test** — Vercel preview, confirm the chip appears, count is right, click filters correctly,
-   cards stay non-draggable.
+1. **Brief** — this file. ⬜ Awaiting Trevor's "yp".
+2. **Council** — ✅ done 2026-07-28 (llm-council, as-written). Findings above are binding; the
+   builder does not reopen them.
+3. **Builder** — staging branch, supervised from the main conversation.
+4. **Independent verifier** — separate agent, never the builder.
+5. **Browser test** — Vercel preview: drop a real PDF, confirm the preview counts, confirm existing
+   jobs keep their Tag/Action/VB/BL, confirm scheduling is untouched.
 6. **Merge** — Trevor's "yp".
 
 **No commits before step 1 is approved.**

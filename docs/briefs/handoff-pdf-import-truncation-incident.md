@@ -4,7 +4,11 @@ Trevor dropped a Multitrack PDF containing 45 jobs. Only 12 reached the Google S
 and the Scheduler. 33 rows were deleted from the Google Sheet. This is the incident
 write-up plus what was found underneath it.
 
-**Status: diagnosed, nothing fixed yet. Sheet not yet restored.**
+**Status: RESOLVED (confirmed by Trevor 2026-07-28).** Truncation is fixed and the Google
+Sheet has been restored — 46 jobs currently. The diagnosis below is kept as history: it
+explains *why* Multitrack PDFs can silently drop rows (the source PDF's column layout
+changed mid-afternoon without warning), which is still relevant to the in-app PDF-drop
+import being scoped in [re-fresh-pdf-drop-scope-and-council.md](re-fresh-pdf-drop-scope-and-council.md).
 
 ---
 

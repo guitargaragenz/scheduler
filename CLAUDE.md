@@ -67,11 +67,16 @@ memory file — this file loads automatically, every time, for every session and
 **Any work touching these blast-radius files MUST run through the full agent-team protocol. No exceptions.**
 
 **Blast-radius files:**
-- `scheduledSlots` (Firestore state)
+- `scheduledSlots` (Supabase state)
 - `calendarSlot` (job field)
 - `useGoogleCalendar.js`
-- `useFirebase.js`
+- `useSupabase.js` and `utils/supabase.js` — the live job-state persistence layer
 - `jobs[]` shape/identity
+
+> Corrected 2026-07-28: this list previously named `useFirebase.js` and called
+> `scheduledSlots` Firestore state. The app runs on Supabase — `useFirebase.js` is dead
+> code (nothing imports it, and it reads from Supabase anyway). Deleting it is separate
+> housekeeping, not part of any feature build.
 
 **The protocol:**
 1. **Brief** — written, scope-locked, posted to `.claude/pending-brief.md`, Trevor approves ("yp")
