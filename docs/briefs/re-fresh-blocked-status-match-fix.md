@@ -140,4 +140,16 @@ builder should also swap any other status/tag terminology mix-ups in nearby comm
 (INC, CI, RS-C, RS, DG, GTS) are two separate fields on a job, not one axis — see project memory
 `multitrack-status-vs-tags` for the full tag glossary.
 
+**C7 — CI does NOT independently gate `blockedPile()`.** Builder's first pass added
+`act === 'CI'` as a standalone trigger for the `'waiting'` pile, which meant an `Active`+`CI` job
+(previously fully workable) became blocked — a real behavior change, caught by two pre-existing tests
+(`useSupabase.test.js:27`, `JobCard.test.jsx:42`). Trevor's decision (2026-07-27): CI should only
+matter when the job is already blocked by its status (Waiting Parts / In Transit) — it never
+independently blocks an otherwise-workable job. Since Waiting Parts and In Transit already gate on
+their own, this means **`blockedPile()` should drop the `act === 'CI'` clause entirely** — final order
+is `INC → On Hold → In Transit → Waiting Parts → null`, no CI branch. `blockedReason()` is unaffected
+and unchanged — it still reports "waiting on the customer" for CI jobs that are already blocked for
+another reason, exactly as before. Builder: revert the CI clause added in the first pass; restore the
+two pre-existing Active+CI-stays-workable tests to passing without modifying their fixtures.
+
 Everything else in the original scope proceeds as written. Builder: proceed.
