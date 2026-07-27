@@ -14,7 +14,8 @@ code before acting on it.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | **Current.** Job blocking: get Brief E approved, run council on the four decisions, then build. The plan is written; nothing is built. Micky only. |
+| [re-fresh-waiting-chip-handoff.md](re-fresh-waiting-chip-handoff.md) | 2026-07-27 | **Current.** Brief E (job blocking) shipped and merged. Brief F: Waiting + Planning chips on the main bench-picker row, since blocked jobs are invisible on that screen. Approved, two chips decided, council complete — findings are in `.claude/pending-brief.md`. Builder next. |
+| [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | Superseded — Brief E fully shipped and merged this session. Kept for history on the council decisions and round-2/3 fixes. |
 | [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27 | **Fresh session, run it separately.** Clear out misplaced, dead and stale files — 267 MB of broken worktrees, a personal parts list, a client's design doc, three spent one-off scripts. Nothing deleted yet. **Read its STOP section first: the job-blocking build shares this working tree.** |
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
 | [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | Scopes two unbuilt features: the Sunday board meeting rebuild, and in-app PDF drop to replace the CSV pipeline. Both need the full protocol. |
@@ -23,6 +24,7 @@ code before acting on it.
 
 | Brief | Date | Waiting on |
 |-------|------|------------|
+| [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | 2026-07-27 | Brief F shipping first. Sidebar, Jobs page and the new bench-row chips call the same stuck job three different things and disagree on which jobs are stuck. Raised by Brief F's council. Trevor's call: the word is **"Waiting"**, not "Awaiting". Not scoped. |
 | [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | 2026-07-27 | The first Sunday board meeting run. Parts captured at the bench, shown as the stuck reason on the job. Split out of Brief E — the `parts_to_order` list is empty until the meeting fills it, so the UI would ship showing nothing. Not approved, not scoped. |
 
 ## History — completed or superseded

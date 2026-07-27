@@ -1,196 +1,146 @@
-# Pending Brief E — "Why isn't this job moving?" (job blocking)
+# Pending Brief F — "Waiting" chip on the bench-picker row
 
-**Status:** **APPROVED by Trevor 2026-07-27 ("yp").** Council pass in progress. Nothing built, nothing committed.
+**Status:** APPROVED by Trevor ("yp") 2026-07-27. Council COMPLETE — see Council Findings below.
+Builder next. Nothing built, nothing committed yet.
+**Open question — RESOLVED:** Two chips — **"Waiting"** and **"Planning"** — split to match the
+Sidebar's existing two piles. Not one combined chip.
 **Date:** 2026-07-27
-**Repo state:** `main` @ `eae89f3` (three doc-only commits on top of the `d0e3a2c` this brief was written against — no code moved)
-**Spec:** [docs/superpowers/specs/2026-07-26-job-blocking-design.md](../docs/superpowers/specs/2026-07-26-job-blocking-design.md)
-**Plan:** [docs/superpowers/plans/2026-07-27-job-blocking-implementation.md](../docs/superpowers/plans/2026-07-27-job-blocking-implementation.md) — the ten tasks, in full, with file and line references checked against the working tree.
-**Supersedes:** Brief D's slot in this file. Brief D shipped and merged at `da1d9af` 2026-07-25; its complete record is archived at [docs/briefs/brief-d-board-meeting-full-record.md](../docs/briefs/brief-d-board-meeting-full-record.md).
+**Repo state:** `main` @ merge of `staging/job-blocking` (Brief E rounds 1–3, fully shipped)
+**Trigger:** Trevor flagged, live on the deployed app, that the main bench-picker screen (`JobShelf.jsx`)
+has no way to see blocked jobs at all — Setup/Luthier/Electronics/Fretwork/Wiring/Finishing/Admin chips,
+but nothing for Waiting/Planning. Brief E deliberately pulled blocked jobs out of Admin and into their
+own piles (visible in the Sidebar and Jobs page), but this particular screen — the one Trevor actually
+works from all day — was never given an equivalent.
 
 ---
 
 ## Plain-English summary
 
-Right now every job in the shop competes for attention equally, whether it can be worked
-on or not. A guitar sitting in a courier van and a guitar on the bench both show up in the
-same lists. Jobs that are blocked get dumped on the Admin bench, so Admin has become a
-bin for "nothing else fits" rather than a real bench.
+Brief E fixed blocked jobs cluttering up Admin. But it didn't put them anywhere on the screen Trevor
+actually looks at to decide what to work on next — the bench row (Setup 5, Luthier 5, Electronics 13,
+etc). Right now a blocked job is invisible there. Trevor's ask: he doesn't need to *work* a blocked job,
+but he needs to *see* it's stuck, same way he sees Setup has 5 jobs waiting.
 
-This change sorts the blocked work into two quiet piles — **Waiting** (customer, courier,
-on hold: nothing Trevor can do today) and **Planning** (jobs that need a quote or a plan
-written before they can start) — and takes them out of the lists that answer "what can I
-pick up right now." Each blocked job shows a plain reason ("waiting on the customer",
-"in transit") and how long it's been stuck. If anything in Waiting has been stuck two
-weeks or more, the count turns red. That's the only alarm.
-
-Blocked jobs stop being given a bench at all. Admin goes back to holding only real Admin
-work. Any job the app can't classify gets an amber "needs a bench" flag instead of being
-silently filed under Admin.
-
-Two small extras: job age stops disappearing on every page reload, and every job card gets
-a link straight through to its Multitrack page.
+Fix: add a **"Waiting"** chip (and possibly a separate "Planning" chip) to that same row, showing a
+count, same as the real bench chips. Clicking it lists the blocked jobs in that pile — same interaction
+as clicking "Setup." It is not a real bench: it doesn't touch `inferBench`, doesn't make blocked jobs
+schedulable, doesn't change bench colors or the Admin bin problem Brief E just fixed. It's a read-only
+window into the same `blockedPile()` data that already drives the Sidebar/Jobs page piles, surfaced on
+the one screen that was missing it.
 
 ---
 
-## Scope — locked
+## Scope — proposed
 
-Ten tasks, detailed in the plan file. Summary:
-
-1. **Job age survives a reload, and blanks stay blank.** New `days` column, written on
-   import, read back on load. Blank ages render blank, never "0d". An import with a blank
-   age never overwrites a good one.
-2. **New `job_status_since` table** plus four Supabase functions — per-row upsert and
-   delete, explicitly *not* focus_list's clear-and-rewrite.
-3. **New `useJobStatusSince` hook** — owns the stuck clock. Three non-negotiable guards
-   (never write before a successful read, never treat the empty first render as "all jobs
-   gone", top-level jobs only).
-4. **Blocked jobs get no bench.** `inferBench` returns `null` instead of `'Admin'`.
-   Hand-tuned keyword and manufacturer lists are not to be touched.
-5. **Two piles in the Sidebar** — Waiting and Planning — replacing today's three locked
-   sections. One shared helper `blockedPile(job)` in `src/data/jobs.js`, so every screen
-   reads the same rule.
-6. **Blocked work hidden** from the Jobs page and the Job Shelf. **Not** hidden from the
-   calendar — a job already planned into a day stays visible, with a small tag.
-7. **Plain-English reason labels** — pure function, no data access.
-8. **Stuck age on the cards.**
-9. **Multitrack deep link** on every job card.
-10. **"Needs a bench" chip** — amber, low priority, cuttable if the build runs long.
+1. Import `blockedPile` (and `blockedReason` if needed for the list view) into `src/components/JobShelf.jsx`
+   from `../data/jobs.js` (currently not imported there — confirmed via research pass).
+2. Add **two** chips — "Waiting" and "Planning" (decision locked, see status above) — to the chip row at
+   `JobShelf.jsx:185-204`, alongside the existing `BENCH_ORDER`-driven bench chips. Count = jobs in
+   `topLevel` (the same already-filtered list at `JobShelf.jsx:58-66`) where `blockedPile(job)` matches
+   the relevant pile, not `job.bench === X`.
+3. Clicking the chip filters the job list below to that pile, reusing the same select/filter mechanism
+   already used for bench chips — no new list-rendering component.
+4. Blocked jobs in this list stay **non-draggable** (round 3 already built this at the card level) —
+   this chip is a new *entry point* to already-existing cards, not new card behavior.
+5. No changes to `inferBench`, `BENCH_ORDER`, bench colors, the Admin chip, or the `bench NOT NULL`
+   schema constraint.
+6. Tests: chip count matches `blockedPile()` output; clicking filters correctly; chip does not appear in
+   `BENCH_ORDER` or get treated as a real bench anywhere downstream.
 
 **Out of scope — do not build:**
-- A Scheduler-side "why is this stuck" text field. The meeting is the reason.
-- Importing MT's `Comments` box or adding a second PDF source.
-- Gantt charts, dependency arrows, job-to-job dependency records, auto-rescheduling,
-  sub-benches.
-- **The two parts features** from the spec (part as the reason, resolve nudge) — see
-  correction 4.
-- **The Multitrack PDF parser and the watcher.** Still unfixed; a bad PDF re-truncates
-  `jobs.csv`. Nothing in this build goes near `SCHEDULER_old/`.
+- Any change to what counts as blocked (`blockedPile()` logic itself is untouched — this is a display
+  layer only).
+- Making blocked jobs draggable or schedulable from this new chip.
+- Repurposing the Admin chip/bench for this — considered and rejected (reintroduces the "Admin as dumping
+  ground" problem Brief E just fixed).
+- A general-purpose "sub-bench" system — this is one specific chip for one specific visibility gap, not
+  new infrastructure.
 
 ---
 
-## Five corrections to the spec — read before approving
+## Why this needs the brief process, even though it's small
 
-Found by checking the spec against the actual files. The spec was written from the design
-conversation, not from the code, and five of its assumptions don't hold.
+Touches `JobShelf.jsx`, one of the ~17 render sites Brief E round 3 already modified for bench-color
+fallbacks, and reads from `blockedPile()` — data path shared with `scheduledSlots`/bench-assignment
+logic. Small blast radius, but the same file family as prior blast-radius work, so it goes through the
+same protocol rather than being patched in ad hoc.
 
-1. **Job age is never saved to the database.** No column, no write, no read-back. Age
-   exists only until the page reloads. The spec's claim that stuck age is "the only thing
-   that needs new plumbing" is wrong — job age needs it too. **Brief D already caught this**
-   (scope item 4, third bullet: add a column or explicitly disable age reporting) and the
-   Builder did neither, so the numbers have been quietly wrong since 25 July. Task 1 pays
-   that back.
-2. **The blank-age bug is one line earlier than the spec says** — and worse. Blanks become
-   `0`, not `NaN`, so a brand-new job and an unknown-age job look identical. Jobs 1708 and
-   1710 are the live examples. Root fix is at the parse, not the sort.
-3. **`inferBench` already routes blocked jobs to Admin** deliberately, so the change is
-   smaller than the spec implies — but `bench` becomes nullable everywhere downstream, and
-   that fallout is listed in the plan.
-4. ~~**`parts_to_order` is dead code.**~~ **CORRECTED 2026-07-27 — it is empty, not dead.**
-   Searching `src/` for callers was the wrong test: the writer is the Sunday board meeting,
-   not the app. `.claude/workflows/sunday-board-meeting.js` lines 12 and 16 name "new parts
-   → `parts_to_order`" as one of its three end-of-meeting writes. Verified live: the table
-   exists with all six columns and the board-meeting export runs clean. It is empty only
-   because the first meeting hasn't run — Trevor is holding it until this build merges.
-   `PartsDrawer.jsx` is still the unrelated PartsBox inventory drawer.
-   **Recommendation still cut them, for sequencing not deadness:** the list is empty until
-   the first meeting, so building the UI now ships something that displays nothing.
-   Parked as [docs/briefs/parked-parts-as-a-stuck-reason.md](../docs/briefs/parked-parts-as-a-stuck-reason.md).
-   **Do not delete the table or its Supabase functions.**
-5. **The Planning pile as specced matches zero jobs.** `Waiting + INC` — the only two `INC`
-   jobs (393, 693) are both `Booked In`, and none of the five `Waiting` jobs carry `INC`.
-   It would ship empty while the two real planning jobs sat in the schedulable lists.
-   **Recommendation: pile on `INC` alone.**
+## Council Findings — BINDING ON THE BUILDER (2026-07-27, two independent reviewers)
 
----
+**Correction to this brief's premise:** the claim that the two chips "match the Sidebar's two piles"
+is FALSE. `Sidebar.jsx:73-75` splits locked jobs three ways off the old `deriveJobStatusFlags`
+booleans (`📞 AWAITING` / `📦 IN TRANSIT` / `🔒 ON HOLD`, `Sidebar.jsx:285,295,305`) and never calls
+`blockedPile()`. `JobsPage.jsx:35-36,150` is a third variant again ("Waiting / On Hold", split on
+`schedulable`). "Waiting" and "Planning" are currently code-only strings (`jobs.js:119,125`) — these
+chips are the first user-facing use of those words. Trevor has been told; three-screen alignment is a
+FOLLOW-UP brief, see `docs/briefs/blocked-pile-naming-alignment.md`. **The builder must NOT touch
+Sidebar or JobsPage in this build.**
 
-## Decisions needed before the build starts
+Confirmed good: `blockedPile()` does return exactly `'waiting'` / `'planning'` / `null`
+(`jobs.js:116-127`). `topLevel` (`JobShelf.jsx:58-66`) does NOT filter out blocked jobs — counts will
+be non-zero. `selectedBench` (`JobShelf.jsx:40`) is local state, never passed out; grep confirms no
+other file reads it, so **none of Brief E's ~17 bench-colour render sites can break**. Blocked cards
+are already non-draggable (`JobCard.jsx:13,19`) and already render in `NO_BENCH_COLORS` via
+`benchColors(null)` (`JobCard.jsx:21`) — no card work needed. `blockedReason` does NOT need importing.
 
-| # | Decision | Recommendation |
-|---|---|---|
-| 1 | The two parts features — cut, or build the parts-to-order list first? | **Cut.** Own feature, own brief. |
-| 2 | `inferBench` backlog handling — add a positional parameter, or handle `readyToStart` at the caller? | **Caller.** Leaves the signature untouched. |
-| 3 | Who runs the `days` column migration, and when? | Trevor, in the Supabase SQL editor, before merge. Only production-touching step; additive, so old clients are unaffected. |
-| 4 | What defines the Planning pile — `INC` alone, or `Waiting + INC`? | **`INC` alone.** Otherwise the pile ships empty. |
+**Mandatory fixes — all display-layer, all inside existing scope:**
 
-Council reviews these four specifically.
+- **C1 — Never route pile values through the bench chip loop.** `JobShelf.jsx:189` is
+  `BENCH_COLORS[bench] || BENCH_COLORS.Admin`; a pile key falls through to the **Admin swatch**,
+  re-creating the exact "blocked work looks like Admin" mis-read Brief E removed. Render the two pile
+  chips in their OWN block, not inside the `benchCounts.map`. While in here, fix line 189 to
+  `benchColors(bench)`. **Do NOT add pile names to `BENCH_ORDER` (`JobShelf.jsx:6`)** — that is the
+  lazy implementation and it breaks everything below.
+- **C2 — The filter must branch on pile.** `JobShelf.jsx:92-93` is
+  `topLevel.filter(j => j.bench === selectedBench)`. Blocked jobs have `bench === null`, so a pile
+  selection silently renders the empty state at `JobShelf.jsx:259-262` — correct count, empty list.
+  Namespace the stored values as `'pile:waiting'` / `'pile:planning'` (a prefixed value can never
+  collide with a real `job.bench`) and add an explicit `blockedPile(j) === pile` branch ahead of the
+  bench comparison.
+- **C3 — Make blocked EXCLUSIVE, no double-counting.** `inferBench` returns `null` for blocked jobs
+  (`jobs.js:27`) but only runs on the CSV path (`App.jsx:779`); Supabase takes bench verbatim
+  (`useSupabase.js:53`) and does not recompute it, though it DOES recompute `schedulable` against
+  `blockedPile` two lines later (`useSupabase.js:74`). So a job that went On Hold keeps a stale
+  `bench: 'Setup'` and would count in BOTH Setup and Waiting. Fix the bench count
+  (`JobShelf.jsx:70`) and the bench filter (`JobShelf.jsx:93`) to add `&& blockedPile(j) == null`.
+  During the build, report the live count of jobs where `job.bench != null && blockedPile(job) != null`.
+- **C4 — Validate the persisted selection.** `JobShelf.jsx:40,50-51` persists to
+  `localStorage['jobShelfBench']`. On restore, discard any stored value that is neither in
+  `BENCH_ORDER` nor a known `pile:` key, so a stale value can't boot the shelf into a dead filter.
+- **C5 — Suppress drag-mode controls on a pile selection.** `JobShelf.jsx:231-248` renders the
+  Regular / 🚨 Urgent buttons whenever `active` is true (`JobShelf.jsx:80`). With a pile selected that
+  offers drag controls above cards that cannot be dragged. Hide that block for pile selections.
+- **C6 — Header wording (Trevor approved).** Change the caption at `JobShelf.jsx:134` from
+  `jobs waiting` to `unscheduled`. Text only, no logic — removes the collision with the new
+  "Waiting" chip.
 
----
+**Placement & style (council recommendation, adopt as spec):**
+- Both chips at the **end** of the row, forced onto their own line via a
+  `<div style={{ flexBasis: '100%', height: 0 }} />` spacer after the `benchCounts.map`, order
+  Waiting then Planning. Prepending would shift every bench chip and break muscle memory; plain
+  appending lets wrap put them in an unstable position.
+- Style: same size/shape/padding as bench chips, but **outlined not filled** — `background:
+  'transparent'`, permanent `border: 1px solid #334155`, `color: '#64748b'`; active state
+  `color: '#94a3b8'`, `borderColor: '#475569'`; same 0.5/1 opacity rule as bench chips. No emoji, no
+  lock icon. This matches the existing `NO_BENCH_COLORS` house convention for "not a bench"
+  (`jobs.js:422`) without inventing a colour, and matches the dim cards the chip reveals.
+- **Empty state: hide the chip at count 0** (precedent: the Focus pill at `JobShelf.jsx:171`). If both
+  are 0, suppress the flex-break spacer too, or the row gains a phantom blank line.
 
-## Why this is blast-radius work
-
-`jobs[]` shape and the filtering behind most job-rendering components, plus the CSV import
-path and a schema change on the live `jobs` table. Full protocol applies.
-
-## Risks to watch
-
-- **The `useJobStatusSince` ready-gate is the single most destructive failure mode here.**
-  A failed read plus an eager write would stamp today's date on every job in the shop and
-  destroy every real stuck age at once — irreversibly. Same class of bug as Brief D item 7's
-  focus-list wipe. The verifier tests this one at runtime, not by reading the code.
-- One production Supabase database, no sandbox. The `days` column migration is a real write.
-- Stuck age must use local-date maths. NZ is UTC+12; `toISOString()` reads a day off for half
-  of every day.
-- `bench` becomes nullable. Every `BENCH_COLORS[job.bench] || BENCH_COLORS.Admin` fallback
-  silently paints an unclassified job as Admin unless it's changed.
-
----
+**Known, accepted, not to be "fixed" in this build:** chip counts ignore the hours-bucket filter
+(`matchHours`, `JobShelf.jsx:97`) — the existing bench chips already behave this way. Upside worth
+noting at verification: blocked jobs are in the `topLevel.length` header (`JobShelf.jsx:133`) but in no
+chip today, so counts have never summed to the header; these two chips close that gap.
 
 ## Method — agent-team protocol
 
-1. **Brief** — this file. Trevor's "yp". *(← we are here)*
-2. **Council** — two independent agents, on the four decisions above.
-3. **Builder** — staging branch, supervised from the main conversation.
-4. **Independent verifier** — separate agent, never the builder.
-5. **Browser test** — Vercel preview click-through.
+1. **Brief** — this file. ✅ Approved by Trevor 2026-07-27.
+2. **Council** — quick pass on placement/wording/edge cases. The one-vs-two question is already settled
+   (two chips); council does not reopen it.
+3. **Builder** — staging branch, supervised.
+4. **Independent verifier** — separate agent.
+5. **Browser test** — Vercel preview, confirm the chip appears, count is right, click filters correctly,
+   cards stay non-draggable.
 6. **Merge** — Trevor's "yp".
 
 **No commits before step 1 is approved.**
-
----
-
-## Amendment — Round 3 (2026-07-27)
-
-**Status:** Awaiting Trevor's "yp" before any commit.
-**Trigger:** Independent verifier returned DO NOT SHIP against the round-2 build. All three
-blockers re-checked by hand and confirmed real. One root cause: `inferBench` was taught to
-return `null` for blocked jobs, but nothing else in the app was taught what a bench-less job
-looks like. This finishes that job — it does not reopen the locked scope above.
-**Full context:** [docs/briefs/re-fresh-brief-e-round3.md](../docs/briefs/re-fresh-brief-e-round3.md)
-
-### Scope — locked to exactly these six items
-
-1. Blocked job cards become **non-draggable** (no `disabled` flag currently passed to
-   `useDraggable` in `JobCard.jsx`). The moment a job is unblocked, drag returns to today's
-   normal behaviour — no new mode, no half-state. Add a tooltip/cursor so it's visibly
-   inert, not just dead to the touch. **Decision settled 2026-07-27 (Trevor): "blocked jobs
-   should never be dnd until not blocked then normal."** Do not loosen the
-   `scheduled_slots.bench TEXT NOT NULL` constraint — that alternative was rejected.
-2. Wire up the existing `NO_BENCH_COLORS` / `benchColors()` helper (`src/data/jobs.js:417-422`)
-   at all ~17 render sites currently falling back to `BENCH_COLORS[job.bench] || BENCH_COLORS.Admin`
-   (JobCard, JobsPage, CalendarGrid, JobShelf, ProjectsPage, MobileJobSheet, SplitDrawer,
-   PomoDrawer, DailyLogPage, WeeklySummaryModal, CloseDayModal, JobDrawer, CatchUpInterview).
-3. Stop `googleCalendar.js:178,204` writing a literal `Bench: null` line into calendar events
-   — omit the line when bench is null.
-4. Make Sidebar/Jobs/Shelf subtract `blockedPile()` so the old status rule
-   (`useSupabase.js:36`, `deriveJobStatusFlags`) and the new one agree on jobs 393/693 —
-   council amendment A, never built in round 2.
-5. Move the `CI` check ahead of the status check in `blockedReason()` (`jobs.js:145`) so job
-   1175 reads "waiting on the customer" instead of "on hold" once the corrected CSV is
-   uploaded.
-6. Tests for all five items above — current 84 tests cover none of this behaviour.
-
-**Explicitly not touched:** `DEFAULT_BENCH_KEYWORDS`, manufacturer regex lists, `inferBench`'s
-core logic, the `bench NOT NULL` schema constraint, anything in `SCHEDULER_old/` or the PDF
-pipeline.
-
-### Method — same six-step protocol as the parent brief, restarting at step 3
-
-1. Brief *(this amendment)*
-2. Council — already effectively done via the round-2 verifier's findings; no new council
-   pass needed unless Trevor wants one.
-3. **Builder** — staging branch `staging/job-blocking`, supervised from main conversation. ← next
-4. **Independent verifier** — fresh agent, never the builder.
-5. **Browser test** — Vercel preview, including uploading the corrected `jobs.csv` via 📂.
-6. **Merge** — Trevor's "yp".
-
-**No commits before Trevor approves this amendment.**
