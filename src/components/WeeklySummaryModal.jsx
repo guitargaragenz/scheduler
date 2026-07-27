@@ -1,8 +1,8 @@
 import { createPortal } from 'react-dom';
 import { useRef, useEffect, useState } from 'react';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { benchColors } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Electronics', 'Setup', 'Luthier', 'Fretwork', 'Wiring', 'Admin'];
+const BENCH_ORDER = ['Electronics', 'Setup', 'Luthier', 'Fretwork', 'Wiring', 'Admin', 'No Bench'];
 
 function getWeekDatePrefix(date) {
   const y = date.getFullYear();
@@ -26,7 +26,9 @@ function computeSummary(jobs, scheduledSlots, weekDays) {
 
   const summary = {};
   jobs.forEach(job => {
-    const bench = job.bench || 'Admin';
+    // Blocked jobs carry no bench (see round-3 blocking work) — bucket them
+    // separately instead of silently folding them into Admin's totals.
+    const bench = job.bench || 'No Bench';
     if (!summary[bench]) summary[bench] = { planned: 0, actualPomos: 0, actualMins: 0 };
 
     if (scheduledThisWeek.has(job.id)) {
@@ -130,7 +132,7 @@ export default function WeeklySummaryModal({ jobs, scheduledSlots, weekDays, onC
               {/* Bench rows */}
               {benches.map(bench => {
                 const row = summary[bench];
-                const colors = BENCH_COLORS[bench] || BENCH_COLORS.Admin;
+                const colors = benchColors(bench === 'No Bench' ? null : bench);
                 const actualH = (row.actualMins / 60).toFixed(1);
                 const delta = row.actualMins / 60 - row.planned;
                 const deltaStr = delta >= 0 ? `+${delta.toFixed(1)}h` : `${delta.toFixed(1)}h`;

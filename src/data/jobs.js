@@ -7,11 +7,24 @@ export const DEFAULT_BENCH_KEYWORDS = {
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
 
-export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS) {
-  const act = (action || '').trim().toUpperCase();
-  if (status === 'In Transit') return 'Admin';
-  if (status === 'Waiting' && !['INC', 'CI'].includes(act)) return 'Admin';
-  if (status === 'On Hold') return 'Admin';
+// `backlog` is the 7th positional parameter (settled at council 2026-07-27) and
+// is the raw boolean, not 'Y'/'N'. It exists only so this function can ask
+// blockedPile the question properly: On Hold + BL=Y + GTS ("parts arrived, good
+// to start") is NOT blocked, and without the backlog flag we cannot tell it
+// apart from a genuinely-on-hold job.
+//
+// No live job matches that combination today (checked 2026-07-27 — job 1175 was
+// thought to, but its GTS turned out to be a stale CSV value; it is really CI).
+// Keep the parameter anyway: without it, the first real ready-to-start job would
+// lose its bench here while Sidebar.jsx simultaneously listed it under READY TO
+// START. Two screens, one job, opposite answers — that is the bug being closed.
+export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS, backlog = false) {
+  // Blocked work gets NO bench. Deliberately delegated to blockedPile rather
+  // than re-testing the status strings here: a second copy of the rule is how
+  // jobs 393 and 693 (Booked In + INC) ended up sitting in the Planning pile
+  // while still carrying an Electronics bench from the manufacturer regexes
+  // below. One rule, one function, every screen agrees.
+  if (blockedPile({ status, action, backlog: backlog === true })) return null;
 
   const d = (desc + ' ' + model).toLowerCase();
   const m = mfr.toLowerCase();
@@ -31,7 +44,120 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
   if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
 
-  return 'Admin';
+  // Couldn't classify it. Returns null, not 'Admin' — Admin is a real bench for
+  // real admin work, not the bin for "nothing else matched". An unclassified
+  // job gets the amber "needs a bench" chip instead, so it's visible and
+  // fixable rather than silently mis-filed.
+  return null;
+}
+
+// Job age from the CSV's `Days` column. A blank cell means Multitrack does not
+// know how old the job is — that is NOT the same as "zero days old", and the
+// old `parseInt(obj.Days) || 0` collapsed the two into an identical `0`, so a
+// guitar booked in this morning and a guitar of unknown age both read "0d".
+// Blank (and any non-numeric junk) stays `null` so every downstream reader can
+// tell "unknown" from "brand new" and render nothing rather than a wrong number.
+export function parseDays(raw) {
+  const s = (raw == null ? '' : String(raw)).trim();
+  if (!s) return null;
+  const n = parseInt(s, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+// A blank job age never overwrites an age we already know.
+//
+// Multitrack intermittently exports an empty `Days` cell for a job that
+// definitely has an age (jobs 1708 and 1710 on the 2026-07-27 file). The CSV
+// path is upsert-only, so without this a single bad export writes null over a
+// real age and it is gone — MT won't send it again.
+//
+// Matched on job NUMBER, not id: the id of a top-level job is its job number,
+// but matching on `job` says out loud that this is about the same physical
+// guitar across two imports, not about row identity.
+//
+// A *changed* populated value still wins. This only defends against blanks —
+// if MT says the job is now 300 days old, it is.
+//
+// Lives here rather than inside upsertJobsBatch because the batch cannot fix
+// it: a Supabase array upsert sends the union of all rows' keys and NULL-fills
+// any row missing one, so "just leave `days` off the blank rows" would write
+// the nulls anyway. It has to be merged before the write, where both the
+// incoming row and the current in-memory job are visible.
+export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
+  const prevByJobNo = {};
+  existingJobs.forEach(j => {
+    if (j && !j.parentId && j.days != null) prevByJobNo[j.job] = j.days;
+  });
+  return parsedTopLevel.map(j => (
+    j.days == null && prevByJobNo[j.job] != null
+      ? { ...j, days: prevByJobNo[j.job] }
+      : j
+  ));
+}
+
+// Which quiet pile a blocked job belongs in, or null if it is workable today.
+//
+// SINGLE SOURCE OF TRUTH. Sidebar, JobsPage, JobShelf, CalendarGrid and
+// inferBench all read this one function rather than each keeping its own copy
+// of "is this job blocked" — four copies drifting apart is exactly how the
+// current three-locked-sections sprawl happened, and it is what makes a job
+// show up as blocked on one screen and workable on another.
+//
+// 'planning' is `INC` alone, deliberately status-independent (settled at
+// council 2026-07-27). On the live data the only two INC jobs are 393 and 693,
+// both `Booked In`, so gating on `Waiting + INC` as the spec originally said
+// would have matched zero jobs and shipped an empty pile. INC is what MT
+// actually uses to mean "needs a quote or a plan written first", whatever the
+// status column says — so a future `Active + INC` job leaving the active list
+// is intended, not a regression.
+//
+// `readyToStart` (On Hold + BL=Y + GTS — parts arrived, good to start) is NOT
+// blocked: it is the one On Hold case that is genuinely schedulable.
+export function blockedPile(job) {
+  if (!job) return null;
+  const act = (job.action || '').trim().toUpperCase();
+  if (act === 'INC') return 'planning';
+
+  const status = job.status || '';
+  const { readyToStart } = deriveJobStatusFlags(status, job.action, job.backlog === true);
+  if (readyToStart) return null;
+
+  if (status === 'In Transit' || status === 'Waiting' || status === 'On Hold') return 'waiting';
+  return null;
+}
+
+// Plain English for why a job isn't moving. Pure — no data access, no lookups,
+// just the job row. Returns null for anything workable today.
+//
+// The fallback matters more than the table. Jobs 1268, 1679 and 1705 are all
+// `Waiting` + `GTS`, which matches no row below, and a blocked job with no
+// reason at all reads like a bug. "waiting — see Multitrack" is honest: the app
+// knows it's stuck, doesn't know why, and points at the system that does.
+export function blockedReason(job) {
+  const pile = blockedPile(job);
+  if (!pile) return null;
+
+  const act = (job?.action || '').trim().toUpperCase();
+  const status = job?.status || '';
+
+  // CI (waiting on the customer) takes priority over the status column,
+  // regardless of what status the job happens to carry. Job 1175 is
+  // On Hold + CI — checking status === 'On Hold' first used to report
+  // "on hold", which just restates the status column. "waiting on the
+  // customer" tells Trevor who to chase, so CI is checked ahead of status.
+  if (act === 'INC') return 'planning';
+  if (act === 'CI') return 'waiting on the customer';
+  if (status === 'In Transit') return 'in transit';
+  if (status === 'On Hold') return 'on hold';
+  return 'waiting — see Multitrack';
+}
+
+// A job the app couldn't classify: not blocked (blocked jobs have no bench on
+// purpose), but no bench either. Drives the amber "needs a bench" chip.
+export function needsBench(job) {
+  if (!job) return false;
+  if (job.bench) return false;
+  return blockedPile(job) === null;
 }
 
 export function inferTag(h) {
@@ -193,7 +319,7 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
     // Don't drop schedulable jobs just because hours aren't set yet — default to 1h
     const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
 
-    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr, keywords);
+    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr, keywords, obj.BL === 'Y');
     const baseJob = {
       id: String(obj.Job),
       job: obj.Job,
@@ -204,7 +330,7 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
       readyToStart,
       awaiting,
       inTransit,
-      days: parseInt(obj.Days) || 0,
+      days: parseDays(obj.Days),
       tag: obj.Tag || inferTag(effectiveHours),
       hours: effectiveHours,
       hoursRange: hoursRange(effectiveHours),
@@ -232,7 +358,11 @@ export function parseCSV(csvText, keywords = {}, benchHours = {}) {
     }
   }
 
-  return jobs.sort((a, b) => b.days - a.days);
+  // Oldest first. `?? -1` rather than `?? 0`: a job of unknown age sorts BELOW
+  // a genuine 0-day job, so blanks land at the newest end instead of being
+  // shuffled in among the jobs booked in today. Rows loaded back from Supabase
+  // can carry a real null here too, not just freshly-parsed CSV rows.
+  return jobs.sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 }
 
 // Full bench breakdown for a job — a single entry for a plain job, or one
@@ -283,6 +413,19 @@ export const BENCH_COLORS = {
   Finishing:   { bg: '#92400e', border: '#d97706', text: '#fef3c7' },
   Admin:       { bg: '#374151', border: '#6b7280', text: '#e5e7eb' },
 };
+
+// For a job with no bench. Deliberately NOT Admin's grey-on-grey: every
+// `BENCH_COLORS[job.bench] || BENCH_COLORS.Admin` fallback in the app used to
+// paint an unclassified job in Admin colours, which is exactly the silent
+// mis-filing this change exists to stop. This is dimmer and outlined, so a
+// bench-less card reads as "no bench" at a glance instead of "Admin bench".
+export const NO_BENCH_COLORS = { bg: '#0f172a', border: '#334155', text: '#64748b' };
+
+// The one place that answers "what colour is this job's bench chip". Use it
+// instead of `BENCH_COLORS[job.bench] || BENCH_COLORS.Admin`.
+export function benchColors(bench) {
+  return BENCH_COLORS[bench] || NO_BENCH_COLORS;
+}
 
 export function canInvoiceJob(job, jobs) {
   if (!job) return false;

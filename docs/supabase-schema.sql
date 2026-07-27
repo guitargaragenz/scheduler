@@ -168,6 +168,40 @@ CREATE TABLE IF NOT EXISTS parts_to_order (
 
 CREATE INDEX IF NOT EXISTS idx_parts_to_order_resolved ON parts_to_order(resolved);
 
+-- 2026-07-27: Job blocking — Brief E, Task 1. Job age from the CSV's `Days`
+-- column. Until now `days` was parsed into memory by parseCSV() and never
+-- persisted anywhere, so every page reload silently reset every job to an
+-- unknown age and the Projects-page timeline collapsed to day zero. Nullable
+-- on purpose: NULL means "Multitrack doesn't know how old this job is", which
+-- is a different fact from 0. Additive, safe on existing rows.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS days INTEGER;
+
+-- Job status clock (Brief E, Task 2). One row per top-level job recording when
+-- it last entered its current status+action, so "waiting 12 days" is a real
+-- number rather than a guess. Multitrack does not carry this and nothing else
+-- in the system knows it.
+--
+-- job_id is a plain TEXT primary key, NOT a foreign key to jobs(id) — same
+-- reasoning as parts_to_order.needed_for_job above, but sharper here: a CSV
+-- import can delete and re-create a job row, and an ON DELETE CASCADE would
+-- silently reset the stuck clock on exactly the jobs that have been stuck
+-- longest. Resetting that clock is the one thing this table exists to prevent.
+-- A stale row for a job that has genuinely gone costs nothing and gets
+-- re-adopted by job_id if the job comes back.
+--
+-- No RLS, deliberately. Every other table in this schema is created without it
+-- and the app talks to Supabase with the anon key only. A single RLS'd table in
+-- an otherwise open schema buys no real security and risks silently blocking
+-- reads — loadJobs()'s "RLS policy likely blocking" fallback in
+-- src/utils/supabase.js exists because of precisely that failure. Whether the
+-- schema as a whole should be locked down is a real question and a separate one.
+CREATE TABLE IF NOT EXISTS job_status_since (
+  job_id TEXT PRIMARY KEY,
+  status TEXT NOT NULL,
+  action TEXT,
+  since  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
@@ -177,3 +211,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE focus_list;
 ALTER PUBLICATION supabase_realtime ADD TABLE pending_revenue_review;
 ALTER PUBLICATION supabase_realtime ADD TABLE completed_jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE parts_to_order;
+ALTER PUBLICATION supabase_realtime ADD TABLE job_status_since;

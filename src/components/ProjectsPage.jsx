@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { benchColors } from '../data/jobs.js';
 
 const SECTION_DEFS = [
   { key: 'input',    label: 'Needs Input',       sub: 'CI · Parts',           actions: ['CI', 'PARTS'],          hatch: true  },
@@ -29,7 +29,7 @@ function JobBar({ job, windowDays, hatch }) {
   const days = job.days || 0;
   const left  = days >= windowDays ? 0 : (windowDays - days) / windowDays * TODAY_PCT;
   const width = Math.max(TODAY_PCT - left, 0.5);
-  const bc    = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+  const bc    = benchColors(job.bench);
   const tc    = actionTagColors(job.action);
   const ageColor = ageBadgeColor(days);
 

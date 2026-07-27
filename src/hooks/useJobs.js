@@ -1,4 +1,4 @@
-import { parseCSV, canInvoiceJob } from '../data/jobs.js';
+import { parseCSV, canInvoiceJob, preserveKnownDays } from '../data/jobs.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
 import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs } from '../utils/supabase.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
@@ -267,7 +267,12 @@ export function useJobs({
   function handleCsvUpload(csvText) {
     try {
       const parsed = parseCSV(csvText, benchKeywords, benchHours);
-      const topLevel = parsed.filter(j => !j.parentId);
+
+      // Blank job age never overwrites a good one — see preserveKnownDays.
+      // Applied here, before both the optimistic setJobs merge and the
+      // saveJobsMasterBatch write, so the preserved value is what gets shown
+      // AND what gets stored.
+      const topLevel = preserveKnownDays(parsed.filter(j => !j.parentId), jobs);
       const masterByJobNo = Object.fromEntries(topLevel.map(j => [j.job, j]));
 
       // Optimistic local merge for immediate UI feedback: CSV-owned fields

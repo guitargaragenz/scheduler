@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getJobSplits, buildManualInvoiceJob, BENCH_COLORS, canInvoiceJob, getUndonePieces } from '../data/jobs.js';
+import { getJobSplits, buildManualInvoiceJob, benchColors, canInvoiceJob, getUndonePieces } from '../data/jobs.js';
 import { formatMoney } from '../utils/money.js';
 
 const ACTIONS = ['kept', 'dropped', 'deferred', 'completed'];
@@ -78,7 +78,7 @@ function BenchChips({ splits }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
       {splits.map((s, i) => {
-        const colors = BENCH_COLORS[s.bench] || BENCH_COLORS.Admin;
+        const colors = benchColors(s.bench);
         const detail = s.sessionNote || s.label
           || (() => { const t = s.splitDesc ?? s.desc; return t ? t.slice(0, 60) + (t.length > 60 ? '…' : '') : null; })();
         return (

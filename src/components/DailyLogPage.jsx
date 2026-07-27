@@ -3,7 +3,7 @@ import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
 import DeferredItemsList from './DeferredItemsList.jsx';
 import ReasonPicker from './ReasonPicker.jsx';
-import { BENCH_COLORS as CANONICAL_BENCH_COLORS } from '../data/jobs.js';
+import { benchColors } from '../data/jobs.js';
 import { localDateKey } from '../utils/calendar.js';
 
 const DATE_LABEL = new Date().toLocaleDateString('en-NZ', {
@@ -11,7 +11,7 @@ const DATE_LABEL = new Date().toLocaleDateString('en-NZ', {
 });
 
 function JobPeekPopover({ job, onClose, onOpenFull }) {
-  const colors = CANONICAL_BENCH_COLORS[job.bench] || CANONICAL_BENCH_COLORS.Admin;
+  const colors = benchColors(job.bench);
   return (
     <div style={{
       position: 'absolute', top: 12, right: 12, zIndex: 10,
@@ -389,7 +389,8 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
   const splits = jobs.filter(j => j.parentId === job.id);
   const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
   const actionStyle = ACTION_COLORS[job.action] || { bg: '#1e293b', color: '#64748b' };
-  const benchStyle = BENCH_COLORS[job.bench] || { bg: '#1e293b', color: '#64748b' };
+  const bc = benchColors(job.bench);
+  const benchStyle = { bg: bc.bg, color: bc.text };
 
   return (
     <div

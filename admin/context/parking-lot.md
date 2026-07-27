@@ -82,7 +82,7 @@ Currently-open items only — grouped by category, not by session date. Complete
 
 ## Housekeeping
 
-- [ ] `DESIGN.md` at repo root is an unrelated client file (Matakana Superfoods design-token extraction, not GGNZ content) — Trevor confirmed it's currently being worked on. Relocate or delete once that work is finished.
+- [x] `DESIGN.md` at repo root is an unrelated client file (Matakana Superfoods design-token extraction, not GGNZ content) — Trevor confirmed it's currently being worked on. Relocate or delete once that work is finished. **Done 2026-07-27**: moved to `AI FILES/BUILDS/WEBSITE BUILD/`.
 - [ ] Two unidentified screenshots on Desktop root (`Screenshot 2026-06-12...png`, `Screenshot 2026-06-13...png`) — not opened/identified. Check if still needed.
 - [ ] `SCHEDULER` symlink on Desktop is dangling — points at `/Users/trevorcollings/...` but this machine's local user is `admin`. Pre-existing quirk from syncing across two different local accounts, unrelated to any recent work. Fix if it matters for cross-device workflow.
 - [ ] Revoke the `jt-backup-ggnz-35a126beb4ca.json` service-account key in Google Cloud Console — moving it to `archive/job-tracker/` and gitignoring it locally doesn't invalidate the key itself.

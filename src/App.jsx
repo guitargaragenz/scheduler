@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, BENCH_COLORS, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
+import { parseCSV, RAW_CSV, benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
@@ -659,8 +659,8 @@ export default function App() {
         {scheduler.activeJob ? (
           <div style={{ opacity: 0.9, transform: 'rotate(2deg)', pointerEvents: 'none' }}>
             <div style={{
-              background: BENCH_COLORS[scheduler.activeJob.bench]?.bg || '#374151',
-              border: `2px solid ${dragMode === 'urgent' ? '#ef4444' : BENCH_COLORS[scheduler.activeJob.bench]?.border || '#6b7280'}`,
+              background: benchColors(scheduler.activeJob.bench).bg,
+              border: `2px solid ${dragMode === 'urgent' ? '#ef4444' : benchColors(scheduler.activeJob.bench).border}`,
               borderRadius: 8, padding: '8px 12px', minWidth: 180, maxWidth: 240,
               boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
             }}>
@@ -776,7 +776,7 @@ export default function App() {
             const reinferred = [];
             setJobs(prev => prev.map(j => {
               if (j.parentId || j.isSplit || j.hasSubtasks) return j;
-              const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw);
+              const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true);
               if (bench !== j.bench) reinferred.push({ ...j, bench });
               return { ...j, bench };
             }));

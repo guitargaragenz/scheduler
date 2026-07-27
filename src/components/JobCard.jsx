@@ -1,16 +1,24 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { BENCH_COLORS } from '../data/jobs.js';
+import { benchColors, blockedPile, blockedReason } from '../data/jobs.js';
 
 export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus }) {
   const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
 
+  // A blocked job (Waiting or Planning pile) never picks up at all — Trevor's
+  // settled decision, 2026-07-27: "blocked jobs should never be dnd until not
+  // blocked then normal." The instant blockedPile stops returning a pile for
+  // this job, `disabled` goes false and drag is exactly what it was before —
+  // no separate blocked-drag mode, just this one flag gating today's behaviour.
+  const isBlocked = blockedPile(job) != null;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: draggableId,
     data: { jobId: job.id, job, source: inCalendar ? 'calendar' : 'sidebar', dragMode },
+    disabled: isBlocked,
   });
 
-  const colors = BENCH_COLORS[job.bench] || BENCH_COLORS.Admin;
+  const colors = benchColors(job.bench);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -21,7 +29,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
       : `1px solid ${colors.border}`,
     borderRadius: 6,
     padding: compact ? '4px 8px' : '8px 10px',
-    cursor: 'grab',
+    cursor: isBlocked ? 'not-allowed' : 'grab',
     userSelect: 'none',
     touchAction: 'none',
     position: 'relative',
@@ -31,7 +39,14 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} onClick={onClick}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onClick={onClick}
+      title={isBlocked ? blockedReason(job) : undefined}
+    >
       {compact ? (
         /* Calendar card: Mfr + Model primary, job number as small tag */
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4, position: 'relative' }}>

@@ -14,14 +14,23 @@ code before acting on it.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [re-fresh-job-blocking-implementation-plan.md](re-fresh-job-blocking-implementation-plan.md) | 2026-07-27 | **Current.** Turn the approved job-blocking spec into an implementation plan. Three piles (Waiting / Planning / Ready), the Admin bench empties itself, amber flag for unclassified jobs. Full agent-team protocol required. |
+| [re-fresh-job-blocking-council-and-build.md](re-fresh-job-blocking-council-and-build.md) | 2026-07-27 | **Current.** Job blocking: get Brief E approved, run council on the four decisions, then build. The plan is written; nothing is built. Micky only. |
+| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27 | **Fresh session, run it separately.** Clear out misplaced, dead and stale files — 267 MB of broken worktrees, a personal parts list, a client's design doc, three spent one-off scripts. Nothing deleted yet. **Read its STOP section first: the job-blocking build shares this working tree.** |
 | [handoff-pdf-import-truncation-incident.md](handoff-pdf-import-truncation-incident.md) | 2026-07-26 | The data-loss incident, fully diagnosed. **Read the "do not do" section before touching anything in `SCHEDULER_old/`.** The Multitrack PDF parser is still unfixed. |
 | [handoff-board-meeting-and-pdf-drop.md](handoff-board-meeting-and-pdf-drop.md) | 2026-07-25 | Scopes two unbuilt features: the Sunday board meeting rebuild, and in-app PDF drop to replace the CSV pipeline. Both need the full protocol. |
+
+## Parked — agreed in principle, waiting on something
+
+| Brief | Date | Waiting on |
+|-------|------|------------|
+| [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | 2026-07-27 | The first Sunday board meeting run. Parts captured at the bench, shown as the stuck reason on the job. Split out of Brief E — the `parts_to_order` list is empty until the meeting fills it, so the UI would ship showing nothing. Not approved, not scoped. |
 
 ## History — completed or superseded
 
 | Brief | Date | What happened |
 |-------|------|---------------|
+| [re-fresh-job-blocking-implementation-plan.md](re-fresh-job-blocking-implementation-plan.md) | 2026-07-27 | Turn the job-blocking spec into an implementation plan. Done — plan written, five spec corrections found, Brief E raised. Superseded by `re-fresh-job-blocking-council-and-build.md`. |
+| [brief-d-board-meeting-full-record.md](brief-d-board-meeting-full-record.md) | 2026-07-27 | Brief D's complete working record, archived out of `.claude/pending-brief.md`. Shipped at `da1d9af`. All nine scope items, council findings, verification and live-test notes. History, not instructions. |
 | [re-fresh-clickup-dependencies-in-scheduler.md](re-fresh-clickup-dependencies-in-scheduler.md) | 2026-07-26 | Started the design conversation that produced the job-blocking spec. Superseded by the spec itself. |
 | [re-fresh-wire-focus-list-write-path.md](re-fresh-wire-focus-list-write-path.md) | 2026-07-26 | Focus-list write path — shipped (`dda30fd`, `d0e3a2c`). |
 | [re-fresh-brief-d-live-test.md](re-fresh-brief-d-live-test.md) | 2026-07-25 | Live test of the Brief D focus-list fix. |

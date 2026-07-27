@@ -53,9 +53,11 @@ time in this Brief that a Verifier's own claim needed direct correction.
 2. **Update `.claude/pending-brief.md`** to formally document the `toJobRow()` fix — add it
    under "Scope item 5" or as a new "Scope item 6," per the repo's "no brief entry, no
    commit" norm (the commit already happened; the Brief doc hasn't caught up).
-3. **Run the pending Supabase SQL migration manually** in the Supabase SQL editor: the new
-   `parts_to_order` table, plus `completed_jobs`'s new `invoice_amount`/`week_key` columns.
-   Exact SQL block is in `docs/supabase-schema.sql` — pull it out for Trevor to paste in.
+3. ~~**Run the pending Supabase SQL migration manually**~~ — **DONE.** Verified live
+   2026-07-27 by read-only probe: `parts_to_order` exists with all six columns
+   (`id`, `description`, `category`, `needed_for_job`, `added_at`, `resolved`), and
+   `completed_jobs` has both `invoice_amount` and `week_key`. `scripts/board_meeting_export.mjs`
+   runs clean end to end. No migration is outstanding for Brief D.
 4. **Live Test** — Trevor at the keyboard, ideally this coming Sunday: confirm quick-wins/
    completed/admin auto-report correctly, live-input steps genuinely pause for his input, and
    after "Plan for the coming week," the schedule/focus list/parts list all show up correctly
@@ -75,8 +77,9 @@ time in this Brief that a Verifier's own claim needed direct correction.
   (commit `978940f`), the fix awaiting re-verification and Brief documentation.
 - `src/data/jobs.js` (lines ~214-216) — canonical lowercase `vb`/`backlog`/`project` shape,
   and the uppercase `VB`/`BL`/`PJ` CSV header convention, for confirming casing questions.
-- `docs/supabase-schema.sql` — schema reference; source for the still-unrun `parts_to_order`
-  table + `completed_jobs` column migration SQL.
+- `docs/supabase-schema.sql` — schema reference. Its `parts_to_order` +
+  `completed_jobs` column migration **has been run** (confirmed live 2026-07-27); the
+  "still-unrun" note that used to sit here was stale.
 
 ## Avoid repeating
 
