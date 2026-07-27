@@ -9,10 +9,10 @@ export const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiri
 // can never be treated as a real `job.bench` anywhere downstream. The stored
 // selection is namespaced `pile:*` so it can't collide with a bench name.
 const PILES = [
-  { key: 'waiting', label: 'Waiting' },
-  { key: 'planning', label: 'Planning' },
-  { key: 'hold', label: 'Hold' },
-  { key: 'transit', label: 'In Transit' },
+  { key: 'waiting', label: 'Waiting', color: '#f59e0b' },
+  { key: 'planning', label: 'Planning', color: '#a78bfa' },
+  { key: 'hold', label: 'Hold', color: '#f87171' },
+  { key: 'transit', label: 'In Transit', color: '#2dd4bf' },
 ];
 export const PILE_VALUES = PILES.map(p => `pile:${p.key}`);
 export const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:') ? sel.slice(5) : null);
@@ -254,11 +254,13 @@ export default function JobShelf({
             {/* Blocked piles. Rendered in their own block, never through the
                 bench loop — a pile key passed to benchColors would land on the
                 "no bench" swatch and read as a bench chip. Outlined, not
-                filled, so they read as "not a bench" at a glance. */}
+                filled, so they read as "not a bench" at a glance. Each pile
+                gets its own colour (Trevor, 2026-07-28) so Waiting/Planning/
+                Hold/In Transit are distinguishable without reading the label. */}
             {pileCounts.some(p => p.count > 0) && (
               <div style={{ flexBasis: '100%', height: 0 }} />
             )}
-            {pileCounts.filter(p => p.count > 0).map(({ key, label, count }) => {
+            {pileCounts.filter(p => p.count > 0).map(({ key, label, count, color }) => {
               const value = `pile:${key}`;
               const isActive = selectedBench === value;
               return (
@@ -268,9 +270,9 @@ export default function JobShelf({
                   style={{
                     fontSize: 9, padding: '4px 9px', borderRadius: 11, fontWeight: 600, cursor: 'pointer',
                     background: 'transparent',
-                    color: isActive ? '#94a3b8' : '#64748b',
+                    color,
                     opacity: isActive ? 1 : 0.5,
-                    border: `1px solid ${isActive ? '#475569' : '#334155'}`,
+                    border: `1px solid ${color}`,
                   }}
                 >
                   {label} <span style={{ opacity: 0.7 }}>{count}</span>

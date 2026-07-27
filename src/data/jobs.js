@@ -103,14 +103,16 @@ export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
 // current three-locked-sections sprawl happened, and it is what makes a job
 // show up as blocked on one screen and workable on another.
 //
-// 'planning' is `INC` alone, deliberately status-independent (settled at
-// council 2026-07-27). On the live data the only two INC jobs are 393 and 693,
-// both `Booked In`, so gating on `Waiting + INC` as the spec originally said
-// would have matched zero jobs and shipped an empty pile. INC is the action
-// code MT uses to mean "Incubating" — the job is still turning over in
-// Trevor's head, nowhere near planning or quoting yet — whatever the status
-// column says, so a future `Active + INC` job leaving the active list is
-// intended, not a regression.
+// 'planning' is `INC`, `RS`, or `RS-C` alone, deliberately status-independent
+// (settled at council 2026-07-27, RS/RS-C added 2026-07-28). On the live data
+// the only two INC jobs are 393 and 693, both `Booked In`, so gating on
+// `Waiting + INC` as the spec originally said would have matched zero jobs and
+// shipped an empty pile. INC is the action code MT uses to mean "Incubating" —
+// the job is still turning over in Trevor's head, nowhere near planning or
+// quoting yet. RS (Research) and RS-C (Research with Claude) are the same
+// still-figuring-it-out phase — whatever the status column says, so a future
+// `Active + INC/RS/RS-C` job leaving the active list is intended, not a
+// regression.
 //
 // `readyToStart` (On Hold + BL=Y + GTS — parts arrived, good to start) is NOT
 // blocked: it is the one On Hold case that is genuinely schedulable.
@@ -121,7 +123,7 @@ export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
 export function blockedPile(job) {
   if (!job) return null;
   const act = (job.action || '').trim().toUpperCase();
-  if (act === 'INC') return 'planning';
+  if (['INC', 'RS', 'RS-C'].includes(act)) return 'planning';
 
   const status = job.status || '';
   const { readyToStart } = deriveJobStatusFlags(status, job.action, job.backlog === true);
