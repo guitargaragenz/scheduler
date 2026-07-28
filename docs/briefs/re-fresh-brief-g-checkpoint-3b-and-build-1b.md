@@ -2,7 +2,7 @@
 doc_status: live
 ---
 
-# Re-fresh — Brief G: Build 1a is shipped. Next is checkpoint 3b (Trevor only), then Build 1b
+# Re-fresh — Brief G: Build 1a is shipped, checkpoint 3b is cleared. Next is Build 1b
 
 **Written:** 2026-07-29. **Predecessor:** `re-fresh-brief-g-pdf-drop-build.md`, now `closed`.
 **The instruction set is still `.claude/pending-brief.md` (Brief G)** — approved, scope-locked,
@@ -19,11 +19,11 @@ What's left is the second half: moving ownership of his hand-kept fields into th
 rebuilding the Google Sheet as a page inside the Scheduler where he edits Tag / Hours / Action /
 VB / BL / PJ and presses commit.
 
-**Between the two halves sits one job only Trevor can do** — checking that those fields
+**Between the two halves sat one job only Trevor could do** — checking that those fields
 already in the database match what's in his Google Sheet. Once the app owns them, the
 Sheet stops being the master copy, so whatever is in the database at that moment becomes the
 truth. If it's stale, the staleness becomes permanent. That check is checkpoint 3b, and
-**Build 1b does not start until Trevor clears it.**
+**he cleared it on 2026-07-29. Build 1b can start.**
 
 > ⚠️ **Widened 2026-07-29 from five fields to six.** The Google Sheet owns **eight** columns
 > (`scripts/sheet_to_csv.command:32`), not five. `PJ` — the project flag — was missed, and it has
@@ -85,9 +85,10 @@ belt-and-braces, snapshot `scheduled_slots` before the next import.
 
 ---
 
-## ⬜ Checkpoint 3b — Trevor only. Do this next.
+## ✅ Checkpoint 3b — CLEARED 2026-07-29
 
-**Brief G, item 3b.** Nothing gets built until Trevor says the numbers are right.
+**Brief G, item 3b.** Trevor checked all six fields against the Google Sheet and signed them off.
+The record is at the bottom of this section. **Build 1b is unblocked.**
 
 ### The six fields being checked, and why not the other two
 
@@ -124,8 +125,8 @@ customer names. Only the customer one got built. See the 2026-07-29 amendment in
 ### The database, as of 2026-07-29
 
 **53 top-level jobs** (plus 8 split/derived rows, which are app-side and not part of this check).
-Trevor compares this against the Google Sheet. If it's stale, one final CSV sync, then re-pull
-and re-check.
+This is the table Trevor checked against the Google Sheet on 2026-07-29. It matched as-is — no
+final CSV sync was needed.
 
 ```
 Job   Customer                  Tag  Hrs  Action  VB  BL  PJ  Status
@@ -162,7 +163,7 @@ Job   Customer                  Tag  Hrs  Action  VB  BL  PJ  Status
 1632  Bailey Stevens            M    5    GTS     N   N   N   Active
 1635  Adam Barrett              T    6    GTS     N   N   N   Waiting
 1637  Tawera Simpson-Rangi      EZ   4    GTS     N   N   N   On Hold
-1671  Richard Allen             M    1.5  parts   N   N   N   Waiting
+1671  Richard Allen             M    1.5          N   N   N   Waiting   ← action blanked 2026-07-29
 1676  Tony Procter              EZ   2    CI      Y   N   N   Booked In
 1679  Gav Comber                M    8    GTS     N   N   Y   Waiting
 1682  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
@@ -220,42 +221,53 @@ cd "/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/GGNZ SCHEDULER PROJECT" &
 for these six fields. If the only record of what was checked and corrected is a session
 transcript, the next session is taking it on trust. Write it down, commit it, push it.
 
-**Status: NOT CLEARED.** Five of the six fields are done. `PJ` is outstanding — the check was
-widened to include it *after* Trevor had already gone through the other five, so he has not seen
-the PJ column yet. One line below is still blank, and while it is blank, **Build 1b does not
-start.**
+**Status: ✅ CLEARED 2026-07-29.** All six fields checked against the Google Sheet. Build 1b is
+free to start.
 
-- **Reviewed on:** 2026-07-29
-- **Reviewed by:** Trevor, session `0ca0ef1e` (Micky)
+- **Cleared on:** 2026-07-29
+- **Cleared by:** Trevor, session `0ca0ef1e` (Micky)
 - **Sheet vs database:** ☑ **matched as-is** — no final CSV sync needed
 - **If a sync was run:** n/a — none run, table above pulled straight from Supabase 2026-07-29
 - **Job count at cutover:** **53** top-level jobs (8 split/derived rows excluded)
 - **`1671`'s Action was `parts`** (not a valid workflow code) → Trevor's decision: **blank it out.**
-  ⬜ *not yet applied — see "Still to do" below*
+  ☑ **applied 2026-07-29** — `action` set to `NULL` in Supabase, verified on the returned row.
+  No Sheet-side change was needed: **job 1671 is closed and is not in the Google Sheet at all**,
+  so no CSV sync can put `parts` back.
 - **`SKP` used as a Tag** on 182 / 321 / 592 / 1268 (not EZ/M/T/H) → Trevor's decision:
   **legacy, leave it anyway.** No change. It will be one of the values the 1b sheet page has to
   tolerate rather than reject.
 - **`1711` and `1712` blank** on Tag/Action/VB/BL/PJ → ☑ **left blank, to be typed into the new
   sheet page** once Build 1b ships.
-- **`PJ` — Y on 1175 / 1448 / 1520 / 1679, N on the other 47:** `____________` ← **outstanding**
+- **`PJ` — Y on 1175 / 1448 / 1520 / 1679, N on the other 47:** ☑ **confirmed correct** by Trevor,
+  2026-07-29. Those four are the project jobs; nothing else is.
 - **Anything else corrected:** nothing. Everything else matched.
 - **Anything deliberately left wrong, and why:** `SKP`, above — legacy tag values Trevor wants
   kept. Also `days`, which is stale in the database (job 97 reads 3159, Multitrack says 3162);
   deliberately not corrected here because Build 1c replaces the stored number with a computed one.
 
-**Still to do before 3b can be marked cleared:**
+### ⚠️ One thing 3b does not cover, raised while clearing it
 
-1. Trevor confirms the `PJ` column.
-2. Apply his `1671` decision — blank the `action`. **Blank it in the Google Sheet as well as the
-   database**, because until Build 1b ships the Sheet is still master, so a DB-only fix would be
-   overwritten by the next CSV sync and `parts` would be what gets frozen.
-3. Tick this section, change the heading above from ⬜ to ✅, commit, push.
+**Job `1671` is closed, but the database still has it as `Waiting`** — i.e. live work sitting in
+the blocked pile. It is one of the **six jobs in the database that aren't in the Multitrack
+export** (`1619`, `1620`, `1626`, `1671`, `1698`, `1702`), and `1620` was already known to be
+complete. The likeliest reading is that **all six are finished jobs the app never heard about**,
+because the PDF import deliberately reports missing jobs and never deletes them.
 
-Then set this file's status line for Build 1b and let the next session start at step 3.
+This does **not** block Build 1b. `status` comes from Multitrack, not the Google Sheet, so it is
+not one of the six fields being frozen — the app already gets it right on every import for every
+job Multitrack still lists. But six dead jobs showing as Active / Booked In / Waiting is wrong on
+the board today, and it will stay wrong until someone decides how the app learns a job is gone.
+
+**Not in Brief G's scope.** Per the scope lock, it goes back to `.claude/pending-brief.md` if it
+is to be built, or gets its own brief. Do not fold a "close missing jobs" rule into 1b or 1c on
+the quiet — silently deleting or completing jobs on an import is exactly the class of change that
+needs its own council round.
+
+Build 1b may now start at protocol step 3.
 
 ---
 
-## ⬜ Build 1b — after the checkpoint clears, not before
+## ⬜ Build 1b — next. The checkpoint has cleared.
 
 Brief G scope items **3, 4, 4b**. Fresh builder agent, fresh staging branch, full protocol
 again — council is already done and its findings still stand, so it starts at step 3.
