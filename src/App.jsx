@@ -8,6 +8,7 @@ import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js'
 import { isConfigured } from './utils/googleCalendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
+import { applySheetEdits } from './data/jobsSheet.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -23,6 +24,7 @@ import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
+import JobsSheetPage from './components/JobsSheetPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
@@ -85,6 +87,9 @@ export default function App() {
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
   const [showWeekView, setShowWeekView] = useState(false);
   const [showJobs, setShowJobs] = useState(false);
+  // Brief G, Build 1b — the Jobs Sheet: the one screen where Trevor edits the
+  // six columns the app now owns (Tag, Hours, Action, VB, BL, PJ).
+  const [showJobsSheet, setShowJobsSheet] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
@@ -194,6 +199,15 @@ export default function App() {
       );
       return { ...j, bumpHistory };
     }));
+  }, [setJobs]);
+
+  // The Jobs Sheet has already written to Supabase by the time this runs; all
+  // that is left is to bring the board in memory into line. It has to be done
+  // here rather than waiting for the realtime echo, because our own writes mute
+  // that echo for five seconds — applySheetEdits also re-derives the pile flags,
+  // so a job Trevor marks INC leaves the Ready pile the moment he commits.
+  const handleJobsSheetSaved = useCallback((updates) => {
+    setJobs(prev => prev.map(j => (updates[j.id] ? applySheetEdits(j, updates[j.id]) : j)));
   }, [setJobs]);
 
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
@@ -495,6 +509,18 @@ export default function App() {
             )}
 
             <button
+              onClick={() => setShowJobsSheet(s => !s)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobsSheet ? '#4f46e5' : '#334155'}`,
+                background: showJobsSheet ? '#1e1b4b' : '#1e293b',
+                color: showJobsSheet ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showJobsSheet ? 700 : 400,
+              }}
+            >
+              Sheet
+            </button>
+
+            <button
               onClick={() => setShowWeekView(w => !w)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekView ? '#065f46' : '#334155'}`,
@@ -587,6 +613,13 @@ export default function App() {
               setShowParkingLot(false);
               window.history.replaceState(null, '', '#');
             }} />
+          ) : showJobsSheet ? (
+            <JobsSheetPage
+              jobs={jobs}
+              isMobile={isMobile}
+              onBack={() => setShowJobsSheet(false)}
+              onSaved={handleJobsSheetSaved}
+            />
           ) : showJobs ? (
             <JobsPage
               jobs={jobs}
