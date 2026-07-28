@@ -27,6 +27,7 @@ import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
 import SyncPreviewModal from './components/SyncPreviewModal.jsx';
+import PdfImportPreviewModal from './components/PdfImportPreviewModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
 import RevenueBreakdown from './components/RevenueBreakdown.jsx';
@@ -87,6 +88,11 @@ export default function App() {
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
+  // Multitrack PDF drop: the parsed plan waiting on Trevor's confirmation.
+  // While this is set, nothing has been written — the modal is the only way
+  // through to a write.
+  const [pdfPlan, setPdfPlan] = useState(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
   const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
@@ -236,6 +242,14 @@ export default function App() {
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
   });
+
+  // Dropping a Multitrack PDF only ever gets as far as the preview screen.
+  // The write lives behind that modal's Import button, so there is no path
+  // from picking a file to changing job data without Trevor seeing the counts.
+  const handlePdfUpload = useCallback(async (file) => {
+    const plan = await jobOps.preparePdfImport(file);
+    if (plan) setPdfPlan(plan);
+  }, [jobOps]);
 
   // Wrapper for handleMarkPieceDone that includes the invoicing callback
   const handleMarkPieceDoneWithInvoicing = useCallback((parentJobId, childJobId, pieceDone) => {
@@ -598,6 +612,7 @@ export default function App() {
                 dragMode={dragMode}
                 onDragModeChange={setDragMode}
                 onCsvUpload={jobOps.handleCsvUpload}
+                onPdfUpload={handlePdfUpload}
                 highlightedJobId={highlightedJobId}
                 onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
                 onJobClick={setEditingJob}
@@ -626,6 +641,7 @@ export default function App() {
               dragMode={dragMode}
               onDragModeChange={setDragMode}
               onCsvUpload={jobOps.handleCsvUpload}
+              onPdfUpload={handlePdfUpload}
               highlightedJobId={highlightedJobId}
               onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
               onJobClick={setEditingJob}
@@ -869,6 +885,23 @@ export default function App() {
           plan={gcal.syncPlan}
           onConfirm={gcal.confirmSync}
           onCancel={gcal.cancelSync}
+        />
+      )}
+
+      {pdfPlan && (
+        <PdfImportPreviewModal
+          plan={pdfPlan}
+          busy={pdfBusy}
+          onConfirm={async () => {
+            setPdfBusy(true);
+            try {
+              await jobOps.commitPdfImport(pdfPlan);
+            } finally {
+              setPdfBusy(false);
+              setPdfPlan(null);
+            }
+          }}
+          onCancel={() => setPdfPlan(null)}
         />
       )}
     </DndContext>

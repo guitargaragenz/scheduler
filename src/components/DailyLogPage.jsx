@@ -663,7 +663,7 @@ function ScheduleNoteModal({ text, defaultDate, onConfirm, onClose }) {
 export default function DailyLogPage({
   jobs, scheduledSlots, weekDays, displayedDate, onDisplayedDateChange, scheduledJobs, externalEvents, isDragging, activeJobId, onCalendarJobClick,
   onRemoveAdHocTask, onScheduleAdHocNote,
-  dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
+  dragMode, onDragModeChange, onCsvUpload, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
   focusList = [], onToggleFocus,
@@ -1071,6 +1071,28 @@ export default function DailyLogPage({
                     e.target.value = '';
                   }}
                 />
+                {onPdfUpload && (<>
+                  <label
+                    htmlFor="mobile-job-pdf-upload"
+                    title="Import Multitrack PDF"
+                    style={{
+                      flexShrink: 0, width: 44, height: 38, borderRadius: 8,
+                      border: '1px solid #334155', background: '#1e293b', color: '#94a3b8',
+                      fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📄
+                  </label>
+                  <input
+                    id="mobile-job-pdf-upload" type="file" accept=".pdf,application/pdf" style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) onPdfUpload(file);
+                    }}
+                  />
+                </>)}
               </div>
 
               {/* Bench filter pills */}
@@ -1293,6 +1315,7 @@ export default function DailyLogPage({
             jobs={jobs}
             dragMode={dragMode} onDragModeChange={onDragModeChange}
             onCsvUpload={onCsvUpload}
+            onPdfUpload={onPdfUpload}
             highlightedJobId={highlightedJobId} onClearHighlight={onClearHighlight}
             onJobClick={onJobClick}
             lastSyncedAt={lastSyncedAt}

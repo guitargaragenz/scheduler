@@ -1,6 +1,8 @@
 import { parseCSV, canInvoiceJob, preserveKnownDays } from '../data/jobs.js';
+import { parseMultitrackPdf } from '../data/parseMultitrackPdf.js';
+import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs } from '../utils/supabase.js';
+import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, logPdfImport } from '../utils/supabase.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 import { formatMoney } from '../utils/money.js';
@@ -305,6 +307,84 @@ export function useJobs({
     }
   }
 
+  // --- Multitrack PDF import (Brief G, Build 1a) ---
+  //
+  // Two halves on purpose. preparePdfImport() reads the file and works out
+  // what would change; it writes nothing. commitPdfImport() is only ever
+  // called from the preview screen's Import button. There is no code path
+  // that writes a PDF to the database without Trevor having seen the counts.
+
+  async function preparePdfImport(file) {
+    try {
+      const { jobs: parsed, statedCount } = await parseMultitrackPdf(await file.arrayBuffer());
+      const plan = buildPdfImportPlan({
+        parsed, statedCount, jobs, filename: file.name, benchKeywords,
+      });
+      if (!plan.ok) {
+        showToast(`⚠ ${plan.error}`);
+        return null;
+      }
+      return plan;
+    } catch (e) {
+      showToast(`⚠ Couldn't read that PDF: ${e.message}`);
+      return null;
+    }
+  }
+
+  async function commitPdfImport(plan) {
+    if (!plan?.ok) return;
+
+    // Merge into the on-screen board only AFTER the write lands. The CSV path
+    // updates optimistically, but a PDF drop introduces brand-new jobs — and a
+    // job card that appears, looks real, and was never actually saved is worse
+    // than a moment's delay.
+    const applyLocally = () => {
+      const freshByRef = new Map(plan.updates.map(u => [String(u.parsed.ref), u.parsed]));
+      setJobs(prev => {
+        const seen = new Set(prev.map(j => String(j.id)));
+        const updated = prev.map(j => {
+          // Split cards are the app's own and the PDF knows nothing about
+          // them; the join layer regenerates them from their parent anyway.
+          if (j.parentId || j.isDerived) return j;
+          const fresh = freshByRef.get(String(j.id));
+          return fresh ? applyPdfFields(j, fresh) : j;
+        });
+        // A realtime echo may already have added these, hence the id check.
+        return [...updated, ...plan.newJobs.filter(j => !seen.has(String(j.id)))];
+      });
+    };
+
+    if (!isSupabaseConfigured()) {
+      applyLocally();
+      showToast(`Imported ${plan.newJobs.length} new · ${plan.existingCount} updated (not saved — no database configured)`);
+      return;
+    }
+
+    justSavedAt.current = Date.now();
+    const res = await writePdfImportBatch(plan.writes);
+    if (!res?.ok) {
+      showToast('⚠ Import did not save — reload before trusting the board');
+      return;
+    }
+    applyLocally();
+
+    // Forensics, not bookkeeping: this is how "what did that import actually
+    // write" stays answerable later. Best-effort by design, so it is not
+    // awaited and cannot hold up or fail the import.
+    logPdfImport({
+      filename: plan.filename,
+      rowCount: res.written,
+      ids: plan.writes.map(w => w.id),
+    });
+
+    const newCount = plan.newJobs.length;
+    showToast(`Imported ${newCount} new job${newCount === 1 ? '' : 's'} · ${plan.existingCount} updated`);
+    addChangelog(
+      `Multitrack PDF imported — ${newCount} new, ${plan.existingCount} updated` +
+      (plan.missing.length > 0 ? `, ${plan.missing.length} no longer on the printout` : '')
+    );
+  }
+
   function handleOpenPomo(job) {
     setPomoJob(job);
   }
@@ -381,6 +461,8 @@ export function useJobs({
     handleSaveDrawer,
     handleMarkDone,
     handleCsvUpload,
+    preparePdfImport,
+    commitPdfImport,
     handleOpenPomo,
     handleLogPomoSession,
     handleMarkPieceDone,
