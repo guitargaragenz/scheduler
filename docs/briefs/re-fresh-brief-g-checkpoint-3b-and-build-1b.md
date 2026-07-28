@@ -10,6 +10,39 @@ and more current than this file on anything to do with scope. Read it.
 
 ---
 
+## 🔴 START HERE — handoff to the next session, 2026-07-29
+
+**Everything blocking Build 1b is gone. The next session builds it.**
+
+| | |
+|---|---|
+| **Repo** | `main` @ `7edf56c`, clean, pushed. No staging branch open, no worktrees. |
+| **Shipped** | Build 1a — Multitrack PDF drop, six PDF fields, at `f927248`. |
+| **Cleared** | Checkpoint 3b, 2026-07-29. Trevor checked all six hand-kept fields across 53 top-level jobs against the Google Sheet; it matched as-is. Job `1671`'s bad Action (`parts`) was blanked in Supabase — the job is closed and not in the Sheet, so it can't be reverted by a sync. |
+| **Approved** | `.claude/pending-brief.md`, including the whole 2026-07-29 amendment (PJ as a sixth field, the JBA second export, Build 1c). Trevor said "yp" on 2026-07-29. |
+| **Do next** | **Build 1b** — Brief G scope items **3, 4, 4b**, detailed further down this file. |
+| **Do NOT do** | Build 1c. It comes after 1b and council has never seen it. Don't fold it in. |
+
+**Read these two, in this order, before touching anything:**
+1. `.claude/pending-brief.md` — the scope-locked instruction set. Authoritative on scope.
+2. This file, from "Build 1b" down, plus "Things that are easy to get wrong".
+
+**Protocol for 1b:** council already ran on Brief G and its findings still stand, so 1b starts at
+**step 3** — `ggnz-builder` (opus) on a fresh staging branch → `ggnz-verifier` (sonnet, never the
+builder) → browser test on the Vercel preview → merge on Trevor's "yp". Model discipline and the
+`enforce-agent-model.py` hook apply as written in CLAUDE.md.
+
+**The one landmine to check before writing any commit path:** `upsertJobsBatch()` in
+`src/utils/supabase.js`. Use the `toJobRow` + column-signature-grouping pattern instead — see the
+full note under "Things that are easy to get wrong".
+
+**Loose end, deliberately out of scope:** six jobs are in the database but absent from the
+Multitrack export (`1619`, `1620`, `1626`, `1671`, `1698`, `1702`), most likely all finished but
+still showing as live. This is a *status* question, not a Sheet question. It does not block 1b.
+It needs its own brief — do not fold a "close missing jobs" rule into 1b or 1c on the quiet.
+
+---
+
 ## Plain English — where this is up to
 
 Trevor can now drop the Multitrack PDF into the Scheduler in his browser and new jobs appear.

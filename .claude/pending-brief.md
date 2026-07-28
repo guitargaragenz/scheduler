@@ -5,9 +5,11 @@
 same order, nothing added or removed, with a Trevor-only checkpoint (item 3b) between the halves.
 Build proceeds on a staging branch. Anything not in the Scope list is out — bring scope changes back
 here for a fresh "yp" rather than absorbing them mid-build.
-**Next action:** Build 1a is **shipped** (`f927248`). Checkpoint 3b is next and is not yet cleared —
-see the 2026-07-29 amendment immediately below, which widens it. Build 1b does not start until 3b
-clears against the *widened* list.
+**Amendment approved by Trevor, 2026-07-29 ("yp")** — the whole 2026-07-29 amendment below,
+including Build 1c, is now in scope.
+**Next action:** Build 1a is **shipped** (`f927248`). **Checkpoint 3b cleared 2026-07-29** against
+the widened six-field list. **Build 1b is unblocked and has not been started** — it begins at
+protocol step 2 (council), not step 3.
 **Date:** 2026-07-28, amended 2026-07-29
 **Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs
@@ -23,8 +25,8 @@ Brief F (Waiting/Planning chips) shipped and is archived at `docs/briefs/brief-f
 **Why this exists.** Trevor asked "where is the original date column?" during checkpoint 3b. It
 wasn't in the checkpoint, and chasing that turned up a false claim in this brief plus a whole
 export nobody had written down. A full audit of every live and parked brief followed. This section
-records what changed. **It needs a fresh "yp" before Build 1b starts** — the sections below are
-new scope, and this brief is scope-locked.
+records what changed. **Approved by Trevor 2026-07-29 ("yp")** — the sections below are new
+scope on top of a scope-locked brief, so they needed their own approval, and they have it.
 
 ### What was wrong
 
@@ -456,7 +458,8 @@ corrected M/T bands. Confirm a range in the Hours cell (`2-4`) averages to 3.
 
 ### Build 1c — the JBA drop, and job age stops going stale
 
-**Added by the 2026-07-29 amendment. Needs a fresh "yp" before it starts.**
+**Added by the 2026-07-29 amendment. Approved by Trevor 2026-07-29 ("yp"). Runs after Build 1b,
+and council has not seen it — see the note at the end of this section.**
 
 Ends with: Trevor drops the JBA PDF, every job gets its real Date In, and the age on the card
 counts up on its own every morning without anything being dropped or synced.
