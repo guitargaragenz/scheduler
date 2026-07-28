@@ -2,7 +2,14 @@
 doc_status: live
 ---
 
-# Re-fresh — Brief G (PDF-drop import): step 0 passed, build starts at item 1
+# Re-fresh — Brief G (PDF-drop import): step 0 passed, split into 1a + 1b, build starts at item 1
+
+> **Split 2026-07-28, on Trevor's "yp".** Brief G's eight scope items now run as **two supervised
+> builds** — same items, same order, nothing added or removed. **Build 1a** = the PDF actually
+> imports (items 1, 2, 5, 6, 7) and merges on its own. **Checkpoint** = item 3b, which only Trevor
+> can clear. **Build 1b** = the ownership move and the Jobs Sheet page (items 3, 4, 4b). Each half
+> gets its own builder, verifier and browser test. See `.claude/pending-brief.md` for the reasoning
+> and the safety argument.
 
 **Written:** 2026-07-28, updated late 2026-07-28. **Status of the work:** brief approved and
 scope-locked, **step 0 gate passed**, no app code written yet. Trevor called it a night — pick this
@@ -102,10 +109,15 @@ Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline 
 | 1. Brief | ✅ Approved by Trevor, 2026-07-28 ("yp"). Scope locked. |
 | 2. Council | ✅ Run 2026-07-28 (llm-council). Findings folded into the brief; several were overturned by Trevor afterwards — **the brief wins, not the council transcript**. |
 | 0. Match-key gate | ✅ Passed 2026-07-28 against a fresh export. See above. |
-| 3. Builder | ⬜ Not started. Branch `staging/brief-g-pdf-drop` exists, is level with `main` at `d33d583`, and has no build work on it. Supervised from the main conversation. |
-| 4. Independent verifier | ⬜ Separate agent, never the builder. |
-| 5. Browser test | ⬜ Vercel preview: drop a **fresh** PDF, confirm preview counts, confirm existing jobs' Tag/Hours/Action/VB/BL survive. |
-| 6. Merge | ⬜ Needs a second "yp" from Trevor. |
+| 3. Builder — **1a** | ⬜ Not started. Branch `staging/brief-g-pdf-drop` exists, is level with `main` at `d33d583`, and has no build work on it. Supervised from the main conversation. |
+| 4. Independent verifier — 1a | ⬜ Separate agent, never the builder. |
+| 5. Browser test — 1a | ⬜ Vercel preview: drop a **fresh** PDF, confirm preview counts, confirm existing jobs' Tag/Hours/Action/VB/BL survive. |
+| 6. Merge 1a | ⬜ Needs a second "yp" from Trevor. |
+| 7. **Checkpoint (item 3b)** | ⬜ **Trevor only.** DB tag/hours/action/vb/bl for all ~46 jobs checked against the Google Sheet; one final CSV sync if stale. **1b does not start until this is cleared.** |
+| 8. Builder — **1b** | ⬜ Fresh builder, fresh staging branch. |
+| 9. Independent verifier — 1b | ⬜ Separate agent, never the builder. |
+| 10. Browser test — 1b | ⬜ Edit a field in the sheet page, commit, run a CSV sync, confirm the edit survives. |
+| 11. Merge 1b | ⬜ Needs a "yp" from Trevor. |
 
 Repo state at handoff: branch `staging/brief-g-pdf-drop`, clean, level with `main` at `d33d583`
 (docs-only commit — closed out the truncation handoff, recorded step 0). `main` is pushed and in
@@ -117,12 +129,14 @@ sync with origin. **No app code has been written.**
 
 1. Ask Trevor for a **fresh Multitrack export** into `~/Downloads` before any browser test — the
    28 Jul one is fine for parser work but goes stale for counts.
-2. Start the builder agent on **scope item 1** (port `parseMultitrackPdf.ts` from
-   `BUILDS/NEW SCHEDULER BUILD/workshop-scheduler/lib/`) and **item 2** (the six-column sparse
-   writer), on `staging/brief-g-pdf-drop`.
-3. Then items 3 (ownership move), 3b (cutover check — **needs Trevor's eyes on DB vs Sheet**),
-   4 (Jobs Sheet page), 4b (M/T swap, both copies), 5 (preview screen), 6 (count sanity-check),
-   7 (duplicate protection).
+2. Start the builder agent on **Build 1a** — item 1 (port `parseMultitrackPdf.ts` from
+   `BUILDS/NEW SCHEDULER BUILD/workshop-scheduler/lib/`), item 2 (the six-column sparse writer),
+   item 5 (preview screen), item 6 (count sanity-check), item 7 (duplicate protection), on
+   `staging/brief-g-pdf-drop`. Verify, browser-test, merge.
+3. Then the **checkpoint**: item 3b, the cutover check — **needs Trevor's eyes on DB vs Sheet**.
+   Do not start 1b before he clears it.
+4. Then **Build 1b** — item 3 (ownership move), item 4 (Jobs Sheet page), item 4b (M/T swap, both
+   copies).
 
 ---
 

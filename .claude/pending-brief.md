@@ -1,8 +1,11 @@
-# Pending Brief G — PDF-drop import, Build 1
+# Pending Brief G — PDF-drop import, Build 1 (split into 1a + 1b)
 
 **Status:** ✅ **APPROVED by Trevor, 2026-07-28 ("yp").** Scope is locked to what is written below.
+**Split into two supervised builds 2026-07-28, also on Trevor's "yp"** — same eight scope items,
+same order, nothing added or removed, with a Trevor-only checkpoint (item 3b) between the halves.
 Build proceeds on a staging branch. Anything not in the Scope list is out — bring scope changes back
 here for a fresh "yp" rather than absorbing them mid-build.
+**Next action:** step 0 has passed; Build 1a is ready to start.
 **Date:** 2026-07-28
 **Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs
@@ -251,9 +254,31 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 
 ---
 
-## Scope — Build 1, in order
+## Scope — split into Build 1a and Build 1b
 
-0. **Match-key proof** (above). Report the result before writing import code.
+> **Split approved by Trevor, 2026-07-28 ("yp").** Nothing was added or removed — the eight scope
+> items below are the same eight, in the same order, run as two supervised builds with a checkpoint
+> between them. Reasons: (i) an eight-item brief in one builder run is where drift starts, and drift
+> means Trevor comes back to the Mac mid-session, which is what the protocol exists to prevent;
+> (ii) item 3b is a checkpoint only Trevor can clear, and it falls naturally between the halves.
+>
+> **The split is safe, and this is why:** 1a's writer sends six Multitrack columns and nothing else,
+> so it cannot touch Tag/Hours/Action/VB/BL regardless of who owns them. The two-masters problem
+> that decision 3 solves only exists once an in-app editor exists — and that is 1b. So 1a can ship
+> and be used for real while ownership still sits where it is today. **1a must not be extended to
+> include any field editing.**
+
+---
+
+### Build 1a — the PDF actually imports
+
+Ends with: Trevor drops a real PDF on the Vercel preview, sees the counts, imports, and existing
+jobs are untouched. Merges on its own.
+
+0. **Match-key proof** (above). ✅ Passed 2026-07-28 against a fresh export — 46 refs parsed, 45
+   match the `jobs` table character-for-character, 1 genuinely new (`1711`), zero near-misses.
+   **Re-run it if the PDF used at build time is more than a few days old** — it is a throwaway
+   script and it is the difference between a clean import and silently duplicated jobs.
 1. **Port the parser** — `lib/parseMultitrackPdf.ts` from
    `/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/BUILDS/NEW SCHEDULER BUILD/workshop-scheduler/`
    into this repo (JS, `pdfjs-dist`). Six fields out, nothing more.
@@ -261,15 +286,38 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
    `batchWriteJobsState()`. Explicit six-name allow-list. Do **not** call `upsertJobsBatch()`.
    **The "no Hours and no Days ⇒ skip the job" rule must not apply on this path** — a PDF has
    neither, so leaving it in place would silently import nothing. See the ⚠️ note in Verified facts.
+5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
+6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
+7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
+
+**1a verification (independent agent, then browser test):** drop a real PDF on the Vercel preview;
+confirm the counts; confirm Tag / Hours / Action / VB / BL on existing jobs are unchanged; confirm
+no calendar slot, bench assignment or split state moved. Then merge 1a.
+
+---
+
+### CHECKPOINT — Trevor, between the builds
+
+3b. **Cutover check. Only Trevor can clear this.** The moment the CSV stops writing these columns
+   (step 3, first thing in 1b), whatever is in the `jobs` table becomes the permanent starting
+   point. Before the switch, print the current tag / hours / action / vb / bl for all ~46 jobs
+   beside the Google Sheet's values and confirm with Trevor they match. If the DB is stale
+   anywhere, **one final CSV sync fixes it *before* ownership moves.**
+   **Do not start Build 1b until Trevor has cleared this.** Getting it wrong means his markup is
+   permanently frozen at a stale value with no CSV left to correct it.
+
+---
+
+### Build 1b — the Jobs Sheet page, and the Sheet stops being master
+
+Ends with: Trevor edits Tag/Hours/Action/VB/BL in the app, commits, and the CSV can no longer
+revert him.
+
 3. **Move ownership of `tag`, `hours`, `action`, `vb`, `bl` app-side** — the constants in
    `src/data/joinJobs.js`, plus stop the CSV import path writing those five columns. No DB
    migration, no data movement. **Do this before step 4**, so the sheet page never ships into a
    world where the CSV can revert it.
    ~~Widen `preserveKnownDays()`~~ — dropped, see "The CSV back door" above. Leave it days-only.
-3b. **Cutover check.** The moment the CSV stops writing these columns, whatever is in the `jobs`
-   table becomes the permanent starting point. Before the switch, print the current tag / hours /
-   action / vb / bl for all ~46 jobs beside the Google Sheet's values and confirm with Trevor they
-   match. If the DB is stale anywhere, one final CSV sync fixes it *before* ownership moves.
 4. **The Jobs Sheet page** — all jobs in a grid; the five app-owned columns editable, the six
    Multitrack columns read-only; Action as a picker; explicit commit button, no autosave; save via
    `batchWriteJobsState()`. See "The Jobs Sheet page" above for the full constraints.
@@ -281,11 +329,12 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
    **Picking a Tag auto-fills Hours** per the table in decision 2, still hand-overridable.
 4b. **Fix the M/T swap in BOTH copies** — `inferTag()` at `src/data/jobs.js:172` and `infer_tag()`
    at `scripts/sheet_to_csv.command:295-300`. No longer optional: decision 2 resolved to option
-   (b), so the mapping is live. Both must move together — Build 1 runs both paths at once, and
+   (b), so the mapping is live. Both must move together — both paths still run during 1b, and
    fixing only one makes them disagree.
-5. **Preview screen** — counts, new-job names, missing-job names, Import / Cancel.
-6. **Count sanity-check** — a short parse refuses to import rather than importing partially.
-7. **Duplicate protection** — re-dropping the same PDF never creates a second copy.
+
+**1b verification (independent agent, then browser test):** edit an Action in the sheet page,
+commit, run a CSV sync, confirm the edit survives. Confirm the Tag→Hours auto-fill uses the
+corrected M/T bands. Confirm a range in the Hours cell (`2-4`) averages to 3.
 
 ## Out of scope — do not build
 
@@ -314,10 +363,19 @@ Throwaway script, no app changes, decides whether Build 1 is a week or a month.
 1. **Brief** — this file. ✅ Approved by Trevor 2026-07-28.
 2. **Council** — ✅ done 2026-07-28 (llm-council, as-written). Findings above are binding; the
    builder does not reopen them.
-3. **Builder** — staging branch, supervised from the main conversation.
-4. **Independent verifier** — separate agent, never the builder.
-5. **Browser test** — Vercel preview: drop a real PDF, confirm the preview counts, confirm existing
-   jobs keep their Tag/Action/VB/BL, confirm scheduling is untouched.
-6. **Merge** — Trevor's "yp".
+3. **Builder — run 1a** — staging branch, supervised from the main conversation.
+4. **Independent verifier — 1a** — separate agent, never the builder.
+5. **Browser test — 1a** — Vercel preview: drop a real PDF, confirm the preview counts, confirm
+   existing jobs keep their Tag/Action/VB/BL, confirm scheduling is untouched.
+6. **Merge 1a** — Trevor's "yp".
+7. **CHECKPOINT — Trevor clears item 3b.** The cutover check. Build 1b does not start until he has.
+8. **Builder — run 1b** — fresh builder agent, fresh staging branch.
+9. **Independent verifier — 1b** — separate agent, never the builder.
+10. **Browser test — 1b** — edit a field in the sheet page, commit, run a CSV sync, confirm the edit
+    survives.
+11. **Merge 1b** — Trevor's "yp".
+
+Each half gets its own builder run, its own verifier and its own browser test. Steps 1 and 2 (brief
+and council) are done once and cover both — the council's findings are binding on both builders.
 
 **No commits before step 1 is approved.**
