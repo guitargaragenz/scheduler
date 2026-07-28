@@ -3,7 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
@@ -344,6 +344,26 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 e.target.value = '';
               }}
             />
+            {onPdfUpload && (<>
+              <label
+                htmlFor="pdf-upload"
+                style={{
+                  display: 'block', textAlign: 'center', padding: '8px 0', marginTop: 6,
+                  background: '#0a1a38', border: '1px solid #3b82f6', borderRadius: 6,
+                  color: '#bfdbfe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                }}
+              >📄 Import Multitrack PDF</label>
+              {/* The file itself is handed straight over — no FileReader text
+                  step, because a PDF is binary and the parser wants the bytes. */}
+              <input
+                id="pdf-upload" type="file" accept=".pdf,application/pdf" style={{ display: 'none' }}
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) onPdfUpload(file);
+                }}
+              />
+            </>)}
             <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {Object.entries(BENCH_COLORS).map(([name, c]) => {
                 const isActive = benchFilter === name;

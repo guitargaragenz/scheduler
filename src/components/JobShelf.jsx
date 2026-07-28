@@ -60,7 +60,7 @@ function formatSyncedAt(lastSyncedAt) {
 }
 
 export default function JobShelf({
-  jobs, dragMode, onDragModeChange, onCsvUpload,
+  jobs, dragMode, onDragModeChange, onCsvUpload, onPdfUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   focusList = [], deferredItems = [], onPullBackIn, onToggleFocus,
 }) {
@@ -214,6 +214,25 @@ export default function JobShelf({
               e.target.value = '';
             }}
           />
+          {onPdfUpload && (<>
+            <label
+              htmlFor="job-shelf-pdf-upload"
+              title="Import Multitrack PDF"
+              style={{
+                flexShrink: 0, width: 32, boxSizing: 'border-box', borderRadius: 7, cursor: 'pointer', fontSize: 13,
+                background: '#1e1e1e', border: '1px solid #252525', color: '#94a3b8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >📄</label>
+            <input
+              id="job-shelf-pdf-upload" type="file" accept=".pdf,application/pdf" style={{ display: 'none' }}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) onPdfUpload(file);
+              }}
+            />
+          </>)}
         </div>
         {focusCount > 0 && (
           <button
