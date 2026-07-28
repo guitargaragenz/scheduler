@@ -25,7 +25,6 @@ import {
 
 const C = {
   bg: '#0d1117',
-  panel: '#111827',
   line: '#1e293b',
   edge: '#334155',
   text: '#e2e8f0',
@@ -39,52 +38,95 @@ const C = {
   good: '#22c55e',
 };
 
-const cellBase = {
-  padding: '5px 8px',
-  borderBottom: `1px solid ${C.line}`,
-  fontSize: 12,
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-};
+// The look is deliberately a spreadsheet's, not a web table's: ruled lines in
+// both directions, banded rows, a frozen job column, and cells that are plain
+// until you're in them. The first cut drew a bordered input inside every
+// bordered cell — a hundred little frames on screen — which is what made it
+// unreadable. A cell here shows its border only on hover and focus.
+const SHEET_CSS = `
+.gsheet { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
-const readOnlyCell = { ...cellBase, color: C.dim, background: '#0b0f16' };
-const editCell = { ...cellBase, color: C.bright, background: C.panel };
+.gsheet th, .gsheet td {
+  border-right: 1px solid #1b2534;
+  border-bottom: 1px solid #1b2534;
+  padding: 0 8px;
+  height: 30px;
+  font-size: 12.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gsheet th:last-child, .gsheet td:last-child { border-right: none; }
 
-const inputStyle = {
-  width: '100%',
-  background: '#0d1117',
-  border: `1px solid ${C.edge}`,
-  borderRadius: 4,
-  padding: '3px 6px',
-  color: C.bright,
-  fontSize: 12,
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-};
+/* Column headers — the grey strip along the top of a spreadsheet. */
+.gsheet th {
+  position: sticky; top: 0; z-index: 3;
+  background: #161c26; color: #7c8798;
+  border-bottom: 1px solid #35415a;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; text-align: left;
+}
+.gsheet th.mine { background: #1b2236; color: #a5b4fc; }
 
-function headerCell(label, editable) {
-  return (
-    <th
-      key={label}
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 2,
-        background: editable ? '#161e2e' : '#0b0f16',
-        color: editable ? C.accentText : C.dimmer,
-        borderBottom: `1px solid ${C.edge}`,
-        padding: '7px 8px',
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '.08em',
-        textTransform: 'uppercase',
-        textAlign: 'left',
-      }}
-    >
-      {label}
-    </th>
-  );
+/* Banded rows, and a highlight for the row under the pointer. */
+.gsheet tbody tr:nth-child(even) td { background: #0f151e; }
+.gsheet tbody tr:nth-child(odd)  td { background: #0c1119; }
+.gsheet tbody tr:hover td { background: #16202f; }
+.gsheet tbody tr.dirty td { background: #16223d; }
+
+/* Multitrack's columns: present, but quiet. */
+.gsheet td.ro { color: #6b7688; }
+
+/* The six columns that are Trevor's. Brighter, and fenced off on the left
+   the way a shaded input range is in Sheets. */
+.gsheet td.mine { color: #eef2f7; }
+.gsheet th.fence, .gsheet td.fence { border-left: 2px solid #3b3f66; }
+
+/* Frozen job-number column — the row label you scroll against. */
+.gsheet th.freeze, .gsheet td.freeze {
+  position: sticky; left: 0; z-index: 2;
+  border-right: 1px solid #35415a;
+  font-variant-numeric: tabular-nums; font-weight: 600; color: #93a1b5;
+}
+.gsheet th.freeze { z-index: 4; }
+.gsheet tbody tr:nth-child(even) td.freeze { background: #131a24; }
+.gsheet tbody tr:nth-child(odd)  td.freeze { background: #10161f; }
+.gsheet tbody tr:hover td.freeze { background: #1b2634; }
+
+.gsheet td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.gsheet td.mid { text-align: center; }
+
+/* A cell you can type in is a plain cell until you touch it. */
+.gcell {
+  width: 100%; height: 29px; box-sizing: border-box;
+  background: transparent; border: 1px solid transparent; border-radius: 0;
+  padding: 0 2px; margin: 0;
+  color: inherit; font: inherit; font-size: 12.5px;
+  -webkit-appearance: none; appearance: none;
+}
+.gsheet td:hover > .gcell { border-color: #33405a; }
+.gcell:focus { outline: none; border: 2px solid #6366f1; padding: 0 1px; background: #0a0e15; }
+select.gcell { cursor: pointer; }
+.gcell.bad { color: #ef4444; border-color: #ef4444; }
+/* Three ticked columns across 53 rows is 159 boxes. Left as browser default
+   they are 159 white squares and the loudest thing on the page, so an unticked
+   box is drawn as an empty dark cell and only a tick has any colour. */
+.gsheet input[type=checkbox] {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px; margin: 0; vertical-align: middle;
+  border: 1px solid #39445c; border-radius: 2px; background: #0b0f16;
+  position: relative;
+}
+.gsheet input[type=checkbox]:checked { background: #4f46e5; border-color: #4f46e5; }
+.gsheet input[type=checkbox]:checked::after {
+  content: ''; position: absolute; left: 3.5px; top: 0.5px;
+  width: 3px; height: 7px; border: solid #fff;
+  border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.gsheet input[type=checkbox]:disabled { opacity: .55; }
+`;
+
+function headerCell(label, cls) {
+  return <th key={label} className={cls}>{label}</th>;
 }
 
 export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved }) {
@@ -173,8 +215,11 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
   return (
     <div style={{
       flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-      background: C.bg, color: C.text, fontFamily: "'Courier New', monospace",
+      background: C.bg, color: C.text,
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
+      <style>{SHEET_CSS}</style>
+
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
@@ -250,35 +295,35 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
             No jobs on the board.
           </div>
         ) : (
-          <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+          <table className="gsheet">
             <colgroup>
-              <col style={{ width: 62 }} />{/* Job */}
+              <col style={{ width: 58 }} />{/* Job */}
               <col style={{ width: 150 }} />{/* Customer */}
-              <col style={{ width: 110 }} />{/* Mfr */}
+              <col style={{ width: 100 }} />{/* Mfr */}
               <col style={{ width: 130 }} />{/* Model */}
-              <col style={{ width: 96 }} />{/* Status */}
+              <col style={{ width: 92 }} />{/* Status */}
               <col />{/* Desc */}
-              <col style={{ width: 74 }} />{/* Tag */}
-              <col style={{ width: 74 }} />{/* Hours */}
-              <col style={{ width: 88 }} />{/* Action */}
-              <col style={{ width: 42 }} />{/* VB */}
-              <col style={{ width: 42 }} />{/* BL */}
-              <col style={{ width: 42 }} />{/* PJ */}
+              <col style={{ width: 72 }} />{/* Tag */}
+              <col style={{ width: 68 }} />{/* Hours */}
+              <col style={{ width: 86 }} />{/* Action */}
+              <col style={{ width: 40 }} />{/* VB */}
+              <col style={{ width: 40 }} />{/* BL */}
+              <col style={{ width: 40 }} />{/* PJ */}
             </colgroup>
             <thead>
               <tr>
-                {headerCell('Job', false)}
-                {headerCell('Customer', false)}
-                {headerCell('Mfr', false)}
-                {headerCell('Model', false)}
-                {headerCell('Status', false)}
-                {headerCell('Desc', false)}
-                {headerCell('Tag', true)}
-                {headerCell('Hours', true)}
-                {headerCell('Action', true)}
-                {headerCell('VB', true)}
-                {headerCell('BL', true)}
-                {headerCell('PJ', true)}
+                {headerCell('Job', 'freeze')}
+                {headerCell('Customer', '')}
+                {headerCell('Mfr', '')}
+                {headerCell('Model', '')}
+                {headerCell('Status', '')}
+                {headerCell('Desc', '')}
+                {headerCell('Tag', 'mine fence')}
+                {headerCell('Hours', 'mine')}
+                {headerCell('Action', 'mine')}
+                {headerCell('VB', 'mine')}
+                {headerCell('BL', 'mine')}
+                {headerCell('PJ', 'mine')}
               </tr>
             </thead>
             <tbody>
@@ -289,21 +334,21 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                 const avg = !badHours && /-/.test(String(d.hoursText || '')) ? parseHoursInput(d.hoursText) : null;
 
                 return (
-                  <tr key={job.id} style={{ background: changed ? '#141d33' : 'transparent' }}>
-                    <td style={{ ...readOnlyCell, color: C.dim, fontWeight: 700 }}>{job.job}</td>
-                    <td style={readOnlyCell} title={job.customer || ''}>{job.customer}</td>
-                    <td style={readOnlyCell} title={job.mfr || ''}>{job.mfr}</td>
-                    <td style={readOnlyCell} title={job.model || ''}>{job.model}</td>
-                    <td style={readOnlyCell}>{job.status}</td>
-                    <td style={readOnlyCell} title={job.desc || ''}>{job.desc}</td>
+                  <tr key={job.id} className={changed ? 'dirty' : undefined}>
+                    <td className="ro freeze">{job.job}</td>
+                    <td className="ro" title={job.customer || ''}>{job.customer}</td>
+                    <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
+                    <td className="ro" title={job.model || ''}>{job.model}</td>
+                    <td className="ro">{job.status}</td>
+                    <td className="ro" title={job.desc || ''}>{job.desc}</td>
 
                     {/* Tag — picking one fills in the matching hours */}
-                    <td style={editCell}>
+                    <td className="mine fence">
                       {editable ? (
                         <select
+                          className="gcell"
                           value={d.tag ?? ''}
                           onChange={e => setDraft(job, applyTagToDraft(d, e.target.value))}
-                          style={inputStyle}
                         >
                           {withLegacyOption(TAG_OPTIONS, d.tag).map(o => (
                             <option key={o || '_blank'} value={o}>{o || '—'}</option>
@@ -313,29 +358,25 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                     </td>
 
                     {/* Hours — accepts a range like 2-4, saved as the average */}
-                    <td style={editCell}>
+                    <td className="mine num">
                       {editable ? (
                         <input
+                          className={badHours ? 'gcell bad' : 'gcell'}
+                          style={{ textAlign: 'right' }}
                           value={d.hoursText}
                           onChange={e => setDraft(job, { ...d, hoursText: e.target.value })}
-                          placeholder="e.g. 3 or 2-4"
                           title={avg !== null ? `Saves as ${avg}` : undefined}
-                          style={{
-                            ...inputStyle,
-                            borderColor: badHours ? C.bad : C.edge,
-                            color: badHours ? C.bad : C.bright,
-                          }}
                         />
                       ) : (d.hoursText || '—')}
                     </td>
 
                     {/* Action — a list, never free text: it sorts the piles */}
-                    <td style={editCell}>
+                    <td className="mine">
                       {editable ? (
                         <select
+                          className="gcell"
                           value={d.action ?? ''}
                           onChange={e => setDraft(job, { ...d, action: e.target.value })}
-                          style={inputStyle}
                         >
                           {withLegacyOption(ACTION_OPTIONS, d.action).map(o => (
                             <option key={o || '_blank'} value={o}>{o || '—'}</option>
@@ -345,13 +386,13 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                     </td>
 
                     {['vb', 'backlog', 'project'].map(field => (
-                      <td key={field} style={{ ...editCell, textAlign: 'center' }}>
+                      <td key={field} className="mine mid">
                         <input
                           type="checkbox"
                           checked={!!d[field]}
                           disabled={!editable}
                           onChange={e => setDraft(job, { ...d, [field]: e.target.checked })}
-                          style={{ width: 14, height: 14, accentColor: C.accent, cursor: editable ? 'pointer' : 'default' }}
+                          style={{ cursor: editable ? 'pointer' : 'default' }}
                         />
                       </td>
                     ))}
