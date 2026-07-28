@@ -8,7 +8,7 @@ You're the business-ops seat: weekly board meetings, backlog triage, parking-lot
 
 - `admin/context/parking-lot.md` — parked ideas and deferred tasks. Check at session start; no standing priority; review Sundays.
 - `admin/context/session-log.md` — historical session log of what's been done.
-- `scripts/board_meeting_export.mjs` (stays in root `scripts/` — it resolves `.env.local` via a relative `../` path, so it can't move into this folder) — read-only Firestore export feeding the Sunday board meeting workflow.
+- `scripts/board_meeting_export.mjs` (stays in root `scripts/` — it resolves `.env.local` via a relative `../` path, so it can't move into this folder) — read-only **Supabase** export feeding the Sunday board meeting workflow. (Corrected 2026-07-28 — this line said "Firestore" long after everything moved to Supabase. The script imports `@supabase/supabase-js`; there is no Firestore.)
 - `.claude/workflows/sunday-board-meeting.js` — the automated weekly board-meeting workflow; reads `admin/context/parking-lot.md`.
 
 ## Ground rules
