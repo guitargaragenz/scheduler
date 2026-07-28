@@ -179,13 +179,25 @@ export async function upsertJobsBatch(jobsList) {
       model: job.model,
       status: job.status,
       bench: job.bench,
-      hours: job.hours,
       scheduled: job.scheduled,
       calendar_slot: job.calendarSlot || null,
       gcal_event_id: job.gcalEventId || null,
       desc: job.desc,
-      tag: job.tag,
-      action: job.action,
+      // Brief G, Build 1b — tag/hours/action/vb/bl/pj are GONE from this row
+      // on purpose. They are app-owned now (APP_OWNED_JOB_FIELDS in
+      // src/data/joinJobs.js) and are edited on the Jobs Sheet page.
+      //
+      // Removing them from pickMasterFields() alone would not have been
+      // enough, and would in fact have been worse: this function builds a
+      // fixed row and ignores which keys the caller actually supplied, so a
+      // stripped job object would have sent `tag: undefined`, `hours:
+      // undefined`, and — through the `job.vb ? 'Y' : 'N'` ternaries below —
+      // actively written 'N' over every real 'Y' in the workshop on the next
+      // CSV upload. The columns have to leave the row itself.
+      //
+      // Consequence, accepted deliberately: a job the CSV introduces for the
+      // first time now lands with those six columns NULL, and Trevor fills
+      // them in on the Jobs Sheet page. All six columns are nullable.
       // Job age. Written on every CSV sync so it survives a page reload — it
       // had no column at all until 2026-07-27, so `days` lived in memory only
       // and every refresh silently reset every job to "unknown age".
@@ -195,16 +207,6 @@ export async function upsertJobsBatch(jobsList) {
       // overwrites-good guard therefore has to happen before this call, in
       // handleCsvUpload — see the read-merge there.
       days: job.days ?? null,
-      // job.vb/job.backlog/job.project are the real app-shape fields (set by
-      // parseCSV() in src/data/jobs.js as booleans from the CSV's Y/N
-      // columns) — job.VB/job.BL/job.PJ don't exist on the object, so this
-      // used to always write `undefined` and silently drop the flags on
-      // every CSV sync. The vb/bl/pj DB columns are TEXT (see
-      // docs/supabase-schema.sql), matching the CSV's own Y/N convention, so
-      // write 'Y'/'N' strings rather than raw booleans.
-      vb: job.vb ? 'Y' : 'N',
-      bl: job.backlog ? 'Y' : 'N',
-      pj: job.project ? 'Y' : 'N',
       has_subtasks: job.hasSubtasks,
       created_at: job.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
