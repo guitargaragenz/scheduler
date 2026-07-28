@@ -80,15 +80,54 @@ memory file — this file loads automatically, every time, for every session and
 
 **The protocol:**
 1. **Brief** — written, scope-locked, posted to `.claude/pending-brief.md`, Trevor approves ("yp")
-2. **Council** — two independent agents review, weigh in on design decisions
-3. **Builder Agent** — executes the build on staging branch, supervised from main conversation
-4. **Independent Verifier** — separate agent runs the checklist (never the builder)
+2. **Council** — two independent `ggnz-council` agents review, weigh in on design decisions
+3. **Builder Agent** — `ggnz-builder` executes the build on staging branch, supervised from main conversation
+4. **Independent Verifier** — `ggnz-verifier` runs the checklist (never the builder)
 5. **Browser Test** — click through Vercel preview, confirm it works
 6. **Merge** — Trevor approves ("yp"), merged to main
 
 **Before your first commit:** Check `.claude/pending-brief.md` for a brief entry covering this work. No brief entry, no commit. If you're unsure whether work is "blast-radius" (multi-file, complex, touches shared state), default to running it through the full protocol rather than solo.
 
 **Why this matters:** This protocol is the reason Trevor doesn't babysit builds. Skipping it means he has to come back mid-session and manually redirect work, which defeats the whole point. Don't skip it.
+
+---
+
+## Model Discipline — Non-Negotiable
+
+Added 2026-07-28 after repeatedly hitting rate limits. **Subagents inherit the session's
+model by default.** That was the leak: Trevor sets Opus for architecture thinking, then every
+council reviewer, verifier and scout spawns as Opus too. One `council this` was eleven Opus
+agents.
+
+**The rule: no agent is ever spawned without its model decided on purpose.**
+
+Use the pinned agents in `.claude/agents/` — the model lives in the agent file, so it holds no
+matter what model the session is on:
+
+| Agent | Model | Use for |
+|---|---|---|
+| `ggnz-scout` | haiku | "where is X", file lookups, does-this-still-exist |
+| `ggnz-council` | sonnet | design review, second opinions, protocol step 2 |
+| `ggnz-verifier` | sonnet | checklist verification, protocol step 4 |
+| `ggnz-builder` | opus | **only** approved blast-radius builds, protocol step 3 |
+
+For an ad-hoc spawn with no pinned agent, pass `model` explicitly. Default to `sonnet`.
+
+**This is enforced, not remembered.** `.claude/hooks/enforce-agent-model.py` runs before every
+spawn and blocks it if no model is set, or if a premium model is requested for anything other
+than `ggnz-builder`. Do not route around the hook — if something genuinely needs a premium
+agent, ask Trevor and say why.
+
+**Why `ggnz-builder` stays on Opus:** it writes to `scheduledSlots`, `useSupabase.js` and the
+`jobs[]` shape. A cheap agent's mistake there costs a bad merge and a debugging session, which
+burns more than it saved. Cheap everywhere else; careful where the live job data is.
+
+**Two things the hook can't catch, so they're on Claude:**
+- **Don't delegate small work.** Every subagent starts cold and re-reads CLAUDE.md, the brief
+  and the files. For a one-file edit that costs more than just doing it. Delegate chunky,
+  self-contained work only.
+- **Synthesis happens in the main conversation.** Never spawn an agent to summarise other
+  agents' output — the main session already holds it all.
 
 ---
 

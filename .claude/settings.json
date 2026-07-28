@@ -19,5 +19,18 @@
       "Edit(coverage/**)",
       "Edit(.vite/**)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-agent-model.py\""
+          }
+        ]
+      }
+    ]
   }
 }
