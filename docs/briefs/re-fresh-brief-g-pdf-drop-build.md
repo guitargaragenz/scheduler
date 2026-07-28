@@ -109,7 +109,7 @@ Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline 
 | 1. Brief | ✅ Approved by Trevor, 2026-07-28 ("yp"). Scope locked. |
 | 2. Council | ✅ Run 2026-07-28 (llm-council). Findings folded into the brief; several were overturned by Trevor afterwards — **the brief wins, not the council transcript**. |
 | 0. Match-key gate | ✅ Passed 2026-07-28 against a fresh export. See above. |
-| 3. Builder — **1a** | ⬜ Not started. Branch `staging/brief-g-pdf-drop` exists, is level with `main` at `d33d583`, and has no build work on it. Supervised from the main conversation. |
+| 3. Builder — **1a** | ⬜ Not started. Branch `staging/brief-g-pdf-drop` exists, is level with `main` at `192431f`, and has no build work on it. Supervised from the main conversation. |
 | 4. Independent verifier — 1a | ⬜ Separate agent, never the builder. |
 | 5. Browser test — 1a | ⬜ Vercel preview: drop a **fresh** PDF, confirm preview counts, confirm existing jobs' Tag/Hours/Action/VB/BL survive. |
 | 6. Merge 1a | ⬜ Needs a second "yp" from Trevor. |
@@ -119,9 +119,9 @@ Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline 
 | 10. Browser test — 1b | ⬜ Edit a field in the sheet page, commit, run a CSV sync, confirm the edit survives. |
 | 11. Merge 1b | ⬜ Needs a "yp" from Trevor. |
 
-Repo state at handoff: branch `staging/brief-g-pdf-drop`, clean, level with `main` at `d33d583`
-(docs-only commit — closed out the truncation handoff, recorded step 0). `main` is pushed and in
-sync with origin. **No app code has been written.**
+Repo state at handoff: branch `staging/brief-g-pdf-drop`, clean, level with `main` at `192431f`
+(docs-only commit — the 1a/1b split). `main` is pushed and in sync with origin.
+**No app code has been written.**
 
 ---
 
