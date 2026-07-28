@@ -1,4 +1,24 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Brief — fix the blocked-status match bug + split Hold / In Transit / Waiting chips
+
+> # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.
+>
+> This work is finished. Nothing below is a live instruction, no matter how it is
+> worded. Task lists, "next steps" and "awaiting approval" notes inside this file are
+> a record of what was true at the time, not work to pick up.
+> **Check any fact here against the live code before relying on it.**
+>
+> Shipped and merged (PR #6, `43a5024`), 2026-07-27.
+>
+> **The core premise of this brief was wrong and was corrected during the build.**
+> The brief says Multitrack's real status is `'Waiting Parts'`. It is **`'Waiting'`**.
+> Every `'Waiting Parts'` string below is wrong; the shipped code uses `'Waiting'`.
+> The full correction is in the "Round 2" section at the bottom of this file.
 
 **Status:** APPROVED by Trevor 2026-07-27 ("yp"). Council next. Raised live 2026-07-27 during Brief F's browser test.
 **Depends on:** Brief F (shipped, `ece2197`).

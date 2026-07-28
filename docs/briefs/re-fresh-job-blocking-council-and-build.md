@@ -1,4 +1,19 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Session brief — Job blocking: council, then build
+
+> # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.
+>
+> This work is finished. Nothing below is a live instruction, no matter how it is
+> worded. Task lists, "next steps" and "awaiting approval" notes inside this file are
+> a record of what was true at the time, not work to pick up.
+> **Check any fact here against the live code before relying on it.**
+>
+> Brief E (job blocking) shipped. Kept only for the council design decisions.
 
 **Date:** 2026-07-27
 **Repo state:** `main` @ `d0e3a2c`, clean except untracked handoff notes

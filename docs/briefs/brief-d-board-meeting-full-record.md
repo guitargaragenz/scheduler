@@ -1,4 +1,19 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Brief D (archived record) — Rebuild the Sunday Board Meeting as a live Supabase-backed ritual
+
+> # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.
+>
+> This work is finished. Nothing below is a live instruction, no matter how it is
+> worded. Task lists, "next steps" and "awaiting approval" notes inside this file are
+> a record of what was true at the time, not work to pick up.
+> **Check any fact here against the live code before relying on it.**
+>
+> Brief D shipped and merged to `main` at `da1d9af`, 2026-07-25.
 
 > **Archived 2026-07-27.** This is the complete working record of Brief D as it stood in
 > `.claude/pending-brief.md` — scope, council findings, all nine scope items, verification

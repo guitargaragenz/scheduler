@@ -1,4 +1,17 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Design — Why isn't this job moving?
+
+> # ⛔ CLOSED — HISTORY ONLY. This design has been BUILT.
+>
+> Shipped and merged to `main` on 2026-07-27 as Brief E. The "Status: design in review,
+> not built" line below was true when written and is now wrong. **Do not build from this
+> file.** It is still the best record of *why* the design is what it is — but check the
+> live code before relying on any statement about how the app behaves.
 
 Date: 2026-07-26
 Status: design in review, not built. Requires the full agent-team protocol before any commit.

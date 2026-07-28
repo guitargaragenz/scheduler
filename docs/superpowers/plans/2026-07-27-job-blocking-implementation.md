@@ -1,4 +1,17 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Implementation plan — "Why isn't this job moving?"
+
+> # ⛔ CLOSED — HISTORY ONLY. The build this plan describes has SHIPPED.
+>
+> Brief E (job blocking) was built, verified and merged to `main` on 2026-07-27.
+> The "Status: not yet approved / no commits until the protocol has run" line below was
+> true when written and is now wrong. **Do not build from this file and do not treat its
+> status line as current.** Kept as the record of how the plan was derived.
 
 Date: 2026-07-27
 Spec: [../specs/2026-07-26-job-blocking-design.md](../specs/2026-07-26-job-blocking-design.md)

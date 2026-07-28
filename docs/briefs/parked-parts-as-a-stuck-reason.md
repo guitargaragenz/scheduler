@@ -1,3 +1,7 @@
+---
+doc_status: parked
+---
+
 # Parked brief — Parts as a stuck reason
 
 **Status:** **PARKED.** Not approved, not scoped, not started. No "yp" sought yet.

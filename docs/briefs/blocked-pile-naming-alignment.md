@@ -1,3 +1,7 @@
+---
+doc_status: parked
+---
+
 # Follow-up Brief — align blocked-job naming and rules across all three screens
 
 **Status:** BACKLOG. Not started, not scoped in detail. Raised by Council during Brief F, 2026-07-27.

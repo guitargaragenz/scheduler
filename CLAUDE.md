@@ -168,6 +168,32 @@ mid-session to manually redirect a build defeats the whole point.
 - If unsure whether new context changes the plan, stop and confirm rather than guessing on a
   blast-radius change.
 
+### Documents describe the past. The code describes the present.
+
+Briefs E and F each burned three build rounds for the same reason: the builder built correctly
+against a brief that contained facts which were true when written and wrong when read. A brief
+claimed Multitrack's status string was `'Waiting Parts'` (it is `'Waiting'`). A handoff said
+Multitrack had changed its PDF layout (it was a one-off glitch). Old briefs still talked about
+Firestore months after everything moved to Supabase.
+
+- **Before acting on any factual claim in a brief, spec or plan — check it against the live
+  code or the live data.** A status string, a file name, a function, a table column, a data
+  shape. One grep is cheaper than a build round. This applies to *approved* briefs too:
+  approval means Trevor agreed the goal, not that every stated fact is still accurate.
+- **Every document in `docs/briefs/`, `docs/superpowers/plans/` and `docs/superpowers/specs/`
+  carries `doc_status:` at the very top** — `live`, `parked` or `closed`. Only `live` is work.
+  A `closed` document's task lists, "next steps" and "awaiting approval" notes are a record of
+  what was true that day, never an instruction, however live they read.
+- `.claude/hooks/warn-closed-brief.py` fires on any read of a non-`live` document, wherever in
+  the file you entered. **Do not work around that warning** — it means what it says. A missing
+  `doc_status:` also warns; add one rather than guessing.
+- **When work finishes, close its documents in the same session.** Set `doc_status: closed`,
+  add the "shipped at `<commit>`" line, and update `docs/briefs/README.md`. A finished brief
+  left reading as live is a trap set for the next session.
+- **When a document is found to be wrong, fix the fact — don't just note it.** If the whole
+  document is spent, delete it. Git keeps it permanently (`git log -- docs/briefs/`), so
+  deleting loses nothing and stops it being found by search and acted on.
+
 ### Git discipline
 Always `git add <specific file>`, never `git add -A`. Commit messages explain the why. Never `--no-verify` or `--amend` a pushed commit.
 

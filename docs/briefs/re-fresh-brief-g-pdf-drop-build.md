@@ -1,3 +1,7 @@
+---
+doc_status: live
+---
+
 # Re-fresh — Brief G (PDF-drop import): step 0 passed, build starts at item 1
 
 **Written:** 2026-07-28, updated late 2026-07-28. **Status of the work:** brief approved and

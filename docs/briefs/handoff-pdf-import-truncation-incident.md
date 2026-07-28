@@ -1,3 +1,9 @@
+---
+doc_status: closed
+closed: 2026-07-28
+superseded_by: -
+---
+
 # Handoff — PDF import truncation incident, 2026-07-26
 
 > # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.

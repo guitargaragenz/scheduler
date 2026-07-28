@@ -1,4 +1,24 @@
+---
+doc_status: closed
+closed: 2026-07-27
+superseded_by: -
+---
+
 # Pending Brief F — "Waiting" chip on the bench-picker row
+
+> # ⛔ CLOSED — HISTORY ONLY. DO NOT ACT ON ANYTHING BELOW THIS LINE.
+>
+> This work is finished. Nothing below is a live instruction, no matter how it is
+> worded. Task lists, "next steps" and "awaiting approval" notes inside this file are
+> a record of what was true at the time, not work to pick up.
+> **Check any fact here against the live code before relying on it.**
+>
+> Brief F shipped and merged to `main` at `ece2197`, 2026-07-27.
+>
+> **Known wrong fact in this file:** it states Multitrack's real status string is
+> `'Waiting Parts'`. It is **`'Waiting'`**. The Multitrack dropdown *label* reads
+> "Waiting parts", but the export is what the app sees. Verified against the app code
+> 2026-07-28 — `'Waiting Parts'` appears nowhere in `src/`.
 
 **Status:** SHIPPED. Merged to main 2026-07-27 (`ece2197`). Browser-tested on Vercel preview —
 counts correct, click-to-filter works, blocked cards stay non-draggable, drag-mode toggle hides

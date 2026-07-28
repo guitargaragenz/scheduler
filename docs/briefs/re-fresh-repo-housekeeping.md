@@ -1,3 +1,7 @@
+---
+doc_status: live
+---
+
 # Re-fresh — repo housekeeping
 
 **Date written:** 2026-07-27
@@ -172,7 +176,7 @@ All three say so in their own header comments — read them yourself to confirm.
 |---|---|---|
 | `scripts/backfill_daily_logs_to_supabase.mjs` | CONFIRMED | *"THROWAWAY one-shot backfill — Brief C… Safe to delete once the migration is signed off."* Brief C shipped. |
 | `scripts/rebuild_csv.py` | CONFIRMED | Recovery tool for the 26 July truncation. *"once."* |
-| `scripts/seed_focus_list.mjs` | CONFIRMED | *"One-time seed."* Also writes to the **Firestore** path `ggnz/focusList`; the focus list moved to Supabase, so it now points at nothing. Two briefs already call it stale — `handoff-board-meeting-and-pdf-drop.md` line 23 and `brief-d-board-meeting-full-record.md` line 144, which explicitly parked "deciding its fate" as a separate task. **This brief is that task.** |
+| `scripts/seed_focus_list.mjs` | CONFIRMED | *"One-time seed."* Also writes to the **Firestore** path `ggnz/focusList`; the focus list moved to Supabase, so it now points at nothing. `brief-d-board-meeting-full-record.md` line 144 already calls it stale and explicitly parked "deciding its fate" as a separate task. **This brief is that task.** |
 
 **One catch on the first one:** `scripts/board_meeting_export.mjs` **references it in comments**
 at lines 11 and 59 — *"the same way scripts/backfill_daily_logs_to_supabase.mjs does, using the
@@ -226,9 +230,14 @@ Harmless; they just clutter every branch listing. Low priority. **Leave
 ## Do NOT touch
 
 - `archive/job-tracker/` — deliberately archived, documented in CLAUDE.md.
-- `docs/briefs/` — 19 briefs, 14 of them history, kept on purpose. The index says which are
-  live. Ones dated 14 July and earlier describe Firebase and the old iCloud path; the README
-  already warns about that. **Old briefs are not clutter here — they're the project's memory.**
+- `docs/briefs/` — **already done, 2026-07-28. Do not re-do it and do not act on the advice
+  this bullet used to give.** It previously said all 30 briefs were kept on purpose. That was
+  overturned: on 2026-07-28 twenty-one spent briefs were deleted (the whole Firebase/iCloud
+  era, plus every handoff whose work had shipped and was recorded elsewhere), and the nine
+  survivors were stamped with `doc_status: live | parked | closed`. **Reason for the reversal:**
+  the old briefs were not acting as memory, they were acting as instructions — Briefs E and F
+  each lost build rounds to a session finding a finished brief by search and working from it.
+  Git holds every deleted file permanently (`git log -- docs/briefs/`), so nothing was lost.
 - `api/partsbox.js` — live serverless proxy.
 - `marketing/index.html` — the real GGNZ site page.
 - `dist/` — build output, regenerates, not in git.

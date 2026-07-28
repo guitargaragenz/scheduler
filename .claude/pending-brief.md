@@ -5,8 +5,10 @@ Build proceeds on a staging branch. Anything not in the Scope list is out — br
 here for a fresh "yp" rather than absorbing them mid-build.
 **Date:** 2026-07-28
 **Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
-**Predecessor:** `docs/briefs/re-fresh-pdf-drop-scope-and-council.md` — scope agreed by Trevor;
-council now run (llm-council, as-written, 5 advisors → anonymised peer review → chairman).
+**Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs
+cleanup once its content landed here (recover with `git log -- docs/briefs/`). Scope was agreed by
+Trevor; council has since run (llm-council, as-written, 5 advisors → anonymised peer review →
+chairman).
 Brief F (Waiting/Planning chips) shipped and is archived at `docs/briefs/brief-f-waiting-chip-shipped.md`.
 
 ---
