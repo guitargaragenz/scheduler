@@ -4,268 +4,146 @@ doc_status: live
 
 # Re-fresh — repo housekeeping
 
-**Date written:** 2026-07-27
-**For:** a fresh session, Micky. Nothing here needs a dev server.
-**Task:** verify and then clear out misplaced, dead and stale files. **Nothing has been
-deleted or moved yet.** This brief is a list of candidates plus what's been proven about each.
+**Written:** 2026-07-27. **Rewritten:** 2026-07-29 — most of it was already done.
+**For:** a fresh session, any machine. Nothing here needs a dev server.
+**Task:** clear the last few dead files out of the repo.
 
 ---
 
-## STOP — read this before touching anything
+## What changed on 2026-07-29
 
-**A different session is mid-build in this same working tree.** Branch `staging/job-blocking`,
-Brief E (job blocking), agent-team protocol in progress. No agent is running, and as of `beda052`
-the builder's round-2 work is **committed**, so the tree is clean — nothing is at risk of being
-lost. But the build is **not finished**: the independent verifier and the browser test still have
-to run, and it hasn't merged to `main`.
+This brief was written as a 5-section sweep. Re-checked against the live filesystem on
+2026-07-29, **Sections 1, 2 and 5 are finished and Section 3's blocker is gone.** The old
+text was still telling readers to delete files that no longer exist and to wait on a build that
+merged two days ago — so it has been cut down to what's actually left.
 
-**Do not touch, at all:**
+Also gone: the **STOP header** about branch `staging/job-blocking` being mid-build. Brief E
+merged. There is no live build in this tree. `git worktree list` shows the main checkout only.
 
-- Anything under `src/`, including the dead-code candidate. It waits.
-- `scripts/sheet_to_csv.command` — the builder edited it this session.
-- `.claude/pending-brief.md`, `docs/superpowers/plans/`, `docs/superpowers/specs/`.
-- The branch. Do not switch branches, do not stash, do not rebase.
+**Done already, nothing to do (verified gone / verified applied 2026-07-29):**
 
-**Check first:** run `git status` and `git log --oneline -5`. If the tree has uncommitted
-changes under `src/` that aren't yours, the build is still live — **do only the sections marked
-SAFE NOW below, and leave the rest.** Ask Trevor whether Brief E has merged before doing
-anything else.
-
-**Trevor never runs git himself.** Claude runs every git command, from this session. If he
-starts typing git commands, stop him and take it back. (A hand-run git command deleted 35 app
-files on 2026-06-14 — that's why the rule exists.)
-
-**Confirm scope before any bulk delete.** State exactly what will be removed and get a "yp"
-before removing it. This applies to every group below, individually.
+- `admin/context/GGNZ Parts Shopping List.csv` + `.txt` — gone. `admin/claude.md` no longer
+  carries the wrong "live capacitor/parts stock data" description.
+- `context/runway-mockup.html` and the `context/` folder — gone.
+- `.claude/worktrees/` — both dead worktrees deleted, `git worktree prune` run, and the
+  `vite.config.js` comment already updated to say so (`vite.config.js:57`). The
+  `.claude/worktrees/**` test exclude stays, deliberately.
+- `pipeline.log` — gone from the repo root. The 2.5 MB forensic one in `SCHEDULER_old/` is
+  outside this repo and stays where it is.
+- `DESIGN.md` (the Matakana Superfoods capture) — gone from the repo root.
+- The twelve stale local branches — **not** cleared, but see Section 3 below; the list has
+  changed enough that the old one was misleading.
 
 ---
 
-## How the list was produced
-
-A sweep on 2026-07-27: directory listing plus sizes, a whole-repo grep for each candidate's
-filename, an import check across `src/`, `git worktree list`, and a read of each script's own
-header comment. Everything marked CONFIRMED came from a command, not from memory.
-
-**The verification was cut short.** Roughly a third of the reference-checking was done before
-the session ended. Items marked **UNVERIFIED** below still need the check described against
-each one. **Do not delete an UNVERIFIED item on the strength of this brief.** Prove it first.
-
----
-
-## Section 1 — SAFE NOW, no dependency on Brief E
-
-### 1a. Two files that aren't business data
+## Section 1 — dead component
 
 | File | State |
 |---|---|
-| `admin/context/GGNZ Parts Shopping List.csv` | CONFIRMED |
-| `admin/context/GGNZ Parts Shopping List.txt` | CONFIRMED |
+| `src/components/SplitDrawer.jsx` | **CONFIRMED unreferenced**, re-verified 2026-07-29 |
 
-Trevor confirmed 2026-07-27: **this is his personal pedalboard build list.** Nothing to do with
-the shop. It was swept into `admin/context/` during the May department reorganisation (see
-`admin/context/session-log.md` line 116 — it came off the Desktop).
+A whole-repo grep for `SplitDrawer` across `.js` / `.jsx` / `.md` returns two hits: its own
+`export default function` line at `src/components/SplitDrawer.jsx:7`, and this brief. Nothing
+imports it. Splitting runs through a different path.
 
-**Also fix, and this is the important part:** `admin/claude.md` line 11 currently describes
-these files as *"live capacitor/parts stock data with model cross-refs"*. **That description is
-wrong**, and `admin/claude.md` loads automatically for every Admin session — it is why an
-earlier session started reasoning about the file as shop inventory. Correct or delete that line
-whether or not the files themselves move.
-
-**Action:** ask Trevor where he wants the two files moved to (outside the repo), move them,
-then fix `admin/claude.md`.
-
-### 1b. Stale mockup
-
-| File | State |
-|---|---|
-| `context/runway-mockup.html` (root `context/`, 30 KB) | CONFIRMED |
-
-A mockup of the "Runway" page, which was **renamed to Projects on 14 July**. It is a picture of
-a screen that no longer exists. The only reference to it anywhere is the historical note in
-`admin/context/session-log.md` recording that it was moved there.
-
-The root `context/` folder contains **nothing else**. Delete the folder with the file.
-
-### 1c. Finder junk
-
-`docs/.DS_Store`, `.claude/.DS_Store`, `.claude/worktrees/.DS_Store` — CONFIRMED.
-`.DS_Store` is already in `.gitignore`, so these are untracked. Just delete them.
-
-### 1d. 267 MB of dead worktrees
-
-| Path | Size | State |
-|---|---|---|
-| `.claude/worktrees/agent-a678e9cbeaa000e99` | **264 MB** | CONFIRMED |
-| `.claude/worktrees/reverent-feynman-176147` | 3.4 MB | CONFIRMED |
-
-**Both are broken, not live.** Proof: `cat .claude/worktrees/agent-a678e9cbeaa000e99/.git`
-returns a gitdir pointing at
-`/Users/admin/Library/Mobile Documents/com~apple~CloudDocs/Desktop/GGNZ SCHEDULER PROJECT/.git/...`
-— the **old iCloud path, which no longer exists** (the project moved to Desktop). `git worktree
-list` still advertises that dead path.
-
-This is what was inflating the test count: vitest was collecting a 21 July copy of
-`joinJobs.test.js` out of the snapshot. `vite.config.js` now excludes `.claude/worktrees/**`
-(commit `01a0404`) — **once the directories are gone, that exclude line can stay**; it costs
-nothing and stops the problem recurring if another worktree is ever created.
-
-**Before deleting, prove nothing is lost:**
-```bash
-git log --oneline -1 jobsmaster-jobsstate-build
-```
-That branch is what the snapshot held. It lives in the main repo's object store, so the
-directory is just duplicate files. Confirm it resolves, then delete both directories, then:
-```bash
-git worktree prune
-```
-to clear the stale registration. Expect `+ jobsmaster-jobsstate-build` in `git branch` to
-become a normal branch afterwards.
-
-**One contradiction to be aware of:** the comment in `vite.config.js` says *"Excluded rather
-than deleted: the worktrees are still registered with git."* That was written earlier the same
-day, **before** the gitdir was checked and the registration turned out to point at a path that
-no longer exists. This brief supersedes it. Once `git worktree prune` has run, fix that comment
-so the next reader isn't warned off a directory that's already gone.
-
-### 1e. `pipeline.log`
-
-4 KB at the repo root, untracked, `*.log` is gitignored, regenerates on its own. Delete.
-
-**Re-checked 2026-07-27: no `pipeline.log` exists at the repo root any more.** Nothing to do
-— just don't go looking for it elsewhere. The *real* pipeline log is a different file,
-2.5 MB, at `~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/pipeline.log`.
-That one is **forensic evidence** — it holds the list of the 33 job numbers the 26 July
-delete pass removed from the Google Sheet (around line 40640). It is outside this repo and
-outside this brief's scope. Do not delete it.
+The old blocker — "Brief E is mid-build in `src/`" — no longer applies. Safe to delete on a
+"yp". Re-run the grep first anyway; it costs nothing.
 
 ---
 
-## Section 2 — SAFE NOW, but needs Trevor's call on destination
+## Section 2 — scripts that have finished their job
+
+All three say so in their own header comments. Read them before deleting.
+
+| File | The header says |
+|---|---|
+| `scripts/backfill_daily_logs_to_supabase.mjs` | *"THROWAWAY one-shot backfill — Brief C… Safe to delete once the migration is signed off."* Brief C shipped. |
+| `scripts/rebuild_csv.py` | Recovery tool for the 26 July truncation. *"once."* |
+| `scripts/seed_focus_list.mjs` | *"One-time seed."* Also writes to the **Firestore** path `ggnz/focusList`; the focus list is on Supabase, so it points at nothing. |
+
+**One catch:** `scripts/board_meeting_export.mjs` names the first file in comments at lines 11
+and 59 — comments only, no import, so deleting won't break the export. Update those two lines in
+the same commit so they don't point at a file that's gone.
 
 | File | State | Notes |
 |---|---|---|
-| `DESIGN.md` (repo root, 12 KB) | CONFIRMED | A **Matakana Superfoods** creatine product-page design capture dated 5 July. Not GGNZ content. Sitting at the top level of the Scheduler repo under a name that reads like the app's own design doc — the single most misleading file in the tree. |
-
-**This is already a logged open item**, not a new discovery: `admin/context/parking-lot.md`
-line 85 records it, noting Trevor said at the time it was being worked on and to relocate or
-delete once finished. Ask him whether that work is done. Then move it to `marketing/` or delete
-it — **and tick off the parking-lot item either way**, so it stops resurfacing.
+| `scripts/backups/pre-migration-2026-07-12T07-31-25-896Z.json` | still there | A safety net from before the 12 July migration. Trevor's call, not a technical one. Ask. |
 
 ---
 
-## Section 3 — WAIT for Brief E to merge
+## Section 3 — git clutter, cosmetic
 
-### 3a. Dead component
+**Twenty local-only branches** as of 2026-07-29, all merged or abandoned, existing on this Mac
+and nowhere else. The old brief listed twelve; eight more have accumulated since.
 
-| File | State |
-|---|---|
-| `src/components/SplitDrawer.jsx` | CONFIRMED unreferenced |
+```
+brief-b-poller-save-daily-log        fix/manual-split-persistence
+brief-c-daily-log-supabase           fix/phase0-data-loss
+brief-d-status-shipped               fix/supabase-auto-split-regen
+brief-d-sunday-board-meeting-supabase fix/supabase-job-column-state-write
+claude/focused-liskov-54aeed         fix/supabase-persistence-gaps
+feature/split-piece-completion       jobsmaster-jobsstate-build
+fix/bench-keywords-finishing         split/app-jsx-hooks
+fix/conflict-bump-log                staging/brief-g-pdf-drop
+fix/csv-manual-split-drift           staging/job-blocking
+```
 
-A whole-repo grep for `SplitDrawer` returns exactly one hit: its own `export default function`
-line. Nothing imports it. Splitting runs through a different path now.
-
-**But it is inside `src/`, which the Brief E builder is actively editing.** Do not delete it
-until that build has merged to `main`. Re-run the grep to confirm before deleting — a build
-touching split behaviour could in principle wire it back up.
-
-### 3b. Scripts that have finished their job
-
-All three say so in their own header comments — read them yourself to confirm.
-
-| File | State | The header says |
-|---|---|---|
-| `scripts/backfill_daily_logs_to_supabase.mjs` | CONFIRMED | *"THROWAWAY one-shot backfill — Brief C… Safe to delete once the migration is signed off."* Brief C shipped. |
-| `scripts/rebuild_csv.py` | CONFIRMED | Recovery tool for the 26 July truncation. *"once."* |
-| `scripts/seed_focus_list.mjs` | CONFIRMED | *"One-time seed."* Also writes to the **Firestore** path `ggnz/focusList`; the focus list moved to Supabase, so it now points at nothing. `brief-d-board-meeting-full-record.md` line 144 already calls it stale and explicitly parked "deciding its fate" as a separate task. **This brief is that task.** |
-
-**One catch on the first one:** `scripts/board_meeting_export.mjs` **references it in comments**
-at lines 11 and 59 — *"the same way scripts/backfill_daily_logs_to_supabase.mjs does, using the
-SAME…"*. Comments only, no import, so deleting won't break the export. But update those two
-comment lines so they don't point at a file that's gone.
-
-These are in `scripts/`, which the builder also touched this session. Wait for the merge.
-
-| File | State | Notes |
-|---|---|---|
-| `scripts/backups/pre-migration-2026-07-12T07-31-25-896Z.json` | UNVERIFIED | A backup from before the 12 July migration. It's a safety net, so this is Trevor's call, not a technical one. Ask. |
+Harmless clutter. Low priority. `staging/brief-g-pdf-drop` merged as `f927248` and
+`staging/job-blocking` merged before that, so **nothing in this list is live** — but confirm
+each is merged before deleting, and delete in one reviewed batch with Trevor's "yp", not
+piecemeal.
 
 ---
 
-## Section 4 — UNVERIFIED, do not delete without proving it
-
-These two look retired but carry real risk, and the check was not finished.
+## Section 4 — the two pipeline scripts. Don't delete. Ask.
 
 | File | Why it's uncertain |
 |---|---|
-| `scripts/sheet_to_csv.command` (21 KB) | The Google Sheet pipeline. Everything says the Sheet is retired (Multitrack + Scheduler only). **But** `SCHEDULER-ARCHITECTURE.md` lines 15–21 still document it as a live part of the import chain, including a `curl` command that installs it to a path outside the repo, and the Brief E builder just added a warning that running it now would write stale `Admin` benches over the app's new nulls. It is also 21 KB of hand-tuned bench-keyword logic that CLAUDE.md explicitly protects. |
-| `scripts/start_watcher.command` (13 KB) | The Multitrack PDF watcher. **The parser is still broken** — this is what truncated the jobs list on 26 July (`handoff-pdf-import-truncation-incident.md`). It must not be *run*. That is not the same as it being safe to *delete*: it's still the reference implementation for the PDF import rebuild that's on the backlog. |
+| `scripts/sheet_to_csv.command` (21 KB) | **Still live.** The Google Sheet is still master for Trevor's six hand-kept fields until Brief G's Build 1b ships. It also holds 21 KB of hand-tuned bench-keyword logic that CLAUDE.md protects, and `MANUAL_FIELDS` at line 32 is currently the only written record of which columns Trevor maintains by hand. **Do not touch it before Build 1b merges.** |
+| `scripts/start_watcher.command` (13 KB) | Must not be *run* — its parser is what truncated the jobs list on 26 July. But it is still the reference implementation, and **Brief G's Build 1c needs it**: the Jobs-by-Age parser being ported comes from here. Keep until 1c ships. |
 
-**What to do:** don't delete either. Ask Trevor directly whether jobs still arrive by any route
-that touches these, and whether the PDF import rebuild still needs `start_watcher.command` as a
-reference. If both are genuinely finished, **move them to `archive/` rather than deleting** —
-same as `archive/job-tracker/`, which is the established pattern here.
+**When both are genuinely finished, move them to `archive/` rather than deleting** — same
+pattern as `archive/job-tracker/`.
 
 `scripts/reauth_google.command` and `scripts/board_meeting_export.mjs` are live. Leave them.
 
----
+### Related, and a real problem: `SCHEDULER-ARCHITECTURE.md` is stale on the import chain
 
-## Section 5 — git clutter, cosmetic
+Lines 15–21 still describe the old automated chain — PDF into `SCHEDULER_old/DropBox/` →
+`start_watcher.command` → `sheet_to_csv.command` → **"pushes to Firebase"**. Two things wrong
+with that: the app has been on Supabase for months, and since `f927248` the real import route is
+Trevor dropping the PDF into the Scheduler in his browser. Line 21 also hands the reader a
+`curl` that installs `sheet_to_csv.command` to a path outside the repo.
 
-Twelve local-only branches, all merged or abandoned, existing on this Mac and nowhere else:
-
-```
-brief-b-poller-save-daily-log      fix/manual-split-persistence
-brief-d-status-shipped             fix/phase0-data-loss
-feature/split-piece-completion     fix/supabase-persistence-gaps
-fix/bench-keywords-finishing       jobsmaster-jobsstate-build
-fix/conflict-bump-log              split/app-jsx-hooks
-worktree-agent-a678e9cbeaa000e99   staging/job-blocking  ← IN USE, do not touch
-```
-
-Harmless; they just clutter every branch listing. Low priority. **Leave
-`staging/job-blocking` alone** — that's the live build.
+That file is named in CLAUDE.md as the thing to read when working on Scheduler code, so a wrong
+description there gets acted on. **Fix it when Build 1b ships and the pipeline actually retires**
+— not before, or it will just be wrong in the other direction.
 
 ---
 
 ## Do NOT touch
 
 - `archive/job-tracker/` — deliberately archived, documented in CLAUDE.md.
-- `docs/briefs/` — **already done, 2026-07-28. Do not re-do it and do not act on the advice
-  this bullet used to give.** It previously said all 30 briefs were kept on purpose. That was
-  overturned: on 2026-07-28 twenty-one spent briefs were deleted (the whole Firebase/iCloud
-  era, plus every handoff whose work had shipped and was recorded elsewhere), and the nine
-  survivors were stamped with `doc_status: live | parked | closed`. **Reason for the reversal:**
-  the old briefs were not acting as memory, they were acting as instructions — Briefs E and F
-  each lost build rounds to a session finding a finished brief by search and working from it.
-  Git holds every deleted file permanently (`git log -- docs/briefs/`), so nothing was lost.
+- `docs/briefs/` — the 2026-07-28 cull is done. Don't re-do it.
 - `api/partsbox.js` — live serverless proxy.
 - `marketing/index.html` — the real GGNZ site page.
-- `dist/` — build output, regenerates, not in git.
-- `cowork-context-summary.md` — written for Cowork, a separate tool. Untouched since 16 July so
-  it will have drifted, but it's Trevor's call whether he still uses Cowork. Ask before binning.
-- `src/components/PartsDrawer.jsx` — despite the name, this is the **PartsBox inventory**
-  drawer (`utils/partsbox.js`), fully live. Unrelated to the `parts_to_order` table.
-
----
-
-## Separate item, not housekeeping — flag it, don't fix it
-
-The Vercel preview for the job-blocking build is **four commits behind** this Mac. The branch is
-`staging/job-blocking` locally but `staging-job-blocking` on GitHub — slash versus dash, so git
-treats them as different branches, and no upstream is set. **The Brief E session owns this.**
-Recorded here only so it isn't lost if that session ends first.
+- `dist/`, `node_modules/` — build output, regenerate, not in git.
+- `src/components/PartsDrawer.jsx` — despite the name, the **PartsBox inventory** drawer
+  (`utils/partsbox.js`), fully live. Unrelated to the `parts_to_order` table.
+- `cowork-context-summary.md` — written for Cowork, a separate tool. Drifted, but it's Trevor's
+  call whether he still uses Cowork. Ask before binning.
 
 ---
 
 ## Suggested order
 
-1. `git status` — confirm whether the Brief E build is still live.
-2. Section 1, in order, each with its own scope confirmation. Worktrees give the biggest win
-   for the least risk — 264 MB, nothing lost.
-3. Fix `admin/claude.md` line 11. This one matters more than the file moves.
-4. Section 2 — ask about `DESIGN.md`, act, tick the parking-lot item.
-5. Ask the Section 4 questions so the answers are on record even if nothing is deleted.
-6. Sections 3 and 5 only after Brief E merges.
+1. Section 1 — delete `SplitDrawer.jsx` after re-running the grep. Smallest, cleanest win.
+2. Section 2 — the three finished scripts, plus the two comment lines in
+   `board_meeting_export.mjs`. Ask about the backup JSON.
+3. Section 3 — the branch batch, once Trevor confirms.
+4. Section 4 — leave until Brief G's Builds 1b and 1c ship. Then archive both scripts and fix
+   `SCHEDULER-ARCHITECTURE.md` in the same pass.
 
-Commit in small groups with the reason in the message. `git add <specific file>`, never
-`git add -A`.
+**Confirm scope before any bulk delete** — state exactly what will be removed and get a "yp"
+first, per group. Commit in small groups with the reason in the message. `git add <specific
+file>`, never `git add -A`. **Trevor never runs git** — Claude runs every command.

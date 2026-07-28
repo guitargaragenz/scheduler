@@ -5,14 +5,112 @@
 same order, nothing added or removed, with a Trevor-only checkpoint (item 3b) between the halves.
 Build proceeds on a staging branch. Anything not in the Scope list is out — bring scope changes back
 here for a fresh "yp" rather than absorbing them mid-build.
-**Next action:** step 0 has passed; Build 1a is ready to start.
-**Date:** 2026-07-28
+**Next action:** Build 1a is **shipped** (`f927248`). Checkpoint 3b is next and is not yet cleared —
+see the 2026-07-29 amendment immediately below, which widens it. Build 1b does not start until 3b
+clears against the *widened* list.
+**Date:** 2026-07-28, amended 2026-07-29
 **Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs
 cleanup once its content landed here (recover with `git log -- docs/briefs/`). Scope was agreed by
 Trevor; council has since run (llm-council, as-written, 5 advisors → anonymised peer review →
 chairman).
 Brief F (Waiting/Planning chips) shipped and is archived at `docs/briefs/brief-f-waiting-chip-shipped.md`.
+
+---
+
+## AMENDMENT — 2026-07-29 — the job date, and the fields this brief missed
+
+**Why this exists.** Trevor asked "where is the original date column?" during checkpoint 3b. It
+wasn't in the checkpoint, and chasing that turned up a false claim in this brief plus a whole
+export nobody had written down. A full audit of every live and parked brief followed. This section
+records what changed. **It needs a fresh "yp" before Build 1b starts** — the sections below are
+new scope, and this brief is scope-locked.
+
+### What was wrong
+
+1. **The `days` claim was false.** Fixed in place under "The CSV back door" below.
+2. **The Google Sheet owns eight columns, not five.** `scripts/sheet_to_csv.command:32`:
+   `MANUAL_FIELDS = ['FirstSeen', 'Days', 'Tag', 'Hours', 'Action', 'VB', 'BL', 'PJ']`.
+   This brief's ownership move (decision 3) and checkpoint 3b both cover five of them.
+   `Days` and `PJ` had no plan; `FirstSeen` has never worked at all.
+3. **The second PDF export was missing from every document in this repo.** See below.
+4. **The M/T swap has three copies, not two.** Fixed in place under Verified facts.
+
+### The second export — Jobs by Age (JBA)
+
+Multitrack has **two** open-jobs exports, and they are complementary. Trevor has said this more
+than once across sessions; it reached a memory file and no brief. **Verified 2026-07-29 against
+`GGNZ JBA 29 Jul.pdf` and `GGNZ Jobs 28 Jul.pdf` — both report 47 jobs, the same job set.**
+
+| | Medium Job Search (the one 1a imports) | Jobs by Age (JBA) |
+|---|---|---|
+| Job number | ✅ | ✅ |
+| Customer | ✅ | ❌ **not present** |
+| Mfr / Model / Status / Desc | ✅ | ✅ |
+| **Date In** | ❌ | ✅ `2017-12-01` |
+| **Days** | ❌ | ✅ `3162`, computed by Multitrack |
+
+**Multitrack already calculates the age.** The Google Sheet was recomputing a number Multitrack
+hands over for free. That is the whole reason the date went missing from this brief — the app has
+no date column, so nothing on the code side pointed at it.
+
+Column layout differs between the two files (JBA is date-led, Mfr wraps to two lines on long
+names, and x-positions shift partway down the document). It needs its **own parser**, not a flag
+on the existing one.
+
+### The freeze problem — Trevor, 2026-07-29
+
+> *"after the initial first JBA drop the pipeline only accepted Jobs pdf so the G sheet never
+> received the JBA again bc I entered date in manually, so I made the Days column calculate based
+> on date in. Would be nice to have that again instead of having to drop 2 pdfs, but not a deal
+> breaker."*
+
+This is the part that matters. **In the Sheet, Days is a live formula off Date In — it re-ticks
+every morning.** A number copied into the database does not. Verified 2026-07-29: the database says
+job 97 is **3159** days old; the JBA export says **3162**. It is already three days behind, and
+under Build 1b with the CSV switched off it would sit at 3159 forever.
+
+**So storing `days` as a number is the wrong shape, whoever owns it.**
+
+### DECISION — Days is computed, not stored. Date In is what gets imported.
+
+- Add a **`first_seen` date column** to the `jobs` table. Additive migration, nothing dropped,
+  nothing rewritten. This is the one real schema change in Brief G.
+- The **JBA drop writes `first_seen`** (and nothing else it doesn't own).
+- **The app computes age on render:** `days = today − first_seen`. It re-ticks daily on its own,
+  exactly like the Sheet formula, with no drop and no sync required.
+- **This is what answers Trevor's "would be nice".** Once a job has its `first_seen`, its age is
+  correct forever. JBA is only needed to *fill in a date the app doesn't have yet* — so routine
+  days stay a single Jobs-PDF drop, and JBA gets dropped when new jobs arrive (or whenever, it is
+  idempotent). Two drops is not the steady state; one is.
+- `days` stays as the stored column for now and `preserveKnownDays()` stays, so nothing breaks on
+  day one. Once `first_seen` is populated for every job, `days` becomes dead and gets removed in
+  Build 2 — **not in this build.**
+- `FirstSeen` in the CSV script stays broken and unused. It is not worth fixing something that is
+  being retired; the JBA path replaces it.
+
+### DECISION — `PJ` moves app-side with the other five. Six columns, not five.
+
+`PJ` is the project flag, Sheet-owned, in neither PDF, and read at `src/data/jobs.js:351`
+(`project: obj.PJ === 'Y'`). It has exactly the two-masters problem decision 3 describes. Verified
+live 2026-07-29: 4 jobs are `Y` (1175, 1448, 1520, 1679), 47 are `N`, 2 are unset (1711/1712 — the
+PDF-imported ones, correctly untouched by 1a's six-column writer).
+
+Wherever this brief says *"the five fields"* or *"`tag`, `hours`, `action`, `vb`, `bl`"*, read
+**six**: `tag`, `hours`, `action`, `vb`, `bl`, `project`. That applies to decision 3, the Jobs
+Sheet page, scope item 3, scope item 4 and checkpoint 3b. `PJ` renders as a checkbox, same as VB
+and BL.
+
+### Checkpoint 3b is widened
+
+3b now checks **six** columns against the Sheet, not five. `days` is deliberately **not** in the
+check — it stops being a hand-kept value the moment `first_seen` lands, so freezing it correctly
+is no longer the goal. See `docs/briefs/re-fresh-brief-g-checkpoint-3b-and-build-1b.md`.
+
+### New scope item — Build 1c
+
+Added as a **third supervised build**, after 1b. It does not block 1b and 1b does not block it;
+they touch different columns. Full detail at the end of the Scope section.
 
 ---
 
@@ -24,13 +122,15 @@ turns it into a CSV, and pushes that into the database. Several moving parts Tre
 The goal: drop the PDF straight into the Scheduler in the browser and new jobs appear.
 
 The catch the council was asked to solve: the PDF only contains **six** things about a job —
-job number, customer, manufacturer, model, status, and the fault description. Five things Trevor
-maintains by hand are **not in the PDF at all**: Tag, Hours, Action, VB, BL.
+job number, customer, manufacturer, model, status, and the fault description. Six things Trevor
+maintains by hand are **not in that PDF at all**: Tag, Hours, Action, VB, BL, PJ.
+*(Was "five" — `PJ` was missed. Corrected 2026-07-29; see the amendment above. Job age is the
+seventh, and it comes from the JBA export instead — Build 1c.)*
 
 The danger, confirmed in the live code: the current save routine writes *every* column on *every*
-job in one go. Dropping a PDF today would blank Tag, Action, VB, BL and job age on all ~46
-existing jobs — weeks of markup gone in one click. This is the same bug that already bit the
-job-age column once and was patched with `preserveKnownDays()`.
+job in one go. Dropping a PDF today would blank Tag, Action, VB, BL, PJ and job age on all 53
+existing top-level jobs — weeks of markup gone in one click. This is the same bug that already bit
+the job-age column once and was patched with `preserveKnownDays()`.
 
 **The fix, in one sentence Trevor can repeat:** the PDF can only fill in the six things it
 actually says; everything else is his, and the import can never touch it.
@@ -56,17 +156,17 @@ were re-verified against the live tree before this brief was written.
 
 ### Verified facts (do not re-litigate)
 
-- `upsertJobsBatch()` (`src/utils/supabase.js:159`, aliased as `saveJobsMasterBatch` at :1217)
+- `upsertJobsBatch()` (`src/utils/supabase.js:159`, aliased as `saveJobsMasterBatch` at :1340)
   hardcodes ~20 columns on every row of the batch, including `tag`, `action`, `hours`,
   `vb`, `bl`, `days`. A Supabase array upsert sends the **union** of all rows' keys, so any
   column named on one row is NULL-filled across the whole batch.
-- **The safe writer already exists.** `batchWriteJobsState()` (`src/utils/supabase.js:1231`)
+- **The safe writer already exists.** `batchWriteJobsState()` (`src/utils/supabase.js:1354`)
   maps only the keys actually present via `toJobRow()` (:129), then **groups rows by their exact
   column signature** so a sparse row is never NULL-filled by a fuller one in the same request.
   The pattern is in production and commented. The PDF path does not need a new writer invented.
 - Every job upsert conflicts on `id`, and for a top-level job **`id` is the job number**.
 - **Hours is NOT inferred from the description.** `parseCSV()` reads it straight from the CSV's
-  Hours column (`parseFloat(obj.Hours) || 0`, `src/data/jobs.js:322`), then defaults to **1h** for
+  Hours column (`parseFloat(obj.Hours) || 0`, `src/data/jobs.js:321`), then defaults to **1h** for
   a schedulable job with no hours (:329). `inferBench()` infers the *bench* from description
   keywords; `benchHours` only sizes split subtask cards in `createSubtasks()`. An earlier draft of
   this brief claimed hours were keyword-inferred — that was wrong, corrected 2026-07-28.
@@ -76,16 +176,22 @@ were re-verified against the live tree before this brief was written.
 - **Tag drives Hours, and that conversion happens in the Google Sheet, not in this app.** Trevor
   sets the effort in the Sheet; the Sheet turns it into a number; the app only ever receives the
   finished Hours. There is no Tag→Hours mapping anywhere in the codebase.
-- **`job.tag` is vestigial.** It appears in exactly two live lines — written at
-  `src/utils/supabase.js:187`, read back at `src/hooks/useSupabase.js:67`. Nothing displays it and
-  nothing branches on it. The job cards show **hours**, not the tag. (`helpArticles.js:154` claims
-  cards show difficulty tags — stale doc.)
+- **`job.tag` is vestigial.** Nothing displays it and nothing branches on it. The job cards show
+  **hours**, not the tag. Written at `src/utils/supabase.js:187`, read back at
+  `src/hooks/useSupabase.js:67`, and set on the CSV path at `src/data/jobs.js:343`
+  (`tag: obj.Tag || inferTag(effectiveHours)`). (An earlier line here said "exactly two live
+  lines" and missed the third — corrected 2026-07-29. `helpArticles.js:154` also documents it;
+  see the ⚠️ under `inferTag()` below.)
 - **`inferTag()` (`src/data/jobs.js:172`) has T and M swapped** (confirmed by Trevor, twice). It
   reads EZ ≤1.5h → T ≤3h → M ≤5.5h → H, but Tricky is *more* work than Medium, so it should be
   EZ ≤1.5h → M ≤3h → T ≤5.5h → H. Dormant today because nothing reads `job.tag`; it also only
   fires when the Tag cell is blank, and the Sheet fills it. **Decision 2 below makes it live.**
   The **same swap is duplicated** in `scripts/sheet_to_csv.command:295-300` (`infer_tag`) and both
   copies must be fixed together, because Build 1 runs both paths at once.
+  > ⚠️ **Corrected 2026-07-29 — there is a THIRD copy.** `src/data/helpArticles.js:154` is the
+  > app's own help text and it teaches the swap verbatim: *"Difficulty tags: EZ (≤1.5h), T (≤3h),
+  > M (≤5.5h), H (>5.5h)."* Fixing only the two code copies leaves the app explaining the wrong
+  > mapping to Trevor on screen. **Scope item 4b covers all three.**
 - **Hours in the Sheet can be a range, and the pipeline averages it.**
   `scripts/sheet_to_csv.command:319` — if the raw Hours cell contains `-` (e.g. `2-4`), it takes
   the mean (3). Trevor uses this. The Jobs Sheet page must accept a range in the Hours cell, or
@@ -220,9 +326,19 @@ five columns (decision 3), there is no back door left to guard — the CSV canno
 longer sends. Widening the preserve guard would have been a patch on a problem the ownership move
 deletes outright. Per CLAUDE.md: root cause over patches.
 
-`preserveKnownDays()` stays exactly as it is, still covering `days` only. `days` is a Multitrack
-fact that legitimately still arrives by import, and its blank-never-overwrites-good rule is still
-needed there. **Do not widen it. Do not remove it.**
+`preserveKnownDays()` stays exactly as it is, still covering `days` only. **Do not widen it. Do not
+remove it.**
+
+> ⚠️ **Corrected 2026-07-29.** This paragraph previously read: *"`days` is a Multitrack fact that
+> legitimately still arrives by import."* **That was false when written.** The PDF importer sets
+> `days: null` on every new job (`src/data/pdfImportPlan.js:75`), and `days` has only ever reached
+> the database through the CSV, sourced from the Google Sheet's `Date` column. Nobody checked it.
+>
+> The *conclusion* survives, for a different reason: `days` **is** a Multitrack fact, and the JBA
+> export carries it as a finished number (see Build 1c). So the guard is correct to keep — it just
+> has nothing to guard until 1c ships. Between now and then, `days` is frozen at whatever the last
+> CSV sync wrote. Verified 2026-07-29: the database says job 97 is 3159 days old, the JBA export
+> says 3162.
 
 Rule in one sentence: *Multitrack owns the six facts about the guitar; the app page owns everything
 Trevor decides; neither can write the other's columns.*
@@ -336,10 +452,51 @@ revert him.
 commit, run a CSV sync, confirm the edit survives. Confirm the Tag→Hours auto-fill uses the
 corrected M/T bands. Confirm a range in the Hours cell (`2-4`) averages to 3.
 
+---
+
+### Build 1c — the JBA drop, and job age stops going stale
+
+**Added by the 2026-07-29 amendment. Needs a fresh "yp" before it starts.**
+
+Ends with: Trevor drops the JBA PDF, every job gets its real Date In, and the age on the card
+counts up on its own every morning without anything being dropped or synced.
+
+8. **`first_seen` column** — additive migration on the `jobs` table, `date`, nullable. Nothing
+   dropped, nothing rewritten, no existing column touched. Run it before the parser lands so the
+   writer has somewhere to write.
+9. **Port a second parser — `parseJobsByAgePdf`.** Its own file, its own tests. **Do not extend
+   the Medium-Job-Search parser with a mode flag** — the layouts differ (date-led rows, Mfr wraps
+   to a second line on long names, x-positions shift partway down the file) and one parser serving
+   two layouts is how a short parse becomes silent.
+   Fields out: **job number and Date In. Nothing else.** JBA also carries Mfr/Model/Status/Desc,
+   and those already arrive on the Jobs PDF — a second writer for the same columns is the
+   two-masters bug again, in a new place. **JBA owns exactly one column: `first_seen`.**
+10. **One-column sparse writer** — same `toJobRow` + column-signature-grouping pattern as 1a. One
+    name in the allow-list: `first_seen`. Do **not** call `upsertJobsBatch()`.
+11. **Preview screen and count sanity-check**, same shape as 1a: "45 dates filled · 2 already
+    known · 6 jobs here that aren't in this file". Import / Cancel. A short parse refuses.
+    **A job in the database but absent from JBA is reported, never deleted** — verified 2026-07-29,
+    the database holds 53 top-level jobs against JBA's 47, and the 6 extra are legitimate.
+12. **Age is computed on render** — `days = today − first_seen` wherever job age is displayed,
+    falling back to the stored `days` column when `first_seen` is null so nothing goes blank
+    mid-migration.
+
+**Explicitly NOT in 1c:** removing the `days` column, removing `preserveKnownDays()`, or changing
+what the Jobs PDF writes. Those are Build 2, once every job has a `first_seen`.
+
+**1c verification (independent agent, then browser test):** drop the real JBA PDF on the Vercel
+preview; confirm job 97 reads 3162 days, not 3159; confirm Tag/Hours/Action/VB/BL/PJ and customer
+are all unchanged; confirm no calendar slot, bench assignment or split state moved; re-drop the
+same file and confirm nothing duplicates.
+
+---
+
 ## Out of scope — do not build
 
 - Retiring the DropBox/watcher/CSV pipeline. That is **Build 2**, a separate brief, after real
-  PDFs have imported successfully.
+  PDFs have imported successfully. **Also Build 2:** removing the `days` column and
+  `preserveKnownDays()` once `first_seen` covers every job, and deleting the never-working
+  `FirstSeen` handling in `scripts/sheet_to_csv.command`.
 - ~~Moving Tag/Hours/Action/VB/BL to the app-owned side of `joinJobs.js`.~~ **Now IN scope** —
   Trevor overturned this 2026-07-28. See decision 3.
 - Any snapshot/restore or undo button.
@@ -374,8 +531,18 @@ corrected M/T bands. Confirm a range in the Hours cell (`2-4`) averages to 3.
 10. **Browser test — 1b** — edit a field in the sheet page, commit, run a CSV sync, confirm the edit
     survives.
 11. **Merge 1b** — Trevor's "yp".
+12. **Builder — run 1c** — fresh builder agent, fresh staging branch.
+13. **Independent verifier — 1c** — separate agent, never the builder.
+14. **Browser test — 1c** — drop the real JBA PDF, confirm job 97 reads 3162 not 3159, confirm
+    nothing else moved.
+15. **Merge 1c** — Trevor's "yp".
 
-Each half gets its own builder run, its own verifier and its own browser test. Steps 1 and 2 (brief
-and council) are done once and cover both — the council's findings are binding on both builders.
+Each build gets its own builder run, its own verifier and its own browser test. Steps 1 and 2
+(brief and council) are done once and cover all three — the council's findings are binding on
+every builder.
+
+**Council did not see Build 1c.** It was written after the council ran. Before 1c starts, two
+`ggnz-council` agents review the 1c scope specifically — the migration, the second parser, and the
+computed-age change. 1a and 1b keep the original council verdict.
 
 **No commits before step 1 is approved.**

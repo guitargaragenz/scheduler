@@ -15,15 +15,22 @@ and more current than this file on anything to do with scope. Read it.
 Trevor can now drop the Multitrack PDF into the Scheduler in his browser and new jobs appear.
 That half is built, tested against real data, merged and live.
 
-What's left is the second half: moving ownership of his five hand-kept fields into the app, and
+What's left is the second half: moving ownership of his hand-kept fields into the app, and
 rebuilding the Google Sheet as a page inside the Scheduler where he edits Tag / Hours / Action /
-VB / BL and presses commit.
+VB / BL / PJ and presses commit.
 
-**Between the two halves sits one job only Trevor can do** — checking that the five fields
-already in the database match what's in his Google Sheet. Once the app owns those fields, the
+**Between the two halves sits one job only Trevor can do** — checking that those fields
+already in the database match what's in his Google Sheet. Once the app owns them, the
 Sheet stops being the master copy, so whatever is in the database at that moment becomes the
 truth. If it's stale, the staleness becomes permanent. That check is checkpoint 3b, and
 **Build 1b does not start until Trevor clears it.**
+
+> ⚠️ **Widened 2026-07-29 from five fields to six.** The Google Sheet owns **eight** columns
+> (`scripts/sheet_to_csv.command:32`), not five. `PJ` — the project flag — was missed, and it has
+> the same two-masters problem as the rest, so it joins the check and the ownership move.
+> `Days` was also missed, but it turned out **not** to belong here at all: Multitrack computes job
+> age itself and prints it on a second export nobody had written down. `FirstSeen` has never
+> worked. See "The job date" below, and the 2026-07-29 amendment in `.claude/pending-brief.md`.
 
 ---
 
@@ -82,108 +89,167 @@ belt-and-braces, snapshot `scheduled_slots` before the next import.
 
 **Brief G, item 3b.** Nothing gets built until Trevor says the numbers are right.
 
-The database side is already pulled, below, as of 2026-07-29. **53 top-level jobs** (plus 8
-split/derived rows, which are app-side and not part of this check). Trevor compares this
-against the Google Sheet. If it's stale, one final CSV sync, then re-pull and re-check.
+### The six fields being checked, and why not the other two
+
+The Sheet owns eight columns — `MANUAL_FIELDS` at `scripts/sheet_to_csv.command:32`:
+`FirstSeen`, `Days`, `Tag`, `Hours`, `Action`, `VB`, `BL`, `PJ`.
+
+| Column | In this check? | Why |
+|---|---|---|
+| `Tag` | ✅ | app becomes master at 1b |
+| `Hours` | ✅ | app becomes master at 1b |
+| `Action` | ✅ | app becomes master at 1b |
+| `VB` | ✅ | app becomes master at 1b |
+| `BL` | ✅ | app becomes master at 1b |
+| `PJ` | ✅ | **added 2026-07-29** — was missed by every earlier draft |
+| `Days` | ❌ | becomes a computed number at Build 1c, so there is nothing to freeze |
+| `FirstSeen` | ❌ | has never worked — `sheet_to_csv.command:84` looks for a column called `FirstSeen`, the Sheet's column is called `Date`, so it has always been `None`. Retired at Build 2. |
+
+### The job date — why `Days` dropped out of this check
+
+Trevor's Sheet has a `Date` column, and its Days is a **live formula** off that date, so it is
+correct every morning without him touching it. The database's `days` is a **stored number** that
+was written once and has been going stale ever since — verified 2026-07-29, the database says job
+97 is 3159 days old and Multitrack says 3162.
+
+Freezing that at cutover would freeze a wrong number that then never moves again. So `Days` is
+not on the checklist. Instead, **Build 1c** adds a `first_seen` date column, populated from
+Multitrack's *Jobs by Age* export, and the app computes the age on render — the same live-formula
+behaviour Trevor's Sheet has, without him keeping the date by hand.
+
+That JBA export was always meant to be part of this — two PDF drops, one for dates and one for
+customer names. Only the customer one got built. See the 2026-07-29 amendment in
+`.claude/pending-brief.md` for the full design; **Build 1c is not started and not part of 3b.**
+
+### The database, as of 2026-07-29
+
+**53 top-level jobs** (plus 8 split/derived rows, which are app-side and not part of this check).
+Trevor compares this against the Google Sheet. If it's stale, one final CSV sync, then re-pull
+and re-check.
 
 ```
-Job   Customer                  Tag  Hrs  Action  VB  BL  Status
+Job   Customer                  Tag  Hrs  Action  VB  BL  PJ  Status
 ------------------------------------------------------------------------------------
-97    Audio Solutionz           T    3    RS-C    N   Y   Booked In
-112   Audio Solutionz           T    3    RS-C    N   Y   On Hold
-182   Toi Ohomai Insitute of T  SKP  4    RS      N   Y   On Hold
-321   Sheep as Chips Ltd        SKP  6    CI      N   Y   On Hold
-341   Audio Solutionz           T    3    RS-C    N   Y   On Hold
-393   Toi Ohomai Insitute of T  H    3    INC     N   Y   Booked In
-592   Sheep as Chips Ltd        SKP  6    CI      N   Y   On Hold
-693   Toi Ohomai Insitute of T  H    3    INC     N   Y   Booked In
-842   Greg Purcell              T    2    RS-C    N   Y   On Hold
-875   Audio Solutionz           T    3    RS-C    N   Y   Active
-919   Public Sound Company      T    3    RS-C    N   Y   On Hold
-1175  Julian Henry              M    6    CI      N   Y   On Hold
-1268  Chris Doms                SKP  2    GTS     N   N   Waiting
-1345  Missy Kennedy             M    2    GTS     N   N   Active
-1382  James Sullivan            M    4    GTS     N   N   Booked In
-1411  James Curtis              T    3    CI      N   N   Active
-1448  Annette Papuni            H    6    CI      N   N   Waiting
-1505  Trident High School       EZ   2    GTS     N   N   Active
-1513  Freedom Center            M    3    GTS     N   N   Booked In
-1520  Pete Johanson             M    8    GTS     N   N   Active
-1544  Te Pukenga TA Toi Ohomai  M    2    RS-C    N   N   Booked In
-1582  Jason Crawford            M    2    GTS     N   N   Active
-1604  Toi Ohomai                T    5    CI      N   N   Waiting
-1609  Paul Jones                EZ   1    GTS     N   N   Booked In
-1616  Damon Oates               EZ   2    CI      N   N   On Hold
-1619  Sheep as Chips Ltd        EZ   1    GTS     N   N   Active
-1620  Sheep as Chips Ltd        EZ   1    GTS     N   N   Active
-1621  Tony Robson               M    9    GTS     N   N   Booked In
-1626  Griffin Beach             M    3    GTS     Y   N   Active
-1632  Bailey Stevens            M    5    GTS     N   N   Active
-1635  Adam Barrett              T    6    GTS     N   N   Waiting
-1637  Tawera Simpson-Rangi      EZ   4    GTS     N   N   On Hold
-1671  Richard Allen             M    1.5  parts   N   N   Waiting
-1676  Tony Procter              EZ   2    CI      Y   N   Booked In
-1679  Gav Comber                M    8    GTS     N   N   Waiting
-1682  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1683  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1684  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1685  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1686  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1687  Papamoa College           EZ   1    GTS     N   N   Active
-1688  Papamoa College           EZ   1    GTS     N   N   To Be Inv
-1689  Papamoa College           EZ   1    GTS     N   N   Active
-1690  Papamoa College           EZ   1    GTS     N   N   Booked In
-1698  Matt Packard              EZ   1    GTS     N   N   Booked In
-1702  Sheep as Chips Ltd        EZ   1    GTS     N   N   Active
-1703  Murray Spicer             EZ   4    GTS     N   N   Booked In
-1705  Hannah Wanhill            M    2    GTS     N   N   Waiting
-1706  Josh Allison              EZ   1    CI      N   N   On Hold
-1708  Matt Packard              M    1    GTS     N   N   Booked In
-1710  John Taotao               EZ   1    GTS     N   N   Booked In
-1711  Dean Cronin                    1                    Booked In
-1712  Jules Lovell                   0                    Waiting
+97    Audio Solutionz           T    3    RS-C    N   Y   N   Booked In
+112   Audio Solutionz           T    3    RS-C    N   Y   N   On Hold
+182   Toi Ohomai Insitute of T  SKP  4    RS      N   Y   N   On Hold
+321   Sheep as Chips Ltd        SKP  6    CI      N   Y   N   On Hold
+341   Audio Solutionz           T    3    RS-C    N   Y   N   On Hold
+393   Toi Ohomai Insitute of T  H    3    INC     N   Y   N   Booked In
+592   Sheep as Chips Ltd        SKP  6    CI      N   Y   N   On Hold
+693   Toi Ohomai Insitute of T  H    3    INC     N   Y   N   Booked In
+842   Greg Purcell              T    2    RS-C    N   Y   N   On Hold
+875   Audio Solutionz           T    3    RS-C    N   Y   N   Active
+919   Public Sound Company      T    3    RS-C    N   Y   N   On Hold
+1175  Julian Henry              M    6    CI      N   Y   Y   On Hold
+1268  Chris Doms                SKP  2    GTS     N   N   N   Waiting
+1345  Missy Kennedy             M    2    GTS     N   N   N   Active
+1382  James Sullivan            M    4    GTS     N   N   N   Booked In
+1411  James Curtis              T    3    CI      N   N   N   Active
+1448  Annette Papuni            H    6    CI      N   N   Y   Waiting
+1505  Trident High School       EZ   2    GTS     N   N   N   Active
+1513  Freedom Center            M    3    GTS     N   N   N   Booked In
+1520  Pete Johanson             M    8    GTS     N   N   Y   Active
+1544  Te Pukenga TA Toi Ohomai  M    2    RS-C    N   N   N   Booked In
+1582  Jason Crawford            M    2    GTS     N   N   N   Active
+1604  Toi Ohomai                T    5    CI      N   N   N   Waiting
+1609  Paul Jones                EZ   1    GTS     N   N   N   Booked In
+1616  Damon Oates               EZ   2    CI      N   N   N   On Hold
+1619  Sheep as Chips Ltd        EZ   1    GTS     N   N   N   Active
+1620  Sheep as Chips Ltd        EZ   1    GTS     N   N   N   Active
+1621  Tony Robson               M    9    GTS     N   N   N   Booked In
+1626  Griffin Beach             M    3    GTS     Y   N   N   Active
+1632  Bailey Stevens            M    5    GTS     N   N   N   Active
+1635  Adam Barrett              T    6    GTS     N   N   N   Waiting
+1637  Tawera Simpson-Rangi      EZ   4    GTS     N   N   N   On Hold
+1671  Richard Allen             M    1.5  parts   N   N   N   Waiting
+1676  Tony Procter              EZ   2    CI      Y   N   N   Booked In
+1679  Gav Comber                M    8    GTS     N   N   Y   Waiting
+1682  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1683  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1684  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1685  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1686  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1687  Papamoa College           EZ   1    GTS     N   N   N   Active
+1688  Papamoa College           EZ   1    GTS     N   N   N   To Be Inv
+1689  Papamoa College           EZ   1    GTS     N   N   N   Active
+1690  Papamoa College           EZ   1    GTS     N   N   N   Booked In
+1698  Matt Packard              EZ   1    GTS     N   N   N   Booked In
+1702  Sheep as Chips Ltd        EZ   1    GTS     N   N   N   Active
+1703  Murray Spicer             EZ   4    GTS     N   N   N   Booked In
+1705  Hannah Wanhill            M    2    GTS     N   N   N   Waiting
+1706  Josh Allison              EZ   1    CI      N   N   N   On Hold
+1708  Matt Packard              M    1    GTS     N   N   N   Booked In
+1710  John Taotao               EZ   1    GTS     N   N   N   Booked In
+1711  Dean Cronin                    1                        Booked In
+1712  Jules Lovell                   0                        Waiting
 ```
 
 **Things worth Trevor's eye specifically:**
 
-- **`1711` and `1712` have no Tag, no Action, no VB, no BL.** These are the two jobs the PDF
+- **`PJ` is `Y` on exactly four jobs** — `1175`, `1448`, `1520`, `1679` — and `N` on the other 47,
+  except `1711` and `1712` which are unset. This column has never been eyeballed before, because
+  no brief knew it existed. It is the one genuinely new thing in the widened check.
+- **`1711` and `1712` have no Tag, no Action, no VB, no BL, no PJ.** These are the two jobs the PDF
   import brought in, and that is exactly right — Multitrack doesn't print those fields, so the
   import can't invent them. They need Trevor's values. Once Build 1b's sheet page exists he can
   type them there; before then they're blank.
 - **`1671` has `action` = `parts`**, which is not one of the workflow codes
   (INC / CI / RS / RS-C / DG / GTS). Legacy value from the CSV era. Trevor's call whether to
   correct it.
-- **`SKP`** appears as a Tag on five jobs (182, 321, 592, 1268) — not one of EZ / M / T / H.
+- **`SKP`** appears as a Tag on four jobs (182, 321, 592, 1268) — not one of EZ / M / T / H.
   Same question: legacy, or intentional?
 - **6 jobs are in the database but not in the latest PDF**: `1619`, `1620`, `1626`, `1671`,
   `1698`, `1702`. Reported only, never deleted. `1620` is confirmed complete — Trevor said so.
+  These are the same six that have no `days` value and don't appear in the JBA export either.
 
 To re-pull this table fresh:
 
 ```bash
-cd "/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/GGNZ SCHEDULER PROJECT" && set -a && . ./.env && set +a && curl -s "$VITE_SUPABASE_URL/rest/v1/jobs?select=id,customer,tag,hours,action,vb,bl,status&order=id.asc" -H "apikey: $VITE_SUPABASE_ANON_KEY" -H "Authorization: Bearer $VITE_SUPABASE_ANON_KEY"
+cd "/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/GGNZ SCHEDULER PROJECT" && set -a && . ./.env && set +a && curl -s "$VITE_SUPABASE_URL/rest/v1/jobs?select=id,customer,tag,hours,action,vb,bl,pj,status&order=id.asc" -H "apikey: $VITE_SUPABASE_ANON_KEY" -H "Authorization: Bearer $VITE_SUPABASE_ANON_KEY"
 ```
+
+> Note: `order=id.asc` sorts as text, so `1712` comes before `182`. Harmless for reading, but
+> don't mistake it for missing rows.
 
 ---
 
 ### 📝 Record the outcome here — the 3b session must fill this in before it ends
 
 **This is not optional.** Build 1b freezes whatever is in the database as the permanent truth
-for these five fields. If the only record of what was checked and corrected is a session
+for these six fields. If the only record of what was checked and corrected is a session
 transcript, the next session is taking it on trust. Write it down, commit it, push it.
 
-Replace the blanks below, then commit with a message saying 3b cleared.
+**Status: NOT CLEARED.** Five of the six fields are done. `PJ` is outstanding — the check was
+widened to include it *after* Trevor had already gone through the other five, so he has not seen
+the PJ column yet. One line below is still blank, and while it is blank, **Build 1b does not
+start.**
 
-- **Cleared on:** `____-__-__`
-- **Cleared by:** Trevor, in session `____`
-- **Sheet vs database:** ⬜ matched as-is / ⬜ needed a final CSV sync
-- **If a sync was run:** date `____`, and the table above re-pulled afterwards? ⬜ yes / ⬜ no
-- **Job count at cutover:** `____` top-level jobs
-- **`1671`'s Action was `parts`** (not a valid workflow code) → Trevor's decision: `____________`
-- **`SKP` used as a Tag** on 182 / 321 / 592 / 1268 (not EZ/M/T/H) → Trevor's decision: `____________`
-- **`1711` and `1712` blank** on Tag/Action/VB/BL → ⬜ filled in before cutover / ⬜ left blank, to be typed into the new sheet page
-- **Anything else corrected:** `____________`
-- **Anything deliberately left wrong, and why:** `____________`
+- **Reviewed on:** 2026-07-29
+- **Reviewed by:** Trevor, session `0ca0ef1e` (Micky)
+- **Sheet vs database:** ☑ **matched as-is** — no final CSV sync needed
+- **If a sync was run:** n/a — none run, table above pulled straight from Supabase 2026-07-29
+- **Job count at cutover:** **53** top-level jobs (8 split/derived rows excluded)
+- **`1671`'s Action was `parts`** (not a valid workflow code) → Trevor's decision: **blank it out.**
+  ⬜ *not yet applied — see "Still to do" below*
+- **`SKP` used as a Tag** on 182 / 321 / 592 / 1268 (not EZ/M/T/H) → Trevor's decision:
+  **legacy, leave it anyway.** No change. It will be one of the values the 1b sheet page has to
+  tolerate rather than reject.
+- **`1711` and `1712` blank** on Tag/Action/VB/BL/PJ → ☑ **left blank, to be typed into the new
+  sheet page** once Build 1b ships.
+- **`PJ` — Y on 1175 / 1448 / 1520 / 1679, N on the other 47:** `____________` ← **outstanding**
+- **Anything else corrected:** nothing. Everything else matched.
+- **Anything deliberately left wrong, and why:** `SKP`, above — legacy tag values Trevor wants
+  kept. Also `days`, which is stale in the database (job 97 reads 3159, Multitrack says 3162);
+  deliberately not corrected here because Build 1c replaces the stored number with a computed one.
+
+**Still to do before 3b can be marked cleared:**
+
+1. Trevor confirms the `PJ` column.
+2. Apply his `1671` decision — blank the `action`. **Blank it in the Google Sheet as well as the
+   database**, because until Build 1b ships the Sheet is still master, so a DB-only fix would be
+   overwritten by the next CSV sync and `parts` would be what gets frozen.
+3. Tick this section, change the heading above from ⬜ to ✅, commit, push.
 
 Then set this file's status line for Build 1b and let the next session start at step 3.
 
@@ -196,18 +262,31 @@ again — council is already done and its findings still stand, so it starts at 
 
 | Item | What it is |
 |------|-----------|
-| 3 | Ownership move — the app becomes master for Tag / Hours / Action / VB / BL |
-| 4 | Jobs Sheet page — all jobs in a grid, edit the five fields, commit button |
-| 4b | Fix the Medium/Tricky swap in **both** copies: `inferTag()` at `src/data/jobs.js:172` and `infer_tag()` at `scripts/sheet_to_csv.command:295-300`. Correct order is EZ ≤1.5h → **M ≤3h → T ≤5.5h** → H |
+| 3 | Ownership move — the app becomes master for Tag / Hours / Action / VB / BL / **PJ** |
+| 4 | Jobs Sheet page — all jobs in a grid, edit the six fields, commit button |
+| 4b | Fix the Medium/Tricky swap in **all three** copies: `inferTag()` at `src/data/jobs.js:172`, `infer_tag()` at `scripts/sheet_to_csv.command:295-300`, and the user-facing help text at `src/data/helpArticles.js:154`. Correct order is EZ ≤1.5h → **M ≤3h → T ≤5.5h** → H |
+
+> ⚠️ **Both rows widened 2026-07-29.** Items 3 and 4 previously said five fields; `PJ` was
+> missed. And 4b previously said "both copies" — there is a third, the help article, which
+> tells Trevor the wrong thresholds in plain English inside the app. Fixing the code and
+> leaving the help text is worse than fixing neither.
 
 Protocol steps still to run for 1b: builder (`ggnz-builder`, opus) → independent verifier
 (`ggnz-verifier`, sonnet, never the builder) → browser test (edit a field in the sheet page,
 commit, run a CSV sync, confirm the edit survives) → merge on Trevor's "yp".
 
+**Build 1c — the JBA drop and computed job age — is separate, comes after 1b, and has not been
+through council.** Its scope is in `.claude/pending-brief.md`, items 8–12. Don't fold it into 1b.
+
 ---
 
 ## Things that are easy to get wrong — carried forward, all learned the hard way
 
+- **The Sheet owns eight columns, not five. `grep MANUAL_FIELDS scripts/sheet_to_csv.command`.**
+  Every brief in this series was written by looking at the *app* and never at the *Sheet*, which
+  is why `PJ`, `Days` and the whole JBA export went missing for months. One grep on the one line
+  that defines what Trevor maintains by hand would have caught all three on day one. If a brief
+  ever again says "Trevor's hand-kept fields are X, Y, Z" — check that line before believing it.
 - **Tag ≠ Action.** Tag is *effort* — EZ / M / T / H. Action is the *workflow code* —
   INC / CI / RS / RS-C / DG / GTS. Different columns. This was conflated twice and Trevor had
   to correct it both times.

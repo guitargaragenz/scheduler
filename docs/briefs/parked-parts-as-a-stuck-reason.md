@@ -5,7 +5,8 @@ doc_status: parked
 # Parked brief — Parts as a stuck reason
 
 **Status:** **PARKED.** Not approved, not scoped, not started. No "yp" sought yet.
-**Date parked:** 2026-07-27
+**Date parked:** 2026-07-27. **Line refs re-verified 2026-07-29** (they had drifted; the
+substance was all still correct).
 **Blocked on:** the first Sunday board meeting run. See "Why this waits" below.
 **Split from:** Brief E (job blocking), where the two parts items were cut at council.
 
@@ -36,7 +37,7 @@ it as a job-state write.
 code because nothing in `src/` writes to it. That was the wrong test — the writer is the
 Sunday board meeting, not the app. `.claude/workflows/sunday-board-meeting.js` names
 "new parts → `parts_to_order`" at lines 12 and 16 as one of its three end-of-meeting writes,
-reads the list back at line 73, and hands it to the Admin seat at line 95.
+reads the list back at line 75, and hands it to the Admin seat at line 95.
 
 The table is empty because **the first board meeting has not run yet.** Trevor is holding it
 until the job-blocking build merges (confirmed 2026-07-27).
@@ -65,17 +66,17 @@ against a job number that later disappears, or against no job at all.
 
 Read before planning, per Trevor's instruction. Findings, `src/components/DailyLogPage.jsx`:
 
-- The box is a single free-text input, placeholder `"quick note — hit enter"`, at line 1002
-  (and again at 1241 — **there are two of them**, presumably desktop and mobile; both must get
+- The box is a single free-text input, placeholder `"quick note — hit enter"`, at line 1003
+  (and again at 1264 — **there are two of them**, presumably desktop and mobile; both must get
   the toggle or the feature is half-present).
-- `handleKeyDown` at line 776 calls `onAddBullet(input.trim(), null, null)`. **The box has no
+- `handleKeyDown` at line 779 calls `onAddBullet(input.trim(), null, null)`. **The box has no
   concept of a currently-open job** — that first `null` is where a job id would go, and it is
   hardcoded.
 - There is already a precedent for exactly the control this needs: when the input has text, a
-  button appears beside it (line 1012) that opens a scheduling modal. A parts toggle is the
+  button appears beside it (just below, same block) that opens a scheduling modal. A parts toggle is the
   same pattern, second button.
 - Job-linked bullets **do** exist: `bullet.jobId` at lines 200/205/309, and `pulledJobIds` at
-  798. A job pulled into today's log becomes a bullet that already carries its number.
+  799. A job pulled into today's log becomes a bullet that already carries its number.
 
 **So: the bujo box on its own cannot tag a job.** Anything typed there is shop stock unless a
 job number is inferred from somewhere, and there is nowhere to infer it from.
@@ -110,7 +111,7 @@ Trevor asked for a recommendation rather than picking. This is it:
   wrong.
 - Do not delete `parts_to_order` or its five Supabase functions (`loadPartsToOrder`,
   `addPartsToOrderItems`, `removePartsToOrderItem`, `markPartResolved`,
-  `subscribeToPartsToOrder`, `supabase.js` lines 766–860) on the strength of the superseded
+  `subscribeToPartsToOrder`, `supabase.js` lines 897–985) on the strength of the superseded
   "dead code" reading.
 
 ---

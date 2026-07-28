@@ -2,47 +2,75 @@
 doc_status: parked
 ---
 
-# Follow-up Brief — align blocked-job naming and rules across all three screens
+# Follow-up Brief — the Sidebar's three buckets don't match `blockedPile()`'s four piles
 
-**Status:** BACKLOG. Not started, not scoped in detail. Raised by Council during Brief F, 2026-07-27.
-**Depends on:** Brief F ("Waiting"/"Planning" chips on the bench-picker row) shipping first.
+**Status:** BACKLOG. Not started. Raised by Council during Brief F, 2026-07-27.
+**Re-checked against live code 2026-07-29 — most of it was already fixed. Scope cut accordingly.**
 
 ---
 
-## Plain-English summary
+## What's already been fixed since this was written
 
-The same stuck job gets called three different things depending on which screen you're looking at,
-and the three screens don't even agree on *which* jobs are stuck. Brief F adds the words "Waiting"
-and "Planning" to the bench row. That's the first time those words appear anywhere in the app — so
-after Brief F ships, the mismatch is visible rather than just latent.
+Three of this brief's four original findings no longer reproduce. Verified 2026-07-29:
 
-**Trevor's decision (2026-07-27): the label is "Waiting", not "Awaiting".** Everything aligns to
-"Waiting".
+- **The wording is aligned.** The Sidebar reads `📞 WAITING` (`Sidebar.jsx:285`), not
+  `AWAITING`. Trevor's "Waiting, not Awaiting" call has landed.
+- **Membership no longer diverges between screens.** `useSupabase.js:43` now folds
+  `blockedPile()` into `schedulable` itself, with a comment at `:37-41` saying exactly why. So
+  the Sidebar, the Jobs page and the bench row all inherit one rule — the original complaint
+  that "three screens give one job three different answers" is closed.
+- **The worked example is dead.** This brief used to claim a `Waiting` + CI job shows as
+  *Waiting* on the bench row but *AWAITING* in the Sidebar. Both now say Waiting, and
+  `deriveJobStatusFlags` at `jobs.js:203` puts exactly that case in `awaiting` anyway.
 
-## The three variants as they stand today
+The old line reference `jobs.js:116-127` has also drifted — `blockedPile()` is at
+**`src/data/jobs.js:123`**.
 
-| Screen | Sections shown | Rule it runs on |
-|---|---|---|
-| Sidebar (`Sidebar.jsx:73-75`) | `📞 AWAITING` / `📦 IN TRANSIT` / `🔒 ON HOLD` (`:285,295,305`) | old `deriveJobStatusFlags` booleans — `j.awaiting`, `j.inTransit`, `!j.schedulable` |
-| Jobs page (`JobsPage.jsx:35-36`) | one lumped **"Waiting / On Hold"** (`:150`) | `j.schedulable` |
-| Bench row (Brief F) | **Waiting** / **Planning** | `blockedPile()` (`jobs.js:116-127`) |
+---
 
-None of Sidebar or JobsPage calls `blockedPile()`.
+## What's actually left — one real mismatch
 
-## Why it matters
+`blockedPile()` returns **four** piles (`jobs.js:126-135`):
 
-Membership diverges, not just wording. A `Booked In + INC` job is **Planning** on the bench row but
-lands in the Sidebar's **ON HOLD** bucket. A `Waiting`-status job with CI is **Waiting** on the bench
-row but **AWAITING** in the Sidebar. Two screens, one job, different answers — the exact class of bug
-the comment at `jobs.js:22-26` says Brief E existed to kill.
+| Pile | Rule |
+|---|---|
+| `planning` | action is INC / RS / RS-C — regardless of status |
+| `hold` | status `On Hold` |
+| `transit` | status `In Transit` |
+| `waiting` | status `Waiting` |
+
+The Sidebar shows **three** sections (`Sidebar.jsx:73-75`), and they run on the older
+`deriveJobStatusFlags` booleans, not on `blockedPile()`:
+
+| Section | Rule |
+|---|---|
+| `📞 WAITING` | `j.awaiting` — status `Waiting` **and** action INC or CI |
+| `📦 IN TRANSIT` | `j.inTransit` |
+| `🔒 ON HOLD` | everything else not schedulable — the catch-all |
+
+**The consequence:** `ON HOLD` is a bin, not a category. A `Booked In` + `INC` job is
+**Planning** on the bench row and lands under **🔒 ON HOLD** in the Sidebar. So does a
+`Waiting` + `GTS` job — which is `waiting` to `blockedPile()` but fails the Sidebar's stricter
+`awaiting` test because GTS isn't INC or CI. Jobs 1268, 1679 and 1705 are all in that state
+right now. Nothing is *wrong* on screen; jobs are just filed under a heading that doesn't
+describe them.
+
+`JobsPage.jsx:150` sidesteps this entirely by lumping everything into one **"Waiting / On
+Hold"** row. That reads fine and is arguably the honest answer — worth deciding whether the
+Sidebar should follow it rather than the other way round.
+
+---
 
 ## Rough scope when picked up
 
-- Settle the canonical pile set and names — starting point: `blockedPile()`'s `waiting` / `planning`,
-  with **"Waiting"** as the user-facing word (Trevor's call, above).
-- Migrate Sidebar and JobsPage onto `blockedPile()` so all three screens share one rule.
-- Decide whether the Sidebar's In Transit / On Hold detail is worth keeping as a sub-split or folds
-  into Waiting.
+- Decide the question this really turns on: **does the Sidebar need a Planning section, or
+  should it collapse to the Jobs page's single blocked list?** Everything else follows.
+- Whichever way that goes, migrate `Sidebar.jsx:73-75` onto `blockedPile()` so the sub-split
+  stops being a second rule.
+- Decide whether In Transit stays as its own section or folds into Waiting.
 
-**Blast radius:** touches `Sidebar.jsx` and `JobsPage.jsx` and changes what jobs appear where — this
-one needs the full agent-team protocol, not a patch.
+**Blast radius:** changes what jobs appear under which heading in the Sidebar. Full agent-team
+protocol, not a patch.
+
+**Dependency note:** the Brief F dependency at the top of the old version is spent — Brief F
+shipped. There is no build blocking this one.
