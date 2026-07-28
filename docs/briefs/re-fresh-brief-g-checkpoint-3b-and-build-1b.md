@@ -166,6 +166,29 @@ cd "/Users/admin/Desktop/1. PROJECTS/Business/AI FILES/GGNZ SCHEDULER PROJECT" &
 
 ---
 
+### 📝 Record the outcome here — the 3b session must fill this in before it ends
+
+**This is not optional.** Build 1b freezes whatever is in the database as the permanent truth
+for these five fields. If the only record of what was checked and corrected is a session
+transcript, the next session is taking it on trust. Write it down, commit it, push it.
+
+Replace the blanks below, then commit with a message saying 3b cleared.
+
+- **Cleared on:** `____-__-__`
+- **Cleared by:** Trevor, in session `____`
+- **Sheet vs database:** ⬜ matched as-is / ⬜ needed a final CSV sync
+- **If a sync was run:** date `____`, and the table above re-pulled afterwards? ⬜ yes / ⬜ no
+- **Job count at cutover:** `____` top-level jobs
+- **`1671`'s Action was `parts`** (not a valid workflow code) → Trevor's decision: `____________`
+- **`SKP` used as a Tag** on 182 / 321 / 592 / 1268 (not EZ/M/T/H) → Trevor's decision: `____________`
+- **`1711` and `1712` blank** on Tag/Action/VB/BL → ⬜ filled in before cutover / ⬜ left blank, to be typed into the new sheet page
+- **Anything else corrected:** `____________`
+- **Anything deliberately left wrong, and why:** `____________`
+
+Then set this file's status line for Build 1b and let the next session start at step 3.
+
+---
+
 ## ⬜ Build 1b — after the checkpoint clears, not before
 
 Brief G scope items **3, 4, 4b**. Fresh builder agent, fresh staging branch, full protocol
