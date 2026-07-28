@@ -1,6 +1,12 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+> **CLOSED 2026-07-29. Build 1a shipped at `f927248`.** This file's job — get Build 1a from
+> "step 0 passed" to "merged" — is done. Its protocol table and "first moves" list are a
+> record of that day, **not** a task list. The live document for what happens next
+> (checkpoint 3b, then Build 1b) is
+> [re-fresh-brief-g-checkpoint-3b-and-build-1b.md](re-fresh-brief-g-checkpoint-3b-and-build-1b.md).
 
 # Re-fresh — Brief G (PDF-drop import): step 0 passed, split into 1a + 1b, build starts at item 1
 
