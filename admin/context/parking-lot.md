@@ -23,7 +23,7 @@ Currently-open items only — grouped by category, not by session date. Complete
 
 - [x] Two unidentified screenshots on Desktop root — **dealt with, confirmed by Trevor 2026-07-28.**
 - [x] Dangling `SCHEDULER` symlink on Desktop (old pointer to Moby's `/Users/trevorcollings/...`) — **gone, verified 2026-07-28**: no symlinks remain on Desktop root.
-- [ ] **Revoke the `jt-backup-ggnz-35a126beb4ca.json` service-account key in Google Cloud Console** — moving it to `archive/job-tracker/` and gitignoring it locally doesn't invalidate the key itself; it stays live until revoked. Trevor doing this himself (needs his Google login). **Apple reminder set for 2026-07-28 8:30pm.** Tick off once confirmed.
+- [x] **Revoke the `jt-backup-ggnz-35a126beb4ca.json` service-account key in Google Cloud Console** — **done, confirmed by Trevor 2026-07-28.** The archived copy in `archive/job-tracker/` is now a dead key.
 - [ ] **`/read-the-manual` (personal skill, `~/.claude/skills/`) isn't reachable from git-worktree-isolated sessions** — confirmed 2026-07-11 when the build session running on `feature/daily-log-carry-forward` (a worktree) couldn't find the command at all. Personal skills are likely local-session-scoped in a way worktree-isolated sessions don't inherit. Not blocking (worktree sessions get their context from the plan/brief directly instead), but worth understanding/fixing if this skill is meant to be usable from any session type. **On the same 8:30pm reminder as the key, as a footnote.**
 
 ---
