@@ -27,10 +27,18 @@ and more current than this file on anything to do with scope. Read it.
 1. `.claude/pending-brief.md` — the scope-locked instruction set. Authoritative on scope.
 2. This file, from "Build 1b" down, plus "Things that are easy to get wrong".
 
-**Protocol for 1b:** council already ran on Brief G and its findings still stand, so 1b starts at
-**step 3** — `ggnz-builder` (opus) on a fresh staging branch → `ggnz-verifier` (sonnet, never the
-builder) → browser test on the Vercel preview → merge on Trevor's "yp". Model discipline and the
+**Protocol for 1b:** council **has run** — 2026-07-28, llm-council as-written, 5 advisors →
+anonymised peer review → chairman. It reviewed Brief G's original eight scope items, which
+includes 1b's items 3, 4 and 4b, and its findings are recorded in `.claude/pending-brief.md`
+under "Council verdict — BINDING ON THE BUILDER". So 1b resumes at **step 3, the builder** —
+`ggnz-builder` (opus) on a fresh staging branch → `ggnz-verifier` (sonnet, never the builder) →
+browser test on the Vercel preview → merge on Trevor's "yp". Model discipline and the
 `enforce-agent-model.py` hook apply as written in CLAUDE.md.
+
+> The one thing council never saw in 1b is the **`PJ`** field, added on 2026-07-29. It gets
+> exactly the same treatment as the five fields council did review — same ownership move, same
+> grid column — so it introduces no new design question and does not warrant a re-run. **Build
+> 1c is different: council has never seen any of it, and it gets its own round before it starts.**
 
 **The one landmine to check before writing any commit path:** `upsertJobsBatch()` in
 `src/utils/supabase.js`. Use the `toJobRow` + column-signature-grouping pattern instead — see the

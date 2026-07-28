@@ -8,10 +8,11 @@ here for a fresh "yp" rather than absorbing them mid-build.
 **Amendment approved by Trevor, 2026-07-29 ("yp")** — the whole 2026-07-29 amendment below,
 including Build 1c, is now in scope.
 **Next action:** Build 1a is **shipped** (`f927248`). **Checkpoint 3b cleared 2026-07-29** against
-the widened six-field list. **Build 1b is unblocked and has not been started** — it begins at
-protocol step 2 (council), not step 3.
+the widened six-field list. **Build 1b is unblocked and has not been started** — it resumes at
+**method step 8 (builder)**. Council ran on 2026-07-28 and covered 1b's items; it did not cover
+Build 1c, which gets its own council round before it starts.
 **Date:** 2026-07-28, amended 2026-07-29
-**Repo state:** `main` @ `65cadc0` (PR #7, planning tags + pile colours, merged)
+**Repo state:** `main` @ `482feb9`, clean. (Was `65cadc0` when this brief was written.)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs
 cleanup once its content landed here (recover with `git log -- docs/briefs/`). Scope was agreed by
 Trevor; council has since run (llm-council, as-written, 5 advisors → anonymised peer review →
@@ -521,8 +522,12 @@ same file and confirm nothing duplicates.
 ## Method — agent-team protocol
 
 1. **Brief** — this file. ✅ Approved by Trevor 2026-07-28.
-2. **Council** — ✅ done 2026-07-28 (llm-council, as-written). Findings above are binding; the
-   builder does not reopen them.
+2. **Council** — ✅ done 2026-07-28 (llm-council, as-written: 5 advisors → anonymised peer
+   review → chairman). It reviewed the original eight scope items, so **1a and 1b are both
+   covered**. Findings above are binding; the builder does not reopen them.
+   **What council did not see:** the `PJ` sixth field (added 2026-07-29 — same treatment as the
+   other five, no new design, so 1b proceeds), and the whole of Build 1c (new design — it gets
+   its own council round, see the end of this file).
 3. **Builder — run 1a** — staging branch, supervised from the main conversation.
 4. **Independent verifier — 1a** — separate agent, never the builder.
 5. **Browser test — 1a** — Vercel preview: drop a real PDF, confirm the preview counts, confirm
