@@ -219,6 +219,128 @@ export async function upsertJobsBatch(jobsList) {
   }
 }
 
+// ============ MULTITRACK PDF IMPORT (Brief G) ============
+
+// The six fields the Multitrack PDF actually carries. Everything else on a
+// job — Tag, Hours, Action, VB, BL — is Trevor's own, maintained by hand, and
+// simply is not printed on the PDF. The import path must be incapable of
+// writing them, not merely careful about it.
+export const PDF_IMPORT_FIELDS = Object.freeze(['job', 'customer', 'mfr', 'model', 'status', 'desc']);
+
+// Two extra fields a job is allowed to be BORN with, and only on the write
+// that first creates it: the bench inferred from the PDF description, and the
+// starting hours estimate. Neither may ever appear on an update of a job that
+// already exists — that would overwrite a bench Trevor moved by hand, or an
+// hours figure he set from experience, on every single drop.
+export const PDF_NEW_JOB_FIELDS = Object.freeze(['bench', 'hours']);
+
+/**
+ * The Brief G PDF writer. Deliberately NOT upsertJobsBatch().
+ *
+ * upsertJobsBatch() builds a fixed ~20-column row for every job, including
+ * tag/action/days/vb/bl/pj. Running the PDF through it would send those
+ * columns as undefined on every row and blank Trevor's hand-kept fields
+ * across the whole workshop in one click. This function exists so that the
+ * PDF path can never reach those columns at all.
+ *
+ * `writes` is [{ id, data, isNew }]. Returns { ok, written } / { ok: false, error },
+ * matching batchWriteJobsState()'s convention — callers gate on res?.ok.
+ *
+ * Three guards, all of which refuse the WHOLE batch rather than write part of
+ * it. A partial import is worse than a failed one: it looks like it worked.
+ */
+export async function writePdfImportBatch(writes) {
+  if (!writes || writes.length === 0) return { ok: true, written: 0 };
+  try {
+    const rows = [];
+    for (const w of writes) {
+      // Guard 1: top-level jobs only, identified by a purely numeric id. A
+      // top-level job's id IS its Multitrack job number; the app's own split
+      // cards carry ids like "1620_Electronics_0". Those are the app's
+      // business and the PDF knows nothing about them, so they must never be
+      // matched, written or counted here.
+      if (!/^\d+$/.test(String(w.id ?? ''))) {
+        throw new Error(`refusing batch: "${w.id}" is not a top-level Multitrack job number`);
+      }
+      // Guard 2: the allow-list. Anything outside it is a programming error
+      // upstream, so fail loudly instead of quietly dropping the key and
+      // leaving a half-wrong import looking healthy.
+      const allowed = w.isNew
+        ? [...PDF_IMPORT_FIELDS, ...PDF_NEW_JOB_FIELDS]
+        : PDF_IMPORT_FIELDS;
+      const stray = Object.keys(w.data || {}).filter(k => !allowed.includes(k));
+      if (stray.length > 0) {
+        throw new Error(`refusing batch: job ${w.id} carried fields the PDF cannot own (${stray.join(', ')})`);
+      }
+      const fields = {};
+      for (const k of allowed) {
+        if (w.data && k in w.data) fields[k] = w.data[k];
+      }
+      // Guard 3: the `job` column is NOT NULL, and Postgres checks that
+      // against the proposed row before it resolves the upsert conflict — so
+      // a row missing `job` fails the request outright rather than falling
+      // back to the existing value.
+      if (!fields.job) {
+        throw new Error(`refusing batch: job ${w.id} has no job number`);
+      }
+      rows.push({ ...toJobRow(fields), id: String(w.id), updated_at: new Date().toISOString() });
+    }
+
+    // Group by exact column set before writing — the same mitigation
+    // batchWriteJobsState() uses, and it is load-bearing here. A Supabase
+    // upsert given an array sends the UNION of all rows' keys and NULL-fills
+    // any row that lacks one. New jobs carry bench/hours and existing jobs
+    // do not, so batching them together would push bench=NULL, hours=NULL
+    // onto every job already on the board. Grouping means every row in a
+    // request has identical columns, so nothing is ever NULL-filled.
+    const groups = new Map();
+    for (const row of rows) {
+      const sig = Object.keys(row).sort().join(',');
+      if (!groups.has(sig)) groups.set(sig, []);
+      groups.get(sig).push(row);
+    }
+    for (const records of groups.values()) {
+      // onConflict 'id' is what makes re-dropping the same PDF safe: the job
+      // number is the primary key, so a job already on the board is updated
+      // in place and never duplicated.
+      const { error } = await getClient().from('jobs').upsert(records, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    return { ok: true, written: rows.length };
+  } catch (e) {
+    console.error('Supabase PDF import batch error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+/**
+ * Forensic record of one PDF import: when, which file, how many rows, and
+ * exactly which job numbers were touched. If an import ever does something
+ * unexpected, this is the only way to answer "what did it actually write".
+ *
+ * Strictly best-effort by design. The console line is written first and
+ * unconditionally, so the record exists even if the table has not been
+ * created yet or the insert is refused — logging must never be the reason a
+ * good import fails. Needs the pdf_import_log table from
+ * docs/supabase-schema.sql to persist beyond the console.
+ */
+export async function logPdfImport({ filename, rowCount, ids }) {
+  const entry = {
+    id: `pdfimp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    filename: filename || null,
+    row_count: rowCount ?? null,
+    job_ids: ids || [],
+    imported_at: new Date().toISOString(),
+  };
+  console.log('PDF import:', entry);
+  try {
+    const { error } = await getClient().from('pdf_import_log').insert(entry);
+    if (error) throw error;
+  } catch (e) {
+    console.warn('PDF import log not persisted (see console line above):', e?.message || e);
+  }
+}
+
 export function subscribeToJobs(callback) {
   try {
     const channel = getClient()

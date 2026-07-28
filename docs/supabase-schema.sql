@@ -202,6 +202,31 @@ CREATE TABLE IF NOT EXISTS job_status_since (
   since  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 2026-07-28: PDF import log (Brief G, Build 1a, decision 5). One row per
+-- accepted PDF drop: when it happened, which file, how many jobs were written
+-- and exactly which job numbers were touched. The PDF import writes directly
+-- to live job rows, so if an import ever does something unexpected this table
+-- is the only way to answer "what did it actually write, and when".
+--
+-- job_ids is a plain TEXT[] and NOT a foreign key to jobs(id) — same reasoning
+-- as parts_to_order.needed_for_job and job_status_since.job_id above. The
+-- whole point of a forensic record is that it survives the rows it describes.
+--
+-- The app treats writing this log as best-effort: logPdfImport() in
+-- src/utils/supabase.js always writes the record to the browser console first
+-- and only then tries the insert, swallowing any failure. So an import still
+-- works if this table has not been created — it just isn't recorded anywhere
+-- that outlives the browser session. Additive, safe to run on existing rows.
+CREATE TABLE IF NOT EXISTS pdf_import_log (
+  id TEXT PRIMARY KEY,
+  filename TEXT,
+  row_count INTEGER,
+  job_ids TEXT[],
+  imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pdf_import_log_imported_at ON pdf_import_log(imported_at DESC);
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
