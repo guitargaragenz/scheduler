@@ -8,11 +8,15 @@ Written 2026-07-29 at the end of the session that ran protocol steps 3 and 4.
 
 ## START HERE
 
-**Build 1b is written, reviewed and pushed. Nothing needs building.** It sits on
-`staging/brief-g-jobs-sheet-page`, four commits ahead of `main` (`b84373d`).
+Build 1b is written, reviewed and pushed. It sits on `staging/brief-g-jobs-sheet-page`,
+ahead of `main` (`b84373d`). Do not re-run protocol steps 1–4 on what is already built.
 
-What is left is **protocol step 5 (browser test)** and **step 6 (merge on Trevor's
-"yp")**. Do not re-run steps 1–4, and do not spawn a builder.
+What is left:
+
+1. **One small code change** — Hours must snap to 30-minute steps. Asked for after the
+   restyle, not yet built. See *"Still to build"* below.
+2. **Protocol step 5** — the browser test.
+3. **Protocol step 6** — merge on Trevor's "yp".
 
 Read this file, then `.claude/pending-brief.md` for the scope lock. **Do not re-read**
 `re-fresh-brief-g-checkpoint-3b-and-build-1b.md` as instructions — it is the previous
@@ -95,6 +99,55 @@ spreadsheet has:
 
 ---
 
+## Still to build — Hours must snap to 30-minute steps
+
+Asked for by Trevor 2026-07-29, after the restyle, in his words: *"I want the hrs to be
+in increments of 30 mins like they were before."* **Not built yet.** This is the only
+outstanding code change on Build 1b.
+
+**"Like they were before" is real and checkable** — the job drawer's hours box has always
+been `<input type="number" min="0.5" step="0.5">` (`JobDrawer.jsx:263`), and the split
+editor snaps with `Math.round(n * 2) / 2` (`SplitDrawer.jsx:50`). The Sheet's Hours box
+is the odd one out: it is free text run through `round2()` in `src/data/jobsSheet.js`,
+which rounds to two decimals, not to a half hour.
+
+**What that means in practice.** The four tag bands are already half hours — EZ 1.5,
+M 3, T 5.5, H 6 — so picking a tag was never the problem. The gap is what happens when
+he types by hand:
+
+| Typed | Saves today | Should save |
+|---|---|---|
+| `1.2` | `1.2` | `1` |
+| `2.75` | `2.75` | `3` (or `2.5` — see the open question) |
+| `1.5-2` | `1.75` | `2` |
+| `2-4` | `3` | `3` — unchanged |
+
+**Where the change goes.** `parseHoursInput()` in `src/data/jobsSheet.js` — one snap
+applied to the value it is about to return, covering both the plain-number path and the
+range-average path. Do **not** try to fix this in `JobsSheetPage.jsx` alone; the parse
+function is what `draftChanges()` and `buildSheetWrites()` write from, so snapping in the
+UI only would let an unsnapped value reach the database by another route.
+
+**Open question for Trevor, ask before building:** halves that land exactly on a quarter
+— does `2.75` go up to `3` or down to `2.5`? Nearest-with-ties-up (`Math.round(n * 2) / 2`,
+which matches `SplitDrawer.jsx`) is the recommendation unless he says otherwise.
+
+**Constraints that still hold on this change:**
+
+- Ranges keep working. `2-4` → `3`. Averaging then snapping, not banning ranges — he
+  estimates in ranges and `hours_range()` in `scripts/sheet_to_csv.command` does the same.
+- Blank still saves as `null`, not `0`. Unknown and zero-hour are different things.
+- A typo still goes red and skips that one job. Snapping must not turn unreadable into
+  a guess.
+- It needs its own tests alongside the existing `parseHoursInput` ones, and `round2()`'s
+  comment block needs updating — it currently explains two-decimal precision, which stops
+  being the rule.
+- This is a behaviour change to an app-owned column, so it goes through the protocol like
+  the rest of Build 1b: it is written here, Trevor has asked for it, and it must be built
+  on `staging/brief-g-jobs-sheet-page` and verified before the merge — not added after.
+
+---
+
 ## Verification already done — don't repeat it
 
 `ggnz-verifier` (sonnet, not the builder) ran the brief's checklist: **21/21 pass, one
@@ -162,7 +215,8 @@ What must be confirmed live, in this order:
 4. Tag auto-fill uses the corrected bands. *(Already confirmed once locally: picking
    `T` on job 1711 filled hours with `5.5`, the row highlighted, the counter read
    "1 changed", Commit went live. Then discarded — nothing was written.)*
-5. A range in the Hours box: `2-4` saves as `3`.
+5. A range in the Hours box: `2-4` saves as `3`. Once the 30-minute snap is built, also
+   check `1.2` becomes `1` and `1.5-2` becomes `2`.
 6. `SKP` round-trips on 182 / 321 / 592 / 1268 without changing behaviour.
 
 Step 3 writes to live job data. **Get Trevor's explicit go-ahead before committing a
