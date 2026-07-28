@@ -13,10 +13,19 @@ ahead of `main` (`b84373d`). Do not re-run protocol steps 1–4 on what is alrea
 
 What is left:
 
-1. **One small code change** — Hours must snap to 30-minute steps. Asked for after the
-   restyle, not yet built. See *"Still to build"* below.
+1. **Three changes to the Sheet page**, all asked for after the restyle and none built:
+   - **Enter moves down a row**, like Google Sheets — *the biggest of the three*
+   - **White background**, not the dark blue
+   - **Hours snap to 30-minute steps**
 2. **Protocol step 5** — the browser test.
 3. **Protocol step 6** — merge on Trevor's "yp".
+
+Two of those need a question answered before building; both are marked **Ask Trevor** in
+their sections. Ask them together in one go rather than stopping twice.
+
+**Separately, and not part of Build 1b:** Trevor reported that his calendar appointments
+aren't showing up. That is a different problem in `useGoogleCalendar.js` territory, has
+nothing to do with the Sheet, and must not be folded into this branch.
 
 Read this file, then `.claude/pending-brief.md` for the scope lock. **Do not re-read**
 `re-fresh-brief-g-checkpoint-3b-and-build-1b.md` as instructions — it is the previous
@@ -122,6 +131,11 @@ he types by hand:
 | `1.5-2` | `1.75` | `2` |
 | `2-4` | `3` | `3` — unchanged |
 
+**Correction to an earlier draft of this section, so nobody builds off it:** typing `1.5`
+on its own has always saved as `1.5` — it was never broken. The `1.75` case is the
+*range* `1.5-2`, whose average lands on a quarter. Trevor is right that the plain typed
+value is fine.
+
 **Where the change goes.** `parseHoursInput()` in `src/data/jobsSheet.js` — one snap
 applied to the value it is about to return, covering both the plain-number path and the
 range-average path. Do **not** try to fix this in `JobsSheetPage.jsx` alone; the parse
@@ -145,6 +159,78 @@ which matches `SplitDrawer.jsx`) is the recommendation unless he says otherwise.
 - This is a behaviour change to an app-owned column, so it goes through the protocol like
   the rest of Build 1b: it is written here, Trevor has asked for it, and it must be built
   on `staging/brief-g-jobs-sheet-page` and verified before the merge — not added after.
+
+## Still to build — Enter should move down a row, like a spreadsheet
+
+Asked for 2026-07-29, same message as the white background below. His words: *"it's
+really hard to enter hrs in. It shld be select box, enter hrs, push enter, and it will
+drop down to next box like G sheet."*
+
+**This is the real complaint, and it is bigger than the 30-minute snap.** Snapping
+changes what a typed value saves as; this changes whether entering forty jobs' hours is
+tolerable at all. Right now every cell has to be reached with the mouse. He wants: click
+a cell, type, press Enter, land in the same column one row down, type again — never
+touching the mouse until the column is done.
+
+What that needs, in `src/components/JobsSheetPage.jsx`:
+
+- **Enter** commits the cell and focuses the same column, next row. At the last row it
+  should stop, not wrap.
+- **Shift+Enter** goes back up. **Tab / Shift+Tab** across, which mostly works already
+  via native tab order — confirm it doesn't detour through the checkboxes in a silly way.
+- **Escape** puts the cell back to what it was before the edit.
+- Focusing a cell should select its contents so typing replaces rather than appends.
+- The focused cell must be scrolled into view; the header is sticky and will otherwise
+  hide the row above.
+
+**"Enter" here means moving between cells, not saving to the database.** Commit stays
+the only thing that writes. Do not sneak an autosave in on Enter — that was a deliberate
+decision and it hasn't changed.
+
+**Implementation note for whoever builds it:** this wants a small focus-management
+helper keyed by `(jobId, column)` — probably a ref map plus an ordered list of the
+editable rows — not a scattering of `onKeyDown` handlers. Also worth checking whether the
+Tag and Action `<select>`s should join the same movement or stay out of it; a `<select>`
+swallows arrow keys, and Enter on a native select behaves differently. **Ask Trevor
+whether Enter-to-move should apply to the dropdowns too, or hours only.**
+
+## Still to build — the sheet should be white, not dark
+
+Same message: *"Blue background is too dark needs to be white like sheet too."*
+
+The restyle (`8b3ce93`) kept the app's dark palette — `#0c1119` / `#0f151e` banded rows
+on a dark blue page. He wants it light, like the Google Sheet he is used to: white cells,
+grey gridlines, dark text.
+
+**Scope this carefully before building.** The Sheet page is a light island inside a dark
+app, so:
+
+- All of it is in `SHEET_CSS` in `JobsSheetPage.jsx` — a self-contained stylesheet, which
+  is why it can be re-themed without touching anything else. **Nothing outside that page
+  changes colour.** Do not start a global light theme off the back of this.
+- The page chrome around the table — the header bar, the Commit and Discard buttons, the
+  "N changed" counter — has to move with it or it will look broken. Check the whole page,
+  not just the cells.
+- Things that were tuned for dark and need re-picking on white: the dirty-row highlight
+  (currently `#16223d`), the focus ring (`#6366f1`), the fence rule marking the six
+  app-owned columns, the red invalid-hours state, the custom checkboxes, and the greyed
+  read-only Multitrack columns — grey-on-white reads very differently to grey-on-dark and
+  must stay clearly "you can't edit this".
+- Keep the spreadsheet cues from `8b3ce93` — gridlines both ways, banded rows, frozen job
+  column, right-aligned hours. Those weren't the problem; the darkness was.
+
+**Still presentation only.** No change to `jobsSheet.js` or to what gets written.
+
+## Worth checking, not a task — the 1-hour values
+
+Trevor noticed *"most of the top of the page jobs defaulted to 1 hr"*. There is **no
+default of 1 anywhere in the app** — nothing in `joinJobs.js` or the import path invents
+it, and a blank hours field renders as `—`, not `1`. So those are real stored values that
+came from the old spreadsheet or an earlier import.
+
+Not a bug and not in scope. Mentioned only so a future session doesn't hunt for a
+phantom default — and so Trevor knows those are numbers someone once entered, which he
+may well want to overwrite once entering hours is quick.
 
 ---
 
