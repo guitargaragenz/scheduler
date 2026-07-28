@@ -12,8 +12,9 @@ doc_status: live
 > and the safety argument.
 
 **Written:** 2026-07-28, updated late 2026-07-28. **Status of the work:** brief approved and
-scope-locked, **step 0 gate passed**, no app code written yet. Trevor called it a night — pick this
-up later the same day. Nothing is half-finished and nothing is broken.
+scope-locked, **step 0 gate passed**, and **Build 1a's code is now written and pushed** on
+`staging/brief-g-pdf-drop`. Not yet verified, browser-tested or merged. Nothing is half-finished
+and nothing is broken.
 
 ---
 
@@ -59,7 +60,8 @@ Nothing was written anywhere.
 **On sample PDFs:** always use a fresh Multitrack export into `~/Downloads`, asked for on the day.
 Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline is being deleted.
 
-**Start at scope item 1** (port the parser), then item 2 (the six-column sparse writer).
+~~**Start at scope item 1**~~ — done. Items 1, 2, 5, 6 and 7 are all built; see the protocol table
+below.
 
 ---
 
@@ -109,7 +111,7 @@ Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline 
 | 1. Brief | ✅ Approved by Trevor, 2026-07-28 ("yp"). Scope locked. |
 | 2. Council | ✅ Run 2026-07-28 (llm-council). Findings folded into the brief; several were overturned by Trevor afterwards — **the brief wins, not the council transcript**. |
 | 0. Match-key gate | ✅ Passed 2026-07-28 against a fresh export. See above. |
-| 3. Builder — **1a** | ⬜ Not started. Branch `staging/brief-g-pdf-drop` exists, is level with `main` at `192431f`, and has no build work on it. Supervised from the main conversation. |
+| 3. Builder — **1a** | ✅ Built 2026-07-28 on `staging/brief-g-pdf-drop`, pushed. Four commits `77e7a15`→`23e93a8` cover items 1, 2, 5, 6, 7. 167 tests pass. |
 | 4. Independent verifier — 1a | ⬜ Separate agent, never the builder. |
 | 5. Browser test — 1a | ⬜ Vercel preview: drop a **fresh** PDF, confirm preview counts, confirm existing jobs' Tag/Hours/Action/VB/BL survive. |
 | 6. Merge 1a | ⬜ Needs a second "yp" from Trevor. |
@@ -119,9 +121,9 @@ Do **not** reach for `SCHEDULER_old/DropBox/processed/` — that whole pipeline 
 | 10. Browser test — 1b | ⬜ Edit a field in the sheet page, commit, run a CSV sync, confirm the edit survives. |
 | 11. Merge 1b | ⬜ Needs a "yp" from Trevor. |
 
-Repo state at handoff: branch `staging/brief-g-pdf-drop`, clean, level with `main` at `192431f`
-(docs-only commit — the 1a/1b split). `main` is pushed and in sync with origin.
-**No app code has been written.**
+Repo state, updated 2026-07-28 late: branch `staging/brief-g-pdf-drop` at `23e93a8`, clean, pushed.
+**Build 1a's app code is written** — parser, import plan, six-column writer, preview modal, import
+buttons, plus tests. Next protocol step is the independent verifier, then the browser test.
 
 ---
 
@@ -129,10 +131,8 @@ Repo state at handoff: branch `staging/brief-g-pdf-drop`, clean, level with `mai
 
 1. Ask Trevor for a **fresh Multitrack export** into `~/Downloads` before any browser test — the
    28 Jul one is fine for parser work but goes stale for counts.
-2. Start the builder agent on **Build 1a** — item 1 (port `parseMultitrackPdf.ts` from
-   `BUILDS/NEW SCHEDULER BUILD/workshop-scheduler/lib/`), item 2 (the six-column sparse writer),
-   item 5 (preview screen), item 6 (count sanity-check), item 7 (duplicate protection), on
-   `staging/brief-g-pdf-drop`. Verify, browser-test, merge.
+2. ~~Start the builder agent on **Build 1a**~~ — done, all five items, pushed at `23e93a8`.
+   Next: run `ggnz-verifier` against the 1a checklist, then the browser test, then merge.
 3. Then the **checkpoint**: item 3b, the cutover check — **needs Trevor's eyes on DB vs Sheet**.
    Do not start 1b before he clears it.
 4. Then **Build 1b** — item 3 (ownership move), item 4 (Jobs Sheet page), item 4b (M/T swap, both
