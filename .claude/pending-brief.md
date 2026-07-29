@@ -18,6 +18,14 @@ So the real next action is **two `ggnz-council` reviews of the Build 1c scope** 
 second parser, the computed-age change), then a fresh builder on a new staging branch.
 Everything above Build 1c in this file is history — the 1a and 1b scope items are done, the
 decisions are recorded, and they are not a task list.
+
+**Standing order from Trevor, 2026-07-29:** *"save all UI changes until after PDF drop implemented
+successfully and CSV pipeline gone"*. So the queue is **1c → Build 2 (retire the CSV pipeline) → any
+UI work**, and no look-and-feel change gets slipped in ahead of it, however small. The two parked UI
+briefs (`docs/briefs/parked-jobs-sheet-usability-changes.md` and
+`docs/briefs/appointments-not-showing-on-the-calendar.md`) are held by this ordering, not by
+anything technical. Note this makes **Build 2 the next brief to write after 1c ships**, and it is
+still out of scope for this one.
 **Date:** 2026-07-28, amended 2026-07-29
 **Repo state:** `main` @ `482feb9`, clean. (Was `65cadc0` when this brief was written.)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs

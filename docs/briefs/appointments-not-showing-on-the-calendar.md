@@ -7,10 +7,16 @@ has been changed** — this is a read-only investigation written up so that when
 picked up, it starts with the suspects rather than the search.
 
 **Parked 2026-07-29 by Trevor:** *"Appointments and UI can wait until everything's rock
-solid."* Brief G Build 1b gets browser-tested and merged first, then Build 1c. Do not
-start on this until he says so — and when he does, it is a fresh brief at protocol step 1,
-because `useGoogleCalendar.js` is a blast-radius file. Never fold a fix into
-`staging/brief-g-jobs-sheet-page`.
+solid."*
+
+**Sequencing made firm the same day, after Build 1b merged (`f2ee449`)** — his words:
+*"save all UI changes until after PDF drop implemented successfully and CSV pipeline gone"*.
+So this waits on **Build 1c** (the JBA drop, importing successfully) and then **Build 2**
+(the CSV pipeline retired) — in that order, then his go-ahead. It is not a judgement call
+for a future session and it is not a quick win to slot in while 1c waits for council.
+
+When he does say go, it is a fresh brief at protocol step 1, because
+`useGoogleCalendar.js` is a blast-radius file.
 
 **Two suspects were killed before it was parked**, so don't re-tread them. Trevor's words:
 *"I already know that as I have been running the app for quite a while now. No all day

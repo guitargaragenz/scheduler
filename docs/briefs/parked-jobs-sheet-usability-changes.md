@@ -10,9 +10,21 @@ get re-derived from scratch when Trevor asks again.
 seeing the restyled Sheet page live, then the same day said to park them: *"Appointments and UI
 can wait until everything's rock solid."*
 
-**Waiting on:** Trevor's call on sequencing against Build 1c (the JBA drop / `first_seen` /
-computed job age, scope-locked in `.claude/pending-brief.md`). Either order works — they touch
-different files — but 1c is the phase already approved, so the default is 1c first.
+**Waiting on — decided by Trevor 2026-07-29, after the 1b merge, and this is now firm:**
+*"save all UI changes until after PDF drop implemented successfully and CSV pipeline gone"*.
+
+So the queue is fixed, and it is not a judgement call for a future session:
+
+1. **Build 1c** — the JBA drop, `first_seen`, computed job age (scope-locked in
+   `.claude/pending-brief.md`), imported successfully against a real PDF.
+2. **Build 2** — the DropBox/watcher/CSV pipeline retired, the `days` column and
+   `preserveKnownDays()` removed, the CSV upload buttons gone from the UI.
+3. **Then** these three, and not before.
+
+**Do not offer these as "a quick win while 1c waits for council".** That is exactly the
+sequencing Trevor just ruled out. The data pipeline gets finished first; look-and-feel comes after
+the plumbing is rock solid. Same ruling covers
+[appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md).
 
 **The order these should be built in, if all three go together:** Enter-to-move-down first (it is
 the actual pain), then the 30-minute snap, then the white theme. The first two touch behaviour and
