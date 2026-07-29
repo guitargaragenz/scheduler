@@ -351,7 +351,7 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 
 ## Session state — 2026-07-29
 
-- **Branch `build-2a-close-csv-door` exists, off `main` @ `8790f24`, and is empty.** Nothing built
+- **Branch `build-2a-close-csv-door` exists, cut from the tip of `main`, and is empty.** Nothing built
   yet. Build 2a on that branch; don't start a new one.
 - **A `ggnz-builder` spawn was attempted for 2a and died immediately on a monthly spend limit** —
   no files touched, no commits. Trevor's instruction: **build 2a in a fresh session, inline, with
