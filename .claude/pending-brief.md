@@ -208,7 +208,17 @@ a door that no longer exists is how a working app gets reported as broken.
 **Proposed as three supervised builds, for council to confirm or collapse.** 2a and 2c are
 independent of the step-0 gate; 2b is not.
 
-### Build 2a — close the app's CSV door
+### Build 2a — close the app's CSV door — ✅ **SHIPPED 2026-07-29, merged to main at `29c1e4a`**
+
+Built inline (the `ggnz-builder` spawn died on a spend limit). A `ggnz-verifier` ran the checklist
+below and found one reachable bug — `Sidebar.jsx`'s empty-board message still said *"Upload
+jobs.csv to get started"* and pointed at a deleted input, made **more** likely to be seen because
+this build seeds the board empty. Fixed, along with two more dead instructions in the same class:
+the help search placeholder still suggested searching "CSV", and `ProjectsPage.jsx:182` still told
+Trevor to add a PJ column to the Google Sheet and run `sheet_to_csv.command` (PJ has been a Jobs
+Sheet tickbox since Brief G Build 1b). ⚠️ **Those three fixes were self-verified only** — the
+verifier re-check agent also died on the spend limit. Tests 244/244, build clean, browser
+click-through passed, Trevor approved the Vercel preview.
 
 1. **Remove the CSV upload path.**
    - Delete `handleCsvUpload()` (`useJobs.js:280-324`) and its export at :550.
@@ -272,7 +282,9 @@ calendar slot, bench assignment or split state moves; the help search finds no d
 **2b verification:** every job on the board shows an age, and it matches `today − first_seen` to
 the day at NZ local time — reuse the `localDateKey()` pattern, not `toISOString()`
 (`src/utils/calendar.js:1-2` documents why). The **sort order** of the job list still puts oldest
-first — all three sort sites, not just the cards. A job with no `first_seen` shows no age rather
+first — **both** sort sites, `JobShelf.jsx:144` and `DailyLogPage.jsx:825`. (This line said *three*
+until 2a shipped; the third lived inside `parseCSV` and went with it. Both survivors use
+`(b.days ?? 0) - (a.days ?? 0)`.) A job with no `first_seen` shows no age rather
 than a wrong one. **Explicitly re-check age after a JBA drop, not just after a reload** — that is
 the `useJobs.js:384` path from the 🔴 correction, and a reload-only test cannot see it fail.
 
@@ -349,18 +361,18 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 
 ---
 
-## Session state — 2026-07-29
+## Session state — 2026-07-29 (end of day)
 
-- **Branch `build-2a-close-csv-door` exists, cut from the tip of `main`, and is empty.** Nothing built
-  yet. Build 2a on that branch; don't start a new one.
-- **A `ggnz-builder` spawn was attempted for 2a and died immediately on a monthly spend limit** —
-  no files touched, no commits. Trevor's instruction: **build 2a in a fresh session, inline, with
-  no `ggnz-builder` subagent**, to keep token use down. That is a deliberate, approved deviation
-  from step 3 for 2a only. **2b still gets a proper `ggnz-builder`** — it writes to the live
-  persistence layer.
-- **The verifier is NOT waived.** After 2a is built, a `ggnz-verifier` agent (Sonnet, cheap) runs
-  the 2a checklist, then a browser click-through, then Trevor's merge call. The verifier must not
-  be whoever did the build.
+- **2a is shipped and merged** — `29c1e4a` on `main`. Branch `build-2a-close-csv-door` can be
+  deleted whenever. **Next work on this brief is 2b.**
+- **Both agent spawns this build died on a monthly spend limit** — the `ggnz-builder` before it
+  started, then the `ggnz-verifier` re-check after its first pass. 2a was built inline as a
+  deliberate, approved deviation from step 3. **Do not assume the same is fine for 2b** — 2b
+  writes to the live persistence layer and needs a real `ggnz-builder`. If the spend limit is
+  still biting when 2b comes up, that is a conversation with Trevor first, not a quiet second
+  inline build.
+- **`upsertJobsBatch` is dead as of 2a** and carries a header comment saying so
+  (`utils/supabase.js`). Deleting it is 2b item 5b.
 - **Item 5b — Trevor said "yes" to deleting the orphaned `upsertJobsBatch` writer.** Recorded as
   approved-in-principle for 2b, but re-confirm the wording with him before 2b starts; it was a
   one-word answer to a two-option question.
