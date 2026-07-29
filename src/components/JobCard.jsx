@@ -161,7 +161,15 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
             </div>
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>📅 {job.days}d</span>
+            {/* Null-guarded (Brief G, Build 1c): a job with no age at all used
+                to render a bare "📅 d". Age is null for a job introduced by the
+                Jobs PDF before the next Jobs-by-Age drop, which is expected
+                rather than a fault, so it shows nothing instead of nonsense.
+                Note `!= null`, not a truthiness test — a genuine 0-day job
+                booked in this morning must still read "📅 0d". */}
+            {job.days != null && (
+              <span style={{ fontSize: 10, color: '#94a3b8' }}>📅 {job.days}d</span>
+            )}
             {job.vb && <span style={{ fontSize: 10, color: '#fbbf24' }}>⭐ VB</span>}
             {job.action && <span style={{ fontSize: 10, color: '#f87171' }}>⚠ {job.action.slice(0, 20)}</span>}
           </div>
