@@ -30,15 +30,16 @@ the status line.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-28, amended 2026-07-29 | **Current — start here.** Brief G's scope lock. Builds **1a (`f927248`) and 1b (`f2ee449`) are both shipped**; the live part of this file is **Build 1c** — the Jobs-by-Age PDF drop, the additive `first_seen` column, job age computed on render, and the one-column sparse writer. Approved by Trevor, **but council has never seen 1c**, so it starts at protocol step 2 (two `ggnz-council` reviews) and then a fresh builder run on a new staging branch. Read the file for the scope; don't widen it. |
-| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, rewritten 2026-07-29 | **Fresh session, run it separately.** **Most of it is already done** — the worktrees, the personal parts list, the client design doc, the stale mockup and the Finder junk are all gone, and the old STOP header about a live build in this tree is obsolete. What's left: one dead component (`SplitDrawer.jsx`), three spent one-off scripts, twenty stale local branches, and two pipeline scripts — `sheet_to_csv.command` is now unblocked by Build 1b shipping, `start_watcher.command` still waits on Build 1c. |
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-28, amended 2026-07-29 | **Brief G is finished — history, not a task list.** All three builds shipped: **1a `f927248`, 1b `f2ee449`, 1c `b665e1d`**. 1c added the Jobs-by-Age PDF drop, the `first_seen` column, the one-column sparse writer and job age computed from the booked-in date instead of a stored number. Its match-key gate ran clean against the real 29 Jul export (47/47 matched, 0 near-misses) and the browser test confirmed job 97 at 3162 rather than the stale 3159. Worth keeping for the ⚡ council notes on items 8–12 — the `23502` sparse-upsert trap, the migration mechanism, the six `days` read sites including three sorts, and the NZ date-maths rule. **The next brief to write is Build 2 — retire the CSV pipeline.** |
+| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, rewritten 2026-07-29 | **Fresh session, run it separately.** **Most of it is already done** — the worktrees, the personal parts list, the client design doc, the stale mockup and the Finder junk are all gone, and the old STOP header about a live build in this tree is obsolete. What's left: one dead component (`SplitDrawer.jsx`), three spent one-off scripts, twenty stale local branches, and two pipeline scripts — `sheet_to_csv.command` is now unblocked by Build 1b shipping, and `start_watcher.command` is unblocked too since Build 1c shipped (`b665e1d`) — both are Build 2's territory now, not housekeeping. |
 
 ## Parked — agreed in principle, waiting on something
 
 > **Standing order, Trevor 2026-07-29:** *"save all UI changes until after PDF drop implemented
-> successfully and CSV pipeline gone"*. The queue is **Build 1c → Build 2 (CSV pipeline retired) →
-> UI work**, in that order. Both UI briefs below are held by this, not by anything technical. Don't
-> offer them as a quick win while 1c waits for council — that is the sequencing he ruled out.
+> successfully and CSV pipeline gone"*. **Build 1c shipped 2026-07-29 (`b665e1d`), so the PDF drop
+> is done and the queue is now Build 2 (CSV pipeline retired) → UI work.** Both UI briefs below are
+> still held by this, not by anything technical. Don't offer them as a quick win while Build 2 is
+> outstanding — that is the sequencing he ruled out.
 
 | Brief | Date | Waiting on |
 |-------|------|------------|

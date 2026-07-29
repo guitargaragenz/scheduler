@@ -12,12 +12,27 @@ Checkpoint 3b was cleared 2026-07-29 against the widened six-field list. **Build
 (`f2ee449`)** — full protocol run, verifier 21/21, browser test five of six items live with the
 sixth dropped deliberately, merged on Trevor's "yp". Its working record is
 `docs/briefs/re-fresh-brief-g-build-1b-browser-test-and-merge.md`, now `closed`.
-**The live scope in this file is Build 1c, and nothing else.**
-**✅ Council on 1c ran 2026-07-29** — two `ggnz-council` agents, both "proceed with changes";
-their changes are folded into scope items 8/8b/9/10/11/12 (marked ⚡) and are binding.
-**The next action is method step 12 — a fresh `ggnz-builder` on a new staging branch.**
-Everything above Build 1c in this file is history — the 1a and 1b scope items are done, the
-decisions are recorded, and they are not a task list.
+**✅ BUILD 1c IS SHIPPED — merged to `main` at `b665e1d`, 2026-07-29.** Full protocol run: brief
+approved, two `ggnz-council` reviews (both "proceed with changes", folded into items 8/8b/9/10/11/12
+as the ⚡ notes), `ggnz-builder` on staging branch `build-1c-jba-first-seen`, independent
+`ggnz-verifier` (pass on every code-checkable item), browser test on the Vercel preview, merged on
+Trevor's "yp".
+
+Closed out at merge, so the record is here and not only in the transcript:
+- **Item 8** — Trevor ran the `ALTER TABLE` in the Supabase SQL editor; `first_seen` confirmed
+  present and readable by a live `SELECT` before any write existed. Now also in
+  `docs/supabase-schema.sql`, so the checked-in schema matches the live database.
+- **Item 8b (match-key gate)** — run against the real `GGNZ JBA 29 Jul.pdf`: 47 refs parsed, PDF's
+  own footer stated 47, **47/47 matched `jobs.id`, 0 unmatched, 0 near-misses**, 0 refs missing a
+  Date In. 6 top-level DB jobs absent from the JBA (1671, 1698, 1702, 1619, 1620, 1626) — the
+  legitimate extras this brief predicted; they are reported, never deleted. Gate closed.
+  The proof script was a throwaway and is deleted by design, which is why a code-only review cannot
+  re-confirm this — that is expected, not a gap.
+- **Browser test** — job 97 reads **3162**, not the stale 3159. Every job was exactly 3 days behind
+  before the import, confirming the staleness was systematic rather than per-job.
+
+**This whole file is now history.** Nothing in it is a task list. The next brief to write is
+**Build 2 — retire the CSV pipeline**, which is not scoped here.
 
 **Standing order from Trevor, 2026-07-29:** *"save all UI changes until after PDF drop implemented
 successfully and CSV pipeline gone"*. So the queue is **1c → Build 2 (retire the CSV pipeline) → any
