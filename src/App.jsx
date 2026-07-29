@@ -557,16 +557,6 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowSummary(true)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
-                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              Summary
-            </button>
-
-            <button
               onClick={() => setShowHelp(h => !h)}
               style={{
                 padding: '7px 12px', borderRadius: 6, border: '1px solid #334155',
@@ -576,22 +566,6 @@ export default function App() {
               }}
             >
               ?
-            </button>
-
-            <button
-              onClick={() => {
-                const next = !showParkingLot;
-                setShowParkingLot(next);
-                window.history.replaceState(null, '', next ? '#parking-lot' : '#');
-              }}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showParkingLot ? '#4f46e5' : '#334155'}`,
-                background: showParkingLot ? '#1e1b4b' : '#1e293b',
-                color: showParkingLot ? '#a5b4fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showParkingLot ? 700 : 400,
-              }}
-            >
-              Parking Lot
             </button>
 
             <button
@@ -838,6 +812,12 @@ export default function App() {
           onWeeklyTargetChange={n => { setWeeklyTarget(n); localStorage.setItem('weeklyTarget', String(n)); }}
           benchHours={benchHours}
           onBenchHoursChange={bh => { setBenchHours(bh); localStorage.setItem('benchHours', JSON.stringify(bh)); }}
+          onOpenSummary={() => { setShowSettings(false); setShowSummary(true); }}
+          onOpenParkingLot={() => {
+            setShowSettings(false);
+            setShowParkingLot(true);
+            window.history.replaceState(null, '', '#parking-lot');
+          }}
         />
       )}
 

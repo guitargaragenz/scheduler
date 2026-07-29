@@ -108,6 +108,7 @@ export default function SettingsModal({
   hourlyRate = 85, onHourlyRateChange,
   weeklyRevenueTarget = 1500, onWeeklyTargetChange,
   benchHours = {}, onBenchHoursChange,
+  onOpenSummary, onOpenParkingLot,
 }) {
   const [activeTab, setActiveTab] = useState('keywords');
   const [rateInput, setRateInput] = useState(String(hourlyRate));
@@ -144,7 +145,7 @@ export default function SettingsModal({
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #334155' }}>
-          {['keywords', 'rates', 'calendar', 'changelog'].map(tab => (
+          {['keywords', 'rates', 'calendar', 'pages', 'changelog'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '10px 18px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
@@ -267,6 +268,25 @@ export default function SettingsModal({
                   Connect Google Calendar
                 </button>
               )}
+            </div>
+          )}
+
+          {activeTab === 'pages' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={onOpenSummary} style={{
+                padding: '10px 14px', background: '#0f172a', border: '1px solid #334155',
+                borderRadius: 8, color: '#e2e8f0', fontSize: 13, cursor: 'pointer',
+                textAlign: 'left', fontWeight: 600,
+              }}>
+                Summary
+              </button>
+              <button onClick={onOpenParkingLot} style={{
+                padding: '10px 14px', background: '#0f172a', border: '1px solid #334155',
+                borderRadius: 8, color: '#e2e8f0', fontSize: 13, cursor: 'pointer',
+                textAlign: 'left', fontWeight: 600,
+              }}>
+                Parking Lot
+              </button>
             </div>
           )}
 
