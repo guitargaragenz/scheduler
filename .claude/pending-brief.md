@@ -12,10 +12,10 @@ Checkpoint 3b was cleared 2026-07-29 against the widened six-field list. **Build
 (`f2ee449`)** — full protocol run, verifier 21/21, browser test five of six items live with the
 sixth dropped deliberately, merged on Trevor's "yp". Its working record is
 `docs/briefs/re-fresh-brief-g-build-1b-browser-test-and-merge.md`, now `closed`.
-**The live scope in this file is Build 1c, and nothing else.** It resumes at **method step 12
-(builder)** — but not before its own council round, because the 2026-07-28 council never saw 1c.
-So the real next action is **two `ggnz-council` reviews of the Build 1c scope** (the migration, the
-second parser, the computed-age change), then a fresh builder on a new staging branch.
+**The live scope in this file is Build 1c, and nothing else.**
+**✅ Council on 1c ran 2026-07-29** — two `ggnz-council` agents, both "proceed with changes";
+their changes are folded into scope items 8/8b/9/10/11/12 (marked ⚡) and are binding.
+**The next action is method step 12 — a fresh `ggnz-builder` on a new staging branch.**
 Everything above Build 1c in this file is history — the 1a and 1b scope items are done, the
 decisions are recorded, and they are not a task list.
 
@@ -474,8 +474,14 @@ corrected M/T bands. Confirm a range in the Hours cell (`2-4`) averages to 3.
 
 ### Build 1c — the JBA drop, and job age stops going stale
 
-**Added by the 2026-07-29 amendment. Approved by Trevor 2026-07-29 ("yp"). Runs after Build 1b,
-and council has not seen it — see the note at the end of this section.**
+**Added by the 2026-07-29 amendment. Approved by Trevor 2026-07-29 ("yp"). Runs after Build 1b.**
+
+> ✅ **COUNCIL RAN 2026-07-29** — two independent `ggnz-council` agents on the 1c scope
+> (the migration, the second parser, the computed-age change). **Both returned "proceed with
+> changes."** Every change they asked for is written into the scope items below and is
+> **binding on the builder**; each is marked ⚡. Trevor approved the amendments 2026-07-29
+> ("yes overwrite, yes go ahead"), including the overwrite ruling in item 11.
+> Every council claim below was re-verified against the live tree before being written in.
 
 Ends with: Trevor drops the JBA PDF, every job gets its real Date In, and the age on the card
 counts up on its own every morning without anything being dropped or synced.
@@ -483,6 +489,21 @@ counts up on its own every morning without anything being dropped or synced.
 8. **`first_seen` column** — additive migration on the `jobs` table, `date`, nullable. Nothing
    dropped, nothing rewritten, no existing column touched. Run it before the parser lands so the
    writer has somewhere to write.
+   ⚡ **HOW the migration is applied — council 1, blocking.** There is no migrations runner in
+   this repo and no `supabase/` directory. Every schema change here has been applied by hand:
+   the `ALTER TABLE` is added to `docs/supabase-schema.sql` **and Trevor pastes it into the
+   Supabase SQL editor himself**. Precedent: `git show 6b39f3d`, and the `days` column at
+   `1ab2b9d`. So the builder must (a) add the column to `docs/supabase-schema.sql`, (b) hand
+   Trevor the exact one-line SQL to paste, and (c) **confirm it landed before testing any
+   write** — a `select first_seen from jobs limit 1` is enough. Do not assume the column exists.
+
+8b. ⚡ **Match-key proof for JBA — council 2, blocking. Do this before item 10 writes anything.**
+   Build 1a's step 0 proved the *Jobs PDF's* ref extraction matches `jobs.id` character for
+   character. It proves nothing about JBA, which is a different layout. Because the upsert
+   conflicts on `id`, a ref that parses even slightly differently **silently creates a second
+   job row** instead of updating — and every preview count still looks right. Throwaway script,
+   same shape as 1a's: parse the real JBA PDF, print its refs beside `jobs.id`, require a clean
+   match. **If they do not match cleanly, stop and come back to Trevor.**
 9. **Port a second parser — `parseJobsByAgePdf`.** Its own file, its own tests. **Do not extend
    the Medium-Job-Search parser with a mode flag** — the layouts differ (date-led rows, Mfr wraps
    to a second line on long names, x-positions shift partway down the file) and one parser serving
@@ -490,23 +511,83 @@ counts up on its own every morning without anything being dropped or synced.
    Fields out: **job number and Date In. Nothing else.** JBA also carries Mfr/Model/Status/Desc,
    and those already arrive on the Jobs PDF — a second writer for the same columns is the
    two-masters bug again, in a new place. **JBA owns exactly one column: `first_seen`.**
+   ⚡ **Share the ref derivation, not the layout logic — council 2.** `fixLigatures()`
+   (`src/data/parseMultitrackPdf.js:32`) is layout-independent text repair and must be
+   **imported, not copied** — Mfr names wrap the same broken way in both PDFs. The y-grouping
+   (`toLines`, :41) and the fault/wrap-gap logic are Jobs-PDF-specific and correctly stay
+   separate. **Critically:** the ref derivation is currently inlined inside `finalize()`
+   (~:113) and is not a named function. **Pull it out into one exported helper both parsers
+   call** before writing the second parser. If JBA re-derives its own trim/join logic, any
+   tiny divergence is exactly the silent-duplicate bug item 8b exists to catch.
 10. **One-column sparse writer** — same `toJobRow` + column-signature-grouping pattern as 1a. One
     name in the allow-list: `first_seen`. Do **not** call `upsertJobsBatch()`.
+    ⚡ **`job` MUST ride along on every row — council 1, blocking. Taken literally, "one name in
+    the allow-list" makes every JBA import fail on write.** `jobs.job` is `NOT NULL`
+    (`docs/supabase-schema.sql:8`), and Postgres validates NOT NULL against the *proposed insert
+    row* **before** it resolves `ON CONFLICT` onto the existing row — so `{id, first_seen}` is
+    rejected with `23502` even though the row already exists and only an update was intended.
+    This is not theoretical: it is the documented, reproduced-live cause of drags never
+    persisting after the Supabase migration (job 842) — see the comment block at
+    `src/data/joinJobs.js:135-171` and the fix in `jobsStateFieldsFor()`. 1a's writer already
+    handles it (`src/utils/supabase.js:281-287`, Guard 3). Do the same: send
+    `{id, job, first_seen}`. Never send `job: undefined` — log loudly and skip that one row.
+    ⚡ **`toJobRow()` does not know `first_seen` today** — neither `JOB_COLUMN_MAP` nor
+    `JOB_PASSTHROUGH_FIELDS` (`src/utils/supabase.js:85-121`) has an entry. Add it. Small, but
+    the brief's "same pattern as 1a" reads as if this file needs no change, and it does.
 11. **Preview screen and count sanity-check**, same shape as 1a: "45 dates filled · 2 already
     known · 6 jobs here that aren't in this file". Import / Cancel. A short parse refuses.
     **A job in the database but absent from JBA is reported, never deleted** — verified 2026-07-29,
     the database holds 53 top-level jobs against JBA's 47, and the 6 extra are legitimate.
-12. **Age is computed on render** — `days = today − first_seen` wherever job age is displayed,
-    falling back to the stored `days` column when `first_seen` is null so nothing goes blank
-    mid-migration.
+    ⚡ **Reuse 1a's modal shell and `pdfImportPlan.js` machinery** (count refusal, missing-list,
+    `isTopLevelJob`) — same new/known/missing shape. Only the `writes[]` construction differs
+    (six fields vs one). Duplicating the modal is risk for no gain.
+    ⚡ **DECIDED by Trevor 2026-07-29 — a differing date OVERWRITES.** Council 2 found this
+    genuinely unspecified. If a job already has a `first_seen` and JBA carries a different date,
+    **JBA wins.** Multitrack owns the date exactly as it owns customer and status, and this keeps
+    the one rule that already holds everywhere: *Multitrack's facts win; Trevor's markup is never
+    touched.* The alternative — skip if already set — would mean a single bad date could never be
+    corrected without hand-editing the database. Show these as a third count on the preview
+    ("N dates changed") so an overwrite is never invisible.
+12. **Age is computed** — `days = today − first_seen`, falling back to the stored `days` column
+    when `first_seen` is null so nothing goes blank mid-migration.
+    ⚡ **Compute it ONCE, in `normalizeJobsFromDb()` (`src/hooks/useSupabase.js:33`, where
+    `days` is already set at :62) — NOT at each render site. Both councils, blocking.** The
+    brief previously said "wherever job age is displayed", which is wrong twice over: `job.days`
+    is read in **six** places, and **two of them are sort orders, not displays** —
+    `src/components/JobShelf.jsx:144` and `src/components/DailyLogPage.jsx:825`, plus
+    `src/data/jobs.js:381`. Displays are `src/components/JobCard.jsx:164`,
+    `src/components/ProjectsPage.jsx:29`/`:155` and `src/components/DailyLogPage.jsx:409`/`:435`.
+    All six verified live 2026-07-29. Patch the screens but not the sorts and the cards show
+    correct ticking ages while the list order stays frozen at today's stale numbers — and during
+    the mixed period a sort cannot compare a computed age against a stored one at all. Computing
+    once at the normalise step means all six keep reading the same `job.days` they read today and
+    **no call site changes.**
+    ⚡ **Use the local-date pattern, not UTC — council 1.** NZ is UTC+12/13 and this codebase
+    already carries the warning: `src/utils/calendar.js:1-2` documents that
+    `toISOString().slice(0,10)` drifts a day off local date, which is why `localDateKey()`
+    exists. Naive `new Date(first_seen)` day-maths lands one out — and the verification
+    criterion ("3162, not 3159") is precisely an off-by-one test. Reuse `localDateKey()`.
 
 **Explicitly NOT in 1c:** removing the `days` column, removing `preserveKnownDays()`, or changing
 what the Jobs PDF writes. Those are Build 2, once every job has a `first_seen`.
 
+**Expected, not a bug — tell Trevor.** A brand-new job that arrives on the Jobs PDF before the
+next JBA drop has `days: null` (`src/data/pdfImportPlan.js:86`) and no `first_seen`, so it shows
+**no age** until JBA is next dropped. That is today's behaviour for a PDF-imported job, unchanged
+by 1c. Not a regression, and not something to "fix" inside this build.
+
 **1c verification (independent agent, then browser test):** drop the real JBA PDF on the Vercel
 preview; confirm job 97 reads 3162 days, not 3159; confirm Tag/Hours/Action/VB/BL/PJ and customer
 are all unchanged; confirm no calendar slot, bench assignment or split state moved; re-drop the
-same file and confirm nothing duplicates.
+same file and confirm nothing duplicates. ⚡ **Added by council:** confirm the job list **sort
+order** reflects the new ages, not just the numbers on the cards (all six read sites in item 12);
+confirm a job whose stored date differs from JBA is **overwritten** and counted on the preview;
+confirm the age is right at NZ local midnight boundaries, not one day out.
+
+**Blast radius — full protocol applies.** 1c touches `src/hooks/useSupabase.js` and the `jobs[]`
+shape, both on CLAUDE.md's blast-radius list. It does **not** touch `scheduledSlots`,
+`calendarSlot` or `useGoogleCalendar.js` — both councils confirmed the "scheduling untouched"
+claim independently.
 
 ---
 
@@ -564,8 +645,11 @@ Each build gets its own builder run, its own verifier and its own browser test. 
 (brief and council) are done once and cover all three — the council's findings are binding on
 every builder.
 
-**Council did not see Build 1c.** It was written after the council ran. Before 1c starts, two
-`ggnz-council` agents review the 1c scope specifically — the migration, the second parser, and the
-computed-age change. 1a and 1b keep the original council verdict.
+**Council on Build 1c — ✅ DONE 2026-07-29.** Two independent `ggnz-council` agents reviewed the
+1c scope (migration / second parser / computed-age). Both: **proceed with changes.** All changes
+are written into scope items 8, 8b, 9, 10, 11 and 12, marked ⚡, and are **binding on the
+builder** exactly as the 2026-07-28 verdict is. Trevor approved them and ruled on the overwrite
+question the same day. 1a and 1b keep the original council verdict. **Next action: step 12,
+builder on a fresh staging branch.**
 
 **No commits before step 1 is approved.**
