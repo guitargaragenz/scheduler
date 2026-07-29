@@ -7,10 +7,17 @@ Build proceeds on a staging branch. Anything not in the Scope list is out — br
 here for a fresh "yp" rather than absorbing them mid-build.
 **Amendment approved by Trevor, 2026-07-29 ("yp")** — the whole 2026-07-29 amendment below,
 including Build 1c, is now in scope.
-**Next action:** Build 1a is **shipped** (`f927248`). **Checkpoint 3b cleared 2026-07-29** against
-the widened six-field list. **Build 1b is unblocked and has not been started** — it resumes at
-**method step 8 (builder)**. Council ran on 2026-07-28 and covered 1b's items; it did not cover
-Build 1c, which gets its own council round before it starts.
+**Next action — updated 2026-07-29 after the 1b merge:** Build 1a is **shipped** (`f927248`).
+Checkpoint 3b was cleared 2026-07-29 against the widened six-field list. **Build 1b is shipped
+(`f2ee449`)** — full protocol run, verifier 21/21, browser test five of six items live with the
+sixth dropped deliberately, merged on Trevor's "yp". Its working record is
+`docs/briefs/re-fresh-brief-g-build-1b-browser-test-and-merge.md`, now `closed`.
+**The live scope in this file is Build 1c, and nothing else.** It resumes at **method step 12
+(builder)** — but not before its own council round, because the 2026-07-28 council never saw 1c.
+So the real next action is **two `ggnz-council` reviews of the Build 1c scope** (the migration, the
+second parser, the computed-age change), then a fresh builder on a new staging branch.
+Everything above Build 1c in this file is history — the 1a and 1b scope items are done, the
+decisions are recorded, and they are not a task list.
 **Date:** 2026-07-28, amended 2026-07-29
 **Repo state:** `main` @ `482feb9`, clean. (Was `65cadc0` when this brief was written.)
 **Predecessor:** the scope-and-council session, whose brief was deleted in the 2026-07-28 briefs

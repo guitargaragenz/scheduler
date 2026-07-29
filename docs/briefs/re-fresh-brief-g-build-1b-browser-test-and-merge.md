@@ -1,6 +1,17 @@
-doc_status: live
+doc_status: closed
 
-# Brief G, Build 1b — built and verified, waiting on the browser test and the merge
+# Brief G, Build 1b — SHIPPED
+
+**Shipped at `f2ee449`** (merge commit on `main`, 2026-07-29). Protocol steps 5 and 6 are
+done: the browser test passed five of six items live, the sixth was dropped on purpose, and
+Trevor approved the merge. 197/197 tests pass on `main` and the production build is clean.
+
+**This is history now, not a task list.** Everything below was true on 2026-07-29 and is kept
+only because the reasoning cost a session to build up. The three deferred Sheet changes have
+been moved to their own parked brief —
+[parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) — so build
+from there, not from the sections at the bottom of this file. Build 1c is the next phase and
+starts from `.claude/pending-brief.md`, which is still the live scope lock for it.
 
 Written 2026-07-29 at the end of the session that ran protocol steps 3 and 4.
 

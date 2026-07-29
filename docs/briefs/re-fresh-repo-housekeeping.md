@@ -97,9 +97,12 @@ piecemeal.
 
 ## Section 4 — the two pipeline scripts. Don't delete. Ask.
 
+> **Updated 2026-07-29.** Build 1b merged (`f2ee449`), so only **Build 1c** still blocks anything
+> here — and it only blocks `start_watcher.command`, whose parser 1c is porting.
+
 | File | Why it's uncertain |
 |---|---|
-| `scripts/sheet_to_csv.command` (21 KB) | **Still live.** The Google Sheet is still master for Trevor's six hand-kept fields until Brief G's Build 1b ships. It also holds 21 KB of hand-tuned bench-keyword logic that CLAUDE.md protects, and `MANUAL_FIELDS` at line 32 is currently the only written record of which columns Trevor maintains by hand. **Do not touch it before Build 1b merges.** |
+| `scripts/sheet_to_csv.command` (21 KB) | **Unblocked 2026-07-29 — Build 1b shipped at `f2ee449`.** The app is now master for Trevor's six hand-kept fields (Tag/Hours/Action/VB/BL/PJ) and the CSV import path can no longer write them, so the Sheet is no longer master for anything. Two things still need doing before this moves to `archive/`: it holds 21 KB of hand-tuned bench-keyword logic that CLAUDE.md protects, and `MANUAL_FIELDS` at line 32 was the only written record of which columns Trevor maintains by hand — that record now lives in the code and in Brief G, so check both before relying on it. **Also note the CSV upload button is still live in the UI** (`JobShelf.jsx:207`, `DailyLogPage.jsx:1064`, `Sidebar.jsx:250`) — retiring the script does not remove the button. Ask Trevor before moving it. |
 | `scripts/start_watcher.command` (13 KB) | Must not be *run* — its parser is what truncated the jobs list on 26 July. But it is still the reference implementation, and **Brief G's Build 1c needs it**: the Jobs-by-Age parser being ported comes from here. Keep until 1c ships. |
 
 **When both are genuinely finished, move them to `archive/` rather than deleting** — same
