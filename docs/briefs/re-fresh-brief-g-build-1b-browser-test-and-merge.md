@@ -290,29 +290,55 @@ CSV sync at `useJobs.js:313`, and `useSupabase.js` merely re-exports.
 Run it against the **Vercel preview for `staging/brief-g-jobs-sheet-page`**, or locally
 via the `ggnz-scheduler` config in `.claude/launch.json` (port 5173).
 
-**Note for local testing:** the in-app browser reports `pointer: coarse`, so
-`App.jsx:108` decides it's a phone and renders the sheet read-only. That is a preview
-artefact, not a bug — on Trevor's iMac with a mouse it renders editable. If a session
-needs the editable version in the preview browser, temporarily neutralise that line and
-**revert it before committing**. It was reverted cleanly last session; check
-`git diff -- src/App.jsx` is empty before any commit.
+**Note for local testing:** the in-app browser renders the sheet read-only. **Corrected
+2026-07-29 after checking it live:** the cause is *not* `pointer: coarse` — that reports
+`false`. It is `window.innerWidth`, which is `0` at mount in the preview tab, so the
+`|| window.innerWidth < 768` half of `App.jsx:108` fires and the app decides it's a phone.
+A preview artefact either way, not a bug — on Trevor's iMac it renders editable. If a
+session needs the editable version in the preview browser, temporarily neutralise that
+line and **revert it before committing**. It has been reverted cleanly every time so far;
+check `git diff -- src/App.jsx` is empty before any commit.
+
+**Run 2026-07-29 against the local dev server. Five of the six items pass; only item 3 is
+left, and it is the one that needs Trevor's go-ahead because it writes live data.**
+Results are recorded under each item below.
 
 What must be confirmed live, in this order:
 
 1. **It works, and it's usable enough to merge.** Not "is it pretty" — the look changes he
    asked for are parked by his own instruction, so a dark sheet is not a blocker. What
    matters here is that the page loads, the six columns edit, and Commit does what it says.
+   **PASS.** Page loads with no console errors, header reads "Jobs Sheet — 53 jobs ·
+   greyed columns come from Multitrack", and the editable controls are all present: 106
+   `<select>` (53 Tag + 53 Action), 53 Hours boxes, 159 checkboxes (VB/BL/PJ).
 2. **Item 13 — split and derived rows do not appear and are not writable from the sheet.**
    Derived cards have non-numeric ids like `1620_Electronics_0`. This is the verifier's
    open concern and the reason the merge is gated.
+   **PASS, and non-vacuously.** The sheet shows **53 rows, every id numeric, no
+   duplicates**. The app's own `jobs` array (read out of React) holds **78**, of which
+   **25 are derived or split** — `1711-LC`, `1711-LU`, `1711-SU`, `1632-R`, `1632-LC`,
+   `1635-WR`, `1708-R`, `1703_Fretwork_0`, `1703_Setup_0`, `1621_Fretwork_0`,
+   `1621_Fretwork_1`, `1689_Luthier_0` and the rest. 53 + 25 = 78. So derived rows really
+   do exist in the live set and really are excluded. **The verifier's concern is settled.**
 3. **Edit → Commit → CSV sync → the edit survives.** The whole point of the ownership
    move. Change an Action, commit, run a sync, confirm it is still there.
-4. Tag auto-fill uses the corrected bands. *(Already confirmed once locally: picking
-   `T` on job 1711 filled hours with `5.5`, the row highlighted, the counter read
-   "1 changed", Commit went live. Then discarded — nothing was written.)*
+   **NOT RUN — waiting on Trevor.** It is the only item that writes real job data.
+4. Tag auto-fill uses the corrected bands. **PASS.** On job 1712, picking each tag in turn
+   filled the Hours box with `EZ → 1.5`, `M → 3`, `T → 5.5`, `H → 6` — M and T the right
+   way round, which is item 4b proved live. Clearing the tag back to `—` left hours at
+   `6`, which is the documented behaviour: forgetting a tag must not wipe an estimate.
 5. A range in the Hours box: `2-4` saves as `3`. That is current behaviour and what must
    be tested — the 30-minute snap is deferred, so don't expect `1.2` to become `1` yet.
-6. `SKP` round-trips on 182 / 321 / 592 / 1268 without changing behaviour.
+   **PASS.** Typing `2-4` into job 1712's Hours box turned the row dirty and the box's own
+   tooltip read **"Saves as 3"**.
+6. `SKP` round-trips on 182 / 321 / 592 / 1268 without changing behaviour. **PASS.** All
+   four appear in the sheet holding `SKP`, each with options `["", "EZ", "M", "T", "H",
+   "SKP"]` — the extra option exists only on the rows that already hold it. Actions read
+   GTS / CI / CI / RS. No branching behaviour anywhere.
+
+Everything above was then **discarded**: zero dirty rows, job 1712 back to tag `—` and
+hours `0`. **Nothing was written.** The temporary `App.jsx:108` edit was reverted and
+`git diff` is empty.
 
 Step 3 writes to live job data. **Get Trevor's explicit go-ahead before committing a
 real edit**, and tell him which job and which field first.
