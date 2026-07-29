@@ -243,11 +243,17 @@ CREATE INDEX IF NOT EXISTS idx_pdf_import_log_imported_at ON pdf_import_log(impo
 -- Written by exactly ONE thing: the Jobs-by-Age PDF import, which owns this
 -- column and no other. Nullable on purpose — NULL means "we have not been told
 -- when this job arrived yet", which is a different fact from a job that arrived
--- today, and the app falls back to the stored `days` while that is true.
+-- today. A job with a NULL first_seen shows no age at all.
 -- Additive, safe on existing rows.
 --
--- `days` and preserveKnownDays() deliberately stay for now, and go in Build 2
--- once every job has a first_seen.
+-- SHIPPED, Brief H, Build 2b (2026-07-29): the app no longer reads or writes
+-- the `days` column. It was checked against the live table first — every row
+-- with a stored age also had a first_seen, so no job on the board lost an age.
+-- The stored-days fallback and preserveKnownDays() are both gone from the code.
+--
+-- The `days` COLUMN below deliberately STAYS, holding stale values nobody
+-- updates. Trevor's call: a dead column costs nothing and a dropped one cannot
+-- be un-dropped. Do NOT write an ALTER TABLE ... DROP COLUMN days.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS first_seen DATE;
 
 -- Enable realtime subscriptions for the app

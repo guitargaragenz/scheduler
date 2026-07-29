@@ -3,7 +3,7 @@ import {
   isSupabaseConfigured,
   loadJobs, subscribeToJobs,
   loadScheduledSlots, subscribeToScheduledSlots,
-  saveJob, deleteJob, upsertJobsBatch,
+  saveJob, deleteJob,
   appendConflictLog,
 } from '../utils/supabase.js';
 import { expandAutoSplits } from '../data/joinJobs.js';
@@ -62,20 +62,24 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       firstSeen: j.first_seen || null,
       // Job age, computed here and ONLY here — Brief G, Build 1c.
       //
-      // `job.days` is read in six places across the app and two of them are
-      // sort orders, not displays (JobShelf.jsx, DailyLogPage.jsx,
-      // data/jobs.js). Working the age out at each display instead would leave
-      // the cards ticking correctly while the lists stayed sorted on stale
-      // stored numbers — and mid-migration a sort cannot meaningfully compare a
-      // computed age against a stored one at all. Doing it once, here, means
-      // all six call sites keep reading the same `job.days` they always have
-      // and not one of them had to change.
+      // `job.days` is read in several places across the app and two of them are
+      // sort orders rather than displays (JobShelf.jsx, DailyLogPage.jsx).
+      // Working the age out at each display instead would leave the cards
+      // ticking correctly while the lists stayed sorted on stale stored
+      // numbers. Doing it once, here, means every one of those readers keeps
+      // reading the same `job.days` it always has and not one of them had to
+      // change.
+      //
+      // The raw `j.days` COLUMN is deliberately not read — Brief H, Build 2b
+      // removed the stored-days fallback, and this was the only place in the
+      // app that ever read the column off a database row. The column still
+      // exists and still holds stale values; ignoring it is the point.
       //
       // `null` still stays `null`: an unknown age must not read back as 0, or a
       // brand-new job and a job of unknown age become indistinguishable again.
       // `|| null` would be wrong here — it would turn a genuine 0-day job into
       // "unknown".
-      days: jobAgeDays(j.first_seen, j.days),
+      days: jobAgeDays(j.first_seen),
       scheduled: j.scheduled,
       calendarSlot: j.calendar_slot || null,
       gcalEventId: j.gcal_event_id || null,
@@ -209,7 +213,6 @@ export function useSupabase({
     loadScheduledSlots: loadAndSetSlots,
     saveJob,
     deleteJob,
-    upsertJobsBatch,
     appendConflictLog,
   };
 }

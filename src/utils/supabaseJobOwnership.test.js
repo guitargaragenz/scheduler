@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Brief G, Build 1b, item 3 — the CSV import can no longer touch the six
-// columns Trevor now keeps in the app: tag, hours, action, vb, bl and pj.
+// Who may overwrite which job columns, pinned at the level of what actually
+// leaves the app rather than what a helper intended.
 //
-// Nothing was migrated and no data moved. What changed is who may overwrite
-// these columns. pickMasterFields() strips them on the way in, but that alone
-// would not have been enough: upsertJobsBatch() builds a FIXED row and ignores
-// which keys the caller actually supplied, so `job.vb ? 'Y' : 'N'` on a
-// stripped record would have written 'N' over every real 'Y' in the workshop.
-// The columns had to come out of the row itself, which is what these tests
-// pin down — at the level of what actually leaves the app, not what a helper
-// intended.
+// The upsertJobsBatch half of this file went with that function in Brief H,
+// Build 2b — it was the CSV import's fixed-row writer, dead since Build 2a.
+// What remains is the rule that outlived it: batchWriteJobsState must send only
+// the columns its caller edited, grouped so rows with different edits never
+// share an upsert. That is the guard against a Supabase array upsert sending
+// the union of every row's keys and NULL-filling the rest.
 
 let nextResult = { data: [], error: null };
 let upsertCalls = [];
@@ -28,9 +26,7 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({ from: vi.fn(() => chain()), channel: vi.fn() }),
 }));
 
-const { upsertJobsBatch, batchWriteJobsState } = await import('./supabase.js');
-
-const APP_OWNED_COLUMNS = ['tag', 'hours', 'action', 'vb', 'bl', 'pj'];
+const { batchWriteJobsState } = await import('./supabase.js');
 
 beforeEach(() => {
   nextResult = { data: [], error: null };
@@ -38,31 +34,6 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'log').mockImplementation(() => {});
-});
-
-const csvJob = {
-  id: '1601', job: '1601', customer: 'Dave', mfr: 'Fender', model: 'Strat',
-  status: 'Active', desc: 'Fret buzz', bench: 'Setup', days: 12,
-  // A CSV row still carries these; the point is that they go nowhere.
-  tag: 'EZ', hours: 1.5, action: 'GTS', vb: true, backlog: true, project: true,
-};
-
-describe('upsertJobsBatch — the CSV import path', () => {
-  it('sends none of the six app-owned columns', async () => {
-    await upsertJobsBatch([csvJob]);
-    expect(upsertCalls).toHaveLength(1);
-    const row = upsertCalls[0].records[0];
-    APP_OWNED_COLUMNS.forEach(col => expect(row).not.toHaveProperty(col));
-  });
-
-  it('still writes the Multitrack facts and the job age', async () => {
-    await upsertJobsBatch([csvJob]);
-    const row = upsertCalls[0].records[0];
-    expect(row).toMatchObject({
-      id: '1601', job: '1601', customer: 'Dave', mfr: 'Fender',
-      model: 'Strat', status: 'Active', desc: 'Fret buzz', days: 12,
-    });
-  });
 });
 
 describe('batchWriteJobsState — the writer the Jobs Sheet uses', () => {
@@ -85,6 +56,17 @@ describe('batchWriteJobsState — the writer the Jobs Sheet uses', () => {
     const columnSets = upsertCalls.map(c => Object.keys(c.records[0]).sort().join(','));
     expect(columnSets).toContain('action,id,job,updated_at');
     expect(columnSets).toContain('hours,id,job,updated_at');
+  });
+
+  it('never writes `days`, even when a caller hands it one', async () => {
+    // Brief H, Build 2b. Age is computed from first_seen on every load, so the
+    // `days` on an in-memory job is a derived number. If it could still reach
+    // the column, any ordinary state write would push today's computed figure
+    // back into the database and re-create the stale-number problem the
+    // computed age was built to end. The column stays; nothing writes it.
+    await batchWriteJobsState([{ id: '1601', data: { days: 412, action: 'INC', job: '1601' } }]);
+    expect(upsertCalls).toHaveLength(1);
+    expect(upsertCalls[0].records[0]).not.toHaveProperty('days');
   });
 
   it('turns the VB/BL/PJ booleans into the Y/N the columns store', async () => {

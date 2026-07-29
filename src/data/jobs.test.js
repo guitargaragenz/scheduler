@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS, preserveKnownDays } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -47,48 +47,10 @@ describe('job age sort order', () => {
   });
 });
 
-describe('preserveKnownDays — the CSV import guard', () => {
-  it('keeps the age we already know when the export comes through blank', () => {
-    const parsed = [{ job: '1708', days: null }];
-    const existing = [{ job: '1708', days: 274, parentId: null }];
-    expect(preserveKnownDays(parsed, existing)[0].days).toBe(274);
-  });
-
-  it('takes a changed populated value — MT is authoritative when it says something', () => {
-    const parsed = [{ job: '1708', days: 300 }];
-    const existing = [{ job: '1708', days: 274, parentId: null }];
-    expect(preserveKnownDays(parsed, existing)[0].days).toBe(300);
-  });
-
-  it('keeps an incoming 0 rather than treating it as blank', () => {
-    const parsed = [{ job: '1708', days: 0 }];
-    const existing = [{ job: '1708', days: 274, parentId: null }];
-    expect(preserveKnownDays(parsed, existing)[0].days).toBe(0);
-  });
-
-  it('leaves a blank blank when we never knew the age either', () => {
-    const parsed = [{ job: '1710', days: null }];
-    const existing = [{ job: '1710', days: null, parentId: null }];
-    expect(preserveKnownDays(parsed, existing)[0].days).toBeNull();
-  });
-
-  it('does not take an age from a split child row', () => {
-    const parsed = [{ job: '1708', days: null }];
-    const existing = [{ job: '1708', days: 274, parentId: '1708' }];
-    expect(preserveKnownDays(parsed, existing)[0].days).toBeNull();
-  });
-
-  it('does not mutate the rows it is handed', () => {
-    const parsed = [{ job: '1708', days: null }];
-    preserveKnownDays(parsed, [{ job: '1708', days: 274, parentId: null }]);
-    expect(parsed[0].days).toBeNull();
-  });
-
-  it('handles an empty or missing previous-jobs list', () => {
-    expect(preserveKnownDays([{ job: '1', days: null }], [])[0].days).toBeNull();
-    expect(preserveKnownDays()).toEqual([]);
-  });
-});
+// The preserveKnownDays block that sat here went with the function in Brief H,
+// Build 2b. It guarded a stored age against a blank CSV cell; there is no CSV
+// import and no stored age left for it to guard. Age is computed from the
+// booked-in date now, and src/utils/jobAge.test.js covers it.
 
 describe('blockedPile', () => {
   const job = (over = {}) => ({ status: 'Active', action: 'CI', backlog: false, ...over });

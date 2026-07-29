@@ -47,21 +47,25 @@ export function daysSinceDateKey(dateKey, now = new Date()) {
 }
 
 /**
- * The age to show for a job: computed from its first_seen date when we have
- * one, otherwise whatever number was last stored in the `days` column.
+ * The age to show for a job: computed from its first_seen date, and from
+ * nothing else.
  *
- * The fallback is what makes this safe to ship before a single JBA file has
- * been dropped. Every job keeps the age it shows today, and each one switches
- * over to the live, self-ticking figure the moment its date arrives. A job with
- * neither — a brand-new job introduced by the Jobs PDF before the next JBA drop
- * — returns null and shows no age at all. That is today's behaviour for such a
- * job, unchanged by this build, and it is not a bug to go and fix.
+ * Build 1c shipped this with a second arm that fell back to whatever number
+ * was last stored in the `days` column, so the app kept every job's existing
+ * age before a single Jobs-by-Age file had been dropped. Brief H, Build 2b
+ * removed that arm: checked against the live table first, every row with a
+ * stored age also had a date, so no job on the board lost an age.
  *
- * The stored `days` column and preserveKnownDays() both stay until every job
- * has a first_seen; removing them is Build 2.
+ * The `days` COLUMN still exists in the database and is deliberately left
+ * there holding stale values nobody updates — a dead column costs nothing and
+ * a dropped one cannot be un-dropped. The app simply no longer reads or writes
+ * it. `job.days` in app shape is now always this computed figure.
+ *
+ * A job with no first_seen returns null and shows no age at all. With no
+ * fallback left that is now the only behaviour, and it is the accepted trade,
+ * not a bug to go and fix: a job that loses its date shows nothing rather than
+ * something quietly wrong.
  */
-export function jobAgeDays(firstSeen, storedDays, now = new Date()) {
-  const computed = daysSinceDateKey(firstSeen, now);
-  if (computed != null) return computed;
-  return storedDays == null ? null : Number(storedDays);
+export function jobAgeDays(firstSeen, now = new Date()) {
+  return daysSinceDateKey(firstSeen, now);
 }

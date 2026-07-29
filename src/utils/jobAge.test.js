@@ -56,25 +56,37 @@ describe('daysSinceDateKey', () => {
 });
 
 describe('jobAgeDays', () => {
-  it('prefers the computed age over the stored number', () => {
-    // Job 97 exactly: stored 3159, real answer 3162. The stored value is stale
-    // by definition and must never win.
-    expect(jobAgeDays('2017-12-01', 3159, at(2026, 7, 29))).toBe(3162);
+  // Brief H, Build 2b: the stored-`days` fallback arm is gone. The signature is
+  // now (firstSeen, now) — the old middle argument was storedDays, and the
+  // second positional slot is the CLOCK. The cases below pin that, because a
+  // call site left un-updated would pass a small integer like 412 as `now` and
+  // compute every age against a bogus date with nothing visibly broken.
+
+  it('computes the age from first_seen', () => {
+    // Job 97 exactly: the database's stored number on this date was 3159 and
+    // the real answer is 3162. Nothing stored can win any more — there is
+    // nothing stored left to win.
+    expect(jobAgeDays('2017-12-01', at(2026, 7, 29))).toBe(3162);
   });
 
-  it('falls back to the stored days while a job has no date yet', () => {
-    expect(jobAgeDays(null, 412, at(2026, 7, 29))).toBe(412);
+  it('shows no age for a job with no date, rather than a stale stored one', () => {
+    // The deliberate trade made when the fallback went. A job with no
+    // first_seen shows nothing at all — expected for a brand-new job the Jobs
+    // PDF introduced before the next Jobs-by-Age drop.
+    expect(jobAgeDays(null, at(2026, 7, 29))).toBeNull();
+    expect(jobAgeDays(undefined, at(2026, 7, 29))).toBeNull();
+    expect(jobAgeDays('', at(2026, 7, 29))).toBeNull();
   });
 
-  it('coerces a stored value that came back from PostgREST as a string', () => {
-    expect(jobAgeDays(null, '412', at(2026, 7, 29))).toBe(412);
+  it('counts a job booked in today as 0, not null', () => {
+    // 0 and "unknown" must stay different facts on the card and in the sort.
+    expect(jobAgeDays('2026-07-29', at(2026, 7, 29))).toBe(0);
   });
 
-  it('keeps a genuine 0-day stored age as 0, not as unknown', () => {
-    expect(jobAgeDays(null, 0, at(2026, 7, 29))).toBe(0);
-  });
-
-  it('shows no age for a job with neither — expected for a brand-new PDF job', () => {
-    expect(jobAgeDays(null, null, at(2026, 7, 29))).toBeNull();
+  it('treats its second argument as the clock, not as a stored age', () => {
+    // The guard against a half-updated call site. Under the old three-argument
+    // signature this call meant "no date, stored age 412" and returned 412.
+    // It must now be read as a date and rejected, never as a number of days.
+    expect(jobAgeDays(null, 412)).toBeNull();
   });
 });

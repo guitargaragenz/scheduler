@@ -106,8 +106,8 @@ const JOB_COLUMN_MAP = {
 };
 
 // vb/backlog/project are booleans on the app-shape job but stored as 'Y'/'N'
-// TEXT columns (vb/bl/pj) — same convention upsertJobsBatch() uses on the
-// CSV-import write path. A stale uppercase VB/BL/PJ key set used to sit in
+// TEXT columns (vb/bl/pj) — the convention the columns have carried since the
+// Multitrack CSV days. A stale uppercase VB/BL/PJ key set used to sit in
 // JOB_COLUMN_MAP here, but app jobs have never had those keys (jobs.js has
 // always produced lowercase vb/backlog/project), so it silently matched
 // nothing and these three fields were dropped from every partial write that
@@ -119,9 +119,16 @@ const JOB_BOOLEAN_YN_COLUMN_MAP = {
 };
 
 // Fields whose app name already matches the column name.
+//
+// `days` is deliberately NOT here — Brief H, Build 2b. Job age is computed from
+// first_seen on every load and is no longer stored, so an app-shape job's
+// `days` is a derived number. Listing it would let any partial write push that
+// derived figure back into the column, which is exactly the stale-number
+// problem the computed age was built to end. The column still exists and still
+// holds old values; nothing in the app writes to it any more.
 const JOB_PASSTHROUGH_FIELDS = new Set([
   'id', 'job', 'customer', 'mfr', 'model', 'status', 'bench', 'hours',
-  'scheduled', 'done', 'subtasks', 'desc', 'tag', 'action', 'days',
+  'scheduled', 'done', 'subtasks', 'desc', 'tag', 'action',
   'created_at', 'updated_at',
 ]);
 
@@ -161,77 +168,17 @@ export async function deleteChildJobs(parentId, keepIds = []) {
   }
 }
 
-// ⚠️ DEAD AS OF BUILD 2a — DO NOT WIRE ANYTHING NEW TO THIS.
-// Its only production caller was handleCsvUpload(), removed with the CSV path.
-// Nothing calls it now except its own tests (supabaseJobOwnership.test.js).
-// It is scheduled for deletion in Build 2b (Brief H, item 5b) along with the
-// `saveJobsMasterBatch` alias below. It writes EVERY jobsMaster column on every
-// row it is handed, so re-using it casually would rewrite the whole board.
-export async function upsertJobsBatch(jobsList) {
-  try {
-    // upsertJobsBatch is the CSV/jobsMaster path: top-level jobs only. A
-    // child row arriving here means a split child (manual or, far worse, a
-    // derived auto-split card) is about to be written with its full
-    // CSV-shaped record — the exact corruption that materialises a derived
-    // card as a permanent row. Fail loudly and drop it rather than persist.
-    const children = jobsList.filter(job => job.parentId);
-    if (children.length > 0) {
-      console.error(
-        'upsertJobsBatch: refusing to write %d split child row(s) — split children go through batchWriteJobsState, not the jobsMaster path. ids: %s',
-        children.length, children.map(c => c.id).join(', ')
-      );
-    }
-    const transformed = jobsList.filter(job => !job.parentId).map(job => ({
-      id: job.id,
-      parent_id: job.parentId || null,
-      job: job.job,
-      customer: job.customer,
-      mfr: job.mfr,
-      model: job.model,
-      status: job.status,
-      bench: job.bench,
-      scheduled: job.scheduled,
-      calendar_slot: job.calendarSlot || null,
-      gcal_event_id: job.gcalEventId || null,
-      desc: job.desc,
-      // Brief G, Build 1b — tag/hours/action/vb/bl/pj are GONE from this row
-      // on purpose. They are app-owned now (APP_OWNED_JOB_FIELDS in
-      // src/data/joinJobs.js) and are edited on the Jobs Sheet page.
-      //
-      // Removing them from pickMasterFields() alone would not have been
-      // enough, and would in fact have been worse: this function builds a
-      // fixed row and ignores which keys the caller actually supplied, so a
-      // stripped job object would have sent `tag: undefined`, `hours:
-      // undefined`, and — through the `job.vb ? 'Y' : 'N'` ternaries below —
-      // actively written 'N' over every real 'Y' in the workshop on the next
-      // CSV upload. The columns have to leave the row itself.
-      //
-      // Consequence, accepted deliberately: a job the CSV introduces for the
-      // first time now lands with those six columns NULL, and Trevor fills
-      // them in on the Jobs Sheet page. All six columns are nullable.
-      // Job age. Written on every CSV sync so it survives a page reload — it
-      // had no column at all until 2026-07-27, so `days` lived in memory only
-      // and every refresh silently reset every job to "unknown age".
-      // `?? null` keeps the key present on EVERY row of the batch: a Supabase
-      // upsert with an array sends the union of all rows' keys, so omitting
-      // `days` on the blank rows would NULL-fill it anyway. The blank-never-
-      // overwrites-good guard therefore had to happen before this call, in
-      // handleCsvUpload — which is gone as of Build 2a, along with the only
-      // caller of this function.
-      days: job.days ?? null,
-      has_subtasks: job.hasSubtasks,
-      created_at: job.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
-
-    const { error } = await getClient()
-      .from('jobs')
-      .upsert(transformed, { onConflict: 'id' });
-    if (error) throw error;
-  } catch (e) {
-    console.error('Supabase upsert jobs batch error:', e);
-  }
-}
+// A batch writer named upsertJobsBatch() (aliased saveJobsMasterBatch) used to
+// live here, feeding the Multitrack CSV upload. It went dead with the CSV path
+// in Build 2a and was deleted in Build 2b. Do not write another one.
+//
+// The rule it leaves behind, which every writer below follows: a batch writer
+// must send only the columns its caller actually supplied, grouped so that
+// every row in one upsert carries the identical set of keys. A Supabase upsert
+// given an array sends the UNION of all the rows' keys and NULL-fills any row
+// missing one, so a writer that builds a fixed row regardless of its input
+// overwrites columns the caller never mentioned — quietly, across the whole
+// board, on rows that only needed one field changed.
 
 // ============ MULTITRACK PDF IMPORT (Brief G) ============
 
@@ -249,13 +196,14 @@ export const PDF_IMPORT_FIELDS = Object.freeze(['job', 'customer', 'mfr', 'model
 export const PDF_NEW_JOB_FIELDS = Object.freeze(['bench', 'hours']);
 
 /**
- * The Brief G PDF writer. Deliberately NOT upsertJobsBatch().
+ * The Brief G PDF writer. Deliberately its own writer, not a general one.
  *
- * upsertJobsBatch() builds a fixed ~20-column row for every job, including
- * tag/action/days/vb/bl/pj. Running the PDF through it would send those
- * columns as undefined on every row and blank Trevor's hand-kept fields
- * across the whole workshop in one click. This function exists so that the
- * PDF path can never reach those columns at all.
+ * The CSV-era batch writer (deleted in Build 2b, see the note above
+ * writePdfImportBatch's section) built a fixed ~20-column row for every job,
+ * including tag/action/days/vb/bl/pj. Running the PDF through anything like it
+ * would send those columns as undefined on every row and blank Trevor's
+ * hand-kept fields across the whole workshop in one click. This function exists
+ * so that the PDF path can never reach those columns at all.
  *
  * `writes` is [{ id, data, isNew }]. Returns { ok, written } / { ok: false, error },
  * matching batchWriteJobsState()'s convention — callers gate on res?.ok.
@@ -366,10 +314,10 @@ export const JBA_IMPORT_FIELDS = Object.freeze(['firstSeen']);
 /**
  * The Build 1c writer: fills in `first_seen` and touches nothing else.
  *
- * Deliberately NOT upsertJobsBatch(), for the same reason writePdfImportBatch()
- * isn't: that function builds a fixed ~15-column row regardless of what the
- * caller supplied, so running a one-column import through it would blank real
- * data across the whole workshop in one click.
+ * Its own writer, for the same reason writePdfImportBatch() is: a writer that
+ * builds a fixed row regardless of what the caller supplied would blank real
+ * data across the whole workshop in one click when handed a one-column import.
+ * That was the CSV-era batch writer, deleted in Build 2b.
  *
  * `writes` is [{ id, job, data: { firstSeen } }]. Returns { ok, written } or
  * { ok: false, error }, matching writePdfImportBatch()'s convention.
@@ -1444,9 +1392,6 @@ export function subscribeToDailyLogs(callback) {
 
 // Alias: loadJobsMaster is the same as loadJobs
 export const loadJobsMaster = loadJobs;
-
-// Alias: saveJobsMasterBatch is the same as upsertJobsBatch
-export const saveJobsMasterBatch = upsertJobsBatch;
 
 // Alias: loadJobsState is the same as loadJobs (combined in Supabase)
 export const loadJobsState = loadJobs;
