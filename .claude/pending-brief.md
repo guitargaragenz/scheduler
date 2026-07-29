@@ -2,7 +2,11 @@ doc_status: live
 
 # Pending Brief H — Build 2: retire the CSV pipeline
 
-**Status:** ⏳ **DRAFT — awaiting Trevor's "yp". Not approved, not council-reviewed. No commits.**
+**Status:** ✅ **APPROVED by Trevor 2026-07-29 ("yp"). Council review is step 2, in progress.**
+Approved with one decision already settled at approval time: **item 6 — the `days` database column
+stays.** The app stops reading and writing it; the column itself is not dropped. A dead column costs
+nothing; a dropped one can't be un-dropped. Council may not re-open that choice, but it may still
+flag anything that depends on the column actually being gone.
 **Date:** 2026-07-29
 **Repo state:** `main` @ `e6c302e`, clean.
 **Predecessor:** Brief G, all three builds shipped (1a `f927248`, 1b `f2ee449`, 1c `b665e1d`).
@@ -134,9 +138,21 @@ on it; that rule cost Briefs E, F and G a build round each.
   `handleCsvUpload` (`useJobs.js:288`). **Delete the CSV path and this function has no caller
   left.** Its tests are `src/data/jobs.test.js:73-113`.
 - **Age is already computed.** `jobAgeDays(firstSeen, storedDays, now)` — `src/utils/jobAge.js:63`
-  — computes `today − first_seen` and falls back to `storedDays` when `first_seen` is null. Called
-  once, at the normalise step: `src/hooks/useSupabase.js:78`. That is Build 1c's design and it is
-  correct; item 2 only removes the fallback arm.
+  — computes `today − first_seen` and falls back to `storedDays` when `first_seen` is null. That is
+  Build 1c's design and it is correct; item 2 only removes the fallback arm.
+- 🔴 **CORRECTION, council 2026-07-29 — `jobAgeDays` has TWO call sites, not one.** This brief
+  said one. Verified live:
+  - `src/hooks/useSupabase.js:78` — `jobAgeDays(j.first_seen, j.days)`, the normalise step.
+  - `src/hooks/useJobs.js:384` — `jobAgeDays(dateIn, j.days)`, inside `commitJbaImport`'s
+    optimistic local update. It exists because `days` is what the lists **sort** on, so leaving
+    the stale number until the next reload would leave the board sorted by ages it is no longer
+    showing (comment at `:380-383` says exactly this).
+
+  **Why this is a trap and not a footnote:** the third parameter is `now = new Date()`. Simplify
+  the signature to `jobAgeDays(firstSeen, now)` and fix only `useSupabase.js:78`, and the second
+  call silently passes `j.days` — a small integer like `15` — into `now`. Ages would be computed
+  against a bogus date immediately after a JBA drop, wrong on every card and in all three sorts,
+  with nothing visibly broken. **Both call sites change in the same commit, or neither does.**
 - **Six read sites still read `job.days`, and three of them are sorts, not displays** — verified
   live again 2026-07-29. Sorts: `JobShelf.jsx:144`, `DailyLogPage.jsx:825`, `jobs.js:381`.
   Displays: `JobCard.jsx:170`, `ProjectsPage.jsx:29`/`:155`, `DailyLogPage.jsx:409`/`:435`.
@@ -144,6 +160,14 @@ on it; that rule cost Briefs E, F and G a build round each.
   `normalizeJobsFromDb`. That is the whole point of computing it once at the normalise step.
 - **Write sites:** `days` is in the passthrough list at `src/utils/supabase.js:124` and written at
   `:214`.
+- 🔴 **CORRECTION, council 2026-07-29 — the function holding that write goes fully dead after 2a.**
+  `upsertJobsBatch()` (`src/utils/supabase.js:164`, aliased `saveJobsMasterBatch` at `:1442`) has
+  exactly one production caller: `handleCsvUpload` at `src/hooks/useJobs.js:316`. Verified live —
+  `useSupabase.js:212` re-exports it, but `App.jsx:138` discards `useSupabase`'s return value
+  entirely, so that is not a caller. Its only other references are its own tests
+  (`src/utils/supabaseJobOwnership.test.js`). **Delete 2a's CSV path and this is an orphan
+  ~80-line writer sitting in a blast-radius file.** Item 5 as written only trims the `days` line
+  out of it. See the new item 5b for what happens to the function itself.
 - **Schema:** `docs/supabase-schema.sql:177` (`days INTEGER`) and `:251` (`first_seen DATE`). The
   comment block at `:233-250` already says in writing that `days` and `preserveKnownDays()` go in
   Build 2.
@@ -196,6 +220,9 @@ independent of the step-0 gate; 2b is not.
      an empty initial array. Keep every helper listed in the ⚠️ note above.
    - Update `src/data/jobs.test.js` — the `parseCSV` cases go with it; the tests for
      `parseDays`, `blockedPile`, `benchColors` and the rest stay.
+   - **Council addition:** delete the now-meaningless comment at `src/App.jsx:812-814`
+     (*"never re-parse RAW_CSV (a header-only stub…)"*) — it describes a constant that no longer
+     exists, and the builder is already editing that file.
 
 2. **Fix the in-app help in the same commit.** Remove the *"Uploading jobs.csv"* article and the
    CSV-pipeline section from `helpArticles.js`; reword the two section-list mentions to describe
@@ -214,23 +241,46 @@ calendar slot, bench assignment or split state moves; the help search finds no d
 3. **Remove `preserveKnownDays()`** (`jobs.js:86`) and its tests (`jobs.test.js:73-113`). It has no
    caller once 2a lands.
 4. **Simplify `jobAgeDays()`** (`jobAge.js:63`) to computed-only, and drop the `storedDays`
-   argument at its one call site (`useSupabase.js:78`). Update `jobAge`'s tests and the comment at
-   `jobAge.js:59-61` that promises this removal.
+   argument at **both** call sites — `useSupabase.js:78` **and `useJobs.js:384`** (see the 🔴
+   correction above; getting this half-right is worse than not doing it). Update `jobAge`'s tests
+   and the comment at `jobAge.js:59-61` that promises this removal.
 5. **Stop writing `days`** — remove it from the passthrough list (`supabase.js:124`) and the write
    at `:214`.
-6. **The database column.** ⚠️ **Open question for council, and it is the one real risk in this
-   build.** Dropping a column is the only irreversible act in the whole of Brief G and Brief H.
-   The safe order is: ship 4 and 5 first, run for a week on `first_seen` alone, and only then
-   `ALTER TABLE jobs DROP COLUMN days`. **Recommendation: leave the column in the database and
-   drop only the app's reads and writes in this build.** A dead column costs nothing; a dropped one
-   cannot be un-dropped. Applied by hand in the Supabase SQL editor exactly as `first_seen` was —
-   there is no migrations runner in this repo (precedent `git show 6b39f3d`, and `1ab2b9d`).
+5b. **The orphaned writer.** ⚠️ **Decision needed from Trevor before 2b starts — see the 🔴
+   correction above.** After 2a, `upsertJobsBatch()`/`saveJobsMasterBatch` has no caller.
+   **Recommendation: delete the function, its alias (`supabase.js:1442`), its import and
+   re-export (`useSupabase.js:6` and `:212`), and `supabaseJobOwnership.test.js`, in 2b.** It is
+   the CSV pipeline's own write path, so it is this brief's subject, not housekeeping like
+   `useFirebase.js`. Leaving a dead writer in a blast-radius file is how a future session re-wires
+   something to it and silently rewrites every column on every row — the exact failure
+   `jobsSheet.js:173` and the comments at `supabase.js:245-247` were written to prevent.
+   **If Trevor prefers to keep it, it must gain a header comment saying it is dead and why** —
+   not be left looking live.
+6. **The database column — ✅ DECIDED, Trevor 2026-07-29: it stays. Closed, do not re-open.**
+   `ALTER TABLE jobs DROP COLUMN days` is **not** run, now or later. The app stops reading and
+   writing the column; the column itself is left in place holding stale values nobody updates.
+   A dead column costs nothing; a dropped one cannot be un-dropped, and it would have been the
+   only irreversible act in the whole of Brief G and Brief H.
+
+   **Council confirmed the consequences are safe** (both reviewers, independently, against the
+   live schema): `docs/supabase-schema.sql:177` is `days INTEGER` — nullable, no `NOT NULL`, no
+   `DEFAULT`, no trigger. **Nothing rejects a write that omits `days`.** And no code reads the
+   column off the raw DB row except `useSupabase.js:78`, which is exactly where the fallback arm
+   is being removed. Update the schema comment at `:233-250` to record the decision, so the next
+   session doesn't read it as still pending.
 
 **2b verification:** every job on the board shows an age, and it matches `today − first_seen` to
 the day at NZ local time — reuse the `localDateKey()` pattern, not `toISOString()`
 (`src/utils/calendar.js:1-2` documents why). The **sort order** of the job list still puts oldest
 first — all three sort sites, not just the cards. A job with no `first_seen` shows no age rather
-than a wrong one.
+than a wrong one. **Explicitly re-check age after a JBA drop, not just after a reload** — that is
+the `useJobs.js:384` path from the 🔴 correction, and a reload-only test cannot see it fail.
+
+**2b, one week later — a Trevor check, not a builder one.** Council 2's fair point: once this ships
+there is no fallback left, so a job that loses its `first_seen` to some future import edge case
+shows **no age at all** rather than a slightly stale one. That is the deliberate trade
+(`jobAge.js:56-58` says so in writing), not a new risk — but it degrades quietly. Around
+2026-08-05, eyeball the board for any job showing no age that used to show one.
 
 ### Build 2c — the Mac-side scripts
 
@@ -241,7 +291,10 @@ than a wrong one.
    `~/…/Desktop/SCHEDULER_old/`. **A Trevor step, not a builder step** — the builder must not touch
    anything outside the repo. Give him the exact paths.
 9. **Rewrite `SCHEDULER-ARCHITECTURE.md:14-26`** — the CSV pipeline section becomes the PDF-drop
-   section, and the `parseCSV()` line at :90 goes.
+   section, and the `parseCSV()` line at :90 goes. **Council addition:** fix `:11` in the same
+   pass — it still says *"Firebase Firestore — syncs schedule… in real time"*. The app has been on
+   Supabase for months (CLAUDE.md's own 2026-07-28 correction). Leaving it wrong immediately above
+   a freshly corrected section is worse than not touching the file.
 
 **2c verification:** `grep -rn "sheet_to_csv\|start_watcher\|jobs.csv" .` returns only history and
 this brief. A Jobs PDF drop and a JBA drop both still work with no Terminal window open anywhere.
@@ -276,12 +329,20 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 
 ## Method — agent-team protocol
 
-1. **Brief** — this file. ⏳ **Awaiting Trevor's "yp".**
-2. **Council** — two independent `ggnz-council` agents. Three things to rule on specifically:
-   whether the 2a/2b/2c split is right or over-engineered; item 6, the drop-the-column question;
-   and whether anything else in the app still depends on the CSV path that this brief has missed.
+1. **Brief** — this file. ✅ **Approved by Trevor 2026-07-29.**
+2. **Council** — ✅ **done 2026-07-29. Two independent `ggnz-council` agents, both verdict YAY.**
+   - **Split:** both said 2a/2b/2c is right, not over-engineered — 2b is the one gated on live
+     data and the one touching the blast-radius files hardest, so it earns its own cycle. Council 1
+     noted 2c is the weak case for a full cycle (nothing to browser-test); not worth blocking on.
+   - **Item 6:** Trevor had already decided it at approval. Both reviewers verified the
+     consequences of keeping the column are safe — see item 6.
+   - **Missed dependencies:** both greps came back clean beyond what the brief already lists.
+     Independently re-verified: `parseCSV` has exactly two callers; the helper survival list is
+     right; `reauth_google.command` is Sheets/Drive only with no Calendar scope, safe to delete;
+     and `App.jsx:53` is **provably** behaviour-identical to `[]` — `parseCSV` returns `[]` at
+     `jobs.js:295` (`rows.length < 2`) before it ever reads its 2nd or 3rd argument.
+   - **Two real findings, both verified against the live tree and folded in above as 🔴
+     corrections:** `jobAgeDays` has two call sites, and `upsertJobsBatch` goes fully dead after 2a.
 3. **Step 0 gate** — ✅ done 2026-07-29, clear. Blocked 2b only; no longer blocks anything.
 4. **Builder → verifier → browser test → merge**, once per build, fresh agents each time, verifier
-   never the builder.
-
-**No commits before step 1 is approved.**
+   never the builder. **2a is cleared to start.** 2b additionally needs Trevor's call on item 5b.
