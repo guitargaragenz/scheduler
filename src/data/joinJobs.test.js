@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { joinJobsMasterState, keyReviewItemsById, expandAutoSplits, jobsStateFieldsFor, pickMasterFields } from './joinJobs.js';
+import { joinJobsMasterState, keyReviewItemsById, expandAutoSplits, jobsStateFieldsFor, pickMasterFields, APP_OWNED_JOB_FIELDS } from './joinJobs.js';
 
 // Minimal jobsMaster fixture factory — only the fields the join layer and
 // createSubtasks() actually read.
@@ -505,5 +505,45 @@ describe('pickMasterFields — derived-card materialisation guard', () => {
     expect(row).toMatchObject({ job: '3000', mfr: 'Fender', bench: 'Setup' });
     ['id', 'scheduled', 'isSplit', 'label', 'isDerived', 'parentId'].forEach(f =>
       expect(row).not.toHaveProperty(f));
+  });
+});
+
+describe('pickMasterFields — the six columns the CSV may no longer write', () => {
+  // Brief G, Build 1b, item 3. Tag, Hours, Action, VB, BL and PJ moved
+  // app-side: Trevor keeps them on the Jobs Sheet now, and the CSV import is
+  // being retired. Nothing was migrated — the values in the database stay put.
+  // All that changed is who is allowed to overwrite them, and the CSV is not.
+  // Without this, one more CSV drop would flatten a morning of triage back to
+  // whatever the old spreadsheet happened to say.
+  it('strips all six from a CSV-shaped row', () => {
+    const row = pickMasterFields(master({
+      id: '4000', job: '4000',
+      tag: 'M', hours: 3, action: 'GTS', vb: true, backlog: true, project: true,
+    }));
+    APP_OWNED_JOB_FIELDS.forEach(f => expect(row).not.toHaveProperty(f));
+  });
+
+  it('still passes through the Multitrack facts the CSV does own', () => {
+    const row = pickMasterFields(master({ id: '4001', job: '4001', tag: 'H', hours: 6 }));
+    expect(row).toMatchObject({
+      job: '4001', mfr: 'Fender', model: 'Strat', status: 'Active', desc: 'general check',
+    });
+  });
+});
+
+describe('the ownership move did not leak into scheduling writes', () => {
+  // The trap in item 3. The obvious way to make the six fields app-owned is to
+  // add them to JOBS_STATE_TOP_LEVEL_FIELDS, and it would have worked — while
+  // also making every drag onto the calendar, every pomodoro tick and every
+  // mark-done restate tag/hours/action/vb/bl/pj as extra columns, including on
+  // split children whose hours are per-session. A separate constant was used
+  // instead. This test is what stops someone merging the two later.
+  it('a scheduling write still carries no app-owned columns', () => {
+    const fields = jobsStateFieldsFor({
+      id: '1000', job: '1000', scheduled: true, calendarSlot: '2026-07-13-9-0',
+      tag: 'M', hours: 3, action: 'GTS', vb: true, backlog: true, project: true,
+    });
+    APP_OWNED_JOB_FIELDS.forEach(f => expect(fields).not.toHaveProperty(f));
+    expect(fields).toMatchObject({ scheduled: true, calendarSlot: '2026-07-13-9-0' });
   });
 });

@@ -12,7 +12,9 @@ import { inferBench, deriveJobStatusFlags, blockedPile } from './jobs.js';
 // and the like) are the app's business entirely — the PDF has never heard of
 // them, so they are excluded from matching, from writing, and from every count
 // on the preview screen.
-function isTopLevelJob(job) {
+// Exported since Brief G, Build 1b: the Jobs Sheet page needs exactly the same
+// test, and two copies of "what counts as a top-level job" would drift.
+export function isTopLevelJob(job) {
   return !job.parentId && !job.isDerived && /^\d+$/.test(String(job.id ?? ''));
 }
 
@@ -38,7 +40,16 @@ function pdfFieldsOf(parsedJob) {
 // Status flags are app-side derived state, not stored columns — recomputed
 // here so a status change from the PDF moves the job to the right pile
 // immediately, rather than only after the next reload.
-function statusFlagsFor(fields, backlog = false) {
+//
+// Exported since Brief G, Build 1b. The Jobs Sheet page needs the identical
+// recompute for the opposite reason: it edits `action` and `backlog`, which
+// are the OTHER two inputs to these flags. The realtime subscription is muted
+// for five seconds after any of our own writes (justSavedAt in useSupabase),
+// so the echo that would have refreshed these flags is deliberately dropped —
+// whoever changes one of the three inputs has to recompute them itself, or a
+// job Trevor moves to INC keeps its old pile until the next reload. One copy,
+// so the PDF path and the sheet page can never disagree about the rule.
+export function statusFlagsFor(fields, backlog = false) {
   const flags = deriveJobStatusFlags(fields.status, fields.action ?? '', backlog);
   const blocked = blockedPile({ status: fields.status, action: fields.action ?? '', backlog }) != null;
   return { ...flags, schedulable: flags.schedulable && !blocked };

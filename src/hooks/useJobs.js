@@ -147,8 +147,16 @@ export function useJobs({
         // the tech reassign the bench when collapsing a split back to one
         // card) — same exception as the bench-keyword re-infer handler in
         // App.jsx (design decision #2), so it goes to jobsMaster directly.
+        //
+        // `hours` is re-attached by hand. Brief G, Build 1b made hours
+        // app-owned (APP_OWNED_JOB_FIELDS), so pickMasterFields() now strips
+        // it — but this call is the ONLY thing that has ever persisted an
+        // hours change made in the drawer for a top-level job, so letting it
+        // drop would be a silent regression. saveJob() goes through
+        // toJobRow(), which sends only the keys present, so naming hours here
+        // writes exactly that one extra column and nothing else.
         if (row.bench !== parentJob.bench) {
-          saveJob(parentJob.id, pickMasterFields(mergedParent));
+          saveJob(parentJob.id, { ...pickMasterFields(mergedParent), hours: mergedParent.hours });
         }
       }
       return;
@@ -284,6 +292,11 @@ export function useJobs({
       // of what happens here). Split-child rows (parentId set) are left
       // alone entirely — they're regenerated/restored by the join layer,
       // never written directly by the CSV path.
+      //
+      // Brief G, Build 1b: "app-owned" now also covers Tag, Hours, Action,
+      // VB, BL and PJ (APP_OWNED_JOB_FIELDS). pickMasterFields() strips them,
+      // so a CSV upload can no longer change any of the six on a job already
+      // on the board — whatever the spreadsheet still says about them.
       setJobs(prev => {
         const prevTopLevelJobNos = new Set(prev.filter(j => !j.parentId).map(j => j.job));
         const updatedExisting = prev.map(j => {

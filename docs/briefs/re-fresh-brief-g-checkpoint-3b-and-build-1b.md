@@ -1,6 +1,18 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+> **Superseded 2026-07-29.** Build 1b was built and verified in the session this brief
+> handed off to. Everything below that says Build 1b "is not started" and that "no
+> staging branch is open" is now false — the branch is
+> `staging/brief-g-jobs-sheet-page`, built at `ccb1503` and restyled at `8b3ce93`.
+> Two other facts in here were wrong when read: the M/T swap is in **four** places, not
+> three (`helpArticles.js` has two passages), and `batchWriteJobsState()` is at
+> `supabase.js:1356`, not `:1354`.
+>
+> **The live brief is
+> [re-fresh-brief-g-build-1b-browser-test-and-merge.md](re-fresh-brief-g-build-1b-browser-test-and-merge.md).**
+> Read that one. This file is history.
 
 # Re-fresh — Brief G: Build 1a is shipped, checkpoint 3b is cleared. Next is Build 1b
 

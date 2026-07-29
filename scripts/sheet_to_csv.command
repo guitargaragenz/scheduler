@@ -292,11 +292,13 @@ def infer_bench(desc, status, action, model, mfr):
     if re.search(r'fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull', m): return 'Setup'
     return 'Admin'
 
+# Mirrors inferTag() in src/data/jobs.js. M and T were swapped in both copies
+# until 2026-07-29 (Brief G, Build 1b) — correct order is EZ, M, T, H.
 def infer_tag(h):
     if not h or h <= 0: return 'EZ'
     if h <= 1.5: return 'EZ'
-    if h <= 3:   return 'T'
-    if h <= 5.5: return 'M'
+    if h <= 3:   return 'M'
+    if h <= 5.5: return 'T'
     return 'H'
 
 def hours_range(h):

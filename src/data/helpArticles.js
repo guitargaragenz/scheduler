@@ -151,7 +151,7 @@ Sections update automatically when you re-upload the CSV.`,
 • VB badge — Virtual Booking (customer keeps instrument until near bench time)
 • BL badge — Backlog
 
-Difficulty tags: EZ (≤1.5h), T (≤3h), M (≤5.5h), H (>5.5h). Inferred from hours if not set in CSV.`,
+Difficulty tags: EZ (≤1.5h), M (≤3h), T (≤5.5h), H (>5.5h). Set them yourself on the Jobs Sheet page — picking a tag fills in the matching hours, which you can then override.`,
   },
 
   {
@@ -334,7 +334,7 @@ Mfr — Manufacturer
 Model — Instrument/equipment model
 Status — Active / Booked In / Waiting / On Hold / In Transit
 Days — Days in shop (from Multitrack)
-Tag — Difficulty: EZ / T / M / H (auto-inferred from Hours if blank)
+Tag — Difficulty: EZ / M / T / H (auto-inferred from Hours if blank)
 Hours — Estimated bench hours (numeric)
 Action — Next step abbreviation:
   GTS = Good To Start · INC = Incubating · CI = Customer Input
@@ -346,7 +346,7 @@ VB — Virtual Booking: Y/N (customer keeps instrument until bench time)
 BL — Backlog: Y/N
 
 Tag auto-thresholds:
-EZ = ≤1.5h · T = ≤3h · M = ≤5.5h · H = >5.5h`,
+EZ = ≤1.5h · M = ≤3h · T = ≤5.5h · H = >5.5h`,
   },
 
   // ─── SETTINGS ─────────────────────────────────────────────────────────────

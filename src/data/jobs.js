@@ -169,11 +169,18 @@ export function needsBench(job) {
   return blockedPile(job) === null;
 }
 
+// Difficulty bands. EZ → Medium → Tricky → Hard, in that order.
+//
+// Corrected 2026-07-29 (Brief G, Build 1b): M and T were the wrong way round
+// here, in scripts/sheet_to_csv.command's infer_tag(), and in the help text —
+// all three said T ≤3h, M ≤5.5h, which called the SHORTER job the trickier
+// one. The bands themselves are unchanged; only which letter sits on which
+// band. All three copies were fixed together.
 export function inferTag(h) {
   if (!h || h <= 0) return 'EZ';
   if (h <= 1.5) return 'EZ';
-  if (h <= 3)   return 'T';
-  if (h <= 5.5) return 'M';
+  if (h <= 3)   return 'M';
+  if (h <= 5.5) return 'T';
   return 'H';
 }
 
