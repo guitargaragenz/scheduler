@@ -46,26 +46,49 @@ is a live-data question, not a code question, and it gets answered before anythi
 
 ---
 
-## Step 0 — the gate, before any code is removed
+## Step 0 — the gate — ✅ **RUN AND PASSED 2026-07-29**
 
-**Prove every top-level job has a `first_seen`.** Trevor pastes this into the Supabase SQL editor
-and reports the number:
+**The gate was asked the wrong question first, and the answer changed nothing. Recorded here in
+full so nobody re-opens it.**
+
+The question as originally written was *"does every top-level job have a `first_seen`?"* Trevor ran
+it 2026-07-29 and it came back **6**, not 0. Queried live against Supabase the same day, those six
+are **1619, 1620, 1626, 1671, 1698, 1702** — the exact six Brief G's item 8b already recorded as
+present in the database and absent from the 29 Jul JBA export (53 top-level jobs against JBA's 47).
+
+**They are not new PDF-drop arrivals waiting on a JBA drop — they are the oldest rows in the
+table.** All six carry `created_at = 2026-07-26T01:11:35.675Z`, identical to the millisecond: a
+single CSV-era bulk write, the truncation-incident repair. By contrast the newest jobs, 1711 and
+1712, arrived on the PDF path and **do** have a `first_seen`. So the new pipeline is filling dates
+correctly; these six predate it and Multitrack does not list them in Jobs by Age at all. **Another
+JBA drop will not fix them.**
+
+### The question that actually matters
+
+Removing the stored `days` column only costs something if a row has a `days` number **and** no
+`first_seen` — that row would lose an age it currently shows. Asked directly, across all 61 rows in
+the table, children included:
 
 ```sql
-select count(*) from jobs where parent_id is null and first_seen is null;
+select count(*) from jobs where first_seen is null and days is not null;
 ```
 
-- **If it returns 0** — the stored `days` column is genuinely dead and scope item 2 proceeds in
-  full.
-- **If it returns anything above 0** — say which jobs, and **stop**. The fix is a JBA drop (the
-  Build 1c importer, already shipped), not a code change. Re-run the gate afterwards.
-- If any of them are jobs Multitrack no longer lists at all, that is a Trevor decision, not a
-  builder decision — bring it back here.
+**Returns 0.** All six of the dateless jobs have `days = null` as well, so **they already show no
+age today** — that is Brief G's documented "expected, not a bug" behaviour, unchanged. 43 rows
+carry both values, and for every one of them `days` is redundant with `first_seen`.
 
-Same shape and same reason as Brief G's step 0 and item 8b: one query is cheaper than a build
-round, and a wrong answer here means every job's age silently goes blank.
+**Verdict: no row on the board regresses when `days` goes. The gate is clear and scope item 2
+proceeds in full.**
 
-**Scope items 1 and 3 do not depend on this gate.** Only item 2 does.
+### One thing for Trevor, and it is not a code change
+
+Those six jobs have shown no age since 26 July, and will keep showing none however many times the
+JBA is dropped, because **Multitrack does not put them in that export**. Most likely they have no
+Date In recorded on the Multitrack side. If their age matters, the fix is in Multitrack, and the
+next JBA drop then fills them in on its own. **Not this build's problem, and not a reason to hold
+it up** — the app behaves identically before and after.
+
+**Scope items 1 and 3 never depended on this gate.** Only item 2 did, and it is now clear.
 
 ---
 
@@ -178,7 +201,7 @@ calendar slot, bench assignment or split state moves; the help search finds no d
 
 ### Build 2b — the stored `days` column goes
 
-**Gated on step 0 returning 0. Do not start otherwise.**
+**Gate cleared 2026-07-29 — see step 0. No row loses an age.**
 
 3. **Remove `preserveKnownDays()`** (`jobs.js:86`) and its tests (`jobs.test.js:73-113`). It has no
    caller once 2a lands.
@@ -249,7 +272,7 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 2. **Council** — two independent `ggnz-council` agents. Three things to rule on specifically:
    whether the 2a/2b/2c split is right or over-engineered; item 6, the drop-the-column question;
    and whether anything else in the app still depends on the CSV path that this brief has missed.
-3. **Step 0 gate** — Trevor runs the SQL. Blocks 2b only.
+3. **Step 0 gate** — ✅ done 2026-07-29, clear. Blocked 2b only; no longer blocks anything.
 4. **Builder → verifier → browser test → merge**, once per build, fresh agents each time, verifier
    never the builder.
 
