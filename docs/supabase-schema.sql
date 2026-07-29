@@ -227,6 +227,29 @@ CREATE TABLE IF NOT EXISTS pdf_import_log (
 
 CREATE INDEX IF NOT EXISTS idx_pdf_import_log_imported_at ON pdf_import_log(imported_at DESC);
 
+-- 2026-07-29: the date a job came in the door — Brief G, Build 1c.
+--
+-- This is the one real schema change in Brief G, and it exists to fix a shape
+-- problem rather than a missing feature. `days` above stores job age as a
+-- NUMBER, and a number does not tick. Multitrack's Jobs-by-Age printout said
+-- job 97 was 3162 days old while the database still said 3159 — three days
+-- behind, and with the CSV sync switched off it would have sat at 3159 forever.
+--
+-- A date does tick. With the date in the door stored once, the app computes
+-- `today - first_seen` on every load and the age is correct every morning with
+-- nothing dropped and nothing synced. That is what the Google Sheet's Days
+-- formula did, moved into the app.
+--
+-- Written by exactly ONE thing: the Jobs-by-Age PDF import, which owns this
+-- column and no other. Nullable on purpose — NULL means "we have not been told
+-- when this job arrived yet", which is a different fact from a job that arrived
+-- today, and the app falls back to the stored `days` while that is true.
+-- Additive, safe on existing rows.
+--
+-- `days` and preserveKnownDays() deliberately stay for now, and go in Build 2
+-- once every job has a first_seen.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS first_seen DATE;
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;

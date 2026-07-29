@@ -98,6 +98,11 @@ const JOB_COLUMN_MAP = {
   isSubtask: 'is_subtask',
   isDerived: 'is_derived',
   hasSubtasks: 'has_subtasks',
+  // Brief G, Build 1c — the date a job came in the door, written only by the
+  // Jobs-by-Age import. Without an entry here toJobRow() drops the key
+  // silently, and that import would write rows carrying nothing but `job`: a
+  // no-op that looks exactly like a successful import.
+  firstSeen: 'first_seen',
 };
 
 // vb/backlog/project are booleans on the app-shape job but stored as 'Y'/'N'
@@ -340,6 +345,101 @@ export async function logPdfImport({ filename, rowCount, ids }) {
     if (error) throw error;
   } catch (e) {
     console.warn('PDF import log not persisted (see console line above):', e?.message || e);
+  }
+}
+
+// ============ JOBS-BY-AGE PDF IMPORT (Brief G, Build 1c) ============
+
+// The single column the Jobs-by-Age printout owns. JBA also prints Mfr, Model,
+// Status and a Desc line, and reading them here would be the two-masters bug in
+// a new place — the Jobs PDF already owns those four. So: one column, and the
+// allow-list below makes that structural rather than a matter of care.
+export const JBA_IMPORT_FIELDS = Object.freeze(['firstSeen']);
+
+/**
+ * The Build 1c writer: fills in `first_seen` and touches nothing else.
+ *
+ * Deliberately NOT upsertJobsBatch(), for the same reason writePdfImportBatch()
+ * isn't: that function builds a fixed ~15-column row regardless of what the
+ * caller supplied, so running a one-column import through it would blank real
+ * data across the whole workshop in one click.
+ *
+ * `writes` is [{ id, job, data: { firstSeen } }]. Returns { ok, written } or
+ * { ok: false, error }, matching writePdfImportBatch()'s convention.
+ *
+ * Every guard refuses the WHOLE batch rather than writing part of it, with the
+ * one deliberate exception noted at Guard 3. A partial import is worse than a
+ * failed one because it looks like it worked.
+ */
+export async function writeJbaImportBatch(writes) {
+  if (!writes || writes.length === 0) return { ok: true, written: 0 };
+  try {
+    const rows = [];
+    for (const w of writes) {
+      // Guard 1: top-level jobs only, identified by a purely numeric id — the
+      // app's own split cards ("1620_Electronics_0") are not Multitrack's
+      // business and JBA has never heard of them.
+      if (!/^\d+$/.test(String(w.id ?? ''))) {
+        throw new Error(`refusing batch: "${w.id}" is not a top-level Multitrack job number`);
+      }
+      // Guard 2: the allow-list. A key outside it is a programming error
+      // upstream, so fail loudly rather than drop it quietly and leave a
+      // half-wrong import looking healthy.
+      const stray = Object.keys(w.data || {}).filter(k => !JBA_IMPORT_FIELDS.includes(k));
+      if (stray.length > 0) {
+        throw new Error(`refusing batch: job ${w.id} carried fields the Jobs-by-Age PDF cannot own (${stray.join(', ')})`);
+      }
+      // Guard 3: `job` has to ride along, and this is the whole reason this
+      // writer cannot be three lines long.
+      //
+      // `jobs.job` is NOT NULL, and this is a PostgREST **upsert**, not a
+      // PATCH. Postgres validates NOT NULL against the *proposed insert row*
+      // BEFORE it resolves ON CONFLICT onto the existing row — so a payload of
+      // { id, first_seen } is rejected outright with 23502 even though the row
+      // already exists and only an update was ever intended. Documented at
+      // src/data/joinJobs.js:135-171, where it was the reproduced-live cause of
+      // drags never persisting after the Supabase migration (job 842).
+      //
+      // A row with no job number is SKIPPED rather than thrown, unlike the
+      // guards above: this is the one failure that is per-row rather than a
+      // sign the whole file was misread, and aborting the batch over it would
+      // cost every other job its date. Logged loudly with its id, and never
+      // sent as `job: undefined` — that would abort the batch anyway, with an
+      // illegible NOT NULL error naming nobody.
+      if (!w.job) {
+        console.error(`Jobs-by-Age import: skipping job ${w.id} — no job number to write alongside first_seen.`);
+        continue;
+      }
+      rows.push({
+        ...toJobRow({ job: w.job, ...(w.data || {}) }),
+        id: String(w.id),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    // Group by exact column set before writing, the same mitigation
+    // writePdfImportBatch() and batchWriteJobsState() use. Every row here
+    // happens to carry the identical four columns, so today this is a single
+    // group — it stays because a Supabase array upsert sends the UNION of all
+    // rows' keys and NULL-fills the rest, and the day someone adds a
+    // conditional key that becomes a silent data-loss bug rather than an error.
+    const groups = new Map();
+    for (const row of rows) {
+      const sig = Object.keys(row).sort().join(',');
+      if (!groups.has(sig)) groups.set(sig, []);
+      groups.get(sig).push(row);
+    }
+    for (const records of groups.values()) {
+      // onConflict 'id' is what makes re-dropping the same JBA file safe: the
+      // job number is the primary key, so an existing job is updated in place
+      // and never duplicated.
+      const { error } = await getClient().from('jobs').upsert(records, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    return { ok: true, written: rows.length };
+  } catch (e) {
+    console.error('Supabase Jobs-by-Age import batch error:', e);
+    return { ok: false, error: e };
   }
 }
 

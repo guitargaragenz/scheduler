@@ -79,10 +79,19 @@ export const APP_OWNED_JOB_FIELDS = Object.freeze([
 // stored). Used to strip a flat/joined job object down to CSV/Sheet-owned
 // fields only before writing to jobsMaster (e.g. the bench-keyword re-infer
 // handler in App.jsx, architecture brief design decision #2).
+//
+// `firstSeen` is in here for a third reason again (Brief G, Build 1c): it is
+// neither app-owned nor CSV-owned. The Jobs-by-Age printout owns that column
+// alone, and the same one-master rule that keeps the CSV off Trevor's Action
+// keeps every other write path off this date. Without the strip, the
+// bench-keyword re-infer handler (App.jsx) would restate first_seen on every
+// job it touches — the same value it just read today, and a stale one the day
+// anything caches a job object. Nothing outside writeJbaImportBatch() has any
+// business naming this column.
 const NON_MASTER_FIELDS = new Set([
   'id', ...JOBS_STATE_TOP_LEVEL_FIELDS, ...APP_OWNED_JOB_FIELDS,
   'isSplit', 'hasSubtasks', 'subtasks', 'manualSplits', 'parentId', 'isSubtask',
-  'isDerived', 'label', 'hoursRange',
+  'isDerived', 'label', 'hoursRange', 'firstSeen',
 ]);
 
 // Returns null — never a row — for anything that isn't a real top-level,
