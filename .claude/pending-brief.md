@@ -256,9 +256,10 @@ calendar slot, bench assignment or split state moves; the help search finds no d
    and the comment at `jobAge.js:59-61` that promises this removal.
 5. **Stop writing `days`** — remove it from the passthrough list (`supabase.js:124`) and the write
    at `:214`.
-5b. **The orphaned writer.** ⚠️ **Decision needed from Trevor before 2b starts — see the 🔴
-   correction above.** After 2a, `upsertJobsBatch()`/`saveJobsMasterBatch` has no caller.
-   **Recommendation: delete the function, its alias (`supabase.js:1442`), its import and
+5b. **The orphaned writer — ✅ DECIDED, Trevor 2026-07-29: delete it.** Re-confirmed explicitly
+   after 2a shipped, in answer to a plainly-worded question; the earlier one-word yes is no longer
+   the only record. After 2a, `upsertJobsBatch()`/`saveJobsMasterBatch` has no caller.
+   **Delete the function, its alias (`supabase.js:1442`), its import and
    re-export (`useSupabase.js:6` and `:212`), and `supabaseJobOwnership.test.js`, in 2b.** It is
    the CSV pipeline's own write path, so it is this brief's subject, not housekeeping like
    `useFirebase.js`. Leaving a dead writer in a blast-radius file is how a future session re-wires
