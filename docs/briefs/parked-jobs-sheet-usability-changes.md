@@ -1,5 +1,8 @@
 doc_status: parked
 
+**Item 3 (white sheet) shipped 2026-07-30 at `ce1cc65`** — presentation-only, `SHEET_CSS` and
+the local `C` palette in `JobsSheetPage.jsx`. Items 1 and 2 are still parked, not approved.
+
 # Parked — three changes Trevor asked for on the Jobs Sheet page
 
 Split out of [re-fresh-brief-g-build-1b-browser-test-and-merge.md](re-fresh-brief-g-build-1b-browser-test-and-merge.md)
