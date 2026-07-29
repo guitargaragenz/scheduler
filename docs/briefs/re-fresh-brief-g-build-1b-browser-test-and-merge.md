@@ -16,9 +16,20 @@ requests and a calendar bug. His words: *"Appointments and UI can wait until eve
 rock solid."* So this brief is now about one thing only — **getting Build 1b proved and
 merged.**
 
+**Where the last session got to (2026-07-29, end of session):** the browser test is
+**five-sixths done — and the item that was gating the merge has passed.** Split/derived
+rows really are excluded (53 sheet rows against 78 jobs, 25 of them derived). Tag bands,
+hours ranges and SKP all pass. Everything was discarded; nothing was written; the
+temporary `App.jsx` edit is reverted and the tree is clean.
+
+**Exactly one item is left — item 3, the write test — and it has an open question for
+Trevor sitting on it.** Read item 3 under "Protocol step 5" below and start there. Do not
+re-run items 1, 2, 4, 5 or 6; their live results are recorded.
+
 What is left, in order, and nothing else:
 
 1. **Protocol step 5** — the browser test. The verifier gated the merge on it.
+   **Only item 3 remains.**
 2. **Protocol step 6** — merge on Trevor's "yp".
 3. **Then, and only then**, the next phase of the build: **Build 1c** (the JBA second PDF
    drop, `first_seen`, computed job age, the migration). It has never been through
@@ -322,7 +333,31 @@ What must be confirmed live, in this order:
    do exist in the live set and really are excluded. **The verifier's concern is settled.**
 3. **Edit → Commit → CSV sync → the edit survives.** The whole point of the ownership
    move. Change an Action, commit, run a sync, confirm it is still there.
-   **NOT RUN — waiting on Trevor.** It is the only item that writes real job data.
+   **NOT RUN. This is the only item left, and it is where the next session starts.**
+
+   **Trevor asked, fairly: "CSV sync? I thought we were running PDF now?" He is right that
+   PDF is the live import path — and the answer changes what this test should be.** Both
+   paths exist in the app today, verified in the code 2026-07-29:
+
+   - The **PDF** path (`writePdfImportBatch`, `useJobs.js:377`) writes only the six
+     Multitrack fields. Build 1a deliberately never touched Tag/Hours/Action/VB/BL/PJ.
+     **So a PDF drop cannot prove this fix** — it was never the thing that wiped them.
+   - The **CSV** path (`saveJobsMasterBatch` → `upsertJobsBatch`, `useJobs.js:313`) is the
+     one that used to rewrite every column on every row. **That is what item 3 of this
+     build changed.** Its upload button is still live in the UI — `JobShelf.jsx:207`,
+     `DailyLogPage.jsx:1064`, `Sidebar.jsx:250` — so the risk it protects against is real,
+     not historical.
+
+   **So the CSV test is still the right test**, even though it isn't Trevor's daily
+   routine. **What's needed to run it:** a Multitrack CSV to upload. There is none in the
+   repo (`git ls-files` finds only `marketing/context/gamma-brief.pdf`), so either Trevor
+   produces one via `sheet_to_csv.command`, or the next session builds a small throwaway
+   CSV containing job 1712 with a *different* Action, uploads that, and confirms the
+   sheet's value wins. **Ask Trevor which he'd rather do — don't assume.**
+
+   Three unit-test files already cover the ownership rule
+   (`supabaseJobOwnership.test.js`, `joinJobs.test.js`, `jobsSheet.test.js`), so the
+   question for Trevor is really "is the live proof worth the faff", not "is it tested".
 4. Tag auto-fill uses the corrected bands. **PASS.** On job 1712, picking each tag in turn
    filled the Hours box with `EZ → 1.5`, `M → 3`, `T → 5.5`, `H → 6` — M and T the right
    way round, which is item 4b proved live. Clearing the tag back to `—` left hours at
