@@ -169,8 +169,8 @@ export function draftChanges(job, draft) {
 // so it is written back unchanged.
 //
 // batchWriteJobsState groups rows by their exact column set before sending, so
-// rows with different edits never NULL-fill each other. Nothing here calls
-// upsertJobsBatch, which would rewrite every column on every row.
+// rows with different edits never NULL-fill each other. Nothing here goes near
+// a fixed-row batch writer, which would rewrite every column on every row.
 export function buildSheetWrites(jobs, drafts) {
   const writes = [];
   for (const job of jobs) {

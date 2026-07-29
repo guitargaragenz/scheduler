@@ -326,7 +326,7 @@ export function useJobs({
         // computes it: it is what the lists sort on, not just what the card
         // shows. Leaving the stale number until the next reload would leave the
         // board sorted by ages it is no longer displaying.
-        return { ...j, firstSeen: dateIn, days: jobAgeDays(dateIn, j.days) };
+        return { ...j, firstSeen: dateIn, days: jobAgeDays(dateIn) };
       }));
     };
 

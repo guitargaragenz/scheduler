@@ -62,36 +62,11 @@ export function parseDays(raw) {
   return Number.isNaN(n) ? null : n;
 }
 
-// A blank job age never overwrites an age we already know.
-//
-// Multitrack intermittently exports an empty `Days` cell for a job that
-// definitely has an age (jobs 1708 and 1710 on the 2026-07-27 file). The CSV
-// path is upsert-only, so without this a single bad export writes null over a
-// real age and it is gone — MT won't send it again.
-//
-// Matched on job NUMBER, not id: the id of a top-level job is its job number,
-// but matching on `job` says out loud that this is about the same physical
-// guitar across two imports, not about row identity.
-//
-// A *changed* populated value still wins. This only defends against blanks —
-// if MT says the job is now 300 days old, it is.
-//
-// Lives here rather than inside upsertJobsBatch because the batch cannot fix
-// it: a Supabase array upsert sends the union of all rows' keys and NULL-fills
-// any row missing one, so "just leave `days` off the blank rows" would write
-// the nulls anyway. It has to be merged before the write, where both the
-// incoming row and the current in-memory job are visible.
-export function preserveKnownDays(parsedTopLevel = [], existingJobs = []) {
-  const prevByJobNo = {};
-  existingJobs.forEach(j => {
-    if (j && !j.parentId && j.days != null) prevByJobNo[j.job] = j.days;
-  });
-  return parsedTopLevel.map(j => (
-    j.days == null && prevByJobNo[j.job] != null
-      ? { ...j, days: prevByJobNo[j.job] }
-      : j
-  ));
-}
+// preserveKnownDays() lived here until Brief H, Build 2b. It guarded the CSV
+// import against Multitrack's intermittently-blank `Days` cell overwriting an
+// age the app already knew. Both halves of the problem are gone: the CSV import
+// went with Build 2a, and the app no longer stores an age at all — it computes
+// it from the booked-in date on every load (src/utils/jobAge.js).
 
 // Which quiet pile a blocked job belongs in, or null if it is workable today.
 //
