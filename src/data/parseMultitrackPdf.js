@@ -29,13 +29,32 @@ const WRAP_GAP = 15.5; // <= this many pt below the previous line = same paragra
 // spaces: "fi x", "fl at-wounds", "Paci fi ca". Rejoin them. Matches only when
 // "fi"/"fl" stands alone between spaces or starts a broken word, which real
 // English essentially never produces.
-function fixLigatures(s) {
+// Exported for the Jobs-by-Age parser (Build 1c). Multitrack renders both
+// printouts with the same font, so the same ligature damage appears in both —
+// but there must only ever be ONE copy of this rule, or the two parsers will
+// drift and the same manufacturer name will read differently depending on
+// which PDF it came in on.
+export function fixLigatures(s) {
   // Mid-word split like "Grif fi n" / "Paci fi ca": short tail after the
   // ligature means the word continues on both sides — close both gaps.
   // Longer tail ("loose fi nger") means only the ligature+tail form the word.
   return s
     .replace(/([A-Za-z]) (fi|fl) ([a-z]{1,2})(?![a-z-])/g, '$1$2$3')
     .replace(/(^| )(fi|fl) ([a-z])/g, '$1$2$3');
+}
+
+// The job reference, derived from the text runs that landed in the job-number
+// column. Exported so the Jobs-by-Age parser (Build 1c) derives its refs with
+// EXACTLY this logic and not a lookalike.
+//
+// This matters more than it looks. A job's ref IS its `id` in the jobs table,
+// and every PDF write upserts ON CONFLICT (id). A ref that parses even
+// slightly differently — a stray space, a non-breaking space, a zero-width
+// character — does not fail: it quietly INSERTS a second row for a job that
+// already exists, while every preview count still reads correctly. One shared
+// helper is the only thing keeping the two parsers agreeing on identity.
+export function deriveRef(parts) {
+  return (parts ?? []).join(' ').trim();
 }
 
 // Group positioned text items into visual lines, top of page downwards.
@@ -110,7 +129,7 @@ export function parseTextItems(pages) {
 
   const finalize = () => {
     if (!cells) return;
-    const ref = (cells.ref ?? []).join(' ').trim();
+    const ref = deriveRef(cells.ref);
     if (ref) {
       jobs.push({
         ref,
@@ -185,10 +204,12 @@ export function parseTextItems(pages) {
 }
 
 /**
- * Browser entry: read a dropped PDF file's bytes and parse it.
- * Returns { jobs, statedCount }, same as parseTextItems.
+ * Read a PDF's bytes and return its positioned text runs, one array per page,
+ * in page order. Shared by both Multitrack parsers (Build 1c) — this is
+ * pdfjs plumbing, not layout knowledge, and the Vite worker setup below is
+ * fiddly enough that a second copy would eventually diverge and 404.
  */
-export async function parseMultitrackPdf(data) {
+export async function loadPdfPages(data) {
   // Both imports are dynamic on purpose. pdfjs is a large dependency used by
   // exactly one screen, and this keeps it out of the main bundle until Trevor
   // actually drops a PDF.
@@ -212,5 +233,13 @@ export async function parseMultitrackPdf(data) {
       )
     );
   }
-  return parseTextItems(pages);
+  return pages;
+}
+
+/**
+ * Browser entry: read a dropped PDF file's bytes and parse it.
+ * Returns { jobs, statedCount }, same as parseTextItems.
+ */
+export async function parseMultitrackPdf(data) {
+  return parseTextItems(await loadPdfPages(data));
 }

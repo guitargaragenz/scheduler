@@ -8,6 +8,7 @@ import {
 } from '../utils/supabase.js';
 import { expandAutoSplits } from '../data/joinJobs.js';
 import { deriveJobStatusFlags, blockedPile } from '../data/jobs.js';
+import { jobAgeDays } from '../utils/jobAge.js';
 
 // Detect top-level jobs that disappeared from the jobs table
 // (e.g., CSV sync removed them without marking done in-app)
@@ -55,11 +56,26 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       // and every split calculation in createSubtasks() is arithmetic — a
       // string here turns the derived cards' hours into NaN.
       hours: j.hours == null ? j.hours : Number(j.hours),
-      // Job age. `null` stays `null` — an unknown age must not read back as 0,
-      // or a brand-new job and a job of unknown age become indistinguishable
-      // again (the whole point of the days column). `|| null` would be wrong
-      // here: it would turn a genuine 0-day job into "unknown".
-      days: j.days == null ? null : Number(j.days),
+      // The date the job came in the door, exactly as Multitrack printed it.
+      // Written only by the Jobs-by-Age import; nothing else reads it except
+      // the age calculation on the next line.
+      firstSeen: j.first_seen || null,
+      // Job age, computed here and ONLY here — Brief G, Build 1c.
+      //
+      // `job.days` is read in six places across the app and two of them are
+      // sort orders, not displays (JobShelf.jsx, DailyLogPage.jsx,
+      // data/jobs.js). Working the age out at each display instead would leave
+      // the cards ticking correctly while the lists stayed sorted on stale
+      // stored numbers — and mid-migration a sort cannot meaningfully compare a
+      // computed age against a stored one at all. Doing it once, here, means
+      // all six call sites keep reading the same `job.days` they always have
+      // and not one of them had to change.
+      //
+      // `null` still stays `null`: an unknown age must not read back as 0, or a
+      // brand-new job and a job of unknown age become indistinguishable again.
+      // `|| null` would be wrong here — it would turn a genuine 0-day job into
+      // "unknown".
+      days: jobAgeDays(j.first_seen, j.days),
       scheduled: j.scheduled,
       calendarSlot: j.calendar_slot || null,
       gcalEventId: j.gcal_event_id || null,
