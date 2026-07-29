@@ -81,7 +81,7 @@ export default function HelpDrawer({ onClose }) {
           ref={searchRef}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search — try 'low stock', 'drag', 'PB tag', 'CSV'…"
+          placeholder="Search — try 'low stock', 'drag', 'PB tag', 'PDF'…"
           style={{
             width: '100%', boxSizing: 'border-box',
             background: '#1e293b', border: '1px solid #334155',

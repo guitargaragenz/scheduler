@@ -247,8 +247,8 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
                 ) : jobs.length === 0 ? (
                   <div>
                     <div style={{ color: '#64748b', marginBottom: 12 }}>No jobs loaded</div>
-                    <label htmlFor="csv-upload" style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 13, textDecoration: 'underline' }}>
-                      Upload jobs.csv to get started
+                    <label htmlFor="pdf-upload" style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 13, textDecoration: 'underline' }}>
+                      Import a Multitrack PDF to get started
                     </label>
                   </div>
                 ) : (

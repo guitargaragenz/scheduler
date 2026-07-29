@@ -176,10 +176,10 @@ export default function ProjectsPage({ jobs }) {
           <div style={{ fontSize: 32, marginBottom: 16 }}>📋</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No projects yet</div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            To add a job to Projects, open your Google Sheet,
-            add a <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>PJ</code> column
-            and set it to <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>Y</code> for
-            any long-running job you want to track here. Then run <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>sheet_to_csv.command</code>.
+            To add a job to Projects, open the Jobs Sheet page and tick
+            the <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>PJ</code> box
+            on any long-running job you want to track here. It shows up straight away —
+            there's nothing to run and nothing to re-import.
           </div>
         </div>
       </div>
