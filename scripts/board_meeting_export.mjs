@@ -7,9 +7,9 @@
 //
 // This is a plain Node script, not a Vite module, so it can't import
 // src/utils/supabase.js directly (that file reads import.meta.env, which
-// only exists under Vite). Instead it builds its own Supabase client the
-// same way scripts/backfill_daily_logs_to_supabase.mjs does, using the SAME
-// table/column names supabase.js uses so the two never drift apart.
+// only exists under Vite). Instead it builds its own Supabase client using
+// the SAME table/column names supabase.js uses so the two never drift
+// apart.
 //
 // Job-status derivation (readyToStart/awaiting/inTransit/schedulable) is
 // imported from src/data/jobs.js rather than reimplemented here — same rule
@@ -56,7 +56,7 @@ function loadEnvFile(name, env) {
 }
 
 // Keys can be split across .env / .env.local — load both, .env.local wins
-// on overlap (Vite convention), same as backfill_daily_logs_to_supabase.mjs.
+// on overlap (Vite convention).
 function loadEnv() {
   const env = {};
   loadEnvFile('.env', env);
