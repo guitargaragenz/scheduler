@@ -80,13 +80,21 @@ carry both values, and for every one of them `days` is redundant with `first_see
 **Verdict: no row on the board regresses when `days` goes. The gate is clear and scope item 2
 proceeds in full.**
 
-### One thing for Trevor, and it is not a code change
+### Why those six are missing — answered, and there is nothing to fix
 
-Those six jobs have shown no age since 26 July, and will keep showing none however many times the
-JBA is dropped, because **Multitrack does not put them in that export**. Most likely they have no
-Date In recorded on the Multitrack side. If their age matters, the fix is in Multitrack, and the
-next JBA drop then fills them in on its own. **Not this build's problem, and not a reason to hold
-it up** — the app behaves identically before and after.
+Trevor confirmed 2026-07-29: **all six jobs are complete.** Jobs by Age lists open jobs only, so
+Multitrack correctly leaves them out, and there is no missing Date In to chase. Their absence is
+right, not a gap. Ignore any earlier note in this file suggesting a Multitrack-side fix.
+
+**Nothing here holds up Build 2** — the app behaves identically before and after.
+
+**But it surfaces a real gap, and it is not this brief's:** four of the six (1626, 1671, 1698,
+1702) are already `done` in the app, but **1619 and 1620 are still sitting on the board as live
+work** — 1620 with one split half open. The app has no way to learn a job was completed in
+Multitrack: a finished job simply stops appearing on the PDF, and Brief G's binding rule is
+*"Missing jobs are reported, never deleted and never auto-completed."* That rule is right — the app
+must not silently close jobs — but it leaves Trevor to spot the disappearance himself. **Needs its
+own brief; do not scope it into Build 2.**
 
 **Scope items 1 and 3 never depended on this gate.** Only item 2 did, and it is now clear.
 
