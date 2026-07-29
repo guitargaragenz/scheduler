@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS, parseCSV, preserveKnownDays } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS, preserveKnownDays } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -36,37 +36,14 @@ describe('parseDays', () => {
 });
 
 describe('job age sort order', () => {
-  // The sort comparator lives inside parseCSV; this exercises the same
-  // expression directly so the ordering rule is pinned even if the call site
-  // moves.
+  // The comparator this pins used to live inside parseCSV, which went with the
+  // CSV path in Build 2a. The rule itself is still live — JobShelf, DailyLogPage
+  // and joinJobs all sort by `days` this way — so it is exercised directly here.
   const byAge = (a, b) => (b.days ?? -1) - (a.days ?? -1);
 
   it('sorts oldest first and pushes unknown ages past 0-day jobs', () => {
     const sorted = [{ days: null }, { days: 0 }, { days: 5 }].sort(byAge);
     expect(sorted.map(j => j.days)).toEqual([5, 0, null]);
-  });
-});
-
-describe('parseCSV job age', () => {
-  const header = 'Job,Customer,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,PJ';
-  const csv = [
-    header,
-    '1001,Alice,Fender,Strat,Active,274,,2,CI,restring,N,N,N',
-    '1002,Bob,Gibson,LP,Active,,,2,CI,restring,N,N,N',
-    '1003,Cass,Ibanez,RG,Active,0,,2,CI,restring,N,N,N',
-  ].join('\n');
-
-  it('reads a populated Days cell as a number and a blank one as null', () => {
-    const jobs = parseCSV(csv);
-    const byId = Object.fromEntries(jobs.map(j => [j.id, j]));
-    expect(byId['1001'].days).toBe(274);
-    expect(byId['1002'].days).toBeNull();
-    expect(byId['1003'].days).toBe(0);
-  });
-
-  it('returns them oldest first, with the unknown age last', () => {
-    const jobs = parseCSV(csv).filter(j => !j.parentId);
-    expect(jobs.map(j => j.id)).toEqual(['1001', '1003', '1002']);
   });
 });
 

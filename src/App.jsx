@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { parseCSV, RAW_CSV, benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
+import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isConfigured } from './utils/googleCalendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
@@ -47,11 +47,11 @@ export default function App() {
   const [benchKeywords, setBenchKeywords] = useState(() => {
     try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; }
   });
-  const [jobs, setJobs] = useState(() => {
-    const stored = (() => { try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; } })();
-    const storedBH = (() => { try { return JSON.parse(localStorage.getItem('benchHours') || 'null') || {}; } catch { return {}; } })();
-    return parseCSV(RAW_CSV, stored, storedBH);
-  });
+  // Starts empty. Jobs arrive from Supabase on the first snapshot; there is no
+  // seed data baked into the bundle. (Until Build 2a this called
+  // parseCSV(RAW_CSV, …), which returned [] anyway — RAW_CSV had been a bare
+  // header line for months.)
+  const [jobs, setJobs] = useState([]);
   const [scheduledSlots, setScheduledSlots] = useState({});
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
   const [displayedDate, setDisplayedDate] = useState(() =>
@@ -644,7 +644,6 @@ export default function App() {
                 jobs={jobs}
                 dragMode={dragMode}
                 onDragModeChange={setDragMode}
-                onCsvUpload={jobOps.handleCsvUpload}
                 onPdfUpload={handlePdfUpload}
                 highlightedJobId={highlightedJobId}
                 onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
@@ -673,7 +672,6 @@ export default function App() {
               onScheduleAdHocNote={handleScheduleAdHocNote}
               dragMode={dragMode}
               onDragModeChange={setDragMode}
-              onCsvUpload={jobOps.handleCsvUpload}
               onPdfUpload={handlePdfUpload}
               highlightedJobId={highlightedJobId}
               onClearHighlight={() => { setHighlightedJobId(null); setSidebarOpen(false); }}
@@ -809,9 +807,9 @@ export default function App() {
           onBenchKeywordsChange={kw => {
             setBenchKeywords(kw);
             localStorage.setItem('benchKeywords', JSON.stringify(kw));
-            // Re-infer benches over the CURRENT jobs — never re-parse RAW_CSV
-            // (a header-only stub: parseCSV returns [] and would wipe every
-            // job on every device). Skip split children (bench chosen by the
+            // Re-infer benches over the CURRENT jobs, in place — this handler
+            // never rebuilds the jobs array from a source file.
+            // Skip split children (bench chosen by the
             // user or the split logic) and split parents (changing their
             // bench would drift auto-split child IDs and orphan their
             // scheduled slots).

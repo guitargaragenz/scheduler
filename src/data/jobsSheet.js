@@ -9,7 +9,7 @@
 import { statusFlagsFor } from './pdfImportPlan.js';
 
 // The six fields Trevor owns, in app-shape names. `backlog` is the BL column
-// and `project` is the PJ column (see parseCSV in jobs.js). Kept in step with
+// and `project` is the PJ column (the old CSV header name). Kept in step with
 // APP_OWNED_JOB_FIELDS in joinJobs.js — that constant decides what the CSV may
 // no longer write, this one decides what the sheet may edit. Same six.
 export const SHEET_EDITABLE_FIELDS = Object.freeze([

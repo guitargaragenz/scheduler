@@ -44,7 +44,7 @@ function render(jobs, storedSelection = null) {
   if (storedSelection) store.jobShelfBench = storedSelection;
   else delete store.jobShelfBench;
   return renderToStaticMarkup(
-    <JobShelf jobs={jobs} dragMode="regular" onDragModeChange={noop} onCsvUpload={noop} onJobClick={noop} />
+    <JobShelf jobs={jobs} dragMode="regular" onDragModeChange={noop} onJobClick={noop} />
   );
 }
 

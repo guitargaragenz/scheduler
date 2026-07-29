@@ -663,7 +663,7 @@ function ScheduleNoteModal({ text, defaultDate, onConfirm, onClose }) {
 export default function DailyLogPage({
   jobs, scheduledSlots, weekDays, displayedDate, onDisplayedDateChange, scheduledJobs, externalEvents, isDragging, activeJobId, onCalendarJobClick,
   onRemoveAdHocTask, onScheduleAdHocNote,
-  dragMode, onDragModeChange, onCsvUpload, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
+  dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
   focusList = [], onToggleFocus,
@@ -1048,29 +1048,6 @@ export default function DailyLogPage({
                     color: '#e2e8f0', outline: 'none', fontFamily: 'inherit',
                   }}
                 />
-                <label
-                  htmlFor="mobile-job-csv-upload"
-                  title="Upload CSV"
-                  style={{
-                    flexShrink: 0, width: 44, height: 38, borderRadius: 8,
-                    border: '1px solid #334155', background: '#1e293b', color: '#94a3b8',
-                    fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  📂
-                </label>
-                <input
-                  id="mobile-job-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = evt => onCsvUpload(evt.target.result);
-                    reader.readAsText(file);
-                    e.target.value = '';
-                  }}
-                />
                 {onPdfUpload && (<>
                   <label
                     htmlFor="mobile-job-pdf-upload"
@@ -1314,7 +1291,6 @@ export default function DailyLogPage({
           <JobShelf
             jobs={jobs}
             dragMode={dragMode} onDragModeChange={onDragModeChange}
-            onCsvUpload={onCsvUpload}
             onPdfUpload={onPdfUpload}
             highlightedJobId={highlightedJobId} onClearHighlight={onClearHighlight}
             onJobClick={onJobClick}

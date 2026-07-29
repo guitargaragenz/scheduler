@@ -72,7 +72,7 @@ export function buildNewJob(parsedJob, benchKeywords = {}) {
   const fields = pdfFieldsOf(parsedJob);
   const flags = statusFlagsFor(fields);
   const bench = inferBench(fields.desc, fields.status, '', fields.model, fields.mfr, benchKeywords, false);
-  // Same rule as parseCSV: a job with no hours figure that is ready to be
+  // Same rule the CSV importer used: a job with no hours figure that is ready to be
   // worked on gets one hour, so it is schedulable rather than invisible.
   // Anything blocked stays at 0 until Trevor says otherwise.
   const hours = flags.schedulable ? 1 : 0;

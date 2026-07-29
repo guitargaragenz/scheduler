@@ -49,9 +49,8 @@ function withTopLevelDefaults(state) {
 // outside the app any more. These six are now edited on the Jobs Sheet page
 // and must be unreachable from the CSV import path.
 //
-// `project` is the app-shape name for the Sheet's PJ column (see parseCSV in
-// jobs.js: `project: obj.PJ === 'Y'`), and `backlog` is BL. `vb` is the one
-// whose app name and column name match.
+// `project` is the app-shape name for what the Sheet called the PJ column, and
+// `backlog` is BL. `vb` is the one whose app name and column name match.
 //
 // This is a SEPARATE constant, deliberately NOT added to
 // JOBS_STATE_TOP_LEVEL_FIELDS, for two reasons:
