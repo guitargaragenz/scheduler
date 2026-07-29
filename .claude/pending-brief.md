@@ -248,7 +248,12 @@ click-through passed, Trevor approved the Vercel preview.
 still imports; a JBA drop still fills dates; existing jobs keep Tag/Hours/Action/VB/BL/PJ; no
 calendar slot, bench assignment or split state moves; the help search finds no dead article.
 
-### Build 2b — the stored `days` column goes
+### Build 2b — the stored `days` column goes — ✅ **SHIPPED 2026-07-29, merged to main at `5d262dc`**
+
+Built by `ggnz-builder` on branch `build-2b-stored-days-goes`, checked by `ggnz-verifier`, then
+browser-tested against the Vercel preview: Projects page confirmed ages compute correctly
+(#1175 2yrs, #1448 356 days, #1520 260 days, #1679 49 days) and both sort sites still put oldest
+first, no console errors on Jobs/Sheet/Parking Lot/Projects/Bujo. Trevor approved the merge.
 
 **Gate cleared 2026-07-29 — see step 0. No row loses an age.**
 
@@ -369,31 +374,23 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 ## Session state — 2026-07-29 (end of day)
 
 - **2a is shipped and merged** — `29c1e4a` on `main`. Branch `build-2a-close-csv-door` can be
-  deleted whenever. **Next work on this brief is 2b.**
-- **Both agent spawns this build died on a monthly spend limit** — the `ggnz-builder` before it
-  started, then the `ggnz-verifier` re-check after its first pass. 2a was built inline as a
-  deliberate, approved deviation from step 3. **Do not assume the same is fine for 2b** — 2b
-  writes to the live persistence layer and needs a real `ggnz-builder`. If the spend limit is
-  still biting when 2b comes up, that is a conversation with Trevor first, not a quiet second
-  inline build.
-- **`upsertJobsBatch` is dead as of 2a** and carries a header comment saying so
-  (`utils/supabase.js`). Deleting it is 2b item 5b.
+  deleted whenever.
+- **2b is shipped and merged** — `5d262dc` on `main`, built, verified, browser-tested and
+  approved same day. Branch `build-2b-stored-days-goes` can be deleted whenever.
+  **Next work on this brief is 2c.**
+- **`upsertJobsBatch` is deleted** (was dead as of 2a; removed along with its alias, imports and
+  test file as part of 2b item 5b).
 
-### 2b — ready to start, nothing built
+### 2c — not started
 
-- **Branch `build-2b-stored-days-goes` exists, cut from `main` at `5f88ed7`, and is empty.** Use
-  it; don't cut another.
-- **Council is already done for the whole of Brief H, 2b included** — two reviewers, both yay,
-  and 2b is where they made their sharpest catch (the two `jobAgeDays` call sites). **Do not
-  re-run council for 2b.** It resumes at step 3.
-- **Item 5b is closed** (Trevor re-confirmed 2026-07-29). Nothing in 2b is waiting on him.
-- **A `ggnz-builder` spawn for 2b was attempted 2026-07-29 and died on the monthly spend limit** —
-  the third agent to die that way in one day, after 2a's builder and 2a's verifier. No files
-  touched, no commits. **Check the limit has actually cleared before spawning anything.**
-- **Every line number in the 2b items above was re-grepped against the live tree after 2a
-  merged**, and several had moved. They are right as of `5f88ed7` — but grep for the symbol
-  anyway. That is the whole lesson of Briefs E, F and G.
-- **The verifier is not waived for 2b either.**
-- **Item 5b — Trevor said "yes" to deleting the orphaned `upsertJobsBatch` writer.** Recorded as
-  approved-in-principle for 2b, but re-confirm the wording with him before 2b starts; it was a
-  one-word answer to a two-option question.
+- No branch cut yet. Cut from `main` (currently `5d262dc`) when this starts.
+- Scope: delete the four Mac-side pipeline scripts from the repo, have Trevor stop the watcher
+  and remove the copies on Micky outside the repo, and rewrite
+  `SCHEDULER-ARCHITECTURE.md:14-26`'s CSV section plus its stale Firebase line at `:11`. See
+  items 7-9 above.
+- Council already covered 2c as part of the whole-brief review — **do not re-run council.**
+  Council 1 flagged 2c as "the weak case for a full cycle (nothing to browser-test)" — worth
+  raising with Trevor when scoping whether it needs the full builder/verifier cycle or can be
+  done inline, given it's a docs + script deletion with no live-data risk.
+- Re-grep every line number above against the live tree before acting — they were last checked
+  against `5f88ed7`, before both 2a and 2b merged.
