@@ -1,10 +1,16 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Re-fresh — repo housekeeping
 
 **Written:** 2026-07-27. **Rewritten:** 2026-07-29 — most of it was already done.
+**Closed 2026-07-30 — everything left in this brief shipped:** `SplitDrawer.jsx` deleted
+(`096986e`), the two spent scripts deleted and their dangling comment refs fixed
+(`7b7848e`), `cowork-context-summary.md` deleted (`9c0605b`), the pre-migration backup
+JSON deleted (`c44f2db`), and the two merged local branches removed. Section 3's
+twenty-branch list and Section 2's `rebuild_csv.py` were already stale by the time this
+session read them — both gone before this session started. Nothing left to do here.
 **For:** a fresh session, any machine. Nothing here needs a dev server.
 **Task:** clear the last few dead files out of the repo.
 
