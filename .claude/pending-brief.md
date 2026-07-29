@@ -346,3 +346,21 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
 3. **Step 0 gate** — ✅ done 2026-07-29, clear. Blocked 2b only; no longer blocks anything.
 4. **Builder → verifier → browser test → merge**, once per build, fresh agents each time, verifier
    never the builder. **2a is cleared to start.** 2b additionally needs Trevor's call on item 5b.
+
+---
+
+## Session state — 2026-07-29
+
+- **Branch `build-2a-close-csv-door` exists, off `main` @ `8790f24`, and is empty.** Nothing built
+  yet. Build 2a on that branch; don't start a new one.
+- **A `ggnz-builder` spawn was attempted for 2a and died immediately on a monthly spend limit** —
+  no files touched, no commits. Trevor's instruction: **build 2a in a fresh session, inline, with
+  no `ggnz-builder` subagent**, to keep token use down. That is a deliberate, approved deviation
+  from step 3 for 2a only. **2b still gets a proper `ggnz-builder`** — it writes to the live
+  persistence layer.
+- **The verifier is NOT waived.** After 2a is built, a `ggnz-verifier` agent (Sonnet, cheap) runs
+  the 2a checklist, then a browser click-through, then Trevor's merge call. The verifier must not
+  be whoever did the build.
+- **Item 5b — Trevor said "yes" to deleting the orphaned `upsertJobsBatch` writer.** Recorded as
+  approved-in-principle for 2b, but re-confirm the wording with him before 2b starts; it was a
+  one-word answer to a two-option question.
