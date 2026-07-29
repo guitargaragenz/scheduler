@@ -22,9 +22,27 @@ rows really are excluded (53 sheet rows against 78 jobs, 25 of them derived). Ta
 hours ranges and SKP all pass. Everything was discarded; nothing was written; the
 temporary `App.jsx` edit is reverted and the tree is clean.
 
-**Exactly one item is left — item 3, the write test — and it has an open question for
-Trevor sitting on it.** Read item 3 under "Protocol step 5" below and start there. Do not
-re-run items 1, 2, 4, 5 or 6; their live results are recorded.
+**The browser test is finished. Item 3 — the live CSV write test — was dropped
+deliberately, not skipped.** Trevor asked why we would test a CSV sync when Build 1b is
+the very thing that retires the CSV pipeline (`re-fresh-repo-housekeeping.md:102`:
+`sheet_to_csv.command` is live *"until Brief G's Build 1b ships"*). He was right. It was
+dropped because:
+
+1. The merge gate — split/derived rows staying out of the sheet — **already passed live**.
+   That was the verifier's only withheld item.
+2. The ownership rule is already covered by two tests aimed at exactly this path:
+   `upsertJobsBatch — the CSV import path: sends none of the six app-owned columns`
+   (`supabaseJobOwnership.test.js:51`) and `pickMasterFields — the six columns the CSV may
+   no longer write` (`joinJobs.test.js:511`). A live run adds nothing.
+3. A live run writes real job data to prove a path that is being retired.
+
+**Worth carrying forward:** retiring the *script* does not remove the CSV **upload
+button**, which is still live at `JobShelf.jsx:207`, `DailyLogPage.jsx:1064` and
+`Sidebar.jsx:250`. It stays clickable after the merge. That is why the protection has to
+exist — it is not an argument for testing it by hand.
+
+**So this brief is down to one thing: protocol step 6, the merge, on Trevor's "yp".**
+Do not re-run any part of the browser test; every item's result is recorded below.
 
 What is left, in order, and nothing else:
 
@@ -333,11 +351,13 @@ What must be confirmed live, in this order:
    do exist in the live set and really are excluded. **The verifier's concern is settled.**
 3. **Edit → Commit → CSV sync → the edit survives.** The whole point of the ownership
    move. Change an Action, commit, run a sync, confirm it is still there.
-   **NOT RUN. This is the only item left, and it is where the next session starts.**
+   **DROPPED 2026-07-29, deliberately — see START HERE for the reasoning. Do not
+   reinstate it without Trevor.** The detail below is kept because it is the record of
+   which path writes what, and that stays true after the merge.
 
    **Trevor asked, fairly: "CSV sync? I thought we were running PDF now?" He is right that
-   PDF is the live import path — and the answer changes what this test should be.** Both
-   paths exist in the app today, verified in the code 2026-07-29:
+   PDF is the live import path.** Both paths exist in the app today, verified in the code
+   2026-07-29:
 
    - The **PDF** path (`writePdfImportBatch`, `useJobs.js:377`) writes only the six
      Multitrack fields. Build 1a deliberately never touched Tag/Hours/Action/VB/BL/PJ.
@@ -348,16 +368,10 @@ What must be confirmed live, in this order:
      `DailyLogPage.jsx:1064`, `Sidebar.jsx:250` — so the risk it protects against is real,
      not historical.
 
-   **So the CSV test is still the right test**, even though it isn't Trevor's daily
-   routine. **What's needed to run it:** a Multitrack CSV to upload. There is none in the
-   repo (`git ls-files` finds only `marketing/context/gamma-brief.pdf`), so either Trevor
-   produces one via `sheet_to_csv.command`, or the next session builds a small throwaway
-   CSV containing job 1712 with a *different* Action, uploads that, and confirms the
-   sheet's value wins. **Ask Trevor which he'd rather do — don't assume.**
-
-   Three unit-test files already cover the ownership rule
-   (`supabaseJobOwnership.test.js`, `joinJobs.test.js`, `jobsSheet.test.js`), so the
-   question for Trevor is really "is the live proof worth the faff", not "is it tested".
+   The reason it was dropped rather than run: it needs a Multitrack CSV that does not
+   exist in the repo, it writes real job data, and the exact behaviour it would prove is
+   already asserted by two tests named after this path — `supabaseJobOwnership.test.js:51`
+   and `joinJobs.test.js:511`.
 4. Tag auto-fill uses the corrected bands. **PASS.** On job 1712, picking each tag in turn
    filled the Hours box with `EZ → 1.5`, `M → 3`, `T → 5.5`, `H → 6` — M and T the right
    way round, which is item 4b proved live. Clearing the tag back to `—` left hours at
