@@ -88,6 +88,28 @@ function rowFields(line) {
 }
 
 /**
+ * Which of the two Multitrack printouts is this?
+ *
+ * Trevor drops both files onto the same button. Asking him to pick the right
+ * one of two upload controls in three different places would be UI work, and
+ * would also be a thing to get wrong at 8am — so the app reads the header row
+ * and decides for itself. The JBA header carries "Date In" and "Days"; the Jobs
+ * printout's header carries neither.
+ *
+ * Getting this wrong cannot corrupt anything: each parser only recognises its
+ * own header, so a misdetected file parses zero rows and the stated-count
+ * refusal in the import plan stops it dead with a message. It fails loudly.
+ */
+export function looksLikeJobsByAge(pages) {
+  for (const pageItems of pages) {
+    for (const line of toLines(pageItems)) {
+      if (isHeaderLine(line)) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Pure parse over positioned text items, one array per page, in page order.
  * Returns { jobs, statedCount } where each job is { ref, dateIn } and dateIn is
  * a YYYY-MM-DD string exactly as Multitrack printed it.

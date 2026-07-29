@@ -1,8 +1,11 @@
 import { parseCSV, canInvoiceJob, preserveKnownDays } from '../data/jobs.js';
-import { parseMultitrackPdf } from '../data/parseMultitrackPdf.js';
+import { parseTextItems, loadPdfPages } from '../data/parseMultitrackPdf.js';
+import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsByAgePdf.js';
 import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
+import { buildJbaImportPlan } from '../data/jbaImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, logPdfImport } from '../utils/supabase.js';
+import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport } from '../utils/supabase.js';
+import { jobAgeDays } from '../utils/jobAge.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 import { formatMoney } from '../utils/money.js';
@@ -327,12 +330,29 @@ export function useJobs({
   // called from the preview screen's Import button. There is no code path
   // that writes a PDF to the database without Trevor having seen the counts.
 
+  // Build 1c: the same button now takes either Multitrack printout. The file is
+  // read once and the app works out which one it is from the header row, rather
+  // than Trevor having to pick the right one of two upload buttons in three
+  // different places. A misdetected file cannot do damage — each parser only
+  // recognises its own header, so the wrong one reads zero rows and the
+  // stated-count refusal stops it with a message.
   async function preparePdfImport(file) {
     try {
-      const { jobs: parsed, statedCount } = await parseMultitrackPdf(await file.arrayBuffer());
-      const plan = buildPdfImportPlan({
-        parsed, statedCount, jobs, filename: file.name, benchKeywords,
-      });
+      const pages = await loadPdfPages(await file.arrayBuffer());
+
+      const isJba = looksLikeJobsByAge(pages);
+      // Both parsers return { jobs, statedCount }; both plan builders take the
+      // parsed rows as `parsed` and the board as `jobs`. Renamed explicitly
+      // here rather than spread, because a spread would put the PARSED rows
+      // under the key `jobs` and quietly shadow the board.
+      const { jobs: parsed, statedCount } = isJba
+        ? parseJobsByAgeTextItems(pages)
+        : parseTextItems(pages);
+
+      const plan = isJba
+        ? buildJbaImportPlan({ parsed, statedCount, jobs, filename: file.name })
+        : buildPdfImportPlan({ parsed, statedCount, jobs, filename: file.name, benchKeywords });
+
       if (!plan.ok) {
         showToast(`⚠ ${plan.error}`);
         return null;
@@ -344,8 +364,62 @@ export function useJobs({
     }
   }
 
+  // The Jobs-by-Age half of the import. One column, `first_seen`, and the age
+  // on every affected card recomputed from it.
+  async function commitJbaImport(plan) {
+    // Same order as the Jobs PDF: write first, then update the screen. A card
+    // that visibly changes age and was never actually saved is worse than a
+    // moment's delay.
+    const applyLocally = () => {
+      const dateByRef = new Map(plan.writes.map(w => [String(w.id), w.data.firstSeen]));
+      setJobs(prev => prev.map(j => {
+        // Split cards are the app's own; the printout has never heard of them.
+        if (j.parentId || j.isDerived) return j;
+        const dateIn = dateByRef.get(String(j.id));
+        if (!dateIn) return j;
+        // days is recomputed here for the same reason normalizeJobsFromDb()
+        // computes it: it is what the lists sort on, not just what the card
+        // shows. Leaving the stale number until the next reload would leave the
+        // board sorted by ages it is no longer displaying.
+        return { ...j, firstSeen: dateIn, days: jobAgeDays(dateIn, j.days) };
+      }));
+    };
+
+    const total = plan.filled.length + plan.changed.length;
+
+    if (!isSupabaseConfigured()) {
+      applyLocally();
+      showToast(`${total} date${total === 1 ? '' : 's'} updated (not saved — no database configured)`);
+      return;
+    }
+
+    justSavedAt.current = Date.now();
+    const res = await writeJbaImportBatch(plan.writes);
+    if (!res?.ok) {
+      showToast('⚠ Dates did not save — reload before trusting the board');
+      return;
+    }
+    applyLocally();
+
+    logPdfImport({
+      filename: plan.filename,
+      rowCount: res.written,
+      ids: plan.writes.map(w => w.id),
+    });
+
+    showToast(
+      `${plan.filled.length} date${plan.filled.length === 1 ? '' : 's'} filled in` +
+      (plan.changed.length > 0 ? ` · ${plan.changed.length} changed` : '')
+    );
+    addChangelog(
+      `Jobs-by-Age PDF imported — ${plan.filled.length} dates filled in, ${plan.changed.length} changed` +
+      (plan.unknown.length > 0 ? `, ${plan.unknown.length} skipped (not on the board)` : '')
+    );
+  }
+
   async function commitPdfImport(plan) {
     if (!plan?.ok) return;
+    if (plan.kind === 'jba') return commitJbaImport(plan);
 
     // Merge into the on-screen board only AFTER the write lands. The CSV path
     // updates optimistically, but a PDF drop introduces brand-new jobs — and a

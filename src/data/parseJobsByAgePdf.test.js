@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJobsByAgeTextItems } from './parseJobsByAgePdf.js';
+import { parseJobsByAgeTextItems, looksLikeJobsByAge } from './parseJobsByAgePdf.js';
 
 // Hand-built positioned text items in the same shape pdfjs hands back (str +
 // x/y in PDF points), laid out at the real Jobs-by-Age printout's column
@@ -129,5 +129,30 @@ describe('parseJobsByAgeTextItems', () => {
     page.push(item('2099-01-01', 30, 460), item('Ghost', 110.8, 460), item('9999', 530, 460));
     const { jobs } = parseJobsByAgeTextItems([page]);
     expect(jobs.map(j => j.ref)).toEqual(['97', '112', '1705']);
+  });
+});
+
+// Trevor drops both Multitrack printouts on the same button, so the app has to
+// tell them apart itself. Only the Jobs-by-Age header carries "Date In" and
+// "Days"; the Jobs printout's header is Customer / Manufacturer / Model /
+// Status / Job.
+describe('looksLikeJobsByAge', () => {
+  it('recognises the Jobs-by-Age printout', () => {
+    expect(looksLikeJobsByAge([samplePage()])).toBe(true);
+  });
+
+  it('does not mistake the Jobs printout for it', () => {
+    const jobsPdfPage = [
+      item('Customer', 30, 700), item('Manufacturer', 192, 700),
+      item('Model', 299, 700), item('Status', 434, 700), item('Job', 510, 700),
+      item('Dave', 30, 680), item('Fender', 192, 680), item('Strat', 299, 680),
+      item('Booked In', 434, 680), item('1601', 510, 680),
+      item('46', 30, 640), item('Jobs found', 60, 640),
+    ];
+    expect(looksLikeJobsByAge([jobsPdfPage])).toBe(false);
+  });
+
+  it('says no for an unrelated PDF rather than guessing', () => {
+    expect(looksLikeJobsByAge([[item('Invoice', 30, 700), item('Total', 400, 700)]])).toBe(false);
   });
 });
