@@ -11,40 +11,32 @@ Written 2026-07-29 at the end of the session that ran protocol steps 3 and 4.
 Build 1b is written, reviewed and pushed. It sits on `staging/brief-g-jobs-sheet-page`,
 ahead of `main` (`b84373d`). Do not re-run protocol steps 1–4 on what is already built.
 
-What is left:
+**Re-scoped 2026-07-29 on Trevor's instruction.** The session had drifted into look-and-feel
+requests and a calendar bug. His words: *"Appointments and UI can wait until everything's
+rock solid."* So this brief is now about one thing only — **getting Build 1b proved and
+merged.**
 
-1. **Three changes to the Sheet page**, all asked for after the restyle and none built:
-   - **Enter moves down a row**, like Google Sheets — *the biggest of the three*
-   - **White background**, not the dark blue
-   - **Hours snap to 30-minute steps**
-2. **Protocol step 5** — the browser test.
-3. **Protocol step 6** — merge on Trevor's "yp".
+What is left, in order, and nothing else:
 
-Two of those need a question answered before building; both are marked **Ask Trevor** in
-their sections. Ask them together in one go rather than stopping twice.
+1. **Protocol step 5** — the browser test. The verifier gated the merge on it.
+2. **Protocol step 6** — merge on Trevor's "yp".
+3. **Then, and only then**, the next phase of the build: **Build 1c** (the JBA second PDF
+   drop, `first_seen`, computed job age, the migration). It has never been through
+   council, so it starts at protocol step 1 with a fresh brief — not from here.
 
-**Separately, and not part of Build 1b:** Trevor reported that his calendar appointments
-aren't showing up. That is a different problem in `useGoogleCalendar.js` territory, has
-nothing to do with the Sheet, and must not be folded into this branch.
+**Deferred, deliberately, until after the merge:**
+
+- Three Sheet changes Trevor asked for after the restyle — Enter-to-move-down, a white
+  background, 30-minute hours steps. All written up below with his exact words so nothing
+  is lost. **None of them block the merge.** Don't build them on this branch.
+- The calendar appointments bug — see
+  [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md),
+  now **parked**. Different file, different branch, different protocol run.
 
 Read this file, then `.claude/pending-brief.md` for the scope lock. **Do not re-read**
 `re-fresh-brief-g-checkpoint-3b-and-build-1b.md` as instructions — it is the previous
 handoff, it says Build 1b "is not started", and that is now false. It is being closed in
 the same commit as this file.
-
-### The one open question, ask it first
-
-Trevor's last two messages were **"no change... handoff for new session"**, sent right
-after being asked to open the restyled sheet at `http://localhost:5173`. That is
-ambiguous and the session ended before it was resolved. It means one of:
-
-- **"No further changes needed"** — he's happy, go to the browser test; or
-- **"I see no change on screen"** — he opened it and the restyle did not appear.
-
-**Ask him which before doing anything else.** If it's the second, the most likely cause
-is that he was looking at a stale tab or a Vercel preview built from an older commit —
-the restyle is commit `8b3ce93` and was pushed. Get him to hard-reload, or check the
-Vercel deployment is built from `8b3ce93` and not `ccb1503`.
 
 ---
 
@@ -108,11 +100,26 @@ spreadsheet has:
 
 ---
 
-## Still to build — Hours must snap to 30-minute steps
+## Deferred — three Sheet changes, none of them blocking
+
+**Read this before the three sections below.** Trevor asked for all three on 2026-07-29,
+then on the same day said to park them: *"Appointments and UI can wait until everything's
+rock solid."*
+
+They are written up in full — his exact words, where the change goes, what it must not
+break — because that detail is expensive to re-derive and easy to lose. **That is all
+they are: a record to build from later.** None of them is a task for this branch, none of
+them gates the merge, and the questions marked "Ask Trevor" are not to be asked until the
+work is actually picked up. Pick them up after Build 1b is merged and Build 1c is either
+done or deliberately sequenced behind them — Trevor's call which.
+
+*(These three sit here rather than at the end of the file only because they were written
+before the re-scope. They are the last thing to act on, not the first.)*
+
+### Deferred — Hours must snap to 30-minute steps
 
 Asked for by Trevor 2026-07-29, after the restyle, in his words: *"I want the hrs to be
-in increments of 30 mins like they were before."* **Not built yet.** This is the only
-outstanding code change on Build 1b.
+in increments of 30 mins like they were before."* **Not built.**
 
 **"Like they were before" is real and checkable** — the job drawer's hours box has always
 been `<input type="number" min="0.5" step="0.5">` (`JobDrawer.jsx:263`), and the split
@@ -142,7 +149,7 @@ range-average path. Do **not** try to fix this in `JobsSheetPage.jsx` alone; the
 function is what `draftChanges()` and `buildSheetWrites()` write from, so snapping in the
 UI only would let an unsnapped value reach the database by another route.
 
-**Open question for Trevor, ask before building:** halves that land exactly on a quarter
+**Open question for Trevor, ask when this is picked up — not now:** halves that land exactly on a quarter
 — does `2.75` go up to `3` or down to `2.5`? Nearest-with-ties-up (`Math.round(n * 2) / 2`,
 which matches `SplitDrawer.jsx`) is the recommendation unless he says otherwise.
 
@@ -156,11 +163,11 @@ which matches `SplitDrawer.jsx`) is the recommendation unless he says otherwise.
 - It needs its own tests alongside the existing `parseHoursInput` ones, and `round2()`'s
   comment block needs updating — it currently explains two-decimal precision, which stops
   being the rule.
-- This is a behaviour change to an app-owned column, so it goes through the protocol like
-  the rest of Build 1b: it is written here, Trevor has asked for it, and it must be built
-  on `staging/brief-g-jobs-sheet-page` and verified before the merge — not added after.
+- This is a behaviour change to an app-owned column, so it goes through the protocol when
+  it is picked up — brief, council, builder, verifier. It is **not** to be slipped onto
+  `staging/brief-g-jobs-sheet-page` ahead of the merge.
 
-## Still to build — Enter should move down a row, like a spreadsheet
+### Deferred — Enter should move down a row, like a spreadsheet
 
 Asked for 2026-07-29, same message as the white background below. His words: *"it's
 really hard to enter hrs in. It shld be select box, enter hrs, push enter, and it will
@@ -191,10 +198,11 @@ decision and it hasn't changed.
 helper keyed by `(jobId, column)` — probably a ref map plus an ordered list of the
 editable rows — not a scattering of `onKeyDown` handlers. Also worth checking whether the
 Tag and Action `<select>`s should join the same movement or stay out of it; a `<select>`
-swallows arrow keys, and Enter on a native select behaves differently. **Ask Trevor
-whether Enter-to-move should apply to the dropdowns too, or hours only.**
+swallows arrow keys, and Enter on a native select behaves differently. **When this is
+picked up, ask Trevor whether Enter-to-move should apply to the dropdowns too, or hours
+only.** Don't ask him now — it's parked.
 
-## Still to build — the sheet should be white, not dark
+### Deferred — the sheet should be white, not dark
 
 Same message: *"Blue background is too dark needs to be white like sheet too."*
 
@@ -291,8 +299,9 @@ needs the editable version in the preview browser, temporarily neutralise that l
 
 What must be confirmed live, in this order:
 
-1. **The look.** Trevor's call, not an agent's. This is the item that has already failed
-   once.
+1. **It works, and it's usable enough to merge.** Not "is it pretty" — the look changes he
+   asked for are parked by his own instruction, so a dark sheet is not a blocker. What
+   matters here is that the page loads, the six columns edit, and Commit does what it says.
 2. **Item 13 — split and derived rows do not appear and are not writable from the sheet.**
    Derived cards have non-numeric ids like `1620_Electronics_0`. This is the verifier's
    open concern and the reason the merge is gated.
@@ -301,8 +310,8 @@ What must be confirmed live, in this order:
 4. Tag auto-fill uses the corrected bands. *(Already confirmed once locally: picking
    `T` on job 1711 filled hours with `5.5`, the row highlighted, the counter read
    "1 changed", Commit went live. Then discarded — nothing was written.)*
-5. A range in the Hours box: `2-4` saves as `3`. Once the 30-minute snap is built, also
-   check `1.2` becomes `1` and `1.5-2` becomes `2`.
+5. A range in the Hours box: `2-4` saves as `3`. That is current behaviour and what must
+   be tested — the 30-minute snap is deferred, so don't expect `1.2` to become `1` yet.
 6. `SKP` round-trips on 182 / 321 / 592 / 1268 without changing behaviour.
 
 Step 3 writes to live job data. **Get Trevor's explicit go-ahead before committing a
@@ -316,8 +325,11 @@ Only on Trevor's "yp". Never push to `main` without it.
 
 ## Still in force — do not drift on these
 
-- **Do not build any part of Build 1c** (the JBA second PDF drop, `first_seen`, computed
-  job age, the migration). Council has never seen it.
+- **Do not build any part of Build 1c on this branch** (the JBA second PDF drop,
+  `first_seen`, computed job age, the migration). Council has never seen it. It is the
+  next phase *after* the merge, and it starts with its own brief at protocol step 1.
+- **Do not build the three deferred Sheet changes on this branch** either. Same reason —
+  they are a record, not a task list.
 - **Do not add a "close missing jobs" rule** for the six jobs absent from the Multitrack
   export (1619, 1620, 1626, 1671, 1698, 1702).
 - **Do not add SKP handling logic.** Tolerate and render it; add no branching.
@@ -338,3 +350,6 @@ Both must be done in the same session the merge happens, per CLAUDE.md:
 - Update `docs/briefs/README.md` — move this brief out of **Live**
 - `re-fresh-repo-housekeeping.md` has two pipeline scripts waiting on Build 1b; after the
   merge, only Build 1c still blocks them
+- **Move the three deferred Sheet changes into their own `parked` brief** before closing
+  this one — otherwise they die inside a `closed` document and get rebuilt from scratch
+  when Trevor asks again. Then write the Build 1c brief and start protocol step 1.
