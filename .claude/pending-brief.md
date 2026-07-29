@@ -134,35 +134,39 @@ on it; that rule cost Briefs E, F and G a build round each.
 
 ### The `days` column
 
-- **`preserveKnownDays()`** — `src/data/jobs.js:86`. Its only production caller is
-  `handleCsvUpload` (`useJobs.js:288`). **Delete the CSV path and this function has no caller
-  left.** Its tests are `src/data/jobs.test.js:73-113`.
+- **`preserveKnownDays()`** — `src/data/jobs.js:84`. Its only production caller was
+  `handleCsvUpload`, **which 2a deleted — re-grepped 2026-07-29, it now has no caller outside
+  tests.** Its tests are the whole `describe` block at `src/data/jobs.test.js:50-91`.
 - **Age is already computed.** `jobAgeDays(firstSeen, storedDays, now)` — `src/utils/jobAge.js:63`
   — computes `today − first_seen` and falls back to `storedDays` when `first_seen` is null. That is
   Build 1c's design and it is correct; item 2 only removes the fallback arm.
 - 🔴 **CORRECTION, council 2026-07-29 — `jobAgeDays` has TWO call sites, not one.** This brief
   said one. Verified live:
   - `src/hooks/useSupabase.js:78` — `jobAgeDays(j.first_seen, j.days)`, the normalise step.
-  - `src/hooks/useJobs.js:384` — `jobAgeDays(dateIn, j.days)`, inside `commitJbaImport`'s
+  - `src/hooks/useJobs.js:329` — `jobAgeDays(dateIn, j.days)`, inside `commitJbaImport`'s
     optimistic local update. It exists because `days` is what the lists **sort** on, so leaving
     the stale number until the next reload would leave the board sorted by ages it is no longer
-    showing (comment at `:380-383` says exactly this).
+    showing (comment at `:325-328` says exactly this). *(Was `:384` before 2a; re-grepped
+    2026-07-29 after the merge. Grep for `jobAgeDays`, don't trust any line number here.)*
 
   **Why this is a trap and not a footnote:** the third parameter is `now = new Date()`. Simplify
   the signature to `jobAgeDays(firstSeen, now)` and fix only `useSupabase.js:78`, and the second
   call silently passes `j.days` — a small integer like `15` — into `now`. Ages would be computed
-  against a bogus date immediately after a JBA drop, wrong on every card and in all three sorts,
+  against a bogus date immediately after a JBA drop, wrong on every card and in both sorts,
   with nothing visibly broken. **Both call sites change in the same commit, or neither does.**
-- **Six read sites still read `job.days`, and three of them are sorts, not displays** — verified
-  live again 2026-07-29. Sorts: `JobShelf.jsx:144`, `DailyLogPage.jsx:825`, `jobs.js:381`.
-  Displays: `JobCard.jsx:170`, `ProjectsPage.jsx:29`/`:155`, `DailyLogPage.jsx:409`/`:435`.
+- **Read sites still reading `job.days` — TWO are sorts, not three.** Re-grepped after 2a merged:
+  `JobShelf.jsx:144` and `DailyLogPage.jsx:825`, both `(b.days ?? 0) - (a.days ?? 0)`. The third
+  sort this brief used to name (`jobs.js:381`) lived inside `parseCSV` and **shipped out with 2a**
+  — do not go looking for it. Displays: `JobCard.jsx:170`, `ProjectsPage.jsx:29`/`:155`,
+  `DailyLogPage.jsx:409`/`:435`.
   **None of them change in this build** — they keep reading `job.days`, which keeps being set by
   `normalizeJobsFromDb`. That is the whole point of computing it once at the normalise step.
 - **Write sites:** `days` is in the passthrough list at `src/utils/supabase.js:124` and written at
-  `:214`.
-- 🔴 **CORRECTION, council 2026-07-29 — the function holding that write goes fully dead after 2a.**
-  `upsertJobsBatch()` (`src/utils/supabase.js:164`, aliased `saveJobsMasterBatch` at `:1442`) has
-  exactly one production caller: `handleCsvUpload` at `src/hooks/useJobs.js:316`. Verified live —
+  `:221` (was `:214` before 2a).
+- 🔴 **CORRECTION, council 2026-07-29 — the function holding that write is now fully dead.**
+  `upsertJobsBatch()` (`src/utils/supabase.js:170`, aliased `saveJobsMasterBatch` at `:1449`) had
+  exactly one production caller, `handleCsvUpload` — **2a deleted it, and 2a put a "DEAD AS OF
+  BUILD 2a" header comment on the function.** Verified live —
   `useSupabase.js:212` re-exports it, but `App.jsx:138` discards `useSupabase`'s return value
   entirely, so that is not a caller. Its only other references are its own tests
   (`src/utils/supabaseJobOwnership.test.js`). **Delete 2a's CSV path and this is an orphan
@@ -248,18 +252,18 @@ calendar slot, bench assignment or split state moves; the help search finds no d
 
 **Gate cleared 2026-07-29 — see step 0. No row loses an age.**
 
-3. **Remove `preserveKnownDays()`** (`jobs.js:86`) and its tests (`jobs.test.js:73-113`). It has no
-   caller once 2a lands.
+3. **Remove `preserveKnownDays()`** (`jobs.js:84`) and its tests (the whole `describe` block,
+   `jobs.test.js:50-91`). 2a landed, so it already has no caller.
 4. **Simplify `jobAgeDays()`** (`jobAge.js:63`) to computed-only, and drop the `storedDays`
-   argument at **both** call sites — `useSupabase.js:78` **and `useJobs.js:384`** (see the 🔴
+   argument at **both** call sites — `useSupabase.js:78` **and `useJobs.js:329`** (see the 🔴
    correction above; getting this half-right is worse than not doing it). Update `jobAge`'s tests
    and the comment at `jobAge.js:59-61` that promises this removal.
 5. **Stop writing `days`** — remove it from the passthrough list (`supabase.js:124`) and the write
-   at `:214`.
+   at `:221`.
 5b. **The orphaned writer — ✅ DECIDED, Trevor 2026-07-29: delete it.** Re-confirmed explicitly
    after 2a shipped, in answer to a plainly-worded question; the earlier one-word yes is no longer
    the only record. After 2a, `upsertJobsBatch()`/`saveJobsMasterBatch` has no caller.
-   **Delete the function, its alias (`supabase.js:1442`), its import and
+   **Delete the function, its alias (`supabase.js:1449`), its import and
    re-export (`useSupabase.js:6` and `:212`), and `supabaseJobOwnership.test.js`, in 2b.** It is
    the CSV pipeline's own write path, so it is this brief's subject, not housekeeping like
    `useFirebase.js`. Leaving a dead writer in a blast-radius file is how a future session re-wires
@@ -287,7 +291,7 @@ first — **both** sort sites, `JobShelf.jsx:144` and `DailyLogPage.jsx:825`. (T
 until 2a shipped; the third lived inside `parseCSV` and went with it. Both survivors use
 `(b.days ?? 0) - (a.days ?? 0)`.) A job with no `first_seen` shows no age rather
 than a wrong one. **Explicitly re-check age after a JBA drop, not just after a reload** — that is
-the `useJobs.js:384` path from the 🔴 correction, and a reload-only test cannot see it fail.
+the `useJobs.js:329` path from the 🔴 correction, and a reload-only test cannot see it fail.
 
 **2b, one week later — a Trevor check, not a builder one.** Council 2's fair point: once this ships
 there is no fallback left, so a job that loses its `first_seen` to some future import edge case
@@ -374,6 +378,22 @@ CLAUDE.md's blast-radius files. It does **not** touch `scheduledSlots`, `calenda
   inline build.
 - **`upsertJobsBatch` is dead as of 2a** and carries a header comment saying so
   (`utils/supabase.js`). Deleting it is 2b item 5b.
+
+### 2b — ready to start, nothing built
+
+- **Branch `build-2b-stored-days-goes` exists, cut from `main` at `5f88ed7`, and is empty.** Use
+  it; don't cut another.
+- **Council is already done for the whole of Brief H, 2b included** — two reviewers, both yay,
+  and 2b is where they made their sharpest catch (the two `jobAgeDays` call sites). **Do not
+  re-run council for 2b.** It resumes at step 3.
+- **Item 5b is closed** (Trevor re-confirmed 2026-07-29). Nothing in 2b is waiting on him.
+- **A `ggnz-builder` spawn for 2b was attempted 2026-07-29 and died on the monthly spend limit** —
+  the third agent to die that way in one day, after 2a's builder and 2a's verifier. No files
+  touched, no commits. **Check the limit has actually cleared before spawning anything.**
+- **Every line number in the 2b items above was re-grepped against the live tree after 2a
+  merged**, and several had moved. They are right as of `5f88ed7` — but grep for the symbol
+  anyway. That is the whole lesson of Briefs E, F and G.
+- **The verifier is not waived for 2b either.**
 - **Item 5b — Trevor said "yes" to deleting the orphaned `upsertJobsBatch` writer.** Recorded as
   approved-in-principle for 2b, but re-confirm the wording with him before 2b starts; it was a
   one-word answer to a two-option question.
