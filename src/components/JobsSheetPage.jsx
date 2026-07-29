@@ -24,18 +24,18 @@ import {
 } from '../data/jobsSheet.js';
 
 const C = {
-  bg: '#0d1117',
-  line: '#1e293b',
-  edge: '#334155',
-  text: '#e2e8f0',
-  bright: '#f1f5f9',
+  bg: '#ffffff',
+  line: '#d1d5db',
+  edge: '#cbd5e1',
+  text: '#1e293b',
+  bright: '#0f172a',
   dim: '#64748b',
-  dimmer: '#475569',
+  dimmer: '#94a3b8',
   accent: '#4f46e5',
-  accentText: '#a5b4fc',
-  warn: '#f59e0b',
-  bad: '#ef4444',
-  good: '#22c55e',
+  accentText: '#4338ca',
+  warn: '#b45309',
+  bad: '#dc2626',
+  good: '#16a34a',
 };
 
 // The look is deliberately a spreadsheet's, not a web table's: ruled lines in
@@ -43,13 +43,17 @@ const C = {
 // until you're in them. The first cut drew a bordered input inside every
 // bordered cell — a hundred little frames on screen — which is what made it
 // unreadable. A cell here shows its border only on hover and focus.
+//
+// White cells, grey gridlines, dark text — Trevor's own words: "like the
+// sheet". This table is its own island; nothing outside JobsSheetPage
+// changes colour off the back of this.
 const SHEET_CSS = `
 .gsheet { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 
 .gsheet th, .gsheet td {
-  border-right: 1px solid #1b2534;
-  border-bottom: 1px solid #1b2534;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
   padding: 0 8px;
   height: 30px;
   font-size: 12.5px;
@@ -60,37 +64,37 @@ const SHEET_CSS = `
 /* Column headers — the grey strip along the top of a spreadsheet. */
 .gsheet th {
   position: sticky; top: 0; z-index: 3;
-  background: #161c26; color: #7c8798;
-  border-bottom: 1px solid #35415a;
+  background: #f1f5f9; color: #64748b;
+  border-bottom: 1px solid #cbd5e1;
   font-size: 10.5px; font-weight: 600; letter-spacing: .07em;
   text-transform: uppercase; text-align: left;
 }
-.gsheet th.mine { background: #1b2236; color: #a5b4fc; }
+.gsheet th.mine { background: #eef2ff; color: #4338ca; }
 
 /* Banded rows, and a highlight for the row under the pointer. */
-.gsheet tbody tr:nth-child(even) td { background: #0f151e; }
-.gsheet tbody tr:nth-child(odd)  td { background: #0c1119; }
-.gsheet tbody tr:hover td { background: #16202f; }
-.gsheet tbody tr.dirty td { background: #16223d; }
+.gsheet tbody tr:nth-child(even) td { background: #ffffff; }
+.gsheet tbody tr:nth-child(odd)  td { background: #f8fafc; }
+.gsheet tbody tr:hover td { background: #eff6ff; }
+.gsheet tbody tr.dirty td { background: #fef9c3; }
 
 /* Multitrack's columns: present, but quiet. */
-.gsheet td.ro { color: #6b7688; }
+.gsheet td.ro { color: #94a3b8; }
 
-/* The six columns that are Trevor's. Brighter, and fenced off on the left
+/* The six columns that are Trevor's. Darker, and fenced off on the left
    the way a shaded input range is in Sheets. */
-.gsheet td.mine { color: #eef2f7; }
-.gsheet th.fence, .gsheet td.fence { border-left: 2px solid #3b3f66; }
+.gsheet td.mine { color: #0f172a; }
+.gsheet th.fence, .gsheet td.fence { border-left: 2px solid #c7d2fe; }
 
 /* Frozen job-number column — the row label you scroll against. */
 .gsheet th.freeze, .gsheet td.freeze {
   position: sticky; left: 0; z-index: 2;
-  border-right: 1px solid #35415a;
-  font-variant-numeric: tabular-nums; font-weight: 600; color: #93a1b5;
+  border-right: 1px solid #cbd5e1;
+  font-variant-numeric: tabular-nums; font-weight: 600; color: #475569;
 }
 .gsheet th.freeze { z-index: 4; }
-.gsheet tbody tr:nth-child(even) td.freeze { background: #131a24; }
-.gsheet tbody tr:nth-child(odd)  td.freeze { background: #10161f; }
-.gsheet tbody tr:hover td.freeze { background: #1b2634; }
+.gsheet tbody tr:nth-child(even) td.freeze { background: #f8fafc; }
+.gsheet tbody tr:nth-child(odd)  td.freeze { background: #f1f5f9; }
+.gsheet tbody tr:hover td.freeze { background: #e0e7ff; }
 
 .gsheet td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .gsheet td.mid { text-align: center; }
@@ -103,17 +107,17 @@ const SHEET_CSS = `
   color: inherit; font: inherit; font-size: 12.5px;
   -webkit-appearance: none; appearance: none;
 }
-.gsheet td:hover > .gcell { border-color: #33405a; }
-.gcell:focus { outline: none; border: 2px solid #6366f1; padding: 0 1px; background: #0a0e15; }
+.gsheet td:hover > .gcell { border-color: #cbd5e1; }
+.gcell:focus { outline: none; border: 2px solid #6366f1; padding: 0 1px; background: #ffffff; }
 select.gcell { cursor: pointer; }
-.gcell.bad { color: #ef4444; border-color: #ef4444; }
+.gcell.bad { color: #dc2626; border-color: #dc2626; }
 /* Three ticked columns across 53 rows is 159 boxes. Left as browser default
    they are 159 white squares and the loudest thing on the page, so an unticked
-   box is drawn as an empty dark cell and only a tick has any colour. */
+   box is drawn as a plain outlined square and only a tick has any colour. */
 .gsheet input[type=checkbox] {
   -webkit-appearance: none; appearance: none;
   width: 13px; height: 13px; margin: 0; vertical-align: middle;
-  border: 1px solid #39445c; border-radius: 2px; background: #0b0f16;
+  border: 1px solid #cbd5e1; border-radius: 2px; background: #ffffff;
   position: relative;
 }
 .gsheet input[type=checkbox]:checked { background: #4f46e5; border-color: #4f46e5; }
