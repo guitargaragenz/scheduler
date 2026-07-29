@@ -1,6 +1,10 @@
-doc_status: live
+doc_status: closed
 
-# Pending Brief H — Build 2: retire the CSV pipeline
+# Pending Brief H — Build 2: retire the CSV pipeline — ✅ SHIPPED
+
+**All three builds shipped 2026-07-29: 2a `29c1e4a`, 2b `5d262dc`, 2c `1e4186a`.** Brief H is
+complete — this is now a record, not a task list. The standing order below is satisfied: the
+CSV pipeline is gone, and UI work is unblocked.
 
 **Status:** ✅ **APPROVED by Trevor 2026-07-29 ("yp"). Council review is step 2, in progress.**
 Approved with one decision already settled at approval time: **item 6 — the `days` database column
@@ -15,7 +19,7 @@ Its full record is `docs/briefs/brief-g-pdf-drop-full-record.md`, now `closed`.
 **Standing order, Trevor 2026-07-29:** *"save all UI changes until after PDF drop implemented
 successfully and CSV pipeline gone"*. The PDF drop is done. **This brief is the "CSV pipeline
 gone" half — the last thing standing between now and UI work.** No look-and-feel change gets
-slipped in alongside it.
+slipped in alongside it. **✅ Satisfied as of 2c shipping 2026-07-29 — UI work is unblocked.**
 
 ---
 
@@ -304,7 +308,13 @@ shows **no age at all** rather than a slightly stale one. That is the deliberate
 (`jobAge.js:56-58` says so in writing), not a new risk — but it degrades quietly. Around
 2026-08-05, eyeball the board for any job showing no age that used to show one.
 
-### Build 2c — the Mac-side scripts
+### Build 2c — the Mac-side scripts — ✅ **SHIPPED 2026-07-29, merged to main at `1e4186a`**
+
+Built inline (no blast-radius files touched, nothing to browser-test — Trevor approved the
+lighter process before the build started). Deleted the four scripts, rewrote
+`SCHEDULER-ARCHITECTURE.md`'s CSV section and its stale Firebase line, and fixed two code
+comments that cross-referenced the now-deleted `sheet_to_csv.command`. Verified with the test
+suite (235/235), a clean `npm run build`, and a grep sweep for the deleted filenames.
 
 7. **Delete from the repo:** `scripts/start_watcher.command`, `scripts/sheet_to_csv.command`,
    `scripts/rebuild_csv.py`, `scripts/reauth_google.command` (after re-confirming the Sheets-only

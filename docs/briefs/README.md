@@ -30,16 +30,15 @@ the status line.
 
 | Brief | Date | What it's for |
 |-------|------|---------------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-29 | **Current — start here. Brief H, Build 2: retire the CSV pipeline.** ✅ **Approved by Trevor, and council is done** — two reviewers, both yay, both corrections folded in. **Build 2a is ✅ shipped — merged to `main` at `29c1e4a`. Build 2b is ✅ shipped — merged to `main` at `5d262dc`, 2026-07-29 (verified via ggnz-verifier and a Vercel preview click-through). Resumes at Build 2c, step 3 (council already done for the whole brief — do not re-run it).** 2a closed the app's Upload CSV door (`handleCsvUpload`, `parseCSV`, `RAW_CSV`, three upload buttons, the dead help articles); 2b dropped the app's use of the stored `days` number and deleted the orphaned `upsertJobsBatch` writer; 2c deletes the Mac-side watcher/Sheet scripts and fixes the stale docs. The `days` **database column stays** — Trevor's call, don't re-open it. **This is the last item under the standing order — UI work unblocks when it ships.** |
-| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, rewritten 2026-07-29 | **Fresh session, run it separately.** **Most of it is already done** — the worktrees, the personal parts list, the client design doc, the stale mockup and the Finder junk are all gone, and the old STOP header about a live build in this tree is obsolete. What's left: one dead component (`SplitDrawer.jsx`), three spent one-off scripts, twenty stale local branches, and two pipeline scripts — `sheet_to_csv.command` is now unblocked by Build 1b shipping, and `start_watcher.command` is unblocked too since Build 1c shipped (`b665e1d`) — both are Build 2's territory now, not housekeeping. |
+| [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, rewritten 2026-07-29 | **Fresh session, run it separately.** **Most of it is already done** — the worktrees, the personal parts list, the client design doc, the stale mockup and the Finder junk are all gone, and the old STOP header about a live build in this tree is obsolete. What's left: one dead component (`SplitDrawer.jsx`), three spent one-off scripts, twenty stale local branches. The two pipeline scripts that used to be listed here (`sheet_to_csv.command`, `start_watcher.command`) are gone — deleted as part of Brief H Build 2c, not this brief. |
 
 ## Parked — agreed in principle, waiting on something
 
 > **Standing order, Trevor 2026-07-29:** *"save all UI changes until after PDF drop implemented
-> successfully and CSV pipeline gone"*. **Build 1c shipped 2026-07-29 (`b665e1d`), so the PDF drop
-> is done and the queue is now Build 2 (CSV pipeline retired) → UI work.** Both UI briefs below are
-> still held by this, not by anything technical. Don't offer them as a quick win while Build 2 is
-> outstanding — that is the sequencing he ruled out.
+> successfully and CSV pipeline gone"*. **✅ Satisfied 2026-07-29 — Brief H's Build 2c shipped
+> (`1e4186a`), so both halves are done and UI work is unblocked.** The two UI briefs below were
+> held by this standing order; re-check with Trevor before restarting either, since being
+> unblocked isn't the same as being re-approved.
 
 | Brief | Date | Waiting on |
 |-------|------|------------|
@@ -52,6 +51,7 @@ the status line.
 
 | Brief | Date | Why it's still here |
 |-------|------|---------------------|
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-29 | Brief H, Build 2: retire the CSV pipeline — **all three builds shipped 2026-07-29: 2a `29c1e4a`, 2b `5d262dc`, 2c `1e4186a`.** 2a closed the app's Upload CSV door; 2b dropped the app's use of the stored `days` number and deleted the orphaned `upsertJobsBatch` writer (the `days` database column itself stays — Trevor's call); 2c deleted the four Mac-side pipeline scripts and fixed the stale Firebase/CSV references in `SCHEDULER-ARCHITECTURE.md`. This satisfied the standing order — UI work is unblocked. |
 | [brief-g-pdf-drop-full-record.md](brief-g-pdf-drop-full-record.md) | 2026-07-28, amended 2026-07-29 | Brief G's complete record — the whole PDF-drop build. All three shipped: **1a `f927248`, 1b `f2ee449`, 1c `b665e1d`**. Was the scope lock at `.claude/pending-brief.md` until Brief H took that slot 2026-07-29. Kept for the ⚡ council notes on items 8–12: the `23502` sparse-upsert trap, the apply-migrations-by-hand mechanism, the six `days` read sites including three sorts, and the NZ local-date rule. Build 2 is scoped in `.claude/pending-brief.md`, not here. |
 | [re-fresh-brief-g-build-1b-browser-test-and-merge.md](re-fresh-brief-g-build-1b-browser-test-and-merge.md) | 2026-07-29 | Brief G Build 1b's working record — the six columns going app-owned, the Jobs Sheet page, the M/T un-swap, the restyle, and the browser test item by item. **Shipped at `f2ee449`.** Kept for two pieces of reasoning that still matter: why six columns were removed from `upsertJobsBatch()` rather than stripped caller-side, and why the live CSV write test was dropped rather than run. Its three deferred Sheet changes have moved to `parked-jobs-sheet-usability-changes.md` — build from there, not from here. |
 | [re-fresh-brief-g-pdf-drop-build.md](re-fresh-brief-g-pdf-drop-build.md) | 2026-07-28 | Brief G Build 1a's working record — step 0 match-key gate, the 1a/1b split, the build and verification. Shipped at `f927248`. Superseded by the 3b/1b brief above. |
