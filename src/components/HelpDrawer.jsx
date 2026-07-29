@@ -6,7 +6,6 @@ const SECTION_COLORS = {
   'Sidebar':         { bg: '#0f2044', accent: '#6366f1', label: '#a5b4fc' },
   'Pomodoro':        { bg: '#0f2044', accent: '#f59e0b', label: '#fcd34d' },
   'Parts Inventory': { bg: '#0f2044', accent: '#10b981', label: '#6ee7b7' },
-  'CSV Pipeline':    { bg: '#0f2044', accent: '#64748b', label: '#94a3b8' },
   'Settings':        { bg: '#0f2044', accent: '#475569', label: '#94a3b8' },
 };
 
@@ -82,7 +81,7 @@ export default function HelpDrawer({ onClose }) {
           ref={searchRef}
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search — try 'low stock', 'drag', 'PB tag', 'CSV'…"
+          placeholder="Search — try 'low stock', 'drag', 'PB tag', 'PDF'…"
           style={{
             width: '100%', boxSizing: 'border-box',
             background: '#1e293b', border: '1px solid #334155',

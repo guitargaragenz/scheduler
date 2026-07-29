@@ -3,7 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
@@ -247,8 +247,8 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 ) : jobs.length === 0 ? (
                   <div>
                     <div style={{ color: '#64748b', marginBottom: 12 }}>No jobs loaded</div>
-                    <label htmlFor="csv-upload" style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 13, textDecoration: 'underline' }}>
-                      Upload jobs.csv to get started
+                    <label htmlFor="pdf-upload" style={{ cursor: 'pointer', color: '#93c5fd', fontSize: 13, textDecoration: 'underline' }}>
+                      Import a Multitrack PDF to get started
                     </label>
                   </div>
                 ) : (
@@ -325,25 +325,6 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onCsvUpload,
                 })()}
               </div>
             )}
-            <label
-              htmlFor="csv-upload"
-              style={{
-                display: 'block', textAlign: 'center', padding: '8px 0',
-                background: '#0a1a38', border: '1px solid #3b82f6', borderRadius: 6,
-                color: '#bfdbfe', fontSize: 12, cursor: 'pointer', fontWeight: 600,
-              }}
-            >📂 Upload CSV</label>
-            <input
-              id="csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = evt => onCsvUpload(evt.target.result);
-                reader.readAsText(file);
-                e.target.value = '';
-              }}
-            />
             {onPdfUpload && (<>
               <label
                 htmlFor="pdf-upload"

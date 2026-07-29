@@ -161,6 +161,12 @@ export async function deleteChildJobs(parentId, keepIds = []) {
   }
 }
 
+// ⚠️ DEAD AS OF BUILD 2a — DO NOT WIRE ANYTHING NEW TO THIS.
+// Its only production caller was handleCsvUpload(), removed with the CSV path.
+// Nothing calls it now except its own tests (supabaseJobOwnership.test.js).
+// It is scheduled for deletion in Build 2b (Brief H, item 5b) along with the
+// `saveJobsMasterBatch` alias below. It writes EVERY jobsMaster column on every
+// row it is handed, so re-using it casually would rewrite the whole board.
 export async function upsertJobsBatch(jobsList) {
   try {
     // upsertJobsBatch is the CSV/jobsMaster path: top-level jobs only. A
@@ -209,8 +215,9 @@ export async function upsertJobsBatch(jobsList) {
       // `?? null` keeps the key present on EVERY row of the batch: a Supabase
       // upsert with an array sends the union of all rows' keys, so omitting
       // `days` on the blank rows would NULL-fill it anyway. The blank-never-
-      // overwrites-good guard therefore has to happen before this call, in
-      // handleCsvUpload — see the read-merge there.
+      // overwrites-good guard therefore had to happen before this call, in
+      // handleCsvUpload — which is gone as of Build 2a, along with the only
+      // caller of this function.
       days: job.days ?? null,
       has_subtasks: job.hasSubtasks,
       created_at: job.created_at || new Date().toISOString(),

@@ -1,10 +1,10 @@
-import { parseCSV, canInvoiceJob, preserveKnownDays } from '../data/jobs.js';
+import { canInvoiceJob } from '../data/jobs.js';
 import { parseTextItems, loadPdfPages } from '../data/parseMultitrackPdf.js';
 import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsByAgePdf.js';
 import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
 import { buildJbaImportPlan } from '../data/jbaImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, saveJobsMasterBatch, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport } from '../utils/supabase.js';
+import { isSupabaseConfigured, saveCompletedJobs, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport } from '../utils/supabase.js';
 import { jobAgeDays } from '../utils/jobAge.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
@@ -268,61 +268,6 @@ export function useJobs({
     showToast(`✓ ${job.mfr} ${job.model} — $${formatMoney(amount)} invoiced`);
   }
 
-  // Pure per-job upsert to jobsMaster — no carry-forward, no collision
-  // logic, nothing to preserve. In the old single-array model, a CSV upload
-  // had to carefully re-append manually-split children and noAutoSplit
-  // markers or they'd silently vanish (that carry-forward logic is exactly
-  // what orphaned #1520/#1175's split data when it missed an edge case).
-  // In this schema the CSV writer never touches jobsState at all, so
-  // there's nothing left to carry forward — scheduling/split/pomodoro state
-  // simply isn't part of what this function writes, and the join layer
-  // reattaches it from jobsState automatically on the next snapshot.
-  function handleCsvUpload(csvText) {
-    try {
-      const parsed = parseCSV(csvText, benchKeywords, benchHours);
-
-      // Blank job age never overwrites a good one — see preserveKnownDays.
-      // Applied here, before both the optimistic setJobs merge and the
-      // saveJobsMasterBatch write, so the preserved value is what gets shown
-      // AND what gets stored.
-      const topLevel = preserveKnownDays(parsed.filter(j => !j.parentId), jobs);
-      const masterByJobNo = Object.fromEntries(topLevel.map(j => [j.job, j]));
-
-      // Optimistic local merge for immediate UI feedback: CSV-owned fields
-      // refresh from the fresh parse; app-owned fields on existing jobs are
-      // left untouched (they live in jobsState and the join layer will
-      // reattach them from the next jobsMaster/jobsState snapshot regardless
-      // of what happens here). Split-child rows (parentId set) are left
-      // alone entirely — they're regenerated/restored by the join layer,
-      // never written directly by the CSV path.
-      //
-      // Brief G, Build 1b: "app-owned" now also covers Tag, Hours, Action,
-      // VB, BL and PJ (APP_OWNED_JOB_FIELDS). pickMasterFields() strips them,
-      // so a CSV upload can no longer change any of the six on a job already
-      // on the board — whatever the spreadsheet still says about them.
-      setJobs(prev => {
-        const prevTopLevelJobNos = new Set(prev.filter(j => !j.parentId).map(j => j.job));
-        const updatedExisting = prev.map(j => {
-          if (j.parentId) return j;
-          const fresh = masterByJobNo[j.job];
-          return fresh ? { ...j, ...pickMasterFields(fresh) } : j;
-        });
-        const brandNew = topLevel.filter(j => !prevTopLevelJobNos.has(j.job));
-        return [...updatedExisting, ...brandNew];
-      });
-
-      if (isSupabaseConfigured()) {
-        justSavedAt.current = Date.now();
-        saveJobsMasterBatch(topLevel.map(j => ({ id: j.id, ...pickMasterFields(j) })));
-      }
-
-      showToast(`Loaded ${topLevel.length} jobs from CSV`);
-      addChangelog(`CSV uploaded — ${topLevel.length} jobs`);
-    } catch (e) {
-      showToast(`⚠ CSV parse error: ${e.message}`);
-    }
-  }
-
   // --- Multitrack PDF import (Brief G, Build 1a) ---
   //
   // Two halves on purpose. preparePdfImport() reads the file and works out
@@ -547,7 +492,6 @@ export function useJobs({
   return {
     handleSaveDrawer,
     handleMarkDone,
-    handleCsvUpload,
     preparePdfImport,
     commitPdfImport,
     handleOpenPomo,

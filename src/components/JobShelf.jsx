@@ -60,7 +60,7 @@ function formatSyncedAt(lastSyncedAt) {
 }
 
 export default function JobShelf({
-  jobs, dragMode, onDragModeChange, onCsvUpload, onPdfUpload,
+  jobs, dragMode, onDragModeChange, onPdfUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   focusList = [], deferredItems = [], onPullBackIn, onToggleFocus,
 }) {
@@ -192,26 +192,6 @@ export default function JobShelf({
               flex: 1, padding: '6px 10px',
               background: '#1e1e1e', border: '1px solid #252525', borderRadius: 7,
               color: '#ccc', fontSize: 13, outline: 'none', boxSizing: 'border-box',
-            }}
-          />
-          <label
-            htmlFor="job-shelf-csv-upload"
-            title="Upload CSV"
-            style={{
-              flexShrink: 0, width: 32, boxSizing: 'border-box', borderRadius: 7, cursor: 'pointer', fontSize: 13,
-              background: '#1e1e1e', border: '1px solid #252525', color: '#94a3b8',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >📂</label>
-          <input
-            id="job-shelf-csv-upload" type="file" accept=".csv" style={{ display: 'none' }}
-            onChange={e => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = evt => onCsvUpload(evt.target.result);
-              reader.readAsText(file);
-              e.target.value = '';
             }}
           />
           {onPdfUpload && (<>

@@ -1,5 +1,3 @@
-export const RAW_CSV = `Job,Mfr,Model,Status,Days,Tag,Hours,Action,Desc,VB,BL,Customer`;
-
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
   Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
@@ -191,10 +189,10 @@ export function hoursRange(h) {
   return lo === hi ? String(h) : `${lo}-${hi}`;
 }
 
-// Status-derived flags shared by the CSV importer (parseCSV below) and any
+// Status-derived flags shared by the PDF importer (pdfImportPlan.js) and any
 // other reader that has to reconstruct them from a stored job row that only
-// carries status/action/backlog (e.g. scripts/board_meeting_export.mjs,
-// which reads Supabase rows rather than freshly-parsed CSV lines). Pulled out
+// carries status/action/backlog (e.g. scripts/board_meeting_export.mjs and
+// useSupabase.js's normalise step, which read Supabase rows). Pulled out
 // as its own function so both places derive readyToStart/awaiting/inTransit/
 // schedulable from the exact same rule, rather than a second ad-hoc copy
 // silently drifting from this one over time.
@@ -288,97 +286,6 @@ export function createSubtasks(job, benchHours = {}) {
   }
 
   return null;
-}
-
-export function parseCSV(csvText, keywords = {}, benchHours = {}) {
-  // Proper RFC-4180 parser: handles quoted fields with commas and embedded newlines
-  // Lines starting with # are treated as comments (e.g. action key) and skipped
-  const rows = [];
-  let row = [], field = '', inQuote = false;
-  const text = csvText.trim().split('\n').filter(l => !l.trimStart().startsWith('#')).join('\n');
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuote) {
-      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (ch === '"') { inQuote = false; }
-      else { field += ch; }
-    } else if (ch === '"') {
-      inQuote = true;
-    } else if (ch === ',') {
-      row.push(field.trim()); field = '';
-    } else if (ch === '\n') {
-      row.push(field.trim()); rows.push(row); row = []; field = '';
-    } else if (ch !== '\r') {
-      field += ch;
-    }
-  }
-  if (field || row.length) { row.push(field.trim()); rows.push(row); }
-  if (rows.length < 2) return [];
-
-  const headers = rows[0];
-  const jobs = [];
-
-  for (let i = 1; i < rows.length; i++) {
-    const cells = rows[i];
-    if (cells.length < 2) continue;
-    const obj = {};
-    headers.forEach((h, idx) => { obj[h] = cells[idx] || ''; });
-
-    const status = obj.Status || '';
-    const hours  = parseFloat(obj.Hours) || 0;
-
-    const { readyToStart, awaiting, inTransit, schedulable } =
-      deriveJobStatusFlags(status, obj.Action, obj.BL === 'Y');
-
-    const accepted = ['On Hold', 'Waiting', 'To Be Inv', 'In Transit'];
-    if (!schedulable && !accepted.includes(status)) continue;
-    // Don't drop schedulable jobs just because hours aren't set yet — default to 1h
-    const effectiveHours = (hours === 0 && schedulable) ? 1 : hours;
-
-    const bench = inferBench(obj.Desc, status, obj.Action, obj.Model, obj.Mfr, keywords, obj.BL === 'Y');
-    const baseJob = {
-      id: String(obj.Job),
-      job: obj.Job,
-      mfr: obj.Mfr,
-      model: obj.Model,
-      status,
-      schedulable,
-      readyToStart,
-      awaiting,
-      inTransit,
-      days: parseDays(obj.Days),
-      tag: obj.Tag || inferTag(effectiveHours),
-      hours: effectiveHours,
-      hoursRange: hoursRange(effectiveHours),
-      action: obj.Action,
-      desc: obj.Desc,
-      customer: obj.Customer || '',
-      vb: obj.VB === 'Y',
-      backlog: obj.BL === 'Y',
-      project: obj.PJ === 'Y',
-      bench,
-      scheduled: false,
-      calendarSlot: null,
-      parentId: null,
-      subtasks: null,
-      hasSubtasks: false,
-      pieceDone: false,
-    };
-
-    const subtasks = createSubtasks(baseJob, benchHours);
-    if (subtasks && subtasks.length > 0) {
-      jobs.push({ ...baseJob, subtasks: subtasks.map(st => st.id), hasSubtasks: true });
-      subtasks.forEach(st => jobs.push({ ...st, scheduled: false, calendarSlot: null }));
-    } else {
-      jobs.push(baseJob);
-    }
-  }
-
-  // Oldest first. `?? -1` rather than `?? 0`: a job of unknown age sorts BELOW
-  // a genuine 0-day job, so blanks land at the newest end instead of being
-  // shuffled in among the jobs booked in today. Rows loaded back from Supabase
-  // can carry a real null here too, not just freshly-parsed CSV rows.
-  return jobs.sort((a, b) => (b.days ?? -1) - (a.days ?? -1));
 }
 
 // Full bench breakdown for a job — a single entry for a plain job, or one

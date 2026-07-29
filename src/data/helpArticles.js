@@ -6,17 +6,21 @@ export const HELP_ARTICLES = [
   // ─── SCHEDULER ────────────────────────────────────────────────────────────
 
   {
-    id: 'upload-csv',
+    id: 'import-pdf',
     section: 'Scheduler',
-    title: 'Uploading jobs.csv',
-    keywords: ['upload', 'csv', 'load', 'import', 'jobs', 'multitrack'],
-    body: `Click the "Upload CSV" button at the top of the sidebar. Select your jobs.csv file from the desktop. Jobs load instantly — the sidebar will show a count of how many loaded.
+    title: 'Getting jobs in (Multitrack PDF)',
+    keywords: ['upload', 'import', 'pdf', 'load', 'jobs', 'multitrack', 'age', 'dates'],
+    body: `Click "📄 Import Multitrack PDF" at the top of the sidebar and pick the printout. There is no script to run and no file to keep on the desktop — you hand the app the PDF Multitrack gave you.
 
-The CSV comes from your weekly Multitrack PDF export. Run the pdf_jobs_to_csv.command script on the desktop after printing the Multitrack PDF each week. It automatically adds new jobs, updates existing ones, and removes completed jobs.
+Either printout works and the app tells them apart itself:
+• The Jobs report — adds jobs it hasn't seen, updates status and description on the ones it has, and flags jobs that have dropped off the report.
+• The Jobs-by-Age report — fills in the date each job arrived, which is what the age on the card counts from.
 
-Re-uploading a CSV preserves any Pomodoro session logs already recorded against jobs. Manual fields (Tag, Hours, Action, VB, BL) are preserved for existing jobs and only updated if they were blank.
+Nothing is written until you say so. The app reads the file, shows you exactly what would change, and waits for you to press Import.
 
-If the upload returns 0 jobs, the file is rejected as a safety check.`,
+Your own fields are never touched by an import — Tag, Hours, Action, VB, BL, bench, calendar slots, splits and Pomodoro logs all stay as you left them. New jobs come in with those blank; set them on the Jobs Sheet page.
+
+If the PDF reads as zero jobs, or the count doesn't match the total printed on the report, the import is refused rather than half-applied.`,
   },
 
   {
@@ -119,7 +123,7 @@ Echo suppression prevents your own saves from triggering an unnecessary reload.`
     section: 'Sidebar',
     title: 'Sidebar sections explained',
     keywords: ['sidebar', 'sections', 'tiers', 'active', 'backlog', 'ready', 'awaiting', 'hold', 'transit'],
-    body: `Jobs are sorted into 6 sections automatically based on their CSV status and flags:
+    body: `Jobs are sorted into 6 sections automatically based on their Multitrack status and their flags:
 
 ACTIVE JOBS — Status Active or Booked In, not backlog. Full opacity, draggable. Your main working queue.
 
@@ -133,7 +137,7 @@ IN TRANSIT — Status In Transit. Cyan header. Locked.
 
 ON HOLD — Everything else non-schedulable. Heavily dimmed, locked.
 
-Sections update automatically when you re-upload the CSV.`,
+Sections update automatically when a Multitrack PDF import changes a job's status, and when you change its Action or Backlog on the Jobs Sheet page.`,
   },
 
   {
@@ -295,58 +299,6 @@ The form closes when confirmed or when you click Cancel. Clicking + Add on anoth
 The quantity field shows the max allowed for the chosen location and won't accept more than what's there.
 
 Click Remove from stock to confirm.`,
-  },
-
-  // ─── CSV PIPELINE ─────────────────────────────────────────────────────────
-
-  {
-    id: 'csv-pipeline',
-    section: 'CSV Pipeline',
-    title: 'How the CSV pipeline works',
-    keywords: ['csv', 'pipeline', 'multitrack', 'pdf', 'extract', 'script', 'weekly'],
-    body: `The pipeline converts your weekly Multitrack PDF into a jobs.csv that feeds both the scheduler and job tracker.
-
-Steps each week:
-1. Print your Multitrack report to PDF as usual
-2. Run pdf_jobs_to_csv.command on the desktop (double-click)
-3. The script extracts jobs using pdfplumber, compares to the existing CSV, and reports new/updated/removed counts
-4. Upload the new jobs.csv to the scheduler via the sidebar button
-
-The script:
-• Adds new job numbers not in the current CSV
-• Updates Status, Days, and Description for existing jobs
-• Removes jobs that no longer appear in the PDF (completed/closed)
-• Auto-detects VB flag from "VB:" prefix in the description
-• Strips pricing from descriptions ($300inc, Q:$391 inc GST etc.)
-• Preserves manual fields: Tag, Hours, Action, VB, BL
-• Refuses to overwrite if the PDF returns 0 jobs (safety check)`,
-  },
-
-  {
-    id: 'csv-columns',
-    section: 'CSV Pipeline',
-    title: 'CSV column reference',
-    keywords: ['csv', 'columns', 'fields', 'tag', 'hours', 'action', 'vb', 'bl', 'skp'],
-    body: `CSV columns: Job, Mfr, Model, Status, Days, Tag, Hours, Action, Desc, VB, BL
-
-Job — Multitrack job number
-Mfr — Manufacturer
-Model — Instrument/equipment model
-Status — Active / Booked In / Waiting / On Hold / In Transit
-Days — Days in shop (from Multitrack)
-Tag — Difficulty: EZ / M / T / H (auto-inferred from Hours if blank)
-Hours — Estimated bench hours (numeric)
-Action — Next step abbreviation:
-  GTS = Good To Start · INC = Incubating · CI = Customer Input
-  RS = Research · RS-C = Research w/ Claude · DG = Diagnose
-  Finish · Parts · Trial run · Tubes · Tubes/TX · Cleats
-  Bridge pins · Bronze frets · Undo glue · Call customer
-Desc — Job description (pricing stripped automatically)
-VB — Virtual Booking: Y/N (customer keeps instrument until bench time)
-BL — Backlog: Y/N
-
-Tag auto-thresholds:
-EZ = ≤1.5h · M = ≤3h · T = ≤5.5h · H = >5.5h`,
   },
 
   // ─── SETTINGS ─────────────────────────────────────────────────────────────
