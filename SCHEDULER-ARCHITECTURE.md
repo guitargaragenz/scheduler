@@ -8,22 +8,19 @@ that file stays pure session-protocol and this loads only when actually working 
 
 ## Tech stack
 - React + Vite, deployed on Vercel via GitHub
-- Firebase Firestore — syncs schedule (jobs + slots) across devices in real time
+- Supabase — syncs schedule (jobs + slots) across devices in real time
 - Google Calendar integration, PartsBox integration
 
-## CSV pipeline
-- **Automated:** Drop Multitrack PDF into `~/Desktop/SCHEDULER_old/DropBox/` → `start_watcher.command` detects it → runs PDF parser → updates `jobs.csv` → runs `sheet_to_csv.command` → pushes to Firebase
-- **Sheet poller:** `start_watcher.command` also polls Google Sheet every 2 min — if Sheet is edited directly, auto-syncs without a PDF drop
-- **Manual:** Can also run `sheet_to_csv.command` directly to force a sync
-- All scripts live in `~/Desktop/SCHEDULER_old/` (iCloud)
-- Master scripts are in the GitHub repo at `scripts/` — always download via curl (iCloud serves a plist stub if you drag-drop):
-  ```
-  curl -L "https://raw.githubusercontent.com/guitargaragenz/scheduler/main/scripts/sheet_to_csv.command" -o ~/Library/Mobile\ Documents/com\~apple\~CloudDocs/Desktop/SCHEDULER_old/sheet_to_csv.command && chmod +x ~/Library/Mobile\ Documents/com\~apple\~CloudDocs/Desktop/SCHEDULER_old/sheet_to_csv.command
-  ```
-- CSV columns (from PDF): `Job, Customer, Mfr, Model, Status, FirstSeen, Days, Tag, Hours, Action, Desc, VB, BL`
-- Manual fields (from Google Sheet, not PDF): `Tag, Hours, Action, VB, BL, PJ`
+## PDF drop
+- Trevor drops a Multitrack PDF into the app in the browser, sees a preview, presses Import. Jobs
+  land straight in Supabase — no Terminal window, no Mac-side watcher.
+- A second PDF (Jobs by Age) fills in each job's booked-in date (`first_seen`); the app works out
+  age fresh from that every day rather than storing a number that goes stale.
+- Manual fields (owned by the app, not any external source): `Tag, Hours, Action, VB, BL, PJ`
 - `PJ=Y` flags a job as a long-running project → appears on Projects page
-- Re-uploading CSV preserves Pomodoro logs
+- The old Google Sheet → CSV pipeline (`sheet_to_csv.command`, `start_watcher.command`) and the
+  in-app Upload CSV buttons are retired (Brief H, Builds 2a–2c). Git history has them if anyone
+  ever needs to see how they worked.
 
 ## Shipped features
 
@@ -87,7 +84,6 @@ Merged to main 2026-06-29.
 This section exists so Claude can orient instantly in a new session. Each file has a single clear owner. Do not blur these lines.
 
 ### `src/data/jobs.js` — Job data layer (pure, no React)
-- **`parseCSV()`** — RFC-4180 parser → produces the canonical job array
 - **`inferBench()`** — regex-based bench assignment from desc/status/action/mfr
 - **`createSubtasks()`** — splits jobs into sub-cards (Luthier/Setup/Fretwork combos)
 - **`BENCH_COLORS`** — single source of truth for bench hex colours: `{ bg, border, text }`

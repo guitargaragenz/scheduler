@@ -59,9 +59,8 @@ export function hoursForTag(tag) {
 //
 // A range is the point of this function. He estimates in ranges — "2-4" means
 // somewhere between two and four hours — and the Sheet has always averaged
-// those to a single number for scheduling (infer_tag's neighbour hours_range()
-// in scripts/sheet_to_csv.command does the same thing). Losing that would mean
-// re-learning a habit to suit the software.
+// those to a single number for scheduling. Losing that would mean re-learning
+// a habit to suit the software.
 //
 // Returns null for blank or unparseable rather than 0: an unknown estimate and
 // a zero-hour job are different things, and `hours` is a nullable column.
