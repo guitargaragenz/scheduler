@@ -77,8 +77,9 @@ const SHEET_CSS = `
 .gsheet tbody tr:hover td { background: #eff6ff; }
 .gsheet tbody tr.dirty td { background: #fef9c3; }
 
-/* Multitrack's columns: present, but quiet. */
-.gsheet td.ro { color: #94a3b8; }
+/* Multitrack's columns: present, but quiet — readable on white, just not
+   as dark as the columns Trevor owns. */
+.gsheet td.ro { color: #475569; }
 
 /* The six columns that are Trevor's. Darker, and fenced off on the left
    the way a shaded input range is in Sheets. */
