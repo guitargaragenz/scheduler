@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { benchColors } from '../data/jobs.js';
 
 const SECTION_DEFS = [
-  { key: 'input',    label: 'Needs Input',       sub: 'CI · Parts',           actions: ['CI', 'PARTS'],          hatch: true  },
+  { key: 'input',    label: 'Needs Input',       sub: 'CI · WP',              actions: ['CI', 'WP'],             hatch: true  },
   { key: 'thinking', label: 'Needs Thinking',    sub: 'INC · RS · RS-C · DG', actions: ['INC', 'RS', 'RS-C', 'DG'], hatch: true  },
-  { key: 'ready',    label: 'Ready to Schedule', sub: 'GTS',                  actions: ['GTS'],                  hatch: false },
+  // FB sits with GTS rather than in a blocked pile: a job needing a jig is not
+  // waiting on anyone, the jig is bookable work on the Admin bench right now.
+  { key: 'ready',    label: 'Ready to Schedule', sub: 'GTS · FB',             actions: ['GTS', 'FB'],            hatch: false },
 ];
 
 function ageBadgeColor(days) {
@@ -16,10 +18,11 @@ function ageBadgeColor(days) {
 function actionTagColors(action) {
   const a = (action || '').trim().toUpperCase();
   if (a === 'CI')                return { bg: '#1c1917', color: '#a8a29e', border: '#44403c' };
-  if (a === 'PARTS')             return { bg: '#172554', color: '#93c5fd', border: '#1e40af' };
+  if (a === 'WP')                return { bg: '#172554', color: '#93c5fd', border: '#1e40af' };
   if (a === 'INC')               return { bg: '#1a1a2e', color: '#a78bfa', border: '#4c1d95' };
   if (a === 'RS' || a === 'RS-C') return { bg: '#1a2a1a', color: '#86efac', border: '#166534' };
   if (a === 'DG')                return { bg: '#2d1515', color: '#fca5a5', border: '#7f1d1d' };
+  if (a === 'FB')                return { bg: '#134e4a', color: '#5eead4', border: '#0f766e' };
   if (a === 'GTS')               return { bg: '#14532d', color: '#86efac', border: '#15803d' };
   return { bg: '#1f2937', color: '#9ca3af', border: '#374151' };
 }
@@ -164,7 +167,7 @@ export default function ProjectsPage({ jobs }) {
     { pct: 93,  label: 'Today' },
   ];
 
-  const filterActions = ['CI', 'PARTS', 'INC', 'RS', 'RS-C', 'DG', 'GTS'];
+  const filterActions = ['CI', 'WP', 'INC', 'RS', 'RS-C', 'DG', 'FB', 'GTS'];
 
   if (projects.length === 0) {
     return (

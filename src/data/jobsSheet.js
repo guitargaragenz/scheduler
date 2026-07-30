@@ -38,7 +38,17 @@ export const TAG_OPTIONS = Object.freeze(['', 'EZ', 'M', 'T', 'H']);
 // Workflow codes. These drive the Planning and Waiting piles, which is exactly
 // why the sheet offers a list instead of a text box — a typo like "IMC" does
 // not error, it silently drops the job out of the pile it belongs in.
-export const ACTION_OPTIONS = Object.freeze(['', 'GTS', 'INC', 'CI', 'RS', 'RS-C', 'DG']);
+// WP (Waiting Parts) is Trevor's own marker, added 2026-07-31. Multitrack has a
+// distinct "Waiting Parts" status but the import flattens every flavour of
+// waiting to plain `Waiting`, so the app cannot tell a parts hold from a
+// customer hold on status alone. WP is a label only — it deliberately does NOT
+// change `schedulable` in jobs.js, so a WP job stays visible in the week's
+// candidates and just carries the tag.
+// FB (Fabrication) means a jig or fixture has to be made before the repair can
+// start. The jig itself is booked as a manual split on the Admin bench — it is
+// real hours but never charged out, so it must not sit on a revenue bench.
+// Like WP, FB is a label only and does not change `schedulable`.
+export const ACTION_OPTIONS = Object.freeze(['', 'GTS', 'INC', 'CI', 'RS', 'RS-C', 'DG', 'WP', 'FB']);
 
 // A value already on a job that the picker does not offer — 'SKP' on a handful
 // of jobs, or anything an older import left behind. The sheet shows it as-is

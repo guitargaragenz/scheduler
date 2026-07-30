@@ -151,7 +151,10 @@ Sections update automatically when a Multitrack PDF import changes a job's statu
 • Manufacturer and model
 • Estimated hours (e.g. 1.5–2h)
 • Bench type with colour: Electronics (blue), Setup (green), Luthier (orange), Fretwork (purple), Admin (grey)
-• Action label — next required step (GTS / INC / CI / RS / RS-C / DG / Parts / Tubes etc.)
+• Action label — next required step (GTS / INC / CI / RS / RS-C / DG / WP / FB)
+  WP = Waiting Parts. FB = Fabrication (a jig or fixture must be made first —
+  book the jig as a manual split on the Admin bench, since jig time is not
+  charged out). Neither WP nor FB stops a job being scheduled; both are labels.
 • VB badge — Virtual Booking (customer keeps instrument until near bench time)
 • BL badge — Backlog
 

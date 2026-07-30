@@ -55,6 +55,8 @@ const ACTION_COLORS = {
   'RS-C':{ bg: '#2d1414', color: '#c44040' },
   RS:    { bg: '#2d1414', color: '#c44040' },
   DG:    { bg: '#1a1a2d', color: '#8b8bff' },
+  WP:    { bg: '#132a3d', color: '#58b6ff' },
+  FB:    { bg: '#0f2a28', color: '#3fc9b8' },
 };
 
 const BENCH_COLORS = {
