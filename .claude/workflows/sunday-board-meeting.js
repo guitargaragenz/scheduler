@@ -44,7 +44,15 @@ export const meta = {
 phase('Gather')
 const todayISO = args?.todayISO
 const weekStartISO = args?.weekStartISO
-const weekKey = weekStartISO
+// The week we REPORT on is the one just worked, not the one being planned.
+// `weekStartISO` is the Monday of the week ahead, so completed_jobs rows —
+// which are stamped with the week the work happened in — never matched it and
+// finance reported $0 every single week regardless of the real takings.
+// Fixed 2026-07-31 after Trevor caught a "zero jobs finished" report on a week
+// he'd actually invoiced 9 jobs.
+const reportedWeekStart = new Date(weekStartISO + 'T00:00:00Z')
+reportedWeekStart.setUTCDate(reportedWeekStart.getUTCDate() - 7)
+const weekKey = reportedWeekStart.toISOString().slice(0, 10)
 
 const rawExport = await agent(
   'Run `node scripts/board_meeting_export.mjs` from the repo root and return ONLY the raw stdout JSON it prints, verbatim, with no commentary, no markdown fences.',
@@ -73,7 +81,13 @@ const quickWinCandidates = schedulableNow
   .filter(j => Number(j.hours) > 0 && Number(j.hours) <= 2)
   .sort((a, b) => Number(a.hours) - Number(b.hours))
 const completedThisWeek = (data.completedJobs || []).filter(r => r.weekKey === weekKey)
-const invoicedTotal = completedThisWeek.reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0)
+// invoice_amount is stored EX GST — that is how Trevor quotes and records every
+// revenue figure. This used to be treated as GST-inclusive and divided by 1.15,
+// which understated the week's takings by 13% in every report ever run.
+// Corrected 2026-07-31 on Trevor's instruction: "all figures I provide with
+// revenue will be the same [ex GST]".
+const invoicedExGst = completedThisWeek.reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0)
+const invoicedIncGst = invoicedExGst * 1.15
 const partsToOrder = data.partsToOrder || [] // already resolved=false only, per the export script
 
 log(`Loaded ${jobs.length} jobs (${backlog.length} backlog, ${schedulableNow.length} schedulable now), ${completedThisWeek.length} completed this week, ${partsToOrder.length} open parts_to_order item(s)`)
@@ -88,7 +102,8 @@ Report backlog health using these counts. Do not rank jobs by age — job-age tr
   ),
   () => agent(
     `You are the Finance seat at GGNZ's weekly board meeting. Give a 2-3 line report, no preamble, plain text.
-Data: ${completedThisWeek.length} jobs completed this week (week starting ${weekStartISO}). Invoiced total (incl GST): $${invoicedTotal.toFixed(2)}. Ex-GST (÷1.15): $${(invoicedTotal/1.15).toFixed(2)}.
+Data: ${completedThisWeek.length} jobs completed in the week just worked (week starting ${weekKey}; the week being planned is ${weekStartISO}). Invoiced total EX GST: $${invoicedExGst.toFixed(2)}. Incl GST (x1.15): $${invoicedIncGst.toFixed(2)}.
+Lead with the ex-GST figure — that is the number Trevor works in.
 Report the numbers plainly. Trevor mentioned he is currently low on cash — note that context if the numbers are thin, but don't editorialize beyond one line.`,
     { label: 'finance-report', phase: 'Reports' }
   ),
@@ -116,7 +131,7 @@ return {
     backlogCount: backlog.length,
     schedulableCount: schedulableNow.length,
     completedThisWeek: completedThisWeek.length,
-    invoicedTotal, exGst: invoicedTotal / 1.15,
+    invoicedExGst, invoicedIncGst,
     openPartsToOrder: partsToOrder.length,
   },
 }
