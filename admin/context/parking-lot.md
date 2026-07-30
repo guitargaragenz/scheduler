@@ -21,6 +21,22 @@ Currently-open items only — grouped by category, not by session date. Complete
 
 ---
 
+## Parts to order
+
+Kept here, in a markdown file, for one reason: **the `parts_to_order` Supabase table cannot be
+written to.** It has a complete back end in `src/utils/supabase.js:979` (`addPartsToOrderItems`,
+`removePartsToOrderItem`, `markPartResolved`, `subscribeToPartsToOrder`) and the board-meeting
+export reads it — but an insert with the app's anon key fails with *"new row violates row-level
+security policy"* (confirmed by direct test 2026-07-31). So the answer to "why can't the parts
+page be built/tested — does it need real parts first?" is **no**: it needs an RLS policy on that
+table first. Real parts were available and still could not be saved. Fix the policy before anyone
+builds UI on top of it, or the screen will look like it works and silently save nothing.
+
+- [ ] **1705** Hannah Wanhill, Aer Compact 60 — TDA7294 amplifier chip + 100uF 50V electrolytic cap. Job tagged `WP`.
+- [ ] **1679** Gav Comber, Eko Ranger XII — pop rivets, 1" head, 3.5–4mm diameter. Odd size, needs sourcing rather than ordering. Job tagged `WP`.
+
+---
+
 ## Housekeeping
 
 - [x] Two unidentified screenshots on Desktop root — **dealt with, confirmed by Trevor 2026-07-28.**
