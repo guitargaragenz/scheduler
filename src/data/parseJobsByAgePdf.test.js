@@ -24,7 +24,8 @@ function samplePage() {
     item('Opera 405D', 218.5, 642.4), item('Booked In', 380, 642.4),
     item('3162', 460.8, 642.4), item('97', 533, 642.4),
 
-    // Row 2 — a description line sits under it. None of it is read.
+    // Row 2 — a description line sits under it. Since the Desc build the text
+    // (but still nothing else on the row) is read.
     item('2018-01-14', 30, 607.9), item('DB Tech', 110.8, 607.9),
     item('Opera 515', 218.5, 607.9), item('On Hold', 380, 607.9),
     item('3118', 460.8, 607.9), item('112', 530, 607.9),
@@ -39,8 +40,9 @@ function samplePage() {
     item('29', 460.8, 556), item('1705', 526.3, 556),
     item('Instruments', 110.8, 540),
 
-    // A free continuation line with no job number and no date at all —
-    // quotes and notes print like this. Ignored.
+    // A free line with no job number and no date, sitting under a row that
+    // printed no Desc line at all. There is no description in progress for it
+    // to continue, so it is dropped rather than invented into one.
     item('Q:$600 inc', 30, 524),
 
     item('3', 61.8, 500), item('Jobs by Age', 110.8, 500),
@@ -52,19 +54,32 @@ describe('parseJobsByAgeTextItems', () => {
     const { jobs } = parseJobsByAgeTextItems([samplePage()]);
     expect(jobs).toEqual([
       { ref: '97', dateIn: '2017-12-01' },
-      { ref: '112', dateIn: '2018-01-14' },
+      { ref: '112', dateIn: '2018-01-14', desc: 'Needs a new power supply' },
       { ref: '1705', dateIn: '2026-06-30' },
     ]);
   });
 
-  it('emits the job number and date and nothing else', () => {
-    // The printout also carries Mfr, Model, Status and Desc. The Jobs PDF
-    // already owns those columns; a second writer for them is the bug this
-    // parser exists to avoid.
+  it('emits the job number, date and description and nothing else', () => {
+    // The printout also carries Mfr, Model and Status. The Jobs PDF owns those
+    // columns; a second writer for them is the bug this parser exists to avoid.
+    // Desc is the one deliberate exception — see the parser's header.
     const { jobs } = parseJobsByAgeTextItems([samplePage()]);
     for (const job of jobs) {
-      expect(Object.keys(job).sort()).toEqual(['dateIn', 'ref']);
+      for (const key of Object.keys(job)) {
+        expect(['ref', 'dateIn', 'desc']).toContain(key);
+      }
     }
+  });
+
+  it('leaves desc absent, not empty, on a row that printed no Desc line', () => {
+    // Absent and empty are not the same thing here and the import plan depends
+    // on the difference: "this file said nothing about the description" must
+    // never be actioned as "blank the description", which would destroy text no
+    // other source still holds.
+    const { jobs } = parseJobsByAgeTextItems([samplePage()]);
+    const byRef = Object.fromEntries(jobs.map(j => [j.ref, j]));
+    expect('desc' in byRef['97']).toBe(false);
+    expect('desc' in byRef['1705']).toBe(false);
   });
 
   it('captures the job count the PDF states in its own footer', () => {
@@ -129,6 +144,113 @@ describe('parseJobsByAgeTextItems', () => {
     page.push(item('2099-01-01', 30, 460), item('Ghost', 110.8, 460), item('9999', 530, 460));
     const { jobs } = parseJobsByAgeTextItems([page]);
     expect(jobs.map(j => j.ref)).toEqual(['97', '112', '1705']);
+  });
+});
+
+// The Desc build (2026-08-01). Descriptions on this printout wrap onto a second
+// line, and taking only the first would swap Multitrack's truncation for one of
+// our own — which is the entire problem this build set out to fix.
+//
+// The text and the spacing below are the real ones, read off the 31 Jul 2026
+// export: a Desc line sits 17.2pt under its row, a wrapped continuation 13.5pt
+// under that, the next table row 17.2pt on again, and a manufacturer name that
+// wraps ABOVE its own row sits just 6.7pt off it — closer than the wrap gap,
+// which is why the x position has to decide and not the spacing alone.
+describe('parseJobsByAgeTextItems — descriptions', () => {
+  const descRow = (y, date, mfr, ref) => [
+    item(date, 30, y), item(mfr, 110.8, y), item('Model X', 218.5, y),
+    item('Booked In', 380, y), item('99', 460.8, y), item(ref, 530, y),
+  ];
+
+  function wrappedPage() {
+    return [
+      ...HEADER(659.7),
+
+      // 1708 — the job that proves the point. The Jobs PDF prints this as
+      // "Restring stp eli" and simply stops.
+      ...descRow(642.4, '2026-07-02', 'Taylor', '1708'),
+      item('Desc:', 30, 625.2), item('Restring stp elixir 12s Est', 66, 625.2),
+      item('$1000', 30, 611.7),
+
+      // 1632 — the Jobs PDF prints "Full service and deep".
+      ...descRow(594.5, '2026-05-20', 'Gibson', '1632'),
+      item('Desc:', 30, 577.3), item('Full service and deep', 66, 577.3),
+      item('clean Q:$600 inc', 30, 563.8),
+
+      // 842 — the Jobs PDF prints "Setup, check electronics".
+      ...descRow(546.6, '2024-02-11', 'Fender', '842'),
+      item('Desc:', 30, 529.4), item('Setup, check electronics', 66, 529.4),
+      item('and rewire jack', 30, 515.9),
+      // The wrapped Mfr name of the NEXT row, printed above that row and only
+      // 6.7pt off it. That leaves it 10.5pt under 842's last description line —
+      // INSIDE the 15.5pt wrap gap, so spacing alone would take it. It is out
+      // in the Mfr column at x~110.8, and that is what saves it.
+      item('Instruments', 110.8, 505.4),
+      ...descRow(498.7, '2026-06-30', 'Subtle Noise', '1705'),
+      item('Desc:', 30, 481.5), item('One knob a bit loose', 66, 481.5),
+
+      item('4', 61.8, 450), item('Jobs by Age', 110.8, 450),
+    ];
+  }
+
+  const descByRef = page =>
+    Object.fromEntries(parseJobsByAgeTextItems([page]).jobs.map(j => [j.ref, j.desc]));
+
+  it('joins a description that wraps onto a second line', () => {
+    const d = descByRef(wrappedPage());
+    expect(d['1708']).toBe('Restring stp elixir 12s Est $1000');
+    expect(d['1632']).toBe('Full service and deep clean Q:$600 inc');
+  });
+
+  it('reads a single-line description whole', () => {
+    expect(descByRef(wrappedPage())['1705']).toBe('One knob a bit loose');
+  });
+
+  it('does not swallow the next row\'s wrapped manufacturer name', () => {
+    // The spacing rule alone would take it. The column position is the only
+    // thing that tells a wrapped Mfr from a wrapped Desc apart, and getting it
+    // wrong would read as a perfectly plausible description.
+    const d = descByRef(wrappedPage());
+    expect(d['842']).toBe('Setup, check electronics and rewire jack');
+    expect(d['842']).not.toContain('Instruments');
+  });
+
+  it('never lets a description reach past the next row onto another job', () => {
+    const { jobs } = parseJobsByAgeTextItems([wrappedPage()]);
+    expect(jobs.map(j => j.ref)).toEqual(['1708', '1632', '842', '1705']);
+    for (const j of jobs) expect(j.desc).not.toContain('Desc');
+  });
+
+  it('does not carry a description across a page break', () => {
+    // y coordinates restart on every page, so a stale y would make the gap
+    // arithmetic meaningless and could attach page 2's first line to page 1's
+    // last job.
+    const pageOne = [
+      ...HEADER(659.7),
+      ...descRow(642.4, '2026-07-02', 'Taylor', '1708'),
+      item('Desc:', 30, 625.2), item('Restring stp elixir 12s Est', 66, 625.2),
+    ];
+    const pageTwo = [
+      item('nothing to do with 1708', 30, 700),
+      ...descRow(660, '2026-06-30', 'Yamaha', '1712'),
+      item('2', 61.8, 620), item('Jobs by Age', 110.8, 620),
+    ];
+    const { jobs } = parseJobsByAgeTextItems([pageOne, pageTwo]);
+    expect(jobs[0].desc).toBe('Restring stp elixir 12s Est');
+    expect(jobs[1].desc).toBeUndefined();
+  });
+
+  it('repairs the fi/fl ligatures the printout breaks apart', () => {
+    // Multitrack renders these as separate glyphs, so they extract with stray
+    // spaces. Same repair as the Jobs PDF, from the same shared helper.
+    const page = [
+      ...HEADER(659.7),
+      ...descRow(642.4, '2026-07-02', 'Yamaha', '1712'),
+      item('Desc:', 30, 625.2), item('Loose', 66, 625.2), item('fi', 100, 625.2),
+      item('nger on the Paci', 120, 625.2), item('fi', 200, 625.2), item('ca', 210, 625.2),
+      item('1', 61.8, 600), item('Jobs by Age', 110.8, 600),
+    ];
+    expect(parseJobsByAgeTextItems([page]).jobs[0].desc).toBe('Loose finger on the Pacifica');
   });
 });
 

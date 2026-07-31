@@ -125,3 +125,85 @@ describe('buildJbaImportPlan — counts and writes', () => {
     expect(buildJbaImportPlan(base).kind).toBe('jba');
   });
 });
+
+// The Desc build (2026-08-01). The description mirrors the date field for field:
+// same ruling (this printout wins where it differs), same "an overwrite is never
+// invisible" reporting, same allow-list enforcement in the writer.
+describe('buildJbaImportPlan — descriptions', () => {
+  const withDesc = (desc, boardExtra = {}) => buildJbaImportPlan({
+    ...base,
+    parsed: [{ ref: '97', dateIn: '2017-12-01', desc }],
+    jobs: [boardJob('97', boardExtra)],
+  });
+
+  it('counts a job with no description yet as filled in', () => {
+    const plan = withDesc('Restring stp elixir 12s Est $1000');
+    expect(plan.descFilled).toEqual([
+      { id: '97', label: '#97 Fender Strat — Dave', to: 'Restring stp elixir 12s Est $1000' },
+    ]);
+    expect(plan.descChanged).toHaveLength(0);
+    expect(plan.descUnchangedCount).toBe(0);
+  });
+
+  it('counts a differing description as CHANGED and shows both', () => {
+    // This is the everyday case the build exists for: the board holds the Jobs
+    // PDF's truncated text and this file holds the whole thing.
+    const plan = withDesc('Restring stp elixir 12s Est $1000', { desc: 'Restring stp eli' });
+    expect(plan.descChanged).toEqual([{
+      id: '97', label: '#97 Fender Strat — Dave',
+      from: 'Restring stp eli', to: 'Restring stp elixir 12s Est $1000',
+    }]);
+    expect(plan.descFilled).toHaveLength(0);
+  });
+
+  it('counts an identical description as already right and writes nothing', () => {
+    const plan = withDesc('Full service and deep clean Q:$600 inc', {
+      firstSeen: '2017-12-01', desc: 'Full service and deep clean Q:$600 inc',
+    });
+    expect(plan.descUnchangedCount).toBe(1);
+    expect(plan.writes).toHaveLength(0);
+  });
+
+  it('still fixes the description when the date was already right', () => {
+    // The two columns are judged independently. They used to share one early
+    // exit on a matching date, which would now skip the description of nearly
+    // every job on the board — silently, since almost every date is correct.
+    const plan = withDesc('One knob a bit loose', { firstSeen: '2017-12-01' });
+    expect(plan.unchangedCount).toBe(1);
+    expect(plan.writes).toEqual([{ id: '97', job: '97', data: { desc: 'One knob a bit loose' } }]);
+  });
+
+  it('sends both columns in one write when both need fixing', () => {
+    const plan = withDesc('One knob a bit loose', { firstSeen: '2018-06-30', desc: 'One knob' });
+    expect(plan.writes).toEqual([{
+      id: '97', job: '97',
+      data: { firstSeen: '2017-12-01', desc: 'One knob a bit loose' },
+    }]);
+  });
+
+  it('never blanks an existing description when the file said nothing', () => {
+    // The parser omits desc entirely rather than emitting an empty string when
+    // a row printed no Desc line. "Said nothing" must not become "set it to
+    // blank" — that would destroy text no other source still holds.
+    const plan = buildJbaImportPlan({
+      ...base,
+      parsed: [{ ref: '97', dateIn: '2017-12-01' }],
+      jobs: [boardJob('97', { firstSeen: '2017-12-01', desc: 'Restring stp eli' })],
+    });
+    expect(plan.writes).toHaveLength(0);
+    expect(plan.descChanged).toHaveLength(0);
+    expect(plan.descFilled).toHaveLength(0);
+  });
+
+  it('treats a whitespace-only description the same as none at all', () => {
+    const plan = withDesc('   ', { firstSeen: '2017-12-01', desc: 'Restring stp eli' });
+    expect(plan.writes).toHaveLength(0);
+  });
+
+  it('touches nothing but first_seen and desc', () => {
+    const plan = withDesc('Restring stp elixir 12s Est $1000', { firstSeen: '2018-06-30' });
+    for (const w of plan.writes) {
+      expect(Object.keys(w.data).sort()).toEqual(['desc', 'firstSeen']);
+    }
+  });
+});

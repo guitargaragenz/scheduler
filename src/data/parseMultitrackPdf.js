@@ -25,6 +25,25 @@
 
 const WRAP_GAP = 15.5; // <= this many pt below the previous line = same paragraph
 
+/**
+ * Is this line a continuation of the paragraph that ended at `prevY`?
+ *
+ * The whole of both parsers' wrap handling, in one place. Exported for the
+ * Jobs-by-Age parser (Build 3, the Desc build), which now stitches wrapped
+ * Desc lines and must use EXACTLY this rule rather than a lookalike.
+ *
+ * Measured, not guessed, and the two printouts agree because Multitrack lays
+ * them out with the same engine: a wrapped line sits ~13.5pt below the line it
+ * continues, while the next table row starts 17.2-17.3pt down. 15.5 is the
+ * gap between those two populations. A second copy of the number would drift
+ * from this one, and the failure would be silent — text quietly attached to
+ * the wrong job, which reads as a real description.
+ */
+export function isWrapContinuation(prevY, y) {
+  if (prevY === null || y === null) return false;
+  return prevY - y <= WRAP_GAP;
+}
+
 // The PDF renders fi/fl ligatures as separate glyphs, which extract with stray
 // spaces: "fi x", "fl at-wounds", "Paci fi ca". Rejoin them. Matches only when
 // "fi"/"fl" stands alone between spaces or starts a broken word, which real
@@ -189,7 +208,7 @@ export function parseTextItems(pages) {
 
       // A line with no job number: either the current fault wrapping onward,
       // or a wrapped cell of a neighbouring row. Line spacing decides.
-      if (fault !== null && lastFaultLineY !== null && lastFaultLineY - line.y <= WRAP_GAP) {
+      if (fault !== null && isWrapContinuation(lastFaultLineY, line.y)) {
         for (const it of line.items) fault.push(it.str.trim());
         lastFaultLineY = line.y;
       } else {
