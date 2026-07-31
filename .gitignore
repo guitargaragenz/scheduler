@@ -8,3 +8,6 @@ dist
 .claude/worktrees/
 *.json.key
 jt-backup-*.json
+
+# Firecrawl plugin output (plugin removed 2026-08-01)
+.firecrawl/
