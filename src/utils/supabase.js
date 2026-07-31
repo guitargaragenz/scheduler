@@ -305,22 +305,32 @@ export async function logPdfImport({ filename, rowCount, ids }) {
 
 // ============ JOBS-BY-AGE PDF IMPORT (Brief G, Build 1c) ============
 
-// The single column the Jobs-by-Age printout owns. JBA also prints Mfr, Model,
-// Status and a Desc line, and reading them here would be the two-masters bug in
-// a new place — the Jobs PDF already owns those four. So: one column, and the
-// allow-list below makes that structural rather than a matter of care.
-export const JBA_IMPORT_FIELDS = Object.freeze(['firstSeen']);
+// The two columns the Jobs-by-Age printout owns. It also prints Mfr, Model and
+// Status, and reading those here would be the two-masters bug in a new place —
+// the Jobs PDF already owns them. So: two columns, and this allow-list makes
+// that structural rather than a matter of care.
+//
+// `desc` joined `firstSeen` in the Desc build (2026-08-01), and it is the one
+// column BOTH printouts can write — so the ownership rule is by lifecycle
+// stage, not by document. PDF_IMPORT_FIELDS lets the Jobs PDF write `desc` when
+// it creates a job; from then on this printout owns it, because the Jobs PDF
+// prints descriptions truncated mid-word and this one prints them whole (job
+// 1708: "...stp eli" there, "...stp elixir 12s Est $1000" here). Full reasoning
+// in the header of src/data/parseJobsByAgePdf.js.
+export const JBA_IMPORT_FIELDS = Object.freeze(['firstSeen', 'desc']);
 
 /**
- * The Build 1c writer: fills in `first_seen` and touches nothing else.
+ * The Build 1c writer: fills in `first_seen` and `desc`, and touches nothing else.
  *
  * Its own writer, for the same reason writePdfImportBatch() is: a writer that
  * builds a fixed row regardless of what the caller supplied would blank real
  * data across the whole workshop in one click when handed a one-column import.
  * That was the CSV-era batch writer, deleted in Build 2b.
  *
- * `writes` is [{ id, job, data: { firstSeen } }]. Returns { ok, written } or
- * { ok: false, error }, matching writePdfImportBatch()'s convention.
+ * `writes` is [{ id, job, data }], where data carries `firstSeen`, `desc`, or
+ * both — the plan omits whichever one did not change, so the column sets
+ * genuinely vary from row to row. Returns { ok, written } or { ok: false,
+ * error }, matching writePdfImportBatch()'s convention.
  *
  * Every guard refuses the WHOLE batch rather than writing part of it, with the
  * one deliberate exception noted at Guard 3. A partial import is worse than a
@@ -373,11 +383,18 @@ export async function writeJbaImportBatch(writes) {
     }
 
     // Group by exact column set before writing, the same mitigation
-    // writePdfImportBatch() and batchWriteJobsState() use. Every row here
-    // happens to carry the identical four columns, so today this is a single
-    // group — it stays because a Supabase array upsert sends the UNION of all
-    // rows' keys and NULL-fills the rest, and the day someone adds a
-    // conditional key that becomes a silent data-loss bug rather than an error.
+    // writePdfImportBatch() and batchWriteJobsState() use.
+    //
+    // This was written when every row carried the identical four columns, as a
+    // guard against the day someone added a conditional key. The Desc build
+    // (2026-08-01) is that day, and this is now doing real work on every
+    // import: a row whose date was already right carries only `desc`, a row
+    // whose description was already right carries only `first_seen`, and most
+    // rows carry one or the other rather than both. A Supabase array upsert
+    // sends the UNION of all rows' keys and NULL-fills any row missing one —
+    // so without this grouping, one mixed batch would blank the description of
+    // every job that only needed its date corrected, and vice versa. Silently,
+    // across the whole board, in one click.
     const groups = new Map();
     for (const row of rows) {
       const sig = Object.keys(row).sort().join(',');
