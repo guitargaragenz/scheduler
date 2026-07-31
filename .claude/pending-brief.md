@@ -1,136 +1,90 @@
-doc_status: closed
+doc_status: live
 
-# Pending Brief — make the Jobs by Age PDF the source of truth for description — ✅ SHIPPED
+# Pending Brief — a Parts to Order page
 
-**Shipped at `2960d05`, merged to main 2026-08-01.** This is now a record, not a task list.
-Verifier passed all seven checklist items; full suite 252 tests green; the parser read all
-37 descriptions off the real 31 Jul PDF, including the three that wrap onto a second line.
-
-**Not done, deliberately — the one thing worth picking up next:** after an import the board
-does not show the new descriptions until the page is reloaded. `src/hooks/useJobs.js:319`
-refreshes dates only. The database is correct; the screen is stale until refresh. It touches
-a file this brief did not name, so it was left out of scope. Needs its own brief.
-
-**Status:** ✅ **APPROVED by Trevor 2026-08-01 ("yes"). Council done (step 2). Built, verified, merged.**
-**Date:** 2026-07-30, council + PDF evidence added 2026-08-01.
-**Repo state:** `main`, clean.
-
-> **Why this brief nearly cost a second round:** it was written 2026-07-30 and **never
-> committed** — it sat as an uncommitted edit on top of Brief H, so the session that worked
-> through it left no record and the 2026-08-01 session re-derived it from scratch. Commit the
-> scope lock when it is written, not when the build lands.
+**Status:** awaiting Trevor's "yp" (step 1).
+**Date:** 2026-08-01.
+**Repo state:** `main` @ `2960d05`, clean.
+**Asked for by Trevor 2026-08-01:** *"parts to order page next — we had meeting yesterday
+there are real parts ready to add to page."*
 
 ## Plain-English summary
 
-Trevor noticed job descriptions in the app look cut off. Confirmed against real PDFs and
-the live database:
+There is a `parts_to_order` table in Supabase with real parts in it, and **nothing in the app
+shows them.** The only way to see or add a part today is the Sunday board meeting workflow.
+This brief builds the page: see the list, add a part, tick one off when it lands.
 
-- The app currently gets its description text from the **Job List** PDF (the one with
-  "Fault:" lines under each row) — `parseMultitrackPdf.js`.
-- That printout genuinely cuts long descriptions off mid-word. Not a parsing bug — the PDF
-  itself prints it short. Checked against the same jobs' full text in the **Jobs by Age**
-  PDF:
+That is all it builds. It is a place to keep the chase list — nothing about it touches job
+state.
 
-  | Job | Job List (what's stored today) | Jobs by Age (full) |
-  |---|---|---|
-  | 1708 Eko Modello | "...stp eli" | "...stp elixir 12s Est $1000" |
-  | 1635 Epiphone | "...jack pla" | "...jack plate." |
-  | 1632 Hofner | "...deep" | "...deep clean Q:$600 inc" |
+## What already exists (verified against the code 2026-08-01, not from memory)
 
-- Confirmed live in Supabase: jobs `1708` and `1635` are stored with the truncated text,
-  right now.
+- The table is live and takes writes. It was created for Brief D but had **no RLS policy at
+  all** until Trevor added one on 2026-07-31, so every insert since it was created had been
+  silently rejected. Two real parts from the 31 Jul meeting are in it now
+  (`pto-2026-07-31-1705`, `pto-2026-07-31-1679`).
+- Columns: `id`, `description`, `category`, `needed_for_job`, `added_at`, `resolved`.
+  `needed_for_job` is **deliberately nullable and deliberately not a foreign key** — a part
+  can be for a job that no longer exists, or for no job at all (shop stock). Comment
+  explaining this sits above the functions at `src/utils/supabase.js:962-967`.
+- All five data functions already exist and work: `loadPartsToOrder`,
+  `addPartsToOrderItems`, `removePartsToOrderItem`, `markPartResolved`,
+  `subscribeToPartsToOrder` (`src/utils/supabase.js:969` onward). **This build should not
+  need to write new data functions** — only fix one, below.
+- `id` is a TEXT primary key **with no default**. Callers must supply an id. Deliberate,
+  matches the rest of the app, easy to trip on.
 
-**The fix:** switch description over to come from the Jobs by Age PDF instead of the Job
-List PDF.
+## The one thing that must be fixed, not inherited
 
-## Why this needs the full protocol, not a quick edit
+`addPartsToOrderItems()` catches its own error, logs to the console, and **returns normally**
+(same pattern as its neighbours). Every failed write since the table existed has looked like
+a success to its caller — that is precisely why nobody noticed the board meeting's parts
+write had never once worked.
 
-This touches `jobs[]` shape — a blast-radius file per `CLAUDE.md`. It also reverses a
-deliberate design decision from Build 1c (Brief G): `parseJobsByAgePdf.js` currently
-**throws the Desc line away on purpose** (`isDescLine` → `continue`), with an explicit
-comment: "ONE FIELD AND NOTHING ELSE" — to stop two PDFs fighting over who writes
-description. That reasoning needs re-examining, not just overriding, hence Council.
+**A page built on top of that will look like it saved and save nothing.** This build makes
+the write path report failure to the caller and the page show it. How far that correction
+should reach — this one function, or its neighbours too — is a Council question, not a
+builder's judgement call, because those neighbours have other callers.
 
-## Council (step 2, run 2026-08-01) — and the four questions, now answered
+## Scope
 
-Two independent reviewers. Both confirmed the brief's code facts are still accurate:
-`parseJobsByAgePdf.js:131` does discard the Desc line, and description does come from the
-Job List PDF today (`parseMultitrackPdf.js:96,143`).
-
-### The one thing council could not settle, settled by the PDFs themselves
-
-Reviewer B's strongest challenge: *is the truncation really the printout, or is it our own
-wrap-stitching?* `parseMultitrackPdf.js:190-197` only joins a continuation line onto the
-fault when it falls within `WRAP_GAP` (15.5pt) — outside that, it is silently dropped. If
-that were the cause, the whole brief would be aimed at the wrong file.
-
-**It is not.** Checked against the 31 Jul pair (`Jobs 31:7.pdf`, `GGNZ JBA 31 Jul.pdf`):
-
-| Job | Job List prints | Jobs by Age prints |
-|---|---|---|
-| 1708 | `...lifted fretboard at nut low E side, stp eli` | `...stp elixir 12s Est $1000` |
-| 1635 | `...scratchy pots & switch, replace o/p jack pla` | `...replace o/p jack plate.` |
-| 1632 | `...glue loose inlays, deep` | `...glue loose inlays, deep clean Q:$600 inc` |
-| 842 | `...power supply is not working. One` | `...is not working. One knob a bit loose` |
-
-In every case the Job List line **ends there** — there is no continuation line for our
-parser to have dropped. Multitrack prints it short. **Our parser is not at fault; the fix
-belongs where the brief puts it.**
-
-### Q1 — replace or fall back?
-
-**Both printouts carry the same 37 jobs** on the 31 Jul pair, footers agree ("37 Jobs
-found" / "37 Jobs by Age"). Coverage is not the problem council feared. But
-`jbaImportPlan.js:69-77` still drops JBA rows for jobs not yet on the board — jobs arrive
-via the Job List path — so **Job List stays as the create-time source and JBA overwrites
-afterwards.** Not a fallback bolted on; that is simply the order jobs arrive in.
-
-### Q2 — which master wins?
-
-**JBA wins, unconditionally, exactly as `firstSeen` already does** (`jbaImportPlan.js:86-90`,
-Trevor's own earlier ruling that "a differing date in the printout wins"). Ownership is by
-lifecycle stage, not by whichever PDF was dropped last: Job List writes `desc` only when
-creating the job, JBA owns it from then on. Enforce it the way `firstSeen` is enforced — via
-the `JBA_IMPORT_FIELDS` allow-list, not by convention.
-
-### Q3 — the seam
-
-Mirror `firstSeen` field-for-field:
-- `parseJobsByAgePdf.js` — stop discarding at line 131; capture Desc into the row.
-- `jbaImportPlan.js` — carry `desc` in `writes` alongside `firstSeen`, with its own changed/filled reporting.
-- `supabase.js` — add `'desc'` to `JBA_IMPORT_FIELDS` (~line 343).
-- `joinJobs.js` — **no change.** `desc` is not app-owned and not in `NON_MASTER_FIELDS`.
-
-**Scope grew by one thing the brief did not anticipate:** JBA's Desc **wraps onto a second
-line** (1708 spills `$1000`, 1632 spills `clean Q:$600 inc`, 842 spills `One knob a bit
-loose`). `parseJobsByAgePdf.js:20-21` explicitly declined to import the Jobs PDF's wrap-gap
-machinery. **Taking the first Desc line only would swap one truncation for another** — this
-build must join wrapped Desc lines. Reuse `parseMultitrackPdf.js`'s existing rule rather
-than writing a second copy.
-
-### Q4 — backfill
-
-**No separate backfill step.** `jbaImportPlan.js:80-83` writes only when the value differs,
-so the first JBA drop after this ships corrects every truncated description on the board by
-itself. **One documented gap:** a job that has already aged off Multitrack's report keeps its
-truncated text forever. Accepted — those jobs are finished work.
-
-### Flagged, deliberately out of scope
-
-`pdfImportPlan.js:74` infers bench from `desc` at creation time only. A fuller description
-arriving later does **not** re-infer bench. That behaviour is unchanged by this build and is
-not to be "fixed" inside it.
+1. **A Parts to Order page** listing what is in the table: description, category, the job it
+   is for (if any), when it was added. Newest first, which is what `loadPartsToOrder()`
+   already returns.
+2. **Add a part** from that page — description, optional category, optional job number.
+   Typed job numbers are free text by design; do not validate against `jobs`.
+3. **Tick one off** when it arrives, via the existing `markPartResolved`. Resolved parts drop
+   off the active list.
+4. **Failed writes are visible.** No silent success.
 
 ## What this does not touch
 
-- Mfr, Model, Status, Customer — those still come from wherever they come from today.
-  This is description only.
-- Tag, Hours, Action, VB, BL — Trevor's own hand-maintained fields, untouched regardless.
-- No UI change. This is the import/data layer only.
+- **No job state.** Ticking a part off does not unstick a job, does not change status, does
+  not write to `jobs` or `scheduledSlots`. Trevor enters the part in Multitrack when it
+  arrives anyway, and **Multitrack is what actually unsticks the job** on the next import.
+  The tick only clears the chase list.
+- **Not the parked brief.** `docs/briefs/parked-parts-as-a-stuck-reason.md` is a different,
+  larger job — bujo quick-entry capture at the bench, the part showing as the stuck reason in
+  the Waiting pile, and a job-card control. **That stays parked and unapproved.** This page is
+  the reader those pieces would eventually feed; building it first is not building them.
+- **Not PartsBox.** `PartsDrawer.jsx` / `utils/partsbox.js` is the PartsBox inventory system,
+  a different thing entirely despite the name.
+- **Not** `admin/context/GGNZ Parts Shopping List.csv`. Confirmed with Trevor 2026-07-27 that
+  it is his personal pedalboard build, misfiled. Do not import it, do not read it as shop
+  stock, do not use it as a schema reference.
 
-## Constraints
+## Open — for Council
 
-- Both PDFs' ligature-fix and ref-derivation logic must stay shared (`parseMultitrackPdf.js`
-  exports these already for exactly this reason) — don't duplicate them.
-- Preserve the existing refusal-on-count-mismatch behaviour for both parsers.
-- Wrapped-Desc joining must reuse the existing wrap rule, not a second copy of it.
+1. Where does the page live — its own route, or a panel on an existing page? Trevor abandons
+   dense screens, so this wants to be one thing at a time, not a grid bolted into something.
+2. How far does the error-swallowing fix reach (see above)? The neighbouring functions have
+   other callers.
+3. Does the list need realtime (`subscribeToPartsToOrder` exists) or is load-on-open enough
+   for a list one person edits?
+4. Resolved parts — hidden, or shown collapsed as a record? The `resolved` column keeps them
+   either way.
+
+## Before this starts
+
+Writes to a shared Supabase table, so it runs the full agent-team protocol per `CLAUDE.md` —
+brief, "yp", council, builder, independent verifier, browser test, merge.

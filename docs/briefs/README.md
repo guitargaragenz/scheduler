@@ -30,7 +30,9 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| _(nothing live — the description brief shipped 2026-08-01 at `2960d05`.)_ | | Next candidate, not yet scoped: after an import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale. |
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01 | **Current — start here.** A Parts to Order page: see the list, add a part, tick one off. The table has real parts in it and nothing in the app shows them. Awaiting Trevor's "yp" (step 1), then Council. **Not** the parked stuck-reason brief — that stays parked. |
+
+Also open, not scoped: after a PDF import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale.
 
 ## Parked — agreed in principle, waiting on something
 
