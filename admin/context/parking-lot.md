@@ -24,17 +24,25 @@ Currently-open items only — grouped by category, not by session date. Complete
 
 ## Parts to order
 
-Kept here, in a markdown file, for one reason: **the `parts_to_order` Supabase table cannot be
-written to.** It has a complete back end in `src/utils/supabase.js:979` (`addPartsToOrderItems`,
-`removePartsToOrderItem`, `markPartResolved`, `subscribeToPartsToOrder`) and the board-meeting
-export reads it — but an insert with the app's anon key fails with *"new row violates row-level
-security policy"* (confirmed by direct test 2026-07-31). So the answer to "why can't the parts
-page be built/tested — does it need real parts first?" is **no**: it needs an RLS policy on that
-table first. Real parts were available and still could not be saved. Fix the policy before anyone
-builds UI on top of it, or the screen will look like it works and silently save nothing.
+**RESOLVED 2026-07-31 — both parts now live in the `parts_to_order` table, not here.** They were
+held in this file because the table rejected every insert (*"new row violates row-level security
+policy"*): `docs/supabase-schema.sql` creates it and publishes it to realtime but never grants it
+a policy, and unlike every other table nobody added one by hand in the dashboard. Trevor ran the
+policy on 2026-07-31 and both parts inserted cleanly (ids `pto-2026-07-31-1705`,
+`pto-2026-07-31-1679`).
 
-- [ ] **1705** Hannah Wanhill, Aer Compact 60 — TDA7294 amplifier chip + 100uF 50V electrolytic cap. Job tagged `WP`.
-- [ ] **1679** Gav Comber, Eko Ranger XII — pop rivets, 1" head, 3.5–4mm diameter. Odd size, needs sourcing rather than ordering. Job tagged `WP`.
+Two things that came out of it and are NOT fixed:
+
+- [ ] **`addPartsToOrderItems()` swallows its own failures** (`src/utils/supabase.js:981`). It
+  wraps the insert in `try/catch`, logs to `console.error`, and returns normally — no throw, no
+  return value. So the board meeting's "new parts → `parts_to_order`" write has been failing
+  since the table was created and reporting success every time. Nobody would ever have found this
+  from the app; it took a direct insert test. Worth a look at whether the other `supabase.js`
+  writers do the same thing, because if they do, this is a pattern and not one bug.
+- [ ] **`id` has no default** — `parts_to_order.id` is `TEXT PRIMARY KEY` with no generator, so
+  every caller must invent one. That is deliberate and matches the app (`item.id ||
+  \`pto-${Date.now()}-${Math.random()}\``), but it means any script or future writer that forgets
+  is rejected at the database. Fine as-is; just don't be surprised by it twice.
 
 ---
 

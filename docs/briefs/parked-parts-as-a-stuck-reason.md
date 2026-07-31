@@ -7,16 +7,25 @@ doc_status: parked
 **Status:** **PARKED.** Not approved, not scoped, not started. No "yp" sought yet.
 **Date parked:** 2026-07-27. **Line refs re-verified 2026-07-29** (they had drifted; the
 substance was all still correct).
-**Blocked on:** ~~the first Sunday board meeting run~~ → **an RLS policy on `parts_to_order`.**
-**Updated 2026-07-31.** The first board meeting has now run, so the stated blocker is gone —
-but it was the wrong blocker. That meeting produced two real parts (1705's TDA7294 chip +
-100uF 50V cap, 1679's 1"-head pop rivets) and **they still could not be saved**: an insert
-with the app's anon key fails with *"new row violates row-level security policy for table
-parts_to_order"* (direct live test, 2026-07-31). `docs/supabase-schema.sql` creates the table
-and adds it to the realtime publication but never grants it a policy — every other table's
-policies were applied by hand in the Supabase dashboard, and this one was missed. Nothing in
-this brief can be built or tested until that policy exists. The two parts are being held in
-`admin/context/parking-lot.md` and the 2026-07-31 BuJo page in the meantime.
+**Blocked on:** ~~the first Sunday board meeting run~~ ~~an RLS policy on `parts_to_order`~~ →
+**nothing technical. This is now buildable whenever Trevor wants it.**
+
+**Updated 2026-07-31.** Both previous blockers are gone, and the first one was never real. The
+brief said it was waiting on the first meeting because the table was empty and there'd be
+nothing to test against. The meeting ran, produced two real parts — and they still couldn't be
+saved: `parts_to_order` had no RLS policy at all (`docs/supabase-schema.sql` creates the table
+and publishes it to realtime but never grants one; every other table's policies were added by
+hand in the dashboard and this one was missed). Trevor ran the policy the same night. **Both
+parts are now in the table** (`pto-2026-07-31-1705`, `pto-2026-07-31-1679`), so the "needs real
+data to test against" condition is genuinely satisfied for the first time.
+
+**Still parked** — not because anything blocks it, but because it has not been approved. It
+needs a "yp" and the full protocol before anyone starts.
+
+**One finding from that night that belongs to this brief:** `addPartsToOrderItems()`
+(`src/utils/supabase.js:981`) catches its own errors, logs to console, and returns normally.
+Every failed write has looked like a success to its caller. Whatever gets built on this table
+should not inherit that — see `admin/context/parking-lot.md`.
 **Split from:** Brief E (job blocking), where the two parts items were cut at council.
 
 ---
