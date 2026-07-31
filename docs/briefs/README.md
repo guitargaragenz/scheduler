@@ -28,7 +28,9 @@ the status line.
 
 ## Live — work that hasn't finished
 
-Nothing currently live.
+| Brief | Date | Status |
+|-------|------|--------|
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-30, approved + council 2026-08-01 | **Current — start here.** Make the Jobs by Age PDF the source of truth for job description. Confirmed against the 31 Jul PDF pair: the Job List printout ends the line short with no continuation, so this is Multitrack's printout, **not** our wrap-stitching. Approved, council done, all four open questions answered in the brief. **Resumes at step 3 (builder).** One scope addition council found: JBA's Desc wraps onto a second line, so the JBA parser needs wrap-joining it currently lacks. |
 
 ## Parked — agreed in principle, waiting on something
 
