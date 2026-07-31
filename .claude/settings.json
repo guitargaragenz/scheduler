@@ -1,10 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(*)",
       "Read(*)",
-      "Edit(*)",
-      "Write(*)",
       "mcp__Claude_Browser__*"
     ],
     "deny": [
