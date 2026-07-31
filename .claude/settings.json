@@ -5,16 +5,23 @@
       "mcp__Claude_Browser__*"
     ],
     "deny": [
-      "Read(node_modules/**)",
-      "Read(dist/**)",
-      "Read(coverage/**)",
-      "Read(.vite/**)",
-      "Read(**/*.lock)",
-      "Read(package-lock.json)",
-      "Edit(node_modules/**)",
-      "Edit(dist/**)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean -fd*)",
+      "Bash(git commit --amend*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf *)",
+      "Edit(.vite/**)",
       "Edit(coverage/**)",
-      "Edit(.vite/**)"
+      "Edit(dist/**)",
+      "Edit(node_modules/**)",
+      "Read(**/*.lock)",
+      "Read(.vite/**)",
+      "Read(coverage/**)",
+      "Read(dist/**)",
+      "Read(node_modules/**)",
+      "Read(package-lock.json)"
     ]
   },
   "hooks": {
