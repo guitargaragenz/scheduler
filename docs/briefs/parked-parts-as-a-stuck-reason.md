@@ -7,7 +7,16 @@ doc_status: parked
 **Status:** **PARKED.** Not approved, not scoped, not started. No "yp" sought yet.
 **Date parked:** 2026-07-27. **Line refs re-verified 2026-07-29** (they had drifted; the
 substance was all still correct).
-**Blocked on:** the first Sunday board meeting run. See "Why this waits" below.
+**Blocked on:** ~~the first Sunday board meeting run~~ → **an RLS policy on `parts_to_order`.**
+**Updated 2026-07-31.** The first board meeting has now run, so the stated blocker is gone —
+but it was the wrong blocker. That meeting produced two real parts (1705's TDA7294 chip +
+100uF 50V cap, 1679's 1"-head pop rivets) and **they still could not be saved**: an insert
+with the app's anon key fails with *"new row violates row-level security policy for table
+parts_to_order"* (direct live test, 2026-07-31). `docs/supabase-schema.sql` creates the table
+and adds it to the realtime publication but never grants it a policy — every other table's
+policies were applied by hand in the Supabase dashboard, and this one was missed. Nothing in
+this brief can be built or tested until that policy exists. The two parts are being held in
+`admin/context/parking-lot.md` and the 2026-07-31 BuJo page in the meantime.
 **Split from:** Brief E (job blocking), where the two parts items were cut at council.
 
 ---
@@ -39,11 +48,15 @@ Sunday board meeting, not the app. `.claude/workflows/sunday-board-meeting.js` n
 "new parts → `parts_to_order`" at lines 12 and 16 as one of its three end-of-meeting writes,
 reads the list back at line 75, and hands it to the Admin seat at line 95.
 
-The table is empty because **the first board meeting has not run yet.** Trevor is holding it
-until the job-blocking build merges (confirmed 2026-07-27).
+~~The table is empty because **the first board meeting has not run yet.**~~ **Wrong — corrected
+2026-07-31.** The meeting has now run and the table is *still* empty, because it cannot be
+written to at all. See the Status block at the top: `parts_to_order` has no RLS policy, so
+every insert is rejected regardless of who is writing or what they are writing.
 
-So this brief waits on the first meeting run — not on anything technical. Building it before
-then means shipping a feature that displays nothing and cannot be tested against real data.
+This matters beyond this brief: the board-meeting workflow names "new parts → `parts_to_order`"
+as one of its three end-of-meeting writes. **That write has never once succeeded and fails
+silently from the meeting's point of view.** Fix the policy before building anything on top of
+this table, or the UI will look like it works and save nothing.
 
 **Verified live 2026-07-27, read-only:** `parts_to_order` exists in Supabase with all six
 columns (`id`, `description`, `category`, `needed_for_job`, `added_at`, `resolved`).
