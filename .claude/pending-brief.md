@@ -1,8 +1,17 @@
-doc_status: live
+doc_status: closed
 
-# Pending Brief — make the Jobs by Age PDF the source of truth for description
+# Pending Brief — make the Jobs by Age PDF the source of truth for description — ✅ SHIPPED
 
-**Status:** ✅ **APPROVED by Trevor 2026-08-01 ("yes"). Council done (step 2). Resumes at step 3, builder.**
+**Shipped at `2960d05`, merged to main 2026-08-01.** This is now a record, not a task list.
+Verifier passed all seven checklist items; full suite 252 tests green; the parser read all
+37 descriptions off the real 31 Jul PDF, including the three that wrap onto a second line.
+
+**Not done, deliberately — the one thing worth picking up next:** after an import the board
+does not show the new descriptions until the page is reloaded. `src/hooks/useJobs.js:319`
+refreshes dates only. The database is correct; the screen is stale until refresh. It touches
+a file this brief did not name, so it was left out of scope. Needs its own brief.
+
+**Status:** ✅ **APPROVED by Trevor 2026-08-01 ("yes"). Council done (step 2). Built, verified, merged.**
 **Date:** 2026-07-30, council + PDF evidence added 2026-08-01.
 **Repo state:** `main`, clean.
 

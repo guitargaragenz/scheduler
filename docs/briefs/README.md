@@ -30,7 +30,7 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-30, approved + council 2026-08-01 | **Current — start here.** Make the Jobs by Age PDF the source of truth for job description. Confirmed against the 31 Jul PDF pair: the Job List printout ends the line short with no continuation, so this is Multitrack's printout, **not** our wrap-stitching. Approved, council done, all four open questions answered in the brief. **Resumes at step 3 (builder).** One scope addition council found: JBA's Desc wraps onto a second line, so the JBA parser needs wrap-joining it currently lacks. |
+| _(nothing live — the description brief shipped 2026-08-01 at `2960d05`.)_ | | Next candidate, not yet scoped: after an import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale. |
 
 ## Parked — agreed in principle, waiting on something
 
@@ -50,6 +50,7 @@ the status line.
 
 | Brief | Date | Why it's still here |
 |-------|------|---------------------|
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-30, shipped 2026-08-01 | Jobs by Age PDF took over the job description — the Job List printout ends long descriptions mid-word, confirmed against the real 31 Jul pair (no continuation line, so not our wrap-stitching). Shipped at `2960d05`. Kept for two things: the ownership-by-lifecycle rule (Job List writes desc at job creation, JBA owns it after — same rule already proven for `firstSeen`), and the reason no backfill was needed. **Also the brief that sat uncommitted for two days and cost a session re-deriving itself.** |
 | [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, closed 2026-07-30 | The last of the dead-file sweep — `SplitDrawer.jsx`, two spent scripts, `cowork-context-summary.md`, the pre-migration backup JSON, and two merged local branches. All shipped `096986e`–`c44f2db`. |
 | [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md) | 2026-07-30 | Turned out to be Google Cloud config, not app code — stale API key, Calendar API disabled, missing API restriction, and an OAuth Client ID from the wrong project. Fixed via Cloud Console and env vars, no app code changed, confirmed working live. |
 | [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-29 | Brief H, Build 2: retire the CSV pipeline — **all three builds shipped 2026-07-29: 2a `29c1e4a`, 2b `5d262dc`, 2c `1e4186a`.** 2a closed the app's Upload CSV door; 2b dropped the app's use of the stored `days` number and deleted the orphaned `upsertJobsBatch` writer (the `days` database column itself stays — Trevor's call); 2c deleted the four Mac-side pipeline scripts and fixed the stale Firebase/CSV references in `SCHEDULER-ARCHITECTURE.md`. This satisfied the standing order — UI work is unblocked. |
