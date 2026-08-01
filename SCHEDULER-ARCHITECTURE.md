@@ -118,7 +118,7 @@ This section exists so Claude can orient instantly in a new session. Each file h
 - Syncs `scheduledSlots` and job state across devices in real time
 - `appendConflictLog()` — writes bump events to Firestore for audit trail
 
-### `src/App.jsx` — Main app shell (needs splitting — see admin/context/parking-lot.md)
+### `src/App.jsx` — Main app shell (needs splitting — parked item, now in the Parking Lot page/table)
 - Holds top-level state: `jobs`, `scheduledSlots`, `weekDays`, settings, pomodoro
 - Passes refs (`scheduledSlotsRef`, `jobsRef`) to hooks so callbacks always see current state without stale closures
 

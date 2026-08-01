@@ -10,32 +10,34 @@
 // Everything else in the 10-step Sunday ritual — not-completed reasons,
 // coming-up deadlines, Admin's LIVE additions (parts Trevor mentions verbally
 // this week, beyond what's already in the parts_to_order table), challenges,
-// lessons, a real backlog triage conversation, review of
-// admin/context/parking-lot.md, and the three end-of-meeting writes
-// (schedule -> scheduledSlots/calendarSlot, picked jobs -> focus_list via
-// saveFocusList, new parts -> parts_to_order) — happens as LIVE CHAT TURNS
-// outside of any Workflow call, using the data/reports this workflow
-// returns. None of that belongs in this file. In particular:
+// lessons, a real backlog triage conversation, the parking-lot review, and the
+// three end-of-meeting writes (schedule -> scheduledSlots/calendarSlot, picked
+// jobs -> focus_list via saveFocusList, new parts -> parts_to_order) — happens
+// as LIVE CHAT TURNS outside of any Workflow call, using the data/reports this
+// workflow returns. None of that belongs in this file. In particular:
 //   - There is no Schedule/Plan-Advisor phase here anymore. Drafting the
 //     week schedule is a live conversation with Trevor, not something to
 //     pre-bake before he's seen the reports.
-//   - There is no Triage seat here anymore. admin/context/parking-lot.md is
-//     a markdown file the live session reads directly in steps 8-9.
+//   - There is no Triage seat here anymore. Steps 8-9 are a live conversation
+//     over the parking-lot items this workflow returns.
 //
-//     CORRECTED 2026-07-31 — the rest of this note used to say the Supabase
-//     `parking_lot` table was "an unrelated product-idea feature this workflow
-//     never touches". That is wrong, and it was Trevor's own feature being
-//     described. He built the in-app Parking Lot page as HIS input channel to
-//     this meeting: queries, ideas and questions captured during the week for
-//     the next Sunday. Because of that comment the meeting has never once read
-//     it — 8 items have been sitting in the table since June 2026 unread,
-//     including one literally titled "Sunday board meeting with Claude + agents".
+// PARKING LOT — there is now exactly ONE (changed 2026-08-01, brief "One
+// Parking Lot, fed from the Daily Log"). It is the Supabase `parking_lot`
+// table, which backs the in-app Parking Lot page. That page is Trevor's own
+// input channel into this meeting: the queries, ideas and bugs he logs during
+// the week for the next Sunday.
 //
-//     So there are currently TWO parking lots serving one purpose:
-//       - admin/context/parking-lot.md — Claude's, reviewed every meeting
-//       - the `parking_lot` Supabase table — Trevor's, reviewed never
-//     The meeting needs to read both, and they probably need to become one.
-//     NOT changed here yet: that's a scoped build, not a comment fix.
+// Read it from this workflow's own data — scripts/board_meeting_export.mjs
+// returns it as `parkingLotItems` (open items only, newest first). Do NOT go
+// looking for admin/context/parking-lot.md: that file has been deleted, and its
+// items were migrated into the table by scripts/migrate_parking_lot_markdown.mjs.
+//
+// The history, because it cost real items: this comment block used to call the
+// table "an unrelated product-idea feature this workflow never touches", and
+// pointed the meeting at the markdown file instead. So the meeting never read
+// Trevor's list — 8 items sat there unread from June 2026, one of them titled
+// "Sunday board meeting with Claude + agents". If a future edit ever splits the
+// parking lot in two again, that is the failure mode it recreates.
 //
 // Job age ("days stuck"): scripts/board_meeting_export.mjs does not return
 // a `days` field — there is no clean Supabase equivalent for CSV intake

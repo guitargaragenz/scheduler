@@ -631,8 +631,65 @@ export async function clearConflictLog() {
   }
 }
 
-// ============ PARKING LOT (other features, if needed) ============
+// ============ PARKING LOT (Trevor's own input channel into the Sunday meeting) ============
+//
+// Not a product-idea sideshow — this is the list he adds to during the week and
+// the board meeting reads on Sunday. The old section header called it "other
+// features, if needed", which is the same wrong framing that kept the meeting
+// from reading it for two months. Corrected 2026-08-01.
+//
+// Row shape, verified against a live row (admin/context/backups/parking_lot-2026-07-31.json)
+// on 2026-08-01, NOT assumed from the brief:
+//   { id: TEXT, content: TEXT, created_at, updated_at }
+// `content` is a JSON *string* (the column is TEXT) of the item the page works
+// with: { id, date, title, details, status }. loadParkingLot() therefore has to
+// parse it — handing raw rows to the page gives every card an undefined title.
 
+// Turns one stored row into the item shape ParkingLotPage renders. Never throws:
+// a row whose content isn't parseable JSON degrades to a title-only item rather
+// than taking the whole list down with it.
+function parseParkingLotRow(row) {
+  const raw = row?.content;
+  if (raw && typeof raw === 'object') {
+    return { date: null, title: '', details: '', status: 'open', ...raw, id: raw.id || row.id };
+  }
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return { date: null, title: '', details: '', status: 'open', ...parsed, id: parsed.id || row.id };
+      }
+    } catch {
+      // not JSON — fall through and keep the text as the title
+    }
+  }
+  return {
+    id: row?.id,
+    date: null,
+    title: typeof raw === 'string' ? raw : '',
+    details: '',
+    status: 'open',
+  };
+}
+
+// The canonical serialisation of an item into the `content` column. Also the
+// comparison key the save-diff uses to decide "has this item actually changed",
+// so it must be stable: same fields, same order, every time.
+function serializeParkingLotItem(item) {
+  return JSON.stringify({
+    id: item.id,
+    date: item.date ?? null,
+    title: item.title ?? '',
+    details: item.details ?? '',
+    status: item.status ?? 'open',
+  });
+}
+
+// Returns null — NOT [] — when the read fails, so callers can tell "the read
+// broke" apart from "the table is empty". The page used to seed the hardcoded
+// June list whenever it saw [], which meant one network blip on load silently
+// reverted the Parking Lot to its June 2026 state. Same contract as
+// loadDailyLogs(), for the same reason.
 export async function loadParkingLot() {
   try {
     const { data, error } = await getClient()
@@ -640,40 +697,69 @@ export async function loadParkingLot() {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data || [];
+    return (data || []).map(parseParkingLotRow);
   } catch (e) {
     console.error('Supabase load parking lot error:', e);
-    return [];
+    return null;
   }
 }
 
-export async function saveParkingLot(items) {
+// Per-item diff against `baseline` — the list the caller last saw the table
+// holding. Never a whole-table rewrite.
+//
+// This replaces a clear-and-reinsert (DELETE the entire table, then insert the
+// array it was handed) — the identical pattern that wiped completed_jobs. Any
+// save fired while the in-memory list was short or empty took the real rows
+// with it.
+//
+// Three rules:
+//   - upsert an item when its id is NEW, or when its content has CHANGED.
+//     Upserting only new ids (the deferred_items pattern) would silently drop
+//     every edit, and editing a title/details/status is most of what this page
+//     does.
+//   - delete only ids that were in the baseline and are not in `items`.
+//     Nothing the caller never knew about is ever touched — an empty baseline
+//     deletes nothing, whatever the table holds.
+//   - never write created_at on an upsert; the column defaults on insert and
+//     resending it would reset the age of every edited row.
+export async function saveParkingLot(items, baseline = []) {
   try {
-    // Clear and re-insert (simple approach; could be optimized later)
-    await clearParkingLot();
-    const records = items.map((item, idx) => ({
-      id: item.id || `pl-${Date.now()}-${idx}`,
-      content: item.content || item,
-      created_at: new Date().toISOString(),
-    }));
-    const { error } = await getClient()
-      .from('parking_lot')
-      .insert(records);
-    if (error) throw error;
+    const current = items || [];
+    const baselineContent = new Map(
+      (baseline || []).map(item => [item.id, serializeParkingLotItem(item)])
+    );
+    const currentIds = new Set(current.map(item => item.id));
+
+    const removeIds = Array.from(baselineContent.keys()).filter(id => !currentIds.has(id));
+    const upserts = current.filter(item => {
+      const was = baselineContent.get(item.id);
+      return was === undefined || was !== serializeParkingLotItem(item);
+    });
+
+    if (removeIds.length > 0) {
+      const { error } = await getClient()
+        .from('parking_lot')
+        .delete()
+        .in('id', removeIds);
+      if (error) throw error;
+    }
+
+    if (upserts.length > 0) {
+      const records = upserts.map(item => ({
+        id: item.id,
+        content: serializeParkingLotItem(item),
+        updated_at: new Date().toISOString(),
+      }));
+      const { error } = await getClient()
+        .from('parking_lot')
+        .upsert(records, { onConflict: 'id' });
+      if (error) throw error;
+    }
+
+    return { ok: true, upsertedIds: upserts.map(i => i.id), removedIds: removeIds };
   } catch (e) {
     console.error('Supabase save parking lot error:', e);
-  }
-}
-
-async function clearParkingLot() {
-  try {
-    const { error } = await getClient()
-      .from('parking_lot')
-      .delete()
-      .neq('id', '');
-    if (error) throw error;
-  } catch (e) {
-    console.error('Supabase clear parking lot error:', e);
+    return { ok: false, error: e };
   }
 }
 

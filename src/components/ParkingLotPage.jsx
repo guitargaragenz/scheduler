@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { loadParkingLot, saveParkingLot, subscribeToParkingLot } from '../utils/supabase.js';
 import { isSupabaseConfigured } from '../utils/supabase.js';
 
@@ -6,16 +6,9 @@ const SESSIONS = [
   '2026-06-13', '2026-06-15', '2026-06-17',
 ];
 
-const INITIAL_ITEMS = [
-  { id: 'pk-001', date: '2026-06-13', title: 'Online session journal', details: 'Build a journal to log sessions online — web-based editable version of parking-lot.md. Readable and editable from any device (iPhone too). Can add ideas, add detail to existing items. More details = quicker comms with Claude, less stuck in brain.', status: 'open' },
-  { id: 'pk-002', date: '2026-06-13', title: 'Sunday board meeting with Claude + agents', details: 'Weekly planning session with agent "board members" to review projects and plan the week. LMM Council approach — multiple AI perspectives on decisions.', status: 'open' },
-  { id: 'pk-003', date: '2026-06-13', title: 'Explore Claude Dispatch (beta)', details: 'Investigate using Dispatch in sessions.', status: 'open' },
-  { id: 'pk-004', date: '2026-06-15', title: 'Cascade reschedule toggle (Settings)', details: 'When a job gets bumped by a GCal appointment and lands in a slot occupied by another job, cascade the bump: each displaced job pushes the next one down the queue until everything fits or we run out of week. Make it opt-in via a toggle in Settings (default off) so the schedule doesn\'t silently reshuffle itself.', status: 'open' },
-  { id: 'pk-005', date: '2026-06-17', title: 'Desktop JobDrawer — schedule section not working', details: 'Added day picker + time + Place on Calendar to desktop drawer, pushed but didn\'t work. Needs investigation.', status: 'open' },
-  { id: 'pk-006', date: '2026-06-17', title: 'Pomodoro timer alarm sound not working', details: 'Alarm not firing at end of session.', status: 'open' },
-  { id: 'pk-007', date: '2026-06-17', title: 'Mobile — remove job from calendar', details: 'Added Remove from Calendar button to MobileJobSheet for scheduled jobs (can\'t DnD back to sidebar on mobile). Pushed but not verified working on device.', status: 'open' },
-  { id: 'pk-008', date: '2026-06-17', title: 'Printable schedule / quick wins view', details: 'Live view of current week schedule + quick wins list. Print via Cmd+P → PDF. Could be part of this journal page.', status: 'open' },
-];
+// There is deliberately no hardcoded starter list here any more. It used to hold
+// a June 2026 snapshot of eight items, and any path that fell back to it wrote
+// that stale snapshot over Trevor's real list. The table is the only source.
 
 function genId() {
   return 'pk-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -41,34 +34,64 @@ export default function ParkingLotPage({ onBack }) {
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Last list we know the table holds — the baseline saveParkingLot() diffs
+  // against. Only ever advanced by a confirmed load or a confirmed save, so a
+  // failed write stays queued in the next diff instead of being forgotten.
+  const persistedRef = useRef([]);
+  // How many of our own saves are in flight. Non-zero means ignore realtime.
+  const pendingSavesRef = useRef(0);
 
-  // Load from Firebase or seed with initial items
+  // Load from Supabase. A failed read must touch nothing and write nothing.
   useEffect(() => {
+    // No Supabase keys (rare — a local build without .env). Show an empty list
+    // rather than a fabricated one; nothing is saved in this mode anyway.
     if (!isSupabaseConfigured()) {
-      setItems(INITIAL_ITEMS);
+      setItems([]);
       setLoaded(true);
       return;
     }
+
+    // null = the read failed. Leave whatever is on screen alone and — above all
+    // — do not write. The old code treated a failed read as "empty table, first
+    // run" and saved the hardcoded June seed straight over the real 8 rows.
+    function applyServer(data) {
+      if (data === null) return;
+      setItems(data);
+      persistedRef.current = data;
+      setLoaded(true);
+    }
+
     loadParkingLot().then(data => {
-      if (data.length === 0) {
-        // First load — seed with existing parking lot items
-        saveParkingLot(INITIAL_ITEMS);
-        setItems(INITIAL_ITEMS);
-      } else {
-        setItems(data);
-      }
+      applyServer(data);
+      // Even on a failed read the page must stop saying "Loading…", but nothing
+      // is written and the seed is never applied.
       setLoaded(true);
     });
-    const unsub = subscribeToParkingLot(data => setItems(data));
+
+    // Realtime echoes reload the whole list. While one of our own saves is still
+    // in flight, taking the server copy would overwrite the words Trevor is
+    // typing — so keep local until every pending save has landed. Same idea as
+    // useDailyLog's touchedLogKeysRef merge.
+    const unsub = subscribeToParkingLot(data => {
+      if (pendingSavesRef.current > 0) return;
+      applyServer(data);
+    });
     return () => unsub();
   }, []);
 
   const persist = useCallback((updated) => {
     setItems(updated);
-    if (isSupabaseConfigured()) {
-      setSaving(true);
-      saveParkingLot(updated).then(() => setSaving(false));
-    }
+    if (!isSupabaseConfigured()) return;
+    setSaving(true);
+    pendingSavesRef.current += 1;
+    const baseline = persistedRef.current;
+    saveParkingLot(updated, baseline).then(result => {
+      // Only move the baseline forward on a confirmed write. If the save failed,
+      // the next one re-diffs against the same baseline and re-sends the change.
+      if (result && result.ok) persistedRef.current = updated;
+      pendingSavesRef.current -= 1;
+      if (pendingSavesRef.current === 0) setSaving(false);
+    });
   }, []);
 
   function toggleStatus(id) {

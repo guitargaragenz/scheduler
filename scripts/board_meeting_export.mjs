@@ -25,13 +25,19 @@
 // The workflow/Reports layer must not report stuck-30/60-day-style ages
 // until a real intake-date column exists to back them.
 //
-// Also dropped vs. the old Firestore shape: `scheduledSlots` and
-// `parkingLotItems`. Nothing in the restructured workflow
-// (.claude/workflows/sunday-board-meeting.js) reads scheduledSlots, and
-// parking-lot review moves entirely to the live chat session reading
-// admin/context/parking-lot.md — a markdown file, NOT the Supabase
-// `parking_lot` table (which backs the in-app Parking Lot page, an
-// unrelated product-idea feature). This script does not touch that table.
+// Also dropped vs. the old Firestore shape: `scheduledSlots`. Nothing in the
+// restructured workflow (.claude/workflows/sunday-board-meeting.js) reads it.
+//
+// `parkingLotItems` is BACK, and reads the Supabase `parking_lot` table —
+// changed 2026-08-01, brief "One Parking Lot, fed from the Daily Log". The note
+// here used to say parking-lot review was the live session reading
+// admin/context/parking-lot.md, "NOT the Supabase parking_lot table (which
+// backs the in-app Parking Lot page, an unrelated product-idea feature)". That
+// was wrong on both counts: the table is Trevor's own input channel into this
+// meeting, and because of that note the meeting never read it — eight of his
+// items sat unread from June 2026. There is now ONE parking lot, the table; the
+// markdown file is deleted. If this script stops exporting it, the meeting has
+// no parking lot at all.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -73,11 +79,12 @@ async function loadAll(table, order) {
   return data || [];
 }
 
-const [jobRows, completedRows, adHocRows, partsRows] = await Promise.all([
+const [jobRows, completedRows, adHocRows, partsRows, parkingLotRows] = await Promise.all([
   loadAll('jobs', 'created_at'),
   loadAll('completed_jobs', 'created_at'),
   loadAll('ad_hoc_tasks', 'created_at'),
   loadAll('parts_to_order', 'added_at'),
+  loadAll('parking_lot', 'created_at'),
 ]);
 
 // Top-level jobs only — split children (parent_id set) are bench-card
@@ -146,11 +153,33 @@ const partsToOrder = partsRows
     addedAt: row.added_at,
   }));
 
+// Trevor's parking lot — the ideas, queries and bugs he logged during the week
+// for this meeting. `content` is a TEXT column holding a JSON string of
+// { id, date, title, details, status }; same parse as src/utils/supabase.js's
+// loadParkingLot(). A row whose content won't parse is kept as a title-only
+// item rather than silently dropped — losing one of his items without a trace
+// is the exact failure this brief existed to stop.
+// Only open items: done ones are closed business.
+const parkingLotItems = parkingLotRows
+  .map(row => {
+    try {
+      const parsed = JSON.parse(row.content);
+      if (parsed && typeof parsed === 'object') {
+        return { date: null, title: '', details: '', status: 'open', ...parsed, id: parsed.id || row.id };
+      }
+    } catch {
+      // fall through
+    }
+    return { id: row.id, date: null, title: String(row.content ?? ''), details: '', status: 'open' };
+  })
+  .filter(item => item.status !== 'done');
+
 process.stdout.write(JSON.stringify({
   jobs,
   completedJobs,
   adHocTasks,
   partsToOrder,
+  parkingLotItems,
   exportedAt: new Date().toISOString(),
 }, null, 2));
 
