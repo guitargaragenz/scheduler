@@ -30,7 +30,9 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Current — start here.** Approved by Trevor; Parts to Order round 2 shipped 2026-08-01, so this is next. Fix the `saveParkingLot()` wipe-before-rewrite (the `completed_jobs` bug class), merge the two Parking Lots into one with the Supabase table authoritative and `admin/context/parking-lot.md` retired, then let a Daily Log bullet tagged `#PL` file itself into it. Touches `src/utils/supabase.js`, so full protocol. Workshop Projects / `#PRJ` is explicitly **not** in it. |
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01 | **Current — start here.** Parts to Order round 2.5: an optional supplier name on each part, plus a switch to view the list **by supplier** instead of by job, so an ordering session shows everything from one place in one lump. One nullable column. **Awaiting Trevor's approval — starts at step 1.** |
+
+| [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Approved by Trevor, next after the supplier build.** Trevor asked for supplier "before we do this", so it queues behind. Fix the `saveParkingLot()` wipe-before-rewrite (the `completed_jobs` bug class), merge the two Parking Lots into one with the Supabase table authoritative and `admin/context/parking-lot.md` retired, then let a Daily Log bullet tagged `#PL` file itself into it. Touches `src/utils/supabase.js`, so full protocol. Workshop Projects / `#PRJ` is explicitly **not** in it. |
 
 Also open, not scoped: after a PDF import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale.
 
