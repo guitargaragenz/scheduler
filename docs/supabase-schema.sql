@@ -168,6 +168,14 @@ CREATE TABLE IF NOT EXISTS parts_to_order (
 
 CREATE INDEX IF NOT EXISTS idx_parts_to_order_resolved ON parts_to_order(resolved);
 
+-- 2026-08-01: Parts to Order round 2 — an optional manufacturer part number on
+-- each row. Nullable on purpose and never required: most parts are typed at the
+-- bench with no number to hand, and the page must never refuse a part because
+-- the number is missing. When there IS one it is the join to PartsBox's
+-- `part/mpn`, which is what turns the stock check from a maybe into a
+-- certainty. Additive, safe to run on existing rows.
+ALTER TABLE parts_to_order ADD COLUMN IF NOT EXISTS part_number TEXT;
+
 -- 2026-07-27: Job blocking — Brief E, Task 1. Job age from the CSV's `Days`
 -- column. Until now `days` was parsed into memory by parseCSV() and never
 -- persisted anywhere, so every page reload silently reset every job to an

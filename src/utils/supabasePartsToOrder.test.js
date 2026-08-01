@@ -67,9 +67,24 @@ describe('loadPartsToOrder', () => {
       description: '500k pot',
       category: 'part',
       neededForJob: '1705',
+      // Row predates the part_number column — reads back as null, not undefined.
+      partNumber: null,
       addedAt: '2026-07-31T04:00:00Z',
       resolved: false,
     });
+  });
+
+  it('reads the part number when the row has one', async () => {
+    nextResult = {
+      data: [{
+        id: 'pto-1', description: '500k pot', category: 'part',
+        needed_for_job: '1705', part_number: 'CTS450',
+        added_at: '2026-07-31T04:00:00Z', resolved: false,
+      }],
+      error: null,
+    };
+    const out = await loadPartsToOrder();
+    expect(out['pto-1'].partNumber).toBe('CTS450');
   });
 
   it('asks the database for newest first', async () => {
