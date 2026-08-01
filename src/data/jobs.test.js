@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, blockedReason, benchColors, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, inferBench, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -174,5 +174,34 @@ describe('benchColors', () => {
 
   it('returns the no-bench palette for an unrecognised bench string', () => {
     expect(benchColors('NotARealBench')).toBe(NO_BENCH_COLORS);
+  });
+});
+
+// Added with the shared-settings build, 2026-08-01. Bench keywords now arrive
+// over the network instead of from this browser, so a partial or odd-shaped
+// keyword object is reachable in more ways than "the tech deleted every chip".
+describe('inferBench with broken keyword settings', () => {
+  const setupJob = ['full setup and restring', 'Booked In', '', '', 'Fender'];
+
+  it('falls back to a bench\'s defaults when its list is emptied', () => {
+    // The bug being guarded: [].join('|') is new RegExp(''), which matches
+    // EVERY job, so an emptied Fretwork list would drag the whole board onto
+    // the Fretwork bench.
+    expect(inferBench(...setupJob, { Fretwork: [] })).toBe('Setup');
+  });
+
+  it('does not send a plain setup job to a bench whose list was emptied', () => {
+    expect(inferBench(...setupJob, { Electronics: [], Luthier: [] })).toBe('Setup');
+  });
+
+  it('still honours a real custom keyword list', () => {
+    expect(inferBench('flurb job', 'Booked In', '', '', 'Fender', { Fretwork: ['flurb'] }))
+      .toBe('Fretwork');
+  });
+
+  it('survives no keyword object at all', () => {
+    expect(inferBench(...setupJob, undefined)).toBe('Setup');
+    expect(inferBench(...setupJob, {})).toBe('Setup');
+    expect(inferBench(...setupJob, null)).toBe('Setup');
   });
 });

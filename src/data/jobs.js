@@ -27,7 +27,18 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   const d = (desc + ' ' + model).toLowerCase();
   const m = mfr.toLowerCase();
 
-  const kw = { ...DEFAULT_BENCH_KEYWORDS, ...keywords };
+  // A bench with an EMPTY keyword list falls back to its defaults, and this is
+  // a safety rule, not tidiness. The old `{ ...DEFAULT, ...keywords }` merged at
+  // the bench level, so `{ Fretwork: [] }` survived the merge intact and
+  // `[].join('|')` produced `new RegExp('')` — which matches every string, so
+  // every job on the board went to that one bench. Reachable before this in
+  // Settings by deleting every chip; reachable in more ways now that keywords
+  // arrive over the network (partial load, failed fetch, another device's
+  // write). Anything that is not a non-empty array means "no entry".
+  const kw = { ...DEFAULT_BENCH_KEYWORDS };
+  for (const [bench, list] of Object.entries(keywords || {})) {
+    if (Array.isArray(list) && list.length > 0) kw[bench] = list;
+  }
   const rx = bench => new RegExp(kw[bench].join('|'));
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
