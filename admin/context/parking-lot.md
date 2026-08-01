@@ -1,5 +1,23 @@
 # Parking Lot
 
+> **⚠️ THIS IS NOT THE ONLY PARKING LOT — read the other one too (found 2026-07-31).**
+> The in-app Parking Lot page (`src/components/ParkingLotPage.jsx`, Supabase table
+> `parking_lot`) is **Trevor's own input channel into the Sunday meeting** — queries, ideas
+> and questions he logs during the week for the next meeting. He built it for that. The
+> board-meeting workflow carried a comment calling it "an unrelated product-idea feature",
+> so **the meeting has never read it**: 8 items have sat there since June 2026, one of them
+> titled "Sunday board meeting with Claude + agents". Read that table at every meeting until
+> the two are merged. Corrected in `.claude/workflows/sunday-board-meeting.js`.
+>
+> - [ ] **Merge the two parking lots, or make the meeting read both.** One purpose, two
+>   stores, and only one of them gets looked at. Trevor's is the one that matters — it's
+>   the half of the meeting agenda he can't otherwise get into the room. Needs scoping.
+> - [ ] **`saveParkingLot()` clears the table before re-inserting** (`src/utils/supabase.js:653`
+>   → `clearParkingLot()` at :668). **This is the identical pattern to the mark-done bug
+>   below that wiped the completed-jobs table.** If the page ever saves while its in-memory
+>   list is empty — after a hard refresh, say — all 8 of Trevor's items go. Not observed
+>   happening, but the same loaded gun. Back the table up before touching this page.
+
 Currently-open items only — grouped by category, not by session date. Completed/dropped history lives in [`session-log.md`](session-log.md). Reviewed every Sunday.
 
 > **Cleared out 2026-07-28.** Trevor reviewed all 46 open items and closed 40 of them in one

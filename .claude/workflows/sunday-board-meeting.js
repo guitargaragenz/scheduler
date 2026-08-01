@@ -20,10 +20,22 @@
 //     week schedule is a live conversation with Trevor, not something to
 //     pre-bake before he's seen the reports.
 //   - There is no Triage seat here anymore. admin/context/parking-lot.md is
-//     a markdown file the live session reads directly in steps 8-9 — it is
-//     NOT the same thing as the Supabase `parking_lot` table (which backs
-//     the in-app Parking Lot page, an unrelated product-idea feature this
-//     workflow never touches).
+//     a markdown file the live session reads directly in steps 8-9.
+//
+//     CORRECTED 2026-07-31 — the rest of this note used to say the Supabase
+//     `parking_lot` table was "an unrelated product-idea feature this workflow
+//     never touches". That is wrong, and it was Trevor's own feature being
+//     described. He built the in-app Parking Lot page as HIS input channel to
+//     this meeting: queries, ideas and questions captured during the week for
+//     the next Sunday. Because of that comment the meeting has never once read
+//     it — 8 items have been sitting in the table since June 2026 unread,
+//     including one literally titled "Sunday board meeting with Claude + agents".
+//
+//     So there are currently TWO parking lots serving one purpose:
+//       - admin/context/parking-lot.md — Claude's, reviewed every meeting
+//       - the `parking_lot` Supabase table — Trevor's, reviewed never
+//     The meeting needs to read both, and they probably need to become one.
+//     NOT changed here yet: that's a scoped build, not a comment fix.
 //
 // Job age ("days stuck"): scripts/board_meeting_export.mjs does not return
 // a `days` field — there is no clean Supabase equivalent for CSV intake
