@@ -85,6 +85,9 @@ export default function App() {
   // showParts is the PartsBox inventory DRAWER (PartsDrawer.jsx) — a different
   // system entirely. showPartsToOrder below is the parts-to-order chase list page.
   const [showParts, setShowParts] = useState(false);
+  // What the parts drawer should open already searched for. Set by the Parts to
+  // Order page's "check stock" control; '' every other way the drawer opens.
+  const [partsDrawerSearch, setPartsDrawerSearch] = useState('');
   const [showPartsToOrder, setShowPartsToOrder] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -621,7 +624,12 @@ export default function App() {
           ) : showProjects ? (
             <ProjectsPage jobs={jobs} />
           ) : showPartsToOrder ? (
-            <PartsToOrderPage />
+            <PartsToOrderPage
+              onCheckStock={term => {
+                setPartsDrawerSearch(term || '');
+                setShowParts(true);
+              }}
+            />
           ) : showWeekView ? (
             <>
               <CalendarGrid
@@ -843,7 +851,10 @@ export default function App() {
       )}
 
       {showParts && (
-        <PartsDrawer onClose={() => setShowParts(false)} />
+        <PartsDrawer
+          initialSearch={partsDrawerSearch}
+          onClose={() => { setShowParts(false); setPartsDrawerSearch(''); }}
+        />
       )}
 
       {showHelp && (
