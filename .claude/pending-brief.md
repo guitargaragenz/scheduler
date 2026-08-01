@@ -2,7 +2,7 @@ doc_status: live
 
 # Pending Brief — a Parts to Order page
 
-**Status:** awaiting Trevor's "yp" (step 1).
+**Status:** ✅ APPROVED by Trevor 2026-08-01 ("yp"). Council done. At step 3, builder.
 **Date:** 2026-08-01.
 **Repo state:** `main` @ `2960d05`, clean.
 **Asked for by Trevor 2026-08-01:** *"parts to order page next — we had meeting yesterday
@@ -73,16 +73,54 @@ builder's judgement call, because those neighbours have other callers.
   it is his personal pedalboard build, misfiled. Do not import it, do not read it as shop
   stock, do not use it as a schema reference.
 
-## Open — for Council
+## Council (step 2, run 2026-08-01) — both reviewers say build. Four answers, one correction.
 
-1. Where does the page live — its own route, or a panel on an existing page? Trevor abandons
-   dense screens, so this wants to be one thing at a time, not a grid bolted into something.
-2. How far does the error-swallowing fix reach (see above)? The neighbouring functions have
-   other callers.
-3. Does the list need realtime (`subscribeToPartsToOrder` exists) or is load-on-open enough
-   for a list one person edits?
-4. Resolved parts — hidden, or shown collapsed as a record? The `resolved` column keeps them
-   either way.
+**Correction to this brief, from both reviewers independently:** the claim above that the
+neighbouring functions "have other callers" is **wrong**. Grepped across `src`, `.claude` and
+`scripts`: all five `parts_to_order` functions have **zero callers anywhere** outside
+`supabase.js` itself. The board meeting writes them from a live chat turn, not from committed
+code (`.claude/workflows/sunday-board-meeting.js:11-16`). So Q2 is not a risk question at all
+— nothing can break. It is just a consistency choice.
+
+**1. Where the page lives — its own page, via the existing body-swap seam.**
+`App.jsx:584-674` already does this four times over: a `showX` boolean, a header button, and a
+ternary that swaps the whole content area for one page component (`ProjectsPage` at
+`App.jsx:602-603` is the model to copy). Add `showPartsToOrder` the same way.
+**Do not reuse the existing "Parts" button** at `App.jsx:547-557` — that opens `PartsDrawer`,
+the unrelated PartsBox inventory system. Sharing that label would confuse the two on sight.
+
+**2. The error fix — all four of the `parts_to_order` read/write functions**
+(`loadPartsToOrder`, `addPartsToOrderItems`, `removePartsToOrderItem`, `markPartResolved`).
+Leave `subscribeToPartsToOrder`'s try/catch alone — it governs subscription setup, not a write.
+**Do not touch the `pending_revenue_review` functions** (`supabase.js:882-946`) — they share the
+pattern but have a real caller (`usePendingRevenueReview.js`, wired at `App.jsx:136`) and are
+out of scope.
+A failed write must show as **persistent inline text on the page, not a toast** — a tech
+interrupted mid-shop needs to still see it when they come back.
+
+**3. Realtime — no.** Load-on-open. One person edits this list; wiring the subscription buys
+nothing and adds cleanup to verify. `subscribeToPartsToOrder` stays unused.
+
+**4. Resolved parts — shown collapsed, not hidden.** `markPartResolved` deliberately updates
+in place rather than deleting, and the comment at `supabase.js:1030-1032` says why: the row is
+worth keeping for the next meeting's "what got sorted this week" glance. A dimmed, collapsed
+section under the active list.
+
+**On `id`:** already solved in the code — `addPartsToOrderItems` at `supabase.js:1002` falls
+back to `pto-${Date.now()}-${Math.random()}`. That does not match the two hand-made rows
+(`pto-2026-07-31-1705`), and it does not need to: the column is an opaque TEXT key. **Leave the
+existing fallback alone; do not invent a format to match two manually-typed rows.**
+
+**Collision between the page and the Sunday meeting: not a real risk.** Different id shapes,
+and it is an `INSERT` not an `UPSERT`, so a true collision fails the write — which is now
+visible rather than swallowed.
+
+## Found on the way, NOT part of this build
+
+`docs/supabase-schema.sql` has **no RLS policy for `parts_to_order`** — the policy Trevor added
+on 31 Jul lives only in the Supabase dashboard, invisible to git. Anyone rebuilding the schema
+from that file reproduces the exact silent-write-rejection bug this brief exists to work around.
+Recorded here while it is fresh. **Needs its own brief; do not scope it into this build.**
 
 ## Before this starts
 
