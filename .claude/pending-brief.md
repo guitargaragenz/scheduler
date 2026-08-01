@@ -58,7 +58,19 @@ the page must never refuse a part because a number is missing.
 - **On the list.** When the page opens, load the inventory once and flag any part that
   looks like something already in stock — "PartsBox: 4 in stock" on the row.
 - **On the add form.** As a part number or description is typed, show any match *before*
-  it is saved: "you may already have this."
+  it is saved: "you may already have this — **check stock**."
+
+**The flag is a door, not just a notice** (Trevor, 2026-08-01: *"or check stock"*). Both
+the row flag and the add-form flag carry a **"check stock"** control that opens the
+existing PartsBox drawer with that part's text already searched, so the actual shelf
+quantity and location are one click away instead of a hunt. Seeing "you might already
+have this" and then having to go find it by hand is the version that gets ignored.
+
+**This needs one small change to `PartsDrawer.jsx`** — it currently takes only `onClose`
+(`PartsDrawer.jsx:10`) and holds its own `search` state (`:15`). It needs an optional
+opening search term. **That is the single permitted edit to the drawer**: an optional prop
+with an unchanged default. No other change to the drawer, its layout, or its stock
+add/remove behaviour.
 
 **Matching rule, in priority order:** exact `part/mpn` match on the part number →
 otherwise a **keyword search** of what was typed against `part/name`, `part/description`,
@@ -85,8 +97,9 @@ same red inline error that round 1 reserved for failed writes.
   relationship.
 - **No writes to PartsBox.** Read-only. `addStock`/`removeStock` (`partsbox.js:41-56`)
   stay untouched. Ticking a part off does **not** add it to inventory.
-- **`PartsDrawer.jsx` stays as it is.** This build imports from `utils/partsbox.js`; it
-  does not modify the drawer or the proxy.
+- **`PartsDrawer.jsx` gets exactly one change** — an optional opening search term, per the
+  "check stock" control above. Nothing else in the drawer moves, and `/api/partsbox` and
+  the proxy are untouched.
 - **Job numbers stay free text.** Still not validated against `jobs`. A group heading for
   a job number that no longer exists is correct behaviour, not a bug.
 - **Not** `admin/context/GGNZ Parts Shopping List.csv` — Trevor's personal pedalboard
