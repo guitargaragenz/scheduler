@@ -30,7 +30,7 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01 | **Current — start here.** Parts to Order round 2: group a job's parts together, add a part-number field, and check the list against PartsBox stock so nothing already on the shelf gets ordered. Adds one nullable column and reads the PartsBox API read-only. Awaiting Trevor's "yp", then Council. |
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01 | **Current — start here.** Parts to Order round 2: group a job's parts together, add a part-number field, and check the list against PartsBox stock so nothing already on the shelf gets ordered. Adds one nullable column and reads the PartsBox API read-only. **Approved by Trevor 2026-08-01 — starts at step 2, Council.** |
 
 | [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Approved by Trevor, next after Parts to Order round 2.** Fix the `saveParkingLot()` wipe-before-rewrite (the `completed_jobs` bug class), merge the two Parking Lots into one with the Supabase table authoritative and `admin/context/parking-lot.md` retired, then let a Daily Log bullet tagged `#PL` file itself into it. Touches `src/utils/supabase.js`, so full protocol. Workshop Projects / `#PRJ` is explicitly **not** in it. |
 

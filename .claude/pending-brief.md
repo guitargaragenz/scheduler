@@ -2,7 +2,28 @@ doc_status: live
 
 # Pending Brief — Parts to Order, round 2: grouping, part numbers, stock check
 
-**Status:** ⏳ Awaiting Trevor's "yp" (step 1). Then Council.
+**Status:** ✅ APPROVED by Trevor 2026-08-01 ("yp but for new session ok"). **Start at
+step 2, Council** — the whole of Council question 3 is already answered below, so give
+Council questions 1 and 2 plus the leftover on question 3 (how forgiving the word match
+should be). Then builder, independent verifier, browser test, merge.
+
+**Two things already established this session — do not re-derive them:**
+- **`PartsDrawer.jsx:52-82` already implements the keyword search this build needs** —
+  multi-word AND matching with `-word` exclusion, across `part/name`, `part/description`,
+  `part/mpn`, `part/tags` and the storage-location name. **Reuse it; do not write a second
+  matcher.** Lifting it into `src/data/partsToOrder.js` so both the drawer and the page
+  share one implementation is the sensible move, and it is what the round-1 verifier
+  checked for on the wrap-gap rule.
+- **PartsBox has no search endpoint.** Their own app pulls `part/all` and filters in the
+  browser. Client-side filtering is not a workaround here; it is how PartsBox works.
+
+**Correction, so it does not get repeated:** during scoping I told Trevor the PartsBox API
+cannot create parts. **It can** — `part/create` exists and requires only `part/type` and
+`part/name` ([API docs](https://partsbox.com/api.html)). Our `utils/partsbox.js` simply
+does not expose it. This does not change round 2's scope (still read-only), but it does
+mean the round-3 write-back is smaller than it looked: the hard part is not creating the
+part, it is that `stock/add` needs a storage location, so something must say which drawer
+the part went into.
 **Date:** 2026-08-01.
 **Repo state:** `main` @ `fb0b476`, clean. Round 1 shipped the same day at `9a925ef`
 (record: [`docs/briefs/parts-to-order-page-round-1.md`](../docs/briefs/parts-to-order-page-round-1.md)).
@@ -131,6 +152,14 @@ same red inline error that round 1 reserved for failed writes.
 added 31 Jul lives only in the Supabase dashboard. **This build adds a column to that
 table, so the migration and the missing policy want running in the same sitting** — but
 the policy itself still needs its own brief, not a quiet fold-in here.
+
+## Round 3, if it happens — not approved, not scoped
+
+Push arrivals back into PartsBox: tick "Got it", stock goes up. Trevor asked about this
+2026-08-01 and the answer was **not in this build** — write to a live inventory off a
+fuzzy keyword match and stock counts go wrong. Ship read-only, use it for a couple of
+weeks, and let real use say whether the matching is trustworthy enough. Recorded here so
+round 3 starts from what is already known, not from scratch.
 
 ## Before this starts
 
