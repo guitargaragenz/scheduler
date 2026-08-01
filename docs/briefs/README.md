@@ -30,7 +30,7 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Current — start here.** Approved by Trevor; the supplier build it queued behind shipped 2026-08-01 at `d78b02e`. Fix the `saveParkingLot()` wipe-before-rewrite (the `completed_jobs` bug class), merge the two Parking Lots into one with the Supabase table authoritative and `admin/context/parking-lot.md` retired, then let a Daily Log bullet tagged `#PL` file itself into it. Touches `src/utils/supabase.js`, so full protocol. Workshop Projects / `#PRJ` is explicitly **not** in it. |
+| [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Current — start here, but read the banner first.** **Merge A shipped 2026-08-01 at `05b11cc`** — the `saveParkingLot()` wipe is fixed, a failed read no longer writes the June seed over real data, the two Parking Lots are one with the Supabase table authoritative, `admin/context/parking-lot.md` is deleted, and `scripts/board_meeting_export.mjs` reads the table. **Only Merge B is left: item 3, the `#PL` tag** — type a Daily Log bullet containing `#PL` and it files itself into the Parking Lot while staying in the day. Council has already reviewed it (amendment F is binding: fire-and-forget, outside the Daily Log save path), so it resumes at step 3. Held deliberately until Merge A has had a real day of use. Workshop Projects / `#PRJ` is explicitly **not** in it. |
 
 Also open, not scoped: after a PDF import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale.
 

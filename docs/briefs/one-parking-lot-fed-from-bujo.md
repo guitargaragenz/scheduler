@@ -1,5 +1,19 @@
 doc_status: live
 
+> **Merge A shipped 2026-08-01 at `05b11cc`.** Items 1 and 2 are done — the wipe is fixed,
+> the two lists are one, `admin/context/parking-lot.md` is deleted, and the Sunday export
+> reads the table. Full protocol run: two council reviewers, `ggnz-builder` on
+> `staging/one-parking-lot`, `ggnz-verifier` (344 tests, run independently), browser test on
+> live data (add / edit / delete each touched only their own row, all 8 original items intact).
+>
+> **This brief stays `live` for Merge B only — item 3, the `#PL` tag.** Nothing else in it is
+> work. Merge B is deliberately held until Merge A has had a real day of use, so a bad `#PL`
+> can be reverted without re-opening the wipe fix. It resumes at protocol step 3 (builder);
+> council already reviewed it — see amendment F, which is binding: the parking-lot write must
+> be fire-and-forget, outside `updateState`/`performSave`/`readyRef`.
+>
+> Trevor's call 2026-08-01: the two migrated items describing this build stay ticked off.
+
 # Brief — One Parking Lot, fed from the Daily Log
 
 **Status:** ✅ APPROVED by Trevor 2026-08-01 ("yes perfect"), including the recommendation to

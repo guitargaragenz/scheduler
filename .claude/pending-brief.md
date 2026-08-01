@@ -1,35 +1,51 @@
-doc_status: live
+doc_status: closed
 
 # Pending Brief — One Parking Lot, fed from the Daily Log (Merge A)
 
-The full brief lives at [docs/briefs/one-parking-lot-fed-from-bujo.md](../docs/briefs/one-parking-lot-fed-from-bujo.md).
-It is the scope lock. Read it in full — including the **Council amendments** section, which
-overrides the body where they disagree.
+**✅ SHIPPED 2026-08-01 at `05b11cc`.** Full protocol: brief approved → two council reviewers
+→ `ggnz-builder` on `staging/one-parking-lot` → `ggnz-verifier` (344 tests across 22 files,
+run independently, not taken on trust) → browser test on live data → merged on Trevor's "yp".
 
-**Approved by Trevor 2026-08-01. Council complete 2026-08-01, two reviewers, both "ship with
-changes". Now at protocol step 3 (builder).**
+Browser test confirmed on the real table: add, edit and delete each touched only their own
+row and survived a reload; all 8 original June items intact throughout; no console errors.
+The list reads 18 open / 5 done in one place.
 
-## This slot covers Merge A only
+Everything below is the record of what was agreed, not a task list.
 
-Items 1 and 2 of the brief:
+## What shipped
 
-1. Stop `saveParkingLot()` wiping the table, and stop a failed read seeding over real data.
-2. Merge the two parking lots into one, Supabase authoritative, `admin/context/parking-lot.md`
-   deleted, and the Sunday meeting's export script reading the table instead.
+1. `saveParkingLot()` no longer deletes the whole table before re-inserting it. It diffs
+   per item — upsert when the id is new **or its content changed** (the edit case council
+   flagged; the `deferredItems` pattern the brief pointed at would have dropped edits),
+   delete only ids that have genuinely gone. `clearParkingLot()` is deleted, no callers left.
+2. `loadParkingLot()` returns `null` on a read error instead of `[]`, so a network blip is no
+   longer indistinguishable from an empty table. The page treats `null` as "touch nothing,
+   write nothing". `INITIAL_ITEMS` and the seeding branch are deleted outright — the JSON
+   backup is the recovery path, not a stale June snapshot.
+3. The two Parking Lots are one. 14 markdown items migrated in via a one-off script,
+   `admin/context/parking-lot.md` deleted in a separate commit after the items were confirmed
+   rendering. `scripts/board_meeting_export.mjs` now pulls the table into its JSON — without
+   that change, deleting the markdown would have left the Sunday meeting with no parking lot
+   at all, which the brief did not spot and council did.
+4. Realtime echoes no longer clobber in-progress typing (`pendingSavesRef` in
+   `ParkingLotPage.jsx`). Pre-existing bug, fixed while in there.
 
-**Item 3 (the `#PL` tag) is NOT in this merge.** It is Merge B, cut only after Merge A has been
-live for a real day. Do not build it here.
+## Kept for three things
 
-Workshop Projects / `#PRJ` is out of scope entirely — it has no brief.
+- **The wipe-class bug now has its own tests** — `src/utils/supabaseParkingLot.test.js`, 17 of
+  them, including one that fails on sight if anyone reintroduces the delete-everything
+  pattern, and one that proves an *edited* item is upserted.
+- **`ParkingLotPage.jsx` still has no component test.** The two most safety-critical page-level
+  behaviours — failed-read-writes-nothing, and the keep-local-while-saving guard — are verified
+  by code reading only. A future regression there would not be caught automatically.
+- **Trevor's call 2026-08-01:** two migrated items that described this very build came across
+  ticked off rather than open. The migration script decides this itself
+  (`scripts/migrate_parking_lot_markdown.mjs`, the `isAboutThisMerge` branch) — worth knowing
+  if that script is ever re-run against other content.
 
-## The build order is fixed — see Council amendment B
+## Not built — Merge B
 
-`loadParkingLot()` null-on-error first → then the diff-based `saveParkingLot()` → then the
-markdown migration, run and eyeballed in the app before the file is deleted → then
-`INITIAL_ITEMS` and the seeding branch deleted last.
-
-## The previous occupant of this slot
-
-Suppliers, shared settings, and the Settings modal tidy-up — shipped 2026-08-01 at `d78b02e`,
-recorded in [docs/briefs/README.md](../docs/briefs/README.md)'s Closed table. Nothing pending
-was lost by replacing it.
+Item 3, the `#PL` tag, is still open and still approved. See
+[docs/briefs/one-parking-lot-fed-from-bujo.md](../docs/briefs/one-parking-lot-fed-from-bujo.md).
+Council amendment F is binding: the parking-lot write must be fire-and-forget from `addBullet`,
+never inside `updateState`/`performSave`/`readyRef`.
