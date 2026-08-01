@@ -1,10 +1,19 @@
-doc_status: live
+doc_status: closed
 
 # Pending Brief — Suppliers, shared settings, and a tidier Settings modal
 
-**Status:** ✅ APPROVED by Trevor 2026-08-01 ("yp"). Council reviewed 2026-08-01 — both
+**✅ SHIPPED 2026-08-01 at `d78b02e`.** Full protocol run: brief approved → two council
+reviewers → builder on `staging/suppliers-shared-settings` → independent verifier (327
+tests / 21 files pass, build clean) → browser test on the iMac → merged on Trevor's "yp".
+Browser test confirmed: suppliers survive a reload (so the write reaches Supabase), the
+supplier dropdown and the By job / By supplier toggle work with "Supplier not decided"
+pinned last, keywords survived the move to the shared store (Fretwork 4 / Luthier 17 /
+Electronics 39 / Setup 14) with benches still filling correctly, and the Changelog tab is
+gone. Everything below is the record of what was agreed, not a task list.
+
+**Status (historical):** ✅ APPROVED by Trevor 2026-08-01 ("yp"). Council reviewed 2026-08-01 — both
 reviewers APPROVE WITH CHANGES; their required changes are folded into the scope below and
-collected in **Council amendments** near the bottom. **Now at protocol step 3 — builder.**
+collected in **Council amendments** near the bottom.
 **Supersedes the round 2.5 draft committed at
 `1e00250`** — that draft had supplier as free text with a browser-only settings pattern.
 Trevor then asked for a managed dropdown, and the device question changed the storage
