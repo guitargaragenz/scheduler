@@ -61,10 +61,16 @@ the page must never refuse a part because a number is missing.
   it is saved: "you may already have this."
 
 **Matching rule, in priority order:** exact `part/mpn` match on the part number →
-otherwise a text match of the description against `part/name`, `part/description` and
-`part/mpn`, using the same containment test `PartsDrawer.jsx:64-68` already uses. A
-part-number match is stated as certain; a text match is stated as a maybe. **Never merge
-the two systems, and never present a text match as definite.**
+otherwise a **keyword search** of what was typed against `part/name`, `part/description`,
+`part/mpn` and `part/tags` (the same four fields `PartsDrawer.jsx:64-68` searches),
+matching on individual words rather than the whole string. A part-number match is stated
+as certain; a keyword match is stated as a maybe. **Never merge the two systems, and
+never present a keyword match as definite.**
+
+**The keyword search is the common case, not the fallback** — Trevor, 2026-08-01: *"not
+always having part numbers at hand a keyword or sim search might be good too."* Most
+parts are typed at the bench with no number to hand. A build where the keyword path is an
+afterthought is a build that flags almost nothing.
 
 **4. Never block.** The check warns and nothing more. It cannot refuse a save, cannot
 remove a part from the list, and cannot tick one off. If PartsBox is unreachable the page
@@ -93,9 +99,18 @@ same red inline error that round 1 reserved for failed writes.
    but it puts a network call in front of a page whose whole job is to load fast.
 2. **How stale can the flag be?** No caching is proposed. If the call is slow enough to
    matter, is a short cache better than a spinner?
-3. **Is the text match worth having at all,** or does a maybe-match that is wrong half the
-   time train Trevor to ignore the flag entirely — leaving only exact part-number matches
-   worth showing?
+3. ~~**Is the text match worth having at all?**~~ **Answered by Trevor 2026-08-01 — keep
+   it, and treat it as the common case, not the fallback:** *"not always having part
+   numbers at hand a keyword or sim search might be good too."*
+   Most entries are typed at the bench with no number to hand, so a build that only
+   matched on part numbers would flag almost nothing. **The keyword search must work
+   well on its own**, not just as a degraded version of the exact match — searching
+   `part/name`, `part/description`, `part/mpn` and `part/tags` (the same four fields
+   `PartsDrawer.jsx:64-68` searches), on any word typed, not just whole-string
+   containment. Still labelled a maybe, never presented as certain.
+   **Left for Council:** how forgiving the word match should be — plain word matching, or
+   something that tolerates a typo or a plural — and whether a weak match should be shown
+   at all or filtered out.
 
 ## Carried over from round 1, still not fixed
 
