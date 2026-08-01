@@ -152,6 +152,18 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_derived BOOLEAN DEFAULT FALSE;
 ALTER TABLE completed_jobs ADD COLUMN IF NOT EXISTS invoice_amount NUMERIC;
 ALTER TABLE completed_jobs ADD COLUMN IF NOT EXISTS week_key TEXT;
 
+-- NOT IN THIS FILE, ON PURPOSE — READ BEFORE REBUILDING FROM IT:
+-- parts_to_order is the ONE table in this schema that has RLS enabled. It was
+-- enabled by hand in the Supabase dashboard when the table was first made, with
+-- no policy attached, which silently rejected every insert for a month while
+-- the app reported success. On 31 Jul 2026 a permissive policy was added, also
+-- by hand in the dashboard, and it is deliberately NOT written here.
+--
+-- The consequence: rebuilding the database from this file alone gives you a
+-- parts_to_order with NO RLS at all, which is the same as every other table
+-- here and works fine. What you must never do is re-enable RLS on it without
+-- also re-adding that policy — that is the exact silent-write bug.
+--
 -- Parts to order (Sunday board meeting — Brief D). needed_for_job is a plain
 -- TEXT column, NOT a foreign key to jobs(id): a part can be flagged against a
 -- job number that later disappears (job finished/deleted) or against no job
@@ -175,6 +187,53 @@ CREATE INDEX IF NOT EXISTS idx_parts_to_order_resolved ON parts_to_order(resolve
 -- `part/mpn`, which is what turns the stock check from a maybe into a
 -- certainty. Additive, safe to run on existing rows.
 ALTER TABLE parts_to_order ADD COLUMN IF NOT EXISTS part_number TEXT;
+
+-- 2026-08-01: who the part is being ordered from. Optional, exactly like
+-- part_number above — the page must never refuse a part because the supplier
+-- has not been decided yet, and "not decided" is the default.
+--
+-- Plain TEXT, NOT a foreign key to suppliers(id) below, and that is the whole
+-- design: the name is COPIED onto the part at save time. Removing or renaming a
+-- supplier in Settings therefore cannot rewrite, orphan or cascade a single
+-- saved part row. A part ordered from "Rockshop" still says Rockshop next year,
+-- whatever happened to the list in between.
+ALTER TABLE parts_to_order ADD COLUMN IF NOT EXISTS supplier TEXT;
+
+-- 2026-08-01: the managed supplier list (Suppliers + shared settings brief).
+-- Names only, on purpose — no account numbers, lead times, links or contacts.
+-- This table feeds ONE dropdown; it is not a contacts database.
+--
+-- No RLS, like every other table here except the parts_to_order exception noted
+-- above. See the job_status_since comment further down for the reasoning.
+CREATE TABLE IF NOT EXISTS suppliers (
+  id   TEXT PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+-- 2026-08-01: app settings, shared across devices instead of per-browser.
+--
+-- Until now every Settings value lived in localStorage, so a keyword Trevor
+-- added on the iMac was invisible on the MacBook and the phone — and invisibly
+-- so, because both fell back to the same built-in defaults and looked fine.
+-- Bench keywords decide which bench a job lands on, so that was a job
+-- classification bug wearing a settings costume.
+--
+-- Deliberately key/value rather than a column per setting: the four settings
+-- that live here (benchKeywords, benchHours, hourlyRate, weeklyTarget) are all
+-- app-owned JSON blobs read by exactly one place each, and a column per setting
+-- means a hand-run migration every time one is added.
+--
+-- SEEDING RULE — the app writes first-load seeds as INSERT ... ON CONFLICT
+-- (key) DO NOTHING, never an upsert. Three devices seed independently and only
+-- the iMac has real edits; with an upsert the LAST device to start wins and a
+-- MacBook with empty localStorage would silently wipe the real keyword list.
+-- First writer wins, permanently. Do not "fix" that into an upsert.
+--
+-- No RLS.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key   TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
 
 -- 2026-07-27: Job blocking — Brief E, Task 1. Job age from the CSV's `Days`
 -- column. Until now `days` was parsed into memory by parseCSV() and never

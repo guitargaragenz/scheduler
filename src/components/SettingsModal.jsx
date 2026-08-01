@@ -9,17 +9,80 @@ const BENCH_ACCENT = {
   Setup:       '#fbbf24',
 };
 
+// The chip itself, lifted out of KeywordEditor unchanged so the Suppliers list
+// below is literally the same control and not a lookalike. `onRename` is the one
+// addition — keywords have no rename (you delete the wrong word and type the
+// right one), suppliers do.
+function Chip({ label, onRemove, onRename }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 11, padding: '2px 7px', borderRadius: 4,
+      background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1',
+    }}>
+      {onRename ? (
+        <button
+          onClick={onRename}
+          title="Click to rename"
+          style={{
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+            color: '#cbd5e1', fontSize: 11,
+          }}
+        >{label}</button>
+      ) : label}
+      <button onClick={onRemove} style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        color: '#64748b', fontSize: 12, lineHeight: 1, padding: 0,
+      }}>×</button>
+    </span>
+  );
+}
+
+// Text box + Add button, also shared between the two editors.
+function AddRow({ placeholder, onAdd }) {
+  const [input, setInput] = useState('');
+  function submit() {
+    const val = input.trim();
+    if (!val) { setInput(''); return; }
+    onAdd(val);
+    setInput('');
+  }
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <input
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && submit()}
+        placeholder={placeholder}
+        style={{
+          flex: 1, fontSize: 12, padding: '4px 8px',
+          background: '#0f172a', border: '1px solid #334155',
+          borderRadius: 5, color: '#e2e8f0', outline: 'none',
+        }}
+      />
+      <button onClick={submit} style={{
+        padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
+        borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
+      }}>Add</button>
+    </div>
+  );
+}
+
 function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
   const [open, setOpen] = useState(false);
-  const [input, setInput] = useState('');
-  const effective = keywords[bench] ?? defaultKeywords[bench] ?? [];
-  const isDefault = !keywords[bench];
+  // An empty stored array counts as "no entry" and shows the defaults, matching
+  // what inferBench() actually does with it. Emptying a bench therefore puts the
+  // default words back rather than leaving a blank box that would match every job.
+  const stored = keywords[bench];
+  const hasStored = Array.isArray(stored) && stored.length > 0;
+  const effective = hasStored ? stored : (defaultKeywords[bench] ?? []);
+  const isDefault = !hasStored;
 
-  function add() {
-    const val = input.trim().toLowerCase();
-    if (!val || effective.includes(val)) { setInput(''); return; }
+  function add(raw) {
+    // Keywords are matched lowercase, so they are stored lowercase.
+    const val = raw.trim().toLowerCase();
+    if (!val || effective.includes(val)) return;
     onChange(bench, [...effective, val]);
-    setInput('');
   }
 
   function remove(kw) {
@@ -64,38 +127,45 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
             {effective.map(kw => (
-              <span key={kw} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 11, padding: '2px 7px', borderRadius: 4,
-                background: '#1e293b', border: '1px solid #334155', color: '#cbd5e1',
-              }}>
-                {kw}
-                <button onClick={() => remove(kw)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#64748b', fontSize: 12, lineHeight: 1, padding: 0,
-                }}>×</button>
-              </span>
+              <Chip key={kw} label={kw} onRemove={() => remove(kw)} />
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && add()}
-              placeholder="add keyword…"
-              style={{
-                flex: 1, fontSize: 12, padding: '4px 8px',
-                background: '#0f172a', border: '1px solid #334155',
-                borderRadius: 5, color: '#e2e8f0', outline: 'none',
-              }}
-            />
-            <button onClick={add} style={{
-              padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
-              borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
-            }}>Add</button>
-          </div>
+          <AddRow placeholder="add keyword…" onAdd={add} />
         </div>
       )}
+    </div>
+  );
+}
+
+// The supplier list. Same chips, different label — no new editor was designed.
+function SupplierEditor({ suppliers = [], onAdd, onRename, onRemove }) {
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, lineHeight: 1.5 }}>
+        The suppliers offered when adding a part. Click a name to rename it, × to remove it.
+      </p>
+      <p style={{ fontSize: 11, color: '#475569', marginBottom: 12, lineHeight: 1.5 }}>
+        Removing or renaming a supplier here never changes parts you have already saved —
+        they keep the name they were saved with and still group under it. It only changes
+        what is offered from now on.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+        {suppliers.length === 0 && (
+          <span style={{ fontSize: 12, color: '#475569' }}>No suppliers yet.</span>
+        )}
+        {suppliers.map(s => (
+          <Chip
+            key={s.id}
+            label={s.name}
+            onRemove={() => onRemove(s.id)}
+            onRename={() => {
+              const next = window.prompt('Rename supplier:', s.name);
+              if (next !== null && next.trim() && next.trim() !== s.name) onRename(s.id, next);
+            }}
+          />
+        ))}
+      </div>
+      <AddRow placeholder="add supplier…" onAdd={onAdd} />
     </div>
   );
 }
@@ -103,7 +173,12 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
 const BENCH_HOUR_DEFAULTS = { Luthier: 1.5, Setup: 1.5, Finishing: 1.5 };
 
 export default function SettingsModal({
-  changelog, onClose, isSignedIn, onSignIn, onSignOut, isConfigured,
+  onClose, isSignedIn, onSignIn, onSignOut, isConfigured,
+  // A settings write that failed. Shown at the top of the modal rather than
+  // logged, because a setting that looks saved and isn't is the whole reason
+  // this moved off localStorage.
+  saveError,
+  suppliers = [], supplierError, onAddSupplier, onRenameSupplier, onRemoveSupplier,
   benchKeywords = {}, defaultBenchKeywords = {}, onBenchKeywordsChange,
   hourlyRate = 85, onHourlyRateChange,
   weeklyRevenueTarget = 1500, onWeeklyTargetChange,
@@ -145,7 +220,9 @@ export default function SettingsModal({
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #334155' }}>
-          {['keywords', 'rates', 'calendar', 'pages', 'changelog'].map(tab => (
+          {/* Changelog tab removed 2026-08-01 — it was read-only, months out of
+              date, and the git history is the real record. */}
+          {['keywords', 'suppliers', 'rates', 'calendar', 'pages'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '10px 18px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
@@ -157,6 +234,25 @@ export default function SettingsModal({
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+
+          {(saveError || supplierError) && (
+            <div style={{
+              marginBottom: 14, padding: '8px 12px', borderRadius: 6,
+              background: '#450a0a', border: '1px solid #ef4444',
+              color: '#fca5a5', fontSize: 12, lineHeight: 1.5,
+            }}>
+              {saveError || supplierError}
+            </div>
+          )}
+
+          {activeTab === 'suppliers' && (
+            <SupplierEditor
+              suppliers={suppliers}
+              onAdd={onAddSupplier}
+              onRename={onRenameSupplier}
+              onRemove={onRemoveSupplier}
+            />
+          )}
 
           {activeTab === 'keywords' && (
             <div>
@@ -290,28 +386,6 @@ export default function SettingsModal({
             </div>
           )}
 
-          {activeTab === 'changelog' && (
-            <div>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Changelog</h3>
-              {changelog.length === 0 ? (
-                <p style={{ color: '#475569', fontSize: 13 }}>No changes yet.</p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {[...changelog].reverse().map((entry, i) => (
-                    <div key={i} style={{
-                      padding: '8px 12px', background: '#0f172a', borderRadius: 6,
-                      borderLeft: '3px solid #334155', fontSize: 12, color: '#94a3b8',
-                    }}>
-                      <span style={{ color: '#64748b', marginRight: 8 }}>
-                        {entry.date || new Date(entry.ts).toLocaleDateString('en-NZ')}
-                      </span>
-                      {entry.note || entry.msg}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

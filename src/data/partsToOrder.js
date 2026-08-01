@@ -40,13 +40,14 @@ export function partitionParts(itemsById) {
  *   can be for a job that no longer exists, or for no job at all (shop stock).
  *   See the comment above the functions in src/utils/supabase.js.
  */
-export function buildPartPayload({ description, category, neededForJob, partNumber } = {}) {
+export function buildPartPayload({ description, category, neededForJob, partNumber, supplier } = {}) {
   const desc = (description ?? '').trim();
   if (!desc) return null;
 
   const cat = (category ?? '').trim();
   const job = (neededForJob ?? '').trim();
   const pn = (partNumber ?? '').trim();
+  const sup = (supplier ?? '').trim();
 
   const payload = { description: desc };
   if (cat) payload.category = cat;
@@ -54,17 +55,31 @@ export function buildPartPayload({ description, category, neededForJob, partNumb
   // Nullable on purpose. Most parts are typed at the bench with no number to
   // hand, and the page must never refuse a part because a number is missing.
   payload.partNumber = pn || null;
+  // Same rule again for the supplier: "not decided yet" is the default and a
+  // perfectly normal state for a part to sit in. Stored as the NAME, copied
+  // from the managed list — never an id into it.
+  payload.supplier = sup || null;
   return payload;
 }
 
-// ============ GROUPING BY JOB (round 2) ============
+// ============ GROUPING (by job, round 2 — by supplier, 2026-08-01) ============
 
-const SHOP_STOCK_KEY = '';
+const EMPTY_KEY = '';
 
 /**
- * Group the parts of one list under their job number, for display only.
- * Nothing about the database changes — `needed_for_job` is still free text and
- * is still not checked against `jobs`.
+ * Group a list of parts under one of their own fields, for display only.
+ * Nothing about the database changes — `needed_for_job` and `supplier` are both
+ * still free text and neither is checked against anything.
+ *
+ * ONE function with three knobs, deliberately, rather than a second copy for
+ * suppliers. Round 2's lesson was the drawer's duplicated matcher: two copies
+ * of a rule drift, and here the rule that drifts would be "which pile is this
+ * part in".
+ *
+ *   field       — the part field to group on ('neededForJob' | 'supplier')
+ *   labelFor    — turns a non-empty key into its heading
+ *   emptyLabel  — the heading for parts with nothing in that field
+ *   pinEmptyLast— true keeps the empty group at the bottom whatever its dates
  *
  * The key is trimmed HERE rather than trusting the write-time trim in
  * buildPartPayload above. Rows written before that trim existed, or edited
@@ -73,18 +88,18 @@ const SHOP_STOCK_KEY = '';
  *
  * Groups come back ordered by their newest part, so the job just added to sits
  * at the top. Parts inside a group keep the order they arrived in, which is
- * newest-first when fed from partitionParts(). Shop stock (no job number) is
- * ordered by the same rule as everything else — it is not pinned anywhere.
+ * newest-first when fed from partitionParts().
  */
-export function groupPartsByJob(parts) {
+export function groupParts(parts, { field, labelFor, emptyLabel, pinEmptyLast = false }) {
   const groups = new Map();
 
   for (const part of parts || []) {
-    const key = (part?.neededForJob ?? '').trim();
+    const key = (part?.[field] ?? '').trim();
     if (!groups.has(key)) {
       groups.set(key, {
         key,
-        label: key === SHOP_STOCK_KEY ? 'Shop stock' : `Job ${key}`,
+        label: key === EMPTY_KEY ? emptyLabel : labelFor(key),
+        isEmptyGroup: key === EMPTY_KEY,
         parts: [],
         newestAt: 0,
       });
@@ -96,7 +111,43 @@ export function groupPartsByJob(parts) {
     if (!Number.isNaN(t) && t > group.newestAt) group.newestAt = t;
   }
 
-  return [...groups.values()].sort((a, b) => b.newestAt - a.newestAt);
+  return [...groups.values()].sort((a, b) => {
+    if (pinEmptyLast && a.isEmptyGroup !== b.isEmptyGroup) return a.isEmptyGroup ? 1 : -1;
+    return b.newestAt - a.newestAt;
+  });
+}
+
+/**
+ * By job. Shop stock (no job number) is ordered by the same recency rule as
+ * everything else — it is not pinned anywhere, because a part for the shop is
+ * as real a job as any other.
+ */
+export function groupPartsByJob(parts) {
+  return groupParts(parts, {
+    field: 'neededForJob',
+    labelFor: key => `Job ${key}`,
+    emptyLabel: 'Shop stock',
+    pinEmptyLast: false,
+  });
+}
+
+/**
+ * By supplier, for an ordering session — everything from one place in one lump.
+ *
+ * Parts with no supplier are PINNED LAST regardless of how recent they are.
+ * Every other group is an order you can go and place; that one is a to-do pile
+ * of decisions still to make, so it belongs at the bottom of the page and not
+ * jumping to the top every time a part is typed in at the bench. It is not
+ * hidden — this page is a chase list, and hiding work is how a part goes
+ * unordered.
+ */
+export function groupPartsBySupplier(parts) {
+  return groupParts(parts, {
+    field: 'supplier',
+    labelFor: key => key,
+    emptyLabel: 'Supplier not decided',
+    pinEmptyLast: true,
+  });
 }
 
 // ============ PARTSBOX STOCK CHECK (round 2) ============

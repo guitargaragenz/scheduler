@@ -135,14 +135,20 @@ export function useSupabase({
   onJobsDisappeared,
   onSplitOrphansFound,
   benchHours,
+  // False until the shared settings have been read (or have failed and fallen
+  // back to defaults). Nothing below loads or subscribes until it is true —
+  // see the init effect. Defaults to true so a caller that does not pass it
+  // behaves exactly as before.
+  settingsReady = true,
 }) {
   const prevJoinedJobsRef = useRef([]);
   const hasSeenFirstSnapshotRef = useRef(false);
 
   // The init useEffect below has `[]` deps, so the realtime subscription
   // callback closes over whatever benchHours was on FIRST render and keeps it
-  // for the life of the component. That first value is correct (App.jsx reads
-  // benchHours synchronously from localStorage), but it goes stale the moment
+  // for the life of the component. That first value is correct (the effect no
+  // longer runs until settingsReady is true, so the real bench hours are in
+  // hand before anything is normalized), but it goes stale the moment
   // the tech changes bench hours in Settings: every subsequent realtime update
   // would regenerate the bench cards with the old hours, permanently. A ref
   // kept current on every render is read instead of the captured value.
@@ -171,6 +177,13 @@ export function useSupabase({
   // Initialize on mount
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
+    // Wait for bench hours. normalizeJobsFromDb() -> expandAutoSplits() sizes
+    // every auto-split bench card from benchHours, and that sizing is done once
+    // per load — running it against an empty placeholder would leave every split
+    // card on the board the wrong length until the next reload, on every load.
+    // settingsReady only ever goes false -> true, so this effect still runs its
+    // body exactly once and still subscribes exactly once.
+    if (!settingsReady) return;
 
     (async () => {
       await loadAndSetJobs();
@@ -205,7 +218,7 @@ export function useSupabase({
       unsubJobs?.();
       unsubSlots?.();
     };
-  }, []);
+  }, [settingsReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Expose methods matching useFirebase.js interface
   return {

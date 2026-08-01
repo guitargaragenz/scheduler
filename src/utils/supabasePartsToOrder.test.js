@@ -69,9 +69,24 @@ describe('loadPartsToOrder', () => {
       neededForJob: '1705',
       // Row predates the part_number column — reads back as null, not undefined.
       partNumber: null,
+      // Same again for the supplier column, added 2026-08-01.
+      supplier: null,
       addedAt: '2026-07-31T04:00:00Z',
       resolved: false,
     });
+  });
+
+  it('reads the supplier NAME when the row has one', async () => {
+    nextResult = {
+      data: [{
+        id: 'pto-1', description: '500k pot', category: 'part',
+        needed_for_job: '1705', supplier: 'Rockshop',
+        added_at: '2026-07-31T04:00:00Z', resolved: false,
+      }],
+      error: null,
+    };
+    const out = await loadPartsToOrder();
+    expect(out['pto-1'].supplier).toBe('Rockshop');
   });
 
   it('reads the part number when the row has one', async () => {
@@ -115,6 +130,7 @@ describe('addPartsToOrderItems', () => {
     expect(row.description).toBe('500k pot');
     expect(row.category).toBe('part');
     expect(row.needed_for_job).toBeNull();
+    expect(row.supplier).toBeNull();
     expect(row.resolved).toBe(false);
     expect(typeof row.id).toBe('string');
     expect(typeof row.added_at).toBe('string');
