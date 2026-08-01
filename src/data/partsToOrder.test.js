@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  partitionParts, buildPartPayload, groupPartsByJob,
+  partitionParts, buildPartPayload, groupPartsByJob, groupPartsBySupplier,
   parseTerms, matchesPart, findStockMatch,
 } from './partsToOrder.js';
 
@@ -54,17 +54,17 @@ describe('partitionParts', () => {
 describe('buildPartPayload', () => {
   it('builds the minimum: a description, no job', () => {
     expect(buildPartPayload({ description: '500k pot' }))
-      .toEqual({ description: '500k pot', neededForJob: null, partNumber: null });
+      .toEqual({ description: '500k pot', neededForJob: null, partNumber: null, supplier: null });
   });
 
   it('carries category and job number when given', () => {
     expect(buildPartPayload({ description: '500k pot', category: 'electronics', neededForJob: '1705' }))
-      .toEqual({ description: '500k pot', category: 'electronics', neededForJob: '1705', partNumber: null });
+      .toEqual({ description: '500k pot', category: 'electronics', neededForJob: '1705', partNumber: null, supplier: null });
   });
 
   it('trims what was typed', () => {
     expect(buildPartPayload({ description: '  500k pot  ', category: ' part ', neededForJob: ' 1705 ' }))
-      .toEqual({ description: '500k pot', category: 'part', neededForJob: '1705', partNumber: null });
+      .toEqual({ description: '500k pot', category: 'part', neededForJob: '1705', partNumber: null, supplier: null });
   });
 
   it('omits a blank category so the database default applies', () => {
@@ -95,6 +95,18 @@ describe('buildPartPayload', () => {
   it('sends a missing or blank part number as null — it is never required', () => {
     expect(buildPartPayload({ description: 'pot' }).partNumber).toBeNull();
     expect(buildPartPayload({ description: 'pot', partNumber: '   ' }).partNumber).toBeNull();
+  });
+
+  it('carries a trimmed supplier NAME when one was picked', () => {
+    expect(buildPartPayload({ description: 'pot', supplier: '  Rockshop  ' }).supplier)
+      .toBe('Rockshop');
+  });
+
+  it('sends a missing or blank supplier as null — never required, never refused', () => {
+    expect(buildPartPayload({ description: 'pot' }).supplier).toBeNull();
+    expect(buildPartPayload({ description: 'pot', supplier: '   ' }).supplier).toBeNull();
+    // The part still saves. This is the point: "not decided yet" is normal.
+    expect(buildPartPayload({ description: 'pot', supplier: '' })).not.toBeNull();
   });
 });
 
@@ -147,6 +159,73 @@ describe('groupPartsByJob', () => {
   it('handles nothing at all', () => {
     expect(groupPartsByJob([])).toEqual([]);
     expect(groupPartsByJob(null)).toEqual([]);
+  });
+});
+
+describe('groupPartsBySupplier', () => {
+  it('puts everything from one supplier together, so an order is one lump', () => {
+    const groups = groupPartsBySupplier([
+      part({ id: 'a', supplier: 'Rockshop' }),
+      part({ id: 'b', supplier: 'Allparts' }),
+      part({ id: 'c', supplier: 'Rockshop' }),
+    ]);
+    const rs = groups.find(g => g.key === 'Rockshop');
+    expect(rs.label).toBe('Rockshop');
+    expect(rs.parts.map(p => p.id)).toEqual(['a', 'c']);
+  });
+
+  it('pins the undecided pile LAST however recent it is — it is a to-do, not an order', () => {
+    const groups = groupPartsBySupplier([
+      part({ id: 'newest', supplier: null, addedAt: '2026-07-31T00:00:00Z' }),
+      part({ id: 'older', supplier: 'Allparts', addedAt: '2026-07-01T00:00:00Z' }),
+    ]);
+    expect(groups.map(g => g.key)).toEqual(['Allparts', '']);
+    expect(groups[1].label).toBe('Supplier not decided');
+  });
+
+  it('never hides the undecided parts', () => {
+    const groups = groupPartsBySupplier([part({ id: 'a', supplier: null })]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].parts.map(p => p.id)).toEqual(['a']);
+  });
+
+  it('treats null and blank as the same undecided pile', () => {
+    const groups = groupPartsBySupplier([
+      part({ id: 'a', supplier: null }),
+      part({ id: 'b', supplier: '' }),
+      part({ id: 'c', supplier: '   ' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].parts).toHaveLength(3);
+  });
+
+  it('trims the name so a stray space does not split one supplier in two', () => {
+    const groups = groupPartsBySupplier([
+      part({ id: 'a', supplier: 'Rockshop' }),
+      part({ id: 'b', supplier: ' Rockshop ' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].parts).toHaveLength(2);
+  });
+
+  it('orders suppliers by their newest part', () => {
+    const groups = groupPartsBySupplier([
+      part({ id: 'a', supplier: 'Allparts', addedAt: '2026-07-01T00:00:00Z' }),
+      part({ id: 'b', supplier: 'Rockshop', addedAt: '2026-07-31T00:00:00Z' }),
+    ]);
+    expect(groups.map(g => g.key)).toEqual(['Rockshop', 'Allparts']);
+  });
+
+  it('keeps grouping a part under a supplier that has been removed from the list', () => {
+    // Removing a supplier in Settings must never touch a saved part. The name
+    // stored on the row is all this function ever looks at.
+    const groups = groupPartsBySupplier([part({ id: 'a', supplier: 'Gone Ltd' })]);
+    expect(groups[0].label).toBe('Gone Ltd');
+  });
+
+  it('handles nothing at all', () => {
+    expect(groupPartsBySupplier([])).toEqual([]);
+    expect(groupPartsBySupplier(null)).toEqual([]);
   });
 });
 

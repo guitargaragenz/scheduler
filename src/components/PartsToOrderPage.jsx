@@ -7,8 +7,14 @@ import {
 } from '../utils/supabase.js';
 import { getAllParts } from '../utils/partsbox.js';
 import {
-  partitionParts, buildPartPayload, groupPartsByJob, findStockMatch,
+  partitionParts, buildPartPayload, groupPartsByJob, groupPartsBySupplier, findStockMatch,
 } from '../data/partsToOrder.js';
+
+// Which way the To Order list is grouped. This one IS a per-device preference —
+// how you like to read the page on the phone has nothing to do with how you read
+// it at the bench — so it stays in localStorage and deliberately does not go in
+// the shared settings store.
+const GROUP_BY_KEY = 'partsToOrderGroupBy';
 
 // The Parts to Order page — the chase list of parts waiting to be ordered or to
 // arrive. Nothing here touches job state: ticking a part off clears it from this
@@ -115,7 +121,7 @@ const labelStyle = {
   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 };
 
-export default function PartsToOrderPage({ onCheckStock }) {
+export default function PartsToOrderPage({ onCheckStock, suppliers = [] }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -131,6 +137,19 @@ export default function PartsToOrderPage({ onCheckStock }) {
   const [category, setCategory] = useState('');
   const [neededForJob, setNeededForJob] = useState('');
   const [partNumber, setPartNumber] = useState('');
+  // Blank is "not decided yet" and is the default. Optional exactly like the
+  // part number — the form must never refuse a part for want of a supplier.
+  const [supplier, setSupplier] = useState('');
+
+  const [groupBy, setGroupBy] = useState(() => {
+    try { return localStorage.getItem(GROUP_BY_KEY) === 'supplier' ? 'supplier' : 'job'; }
+    catch { return 'job'; }
+  });
+
+  function changeGroupBy(next) {
+    setGroupBy(next);
+    try { localStorage.setItem(GROUP_BY_KEY, next); } catch { /* private mode */ }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -168,14 +187,16 @@ export default function PartsToOrderPage({ onCheckStock }) {
   }, []);
 
   const { active, resolved } = partitionParts(itemsById);
-  const activeGroups = groupPartsByJob(active);
+  const activeGroups = groupBy === 'supplier'
+    ? groupPartsBySupplier(active)
+    : groupPartsByJob(active);
 
   // What the add form is currently suggesting, recomputed as it is typed.
   const draftMatch = findStockMatch(inventory, { description, partNumber });
 
   async function handleAdd(e) {
     e.preventDefault();
-    const payload = buildPartPayload({ description, category, neededForJob, partNumber });
+    const payload = buildPartPayload({ description, category, neededForJob, partNumber, supplier });
     if (!payload) {
       setWriteError('Type what the part is before adding it.');
       return;
@@ -188,6 +209,9 @@ export default function PartsToOrderPage({ onCheckStock }) {
       setCategory('');
       setNeededForJob('');
       setPartNumber('');
+      // The supplier is deliberately NOT cleared. Parts get typed in runs from
+      // one place, and re-picking the same name every time is the friction that
+      // makes people stop filling the field in.
       await refresh();
     } catch (err) {
       // The typed values are left in the boxes on purpose, so nothing is lost
@@ -276,6 +300,30 @@ export default function PartsToOrderPage({ onCheckStock }) {
             />
           </div>
 
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle} htmlFor="pto-supplier">Supplier (optional)</label>
+            <select
+              id="pto-supplier"
+              style={fieldStyle}
+              value={supplier}
+              onChange={e => setSupplier(e.target.value)}
+            >
+              {/* Blank first and selected by default — "not decided yet" is a
+                  perfectly normal state for a part to sit in. */}
+              <option value="">— not decided yet —</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+            {/* If the list is empty the dropdown still works; it just offers
+                nothing but blank. Names are added in Settings. */}
+            {suppliers.length === 0 && (
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
+                No suppliers set up yet — add them in Settings.
+              </div>
+            )}
+          </div>
+
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle} htmlFor="pto-job">Job number (optional)</label>
             <input
@@ -311,12 +359,34 @@ export default function PartsToOrderPage({ onCheckStock }) {
         ) : (
           <div>
             <div style={{
-              fontSize: 11, color: '#6b7280', textTransform: 'uppercase',
-              letterSpacing: '0.07em', marginBottom: 10, paddingLeft: 2,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, marginBottom: 10, paddingLeft: 2, flexWrap: 'wrap',
             }}>
-              To order · {active.length}
+              <div style={{
+                fontSize: 11, color: '#6b7280', textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+              }}>
+                To order · {active.length}
+              </div>
+              {/* Grouping only. Neither view hides anything, and neither one
+                  changes a single stored row. */}
+              <div style={{ display: 'flex', gap: 0, border: `1px solid ${BORDER}`, borderRadius: 6, overflow: 'hidden' }}>
+                {[['job', 'By job'], ['supplier', 'By supplier']].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => changeGroupBy(value)}
+                    style={{
+                      padding: '5px 12px', fontSize: 12, border: 'none', cursor: 'pointer',
+                      background: groupBy === value ? '#374151' : 'transparent',
+                      color: groupBy === value ? '#f3f4f6' : '#9ca3af',
+                      fontWeight: groupBy === value ? 600 : 400,
+                    }}
+                  >{label}</button>
+                ))}
+              </div>
             </div>
-            {/* Grouped by job for display only — nothing about the rows or the
+            {/* Grouped for display only — nothing about the rows or the
                 database changes, and the job number is still free text. */}
             {activeGroups.map(group => (
               <div key={group.key || '__shop__'} style={{ marginBottom: 26 }}>
@@ -344,6 +414,13 @@ export default function PartsToOrderPage({ onCheckStock }) {
                         <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, lineHeight: 1.6 }}>
                           {part.category || 'part'}
                           {part.partNumber ? ` · part no. ${part.partNumber}` : ''}
+                          {/* Whichever field the heading above is NOT already
+                              saying. Suppressing the repeated one is per-view on
+                              purpose — in a supplier group the job number is the
+                              useful half, and vice versa. */}
+                          {groupBy === 'supplier'
+                            ? (part.neededForJob ? ` · for job ${part.neededForJob}` : ' · shop stock')
+                            : (part.supplier ? ` · ${part.supplier}` : '')}
                           {` · added ${formatAdded(part.addedAt)}`}
                         </div>
                       </div>
