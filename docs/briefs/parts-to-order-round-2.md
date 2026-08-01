@@ -1,11 +1,34 @@
-doc_status: live
+doc_status: closed
 
-# Pending Brief — Parts to Order, round 2: grouping, part numbers, stock check
+# Parts to Order, round 2: grouping, part numbers, stock check — SHIPPED
 
-**Status:** ✅ APPROVED by Trevor 2026-08-01 ("yp but for new session ok"). **Start at
-step 2, Council** — the whole of Council question 3 is already answered below, so give
-Council questions 1 and 2 plus the leftover on question 3 (how forgiving the word match
-should be). Then builder, independent verifier, browser test, merge.
+**Shipped 2026-08-01 at `a702e6b`** (builds `119e238`, `d085e0a`). Full protocol run in one
+session: brief approved → two councillors → builder → independent verifier (14/14 pass,
+298 tests) → browser test against live PartsBox inventory → merged with Trevor's approval.
+The `part_number` column was applied to the live database by Trevor before merge and
+confirmed present.
+
+**This is a record, not a task list.** Everything below describes what was agreed and built.
+
+**What the browser test actually showed**, since it is the only proof the matching is any
+good in real use: typing "500k audio pot" flagged `P500KA-18` (5 in stock) before saving;
+**Check stock** opened the drawer pre-searched, 3 of 848 parts; the zero-stock
+`P500KA-15 copy` was correctly ignored; and the drawer's own bin search (`"L Bin 2"`,
+18 parts) still worked — the regression Council specifically warned about.
+
+**Known rough edge, deliberately left:** the Check stock button searches the drawer with
+the whole typed phrase, and the drawer requires every word to match. Short entries are
+fine; a long sentence can come back empty. Widen only if real use proves it annoying.
+
+**Still not fixed, and still wants its own brief:** `parts_to_order` has no RLS policy in
+`docs/supabase-schema.sql`. Carried over from round 1, out of scope here per Council.
+
+Round 3 (push arrivals back into PartsBox) is sketched at the bottom — **not approved, not
+scoped**.
+
+---
+
+**Original brief, as approved, below.**
 
 **Two things already established this session — do not re-derive them:**
 - **`PartsDrawer.jsx:44-82` already implements the keyword search this build needs** —
@@ -146,6 +169,43 @@ same red inline error that round 1 reserved for failed writes.
    **What is still open, and is the actual question for Council:** how forgiving the word
    match should be — plain word matching, or something that tolerates a typo or a plural —
    and whether a weak match should be shown at all or filtered out.
+
+## Council verdict — 2026-08-01, two independent reviewers, both approve
+
+Both reviewers landed the same way on all three questions.
+
+1. **Inventory loads on page open**, not behind a button. `PartsDrawer.jsx:24` already
+   loads on mount; a button makes the page inconsistent with the drawer for no gain.
+2. **No cache.** The page has no cache layer to hook into, and a stale "in stock" is worse
+   than a short wait. Revisit only if `getAllParts()` proves slow in real use.
+3. **Plain substring word matching only** — no typo or plural tolerance. Weak matches are
+   **shown, visually softened, never filtered out and never stated as certain**. Fuzzy
+   matching risks the exact failure this page exists to prevent: a tech not ordering a part
+   they don't actually have.
+4. **Lift `parseTerms`/`matchesTerm` into `src/data/partsToOrder.js`** rather than copying.
+
+**Three build constraints Council added — these are binding:**
+
+- **The drawer keeps its own five-field matcher, including the storage-location match at
+  `PartsDrawer.jsx:68-70`.** The shared four-field version in `partsToOrder.js` is a
+  *separate export* used only by the stock-check flag. Swapping the drawer's matcher for
+  the shared import outright would silently kill bin/shelf search in the drawer — that is
+  a regression, not a permitted edit. Verification must include: drawer search on a
+  storage-location name still works.
+- **The PartsBox failure needs its own third state variable** (e.g. `stockCheckError`),
+  separate from `loadError` and `writeError`, with its own quiet non-red styling.
+  `PartsToOrderPage.jsx:144-145` renders both existing errors through the same `Notice`;
+  reusing either would put a stock-check failure in the red box that means "your save
+  failed". The brief states the behaviour; this states the mechanism.
+- **Normalise the group key defensively** — `.trim()` at grouping time, not just relying on
+  `buildPartPayload`'s write-time trim (`partsToOrder.js:48`). Rows written before that
+  trim, or edited directly in the database, would otherwise split one job into two
+  headings that look like a duplicate.
+
+Both reviewers confirmed the blast-radius check is clean (no `scheduledSlots`,
+`calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js` core logic, or `jobs[]` shape) and
+that the missing RLS policy does **not** block this build — the exposure is pre-existing
+and this column adds nothing sensitive.
 
 ## Carried over from round 1, still not fixed
 
