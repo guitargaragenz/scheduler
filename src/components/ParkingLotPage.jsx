@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { loadParkingLot, saveParkingLot, subscribeToParkingLot } from '../utils/supabase.js';
 import { isSupabaseConfigured } from '../utils/supabase.js';
 
@@ -41,34 +41,62 @@ export default function ParkingLotPage({ onBack }) {
   const [newDate, setNewDate] = useState(new Date().toISOString().slice(0, 10));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Last list we know the table holds — the baseline saveParkingLot() diffs
+  // against. Only ever advanced by a confirmed load or a confirmed save, so a
+  // failed write stays queued in the next diff instead of being forgotten.
+  const persistedRef = useRef([]);
+  // How many of our own saves are in flight. Non-zero means ignore realtime.
+  const pendingSavesRef = useRef(0);
 
-  // Load from Firebase or seed with initial items
+  // Load from Supabase. A failed read must touch nothing and write nothing.
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setItems(INITIAL_ITEMS);
       setLoaded(true);
       return;
     }
+
+    // null = the read failed. Leave whatever is on screen alone and — above all
+    // — do not write. The old code treated a failed read as "empty table, first
+    // run" and saved the hardcoded June seed straight over the real 8 rows.
+    function applyServer(data) {
+      if (data === null) return;
+      setItems(data);
+      persistedRef.current = data;
+      setLoaded(true);
+    }
+
     loadParkingLot().then(data => {
-      if (data.length === 0) {
-        // First load — seed with existing parking lot items
-        saveParkingLot(INITIAL_ITEMS);
-        setItems(INITIAL_ITEMS);
-      } else {
-        setItems(data);
-      }
+      applyServer(data);
+      // Even on a failed read the page must stop saying "Loading…", but nothing
+      // is written and the seed is never applied.
       setLoaded(true);
     });
-    const unsub = subscribeToParkingLot(data => setItems(data));
+
+    // Realtime echoes reload the whole list. While one of our own saves is still
+    // in flight, taking the server copy would overwrite the words Trevor is
+    // typing — so keep local until every pending save has landed. Same idea as
+    // useDailyLog's touchedLogKeysRef merge.
+    const unsub = subscribeToParkingLot(data => {
+      if (pendingSavesRef.current > 0) return;
+      applyServer(data);
+    });
     return () => unsub();
   }, []);
 
   const persist = useCallback((updated) => {
     setItems(updated);
-    if (isSupabaseConfigured()) {
-      setSaving(true);
-      saveParkingLot(updated).then(() => setSaving(false));
-    }
+    if (!isSupabaseConfigured()) return;
+    setSaving(true);
+    pendingSavesRef.current += 1;
+    const baseline = persistedRef.current;
+    saveParkingLot(updated, baseline).then(result => {
+      // Only move the baseline forward on a confirmed write. If the save failed,
+      // the next one re-diffs against the same baseline and re-sends the change.
+      if (result && result.ok) persistedRef.current = updated;
+      pendingSavesRef.current -= 1;
+      if (pendingSavesRef.current === 0) setSaving(false);
+    });
   }, []);
 
   function toggleStatus(id) {
