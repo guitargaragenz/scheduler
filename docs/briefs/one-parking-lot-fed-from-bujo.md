@@ -3,10 +3,10 @@ doc_status: live
 # Brief — One Parking Lot, fed from the Daily Log
 
 **Status:** ✅ APPROVED by Trevor 2026-08-01 ("yes perfect"), including the recommendation to
-retire the markdown list. Next step: Council (protocol step 2). Build waits until
-`build-parts-to-order-page` has landed and the pending-brief slot is free.
+retire the markdown list. Next step: Council (protocol step 2). Queued behind **Parts to Order
+round 2**, which holds the pending-brief slot — round 1 shipped at `9a925ef`.
 **Date:** 2026-08-01.
-**Branch:** to be cut from `main` once `build-parts-to-order-page` lands.
+**Branch:** to be cut from `main` once Parts to Order round 2 has merged.
 **Asked for by Trevor 2026-08-01:** *"the i/p to Parking Lot>meetings etc is through Bujo.
 I add my idea and tag it #PL it gets written into parking lot."*
 
@@ -60,35 +60,63 @@ two places, and step 3 of this brief would be pouring more traffic into a broken
 
 ## The bug — item 1
 
-`saveParkingLot()` at `src/utils/supabase.js:650` calls `clearParkingLot()` — a
-`.delete().neq('id','')` across the whole table — and then re-inserts the array it was handed.
-Its own comment calls this "simple approach; could be optimized later".
+**This is a live bug with a live trigger, not a hypothetical.** Two halves, and the fix must
+cover both — fixing only the first leaves the data loss in place.
 
-This is the exact pattern that wiped `completed_jobs`. If the caller ever passes a short or
-empty array — a failed load, a race between two devices, a mid-write refresh — the real rows
-are gone and the backup above is the only copy.
+**Half one — the writer.** `saveParkingLot()` at `src/utils/supabase.js:650` calls
+`clearParkingLot()` — a `.delete().neq('id','')` across the whole table — then re-inserts the
+array it was handed. Its own comment calls this "simple approach; could be optimized later".
+This is the exact pattern that wiped `completed_jobs`.
 
-**Fix:** replace with a per-item diff — upsert changed/new rows, delete only rows whose ids
-have genuinely gone. `useDailyLog.js`'s `performSave()` already does exactly this for
-`deferredItems` (`persistedDeferredRef` baseline, compute `upserts` and `removeIds`). Follow
-that pattern rather than inventing a second one. `clearParkingLot()` should end up with no
-callers and be deleted.
+**Half two — the caller that fires it.** `src/components/ParkingLotPage.jsx:51-56`:
+
+```js
+loadParkingLot().then(data => {
+  if (data.length === 0) {
+    // First load — seed with existing parking lot items
+    saveParkingLot(INITIAL_ITEMS);
+```
+
+`loadParkingLot()` **returns `[]` on any read error** (`src/utils/supabase.js:636-648` — the
+catch logs and returns `[]`). So a failed read is indistinguishable from an empty table, and
+the page responds by writing the hardcoded June seed over whatever is really there. A network
+blip on page load silently reverts the Parking Lot to its June 2026 state. Verified against
+the code 2026-08-01.
+
+Note the not-configured path (line 46-50) returns early and does **not** write — it only shows
+the seed locally. That one is harmless; line 55 is the dangerous one.
+
+**Fix, both halves:**
+
+1. Replace the clear-and-reinsert with a per-item diff — upsert changed/new rows, delete only
+   rows whose ids have genuinely gone. `useDailyLog.js`'s `performSave()` already does exactly
+   this for `deferredItems` (`persistedDeferredRef` baseline, compute `upserts` and
+   `removeIds`). Follow that pattern rather than inventing a second one. `clearParkingLot()`
+   should end up with no callers and be deleted.
+2. Make `loadParkingLot()` distinguish "read failed" from "table is empty" — return `null` on
+   error, as `loadDailyLogs()` already does for the same reason (`useDailyLog.js` treats
+   `null` as "never flip ready / never blank state"). The page must not seed, and must not
+   write at all, on a failed read.
+3. The seed itself only belongs on a genuinely empty table. Given the table has 8 real rows
+   and always will from here, the safest outcome is deleting `INITIAL_ITEMS` and the seeding
+   branch entirely — the builder should propose this to Council rather than decide alone.
 
 ## The merge — item 2
 
-**Decision required from Trevor before council** (see "Open question" below): the two lists
-have different shapes.
+**Decided by Trevor 2026-08-01. Not Council's to reopen.** The Supabase table is the single
+store. `admin/context/parking-lot.md` is **deleted, not mirrored** — a generated mirror is a
+second copy that drifts, which is the exact problem this brief exists to fix. The Sunday
+workflow reads the table directly. End state: one list, one read, one write path.
+
+The two lists have different shapes, so the migration is a one-off script, not app code:
 
 - Supabase rows: `{ id, content (a JSON string), created_at, updated_at }`, where `content`
   parses to `{ id, date, title, details, status }`.
 - Markdown: free-form headed sections, no ids, no status field.
 
-Proposed: the **Supabase table is the single store**; the markdown file becomes a generated
-read-only mirror, or is retired entirely and the Sunday workflow reads the table directly.
-Migrating markdown items in is a one-off script, not app code.
-
-Whichever way it goes, the end state is **one list, one read, one write path** — that is the
-non-negotiable part.
+Delete the markdown file only after its items are in the table and readable in the app. Git
+keeps it (`git log -- admin/context/parking-lot.md`), so nothing is lost — and leaving it in
+place is how the next session ends up reading the wrong list again.
 
 ## The `#PL` tag — item 3
 
@@ -133,24 +161,20 @@ existing `addBullet` path.
 1. `saveParkingLot()` no longer deletes rows it was not asked to delete. Prove it: save a
    1-item array against a table holding 8 rows, confirm 8 rows remain.
 2. `clearParkingLot()` has no remaining callers and is gone.
-3. All 8 backed-up items are present and readable in the app after the merge.
-4. The markdown list and the table no longer disagree — one is authoritative, the other is
-   generated or gone.
-5. The Sunday workflow reads the merged list. Confirm by reading
+3. **A failed read never writes.** Simulate a `loadParkingLot()` error and confirm the app
+   writes nothing — the 8 rows are untouched and the June seed is not re-applied. This is the
+   live bug; a build that fixes only `saveParkingLot()` fails this item.
+4. `loadParkingLot()` returns something distinguishable from an empty table on error (`null`,
+   per `loadDailyLogs()`), and no caller treats `[]` as "first run, seed it".
+5. All 8 backed-up items are present and readable in the app after the merge.
+6. `admin/context/parking-lot.md` is **deleted**. A build that leaves it in place as a
+   generated mirror does not pass — Trevor rejected mirroring.
+7. The Sunday workflow reads the table. Confirm by reading
    `.claude/workflows/sunday-board-meeting.js`, not by assuming.
-6. A bullet typed with `#PL` appears in the Parking Lot **and** stays in the day.
-7. A bullet typed with `#PLAN` does **not** create a Parking Lot item.
-8. Close-day on a day containing a `#PL` bullet behaves identically to one without.
-9. `readyRef` write-gate in `useDailyLog.js` is intact and not weakened.
-10. Existing tests still pass. `saveParkingLot`'s new diff logic has its own test — this is
-    the wipe-class bug, it does not ship untested.
-
-## Settled — was the open question, answered by Trevor 2026-08-01
-
-**The markdown Parking Lot is retired, not mirrored.** The Supabase table is the single store,
-and the Sunday workflow reads it directly. A mirror would be a second copy that drifts, which
-is the exact problem this brief exists to fix.
-
-`admin/context/parking-lot.md` is deleted as part of item 2, after its contents migrate in.
-Git keeps it (`git log -- admin/context/parking-lot.md`), so nothing is lost — and leaving it
-in place is how the next session ends up reading the wrong list again.
+8. A bullet typed with `#PL` appears in the Parking Lot **and** stays in the day.
+9. A bullet typed with `#PLAN` does **not** create a Parking Lot item.
+10. Close-day on a day containing a `#PL` bullet behaves identically to one without.
+11. `readyRef` write-gate in `useDailyLog.js` is intact and not weakened.
+12. Existing tests still pass. Both halves of the wipe bug have their own tests — the diff
+    logic in `saveParkingLot`, and the failed-read-writes-nothing path. This is the
+    wipe-class bug; it does not ship untested.
