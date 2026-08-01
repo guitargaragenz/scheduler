@@ -1,8 +1,8 @@
-doc_status: live
+doc_status: closed
 
 # Pending Brief — a Parts to Order page
 
-**Status:** ✅ APPROVED by Trevor 2026-08-01 ("yp"). Council done. At step 3, builder.
+**Status:** ✅ SHIPPED 2026-08-01 at merge `9a925ef`. Closed. All six protocol steps ran — brief, "yp", council, builder, independent verifier, live browser test on the real table, merge. Trevor approved the builder’s extra "Put back" (un-tick) button at merge time. Test row added during the browser test was deleted from `parts_to_order` afterwards.
 **Date:** 2026-08-01.
 **Repo state:** `main` @ `2960d05`, clean.
 **Asked for by Trevor 2026-08-01:** *"parts to order page next — we had meeting yesterday

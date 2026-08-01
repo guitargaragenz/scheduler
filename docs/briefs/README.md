@@ -30,7 +30,7 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01 | **Current — start here.** A Parts to Order page: see the list, add a part, tick one off. The table has real parts in it and nothing in the app shows them. Awaiting Trevor's "yp" (step 1), then Council. **Not** the parked stuck-reason brief — that stays parked. |
+| [one-parking-lot-fed-from-bujo.md](one-parking-lot-fed-from-bujo.md) | 2026-08-01 | **Current — start here.** Approved by Trevor. Fix the `saveParkingLot()` wipe-before-rewrite (the `completed_jobs` bug class), merge the two Parking Lots into one with the Supabase table authoritative and `admin/context/parking-lot.md` retired, then let a Daily Log bullet tagged `#PL` file itself into it. Touches `src/utils/supabase.js`, so full protocol. Workshop Projects / `#PRJ` is explicitly **not** in it. |
 
 Also open, not scoped: after a PDF import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale.
 
@@ -52,6 +52,7 @@ Also open, not scoped: after a PDF import the board shows the old description un
 
 | Brief | Date | Why it's still here |
 |-------|------|---------------------|
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-01, shipped same day | The Parts to Order page — see the chase list, add a part, tick one off. Shipped at `9a925ef`. Kept for two things: the four `parts_to_order` functions used to swallow their own errors, which is why the Sunday meeting's parts write had never once worked and looked like a success; and the rule that ticking a part off writes **no job state** — Multitrack unsticks the job on the next import, the tick only clears the list. Also records a real issue left alone: `docs/supabase-schema.sql` still has **no RLS policy** for this table, so a schema rebuild reproduces the silent-rejection bug. Needs its own brief. |
 | [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-07-30, shipped 2026-08-01 | Jobs by Age PDF took over the job description — the Job List printout ends long descriptions mid-word, confirmed against the real 31 Jul pair (no continuation line, so not our wrap-stitching). Shipped at `2960d05`. Kept for two things: the ownership-by-lifecycle rule (Job List writes desc at job creation, JBA owns it after — same rule already proven for `firstSeen`), and the reason no backfill was needed. **Also the brief that sat uncommitted for two days and cost a session re-deriving itself.** |
 | [re-fresh-repo-housekeeping.md](re-fresh-repo-housekeeping.md) | 2026-07-27, closed 2026-07-30 | The last of the dead-file sweep — `SplitDrawer.jsx`, two spent scripts, `cowork-context-summary.md`, the pre-migration backup JSON, and two merged local branches. All shipped `096986e`–`c44f2db`. |
 | [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md) | 2026-07-30 | Turned out to be Google Cloud config, not app code — stale API key, Calendar API disabled, missing API restriction, and an OAuth Client ID from the wrong project. Fixed via Cloud Console and env vars, no app code changed, confirmed working live. |
