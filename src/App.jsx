@@ -41,13 +41,30 @@ import { useJobs } from './hooks/useJobs.js';
 import { useDailyLog } from './hooks/useDailyLog.js';
 import { useAdHocTasks } from './hooks/useAdHocTasks.js';
 import { useFocusList } from './hooks/useFocusList.js';
+import { useAppSettings } from './hooks/useAppSettings.js';
+import { useSuppliers } from './hooks/useSuppliers.js';
 import { usePendingRevenueReview } from './hooks/usePendingRevenueReview.js';
 
 export default function App() {
   // --- Core state ---
-  const [benchKeywords, setBenchKeywords] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('benchKeywords') || 'null') || {}; } catch { return {}; }
-  });
+  // Bench keywords, bench hours, weekly target and hourly rate now live in the
+  // shared settings store instead of this browser's localStorage, so all three
+  // devices agree. See src/hooks/useAppSettings.js.
+  const {
+    ready: settingsReady, saveError: settingsSaveError,
+    benchKeywords, setBenchKeywords,
+    benchHours, setBenchHours,
+    weeklyTarget, setWeeklyTarget,
+    hourlyRate, setHourlyRate,
+  } = useAppSettings();
+
+  // The managed supplier list — edited in Settings, offered on the Parts to
+  // Order add form. Loaded here so both screens read the same one list.
+  const {
+    suppliers, error: supplierError,
+    add: addSupplier, rename: renameSupplier, remove: removeSupplier,
+  } = useSuppliers();
+
   // Starts empty. Jobs arrive from Supabase on the first snapshot; there is no
   // seed data baked into the bundle. (Until Build 2a this called
   // parseCSV(RAW_CSV, …), which returned [] anyway — RAW_CSV had been a bare
@@ -60,19 +77,6 @@ export default function App() {
   );
   const [dragMode, setDragMode] = useState('regular');
   const [toast, setToast] = useState('');
-  const [changelog, setChangelog] = useState([
-    { date: '2026-06-23', note: 'Fix: calendar bookings wiped by watcher on network error — script now aborts instead of overwriting with empty slots' },
-    { date: '2026-06-21', note: 'Add Wiring bench (teal) — Setup jobs with pickup/wiring work split into Setup + Wiring cards' },
-    { date: '2026-06-21', note: 'Fix Luthier hierarchy — Luthier now always beats Setup/Electronics keywords' },
-    { date: '2026-06-21', note: 'Fix bridge pup false positive — "bridge pickup/pup" no longer triggers Luthier bench' },
-    { date: '2026-06-21', note: 'Fix: Google Sheet now receives Multitrack PDF field updates (Desc, Customer, Mfr, Model, Status) on every sync' },
-    { date: '2026-06-21', note: 'Add reauth_google.command — renew Google OAuth token without re-entering credentials' },
-    { date: '2026-06-14', note: 'Ship Runway view — long-running project timeline (PJ=Y jobs), with age colours and status sections' },
-    { date: '2026-06-14', note: 'Ship mobile tap-to-schedule — bottom sheet for iPhone: pick day/time, change bench, add splits' },
-    { date: '2026-06-13', note: 'Add Setup+Luthier split cards — Luthier jobs with restring/setup work auto-split into two bench cards' },
-    { date: '2026-06-13', note: 'Add Fretwork+Setup and Refret+Setup split cards' },
-    { date: '2026-06-13', note: 'Add GCal conflict detection — warns when a scheduled slot overlaps a Google Calendar appointment' },
-  ]);
   const [showSettings, setShowSettings] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
@@ -107,11 +111,6 @@ export default function App() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [completedJobs, setCompletedJobs] = useState([]);
   const [doneJobIds, setDoneJobIds] = useState([]);
-  const [weeklyTarget, setWeeklyTarget] = useState(() => Number(localStorage.getItem('weeklyTarget') || 2000));
-  const [hourlyRate, setHourlyRate] = useState(() => Number(localStorage.getItem('hourlyRate') || 85));
-  const [benchHours, setBenchHours] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('benchHours') || 'null') || {}; } catch { return {}; }
-  });
   const [isMobile] = useState(() => window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768);
   const [conflictEvents, setConflictEvents] = useState([]);
 
@@ -135,9 +134,11 @@ export default function App() {
   }, []);
 
   const showToast = useCallback((msg) => setToast(msg), []);
-  const addChangelog = useCallback((msg) => {
-    setChangelog(prev => [...prev, { ts: Date.now(), msg }]);
-  }, []);
+  // The in-app Changelog screen is gone (it had not been updated since June and
+  // the git history is the real changelog). This stays as a deliberate no-op so
+  // that useGoogleCalendar and useScheduler, which both call it, need no edits —
+  // those are calendar-sync files and not worth touching for a screen deletion.
+  const addChangelog = useCallback(() => {}, []);
 
   // --- Hooks ---
   const { pendingRevenueReview, addDisappearedJobs, resolveItem: resolvePendingRevenueReviewItem } = usePendingRevenueReview();
@@ -155,6 +156,10 @@ export default function App() {
     // instead of it being erased on the next save (the exact #1520/#1175 bug).
     onSplitOrphansFound: addDisappearedJobs,
     benchHours,
+    // Jobs are not loaded until the shared settings have arrived. benchHours
+    // decides how big each auto-split bench card is, so loading jobs first would
+    // size every split card off a placeholder and then leave it that way.
+    settingsReady,
   });
 
   const gcal = useGoogleCalendar({
@@ -414,11 +419,11 @@ export default function App() {
                 title="Click to change weekly target"
                 onClick={() => {
                   const v = window.prompt('Weekly revenue target ($):', weeklyTarget);
-                  if (v !== null && !isNaN(Number(v))) {
-                    const t = Number(v);
-                    setWeeklyTarget(t);
-                    localStorage.setItem('weeklyTarget', String(t));
-                  }
+                  // setWeeklyTarget saves to the shared store itself. The
+                  // localStorage write that used to sit here is gone from all
+                  // three of these places on purpose — leaving even one behind
+                  // would mean the target lived in two stores at once.
+                  if (v !== null && !isNaN(Number(v))) setWeeklyTarget(Number(v));
                 }}
               >${weeklyTarget.toLocaleString()}</span>
             </div>
@@ -625,6 +630,7 @@ export default function App() {
             <ProjectsPage jobs={jobs} />
           ) : showPartsToOrder ? (
             <PartsToOrderPage
+              suppliers={suppliers}
               onCheckStock={term => {
                 setPartsDrawerSearch(term || '');
                 setShowParts(true);
@@ -792,15 +798,20 @@ export default function App() {
           weekDays={weekDays}
           invoicedRevenue={weekRevenue}
           weeklyRevenueTarget={weeklyTarget}
-          onTargetChange={t => { setWeeklyTarget(t); localStorage.setItem('weeklyTarget', String(t)); }}
+          onTargetChange={setWeeklyTarget}
           onClose={() => setShowSummary(false)}
         />
       )}
 
       {showSettings && (
         <SettingsModal
-          changelog={changelog}
           onClose={() => setShowSettings(false)}
+          saveError={settingsSaveError}
+          suppliers={suppliers}
+          supplierError={supplierError}
+          onAddSupplier={addSupplier}
+          onRenameSupplier={renameSupplier}
+          onRemoveSupplier={removeSupplier}
           isSignedIn={gcal.signedIn}
           onSignIn={gcal.handleSignIn}
           onSignOut={gcal.handleSignOut}
@@ -809,7 +820,6 @@ export default function App() {
           defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
           onBenchKeywordsChange={kw => {
             setBenchKeywords(kw);
-            localStorage.setItem('benchKeywords', JSON.stringify(kw));
             // Re-infer benches over the CURRENT jobs, in place — this handler
             // never rebuilds the jobs array from a source file.
             // Skip split children (bench chosen by the
@@ -836,11 +846,11 @@ export default function App() {
             }
           }}
           hourlyRate={hourlyRate}
-          onHourlyRateChange={n => { setHourlyRate(n); localStorage.setItem('hourlyRate', String(n)); }}
+          onHourlyRateChange={setHourlyRate}
           weeklyRevenueTarget={weeklyTarget}
-          onWeeklyTargetChange={n => { setWeeklyTarget(n); localStorage.setItem('weeklyTarget', String(n)); }}
+          onWeeklyTargetChange={setWeeklyTarget}
           benchHours={benchHours}
-          onBenchHoursChange={bh => { setBenchHours(bh); localStorage.setItem('benchHours', JSON.stringify(bh)); }}
+          onBenchHoursChange={setBenchHours}
           onOpenSummary={() => { setShowSettings(false); setShowSummary(true); }}
           onOpenParkingLot={() => {
             setShowSettings(false);
