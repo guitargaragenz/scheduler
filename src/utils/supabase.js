@@ -996,6 +996,9 @@ export async function loadPartsToOrder() {
         description: item.description,
         category: item.category,
         neededForJob: item.needed_for_job,
+        // Nullable, added round 2. Rows written before the column existed read
+        // back as undefined here, so it is normalised to null.
+        partNumber: item.part_number ?? null,
         addedAt: item.added_at,
         resolved: item.resolved,
       };
@@ -1015,6 +1018,7 @@ export async function addPartsToOrderItems(items) {
       description: item.description,
       category: item.category || 'part',
       needed_for_job: item.neededForJob ?? null,
+      part_number: item.partNumber ?? null,
       added_at: item.addedAt || new Date().toISOString(),
       resolved: item.resolved || false,
     }));

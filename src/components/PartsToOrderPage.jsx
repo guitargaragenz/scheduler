@@ -5,7 +5,10 @@ import {
   addPartsToOrderItems,
   markPartResolved,
 } from '../utils/supabase.js';
-import { partitionParts, buildPartPayload } from '../data/partsToOrder.js';
+import { getAllParts } from '../utils/partsbox.js';
+import {
+  partitionParts, buildPartPayload, groupPartsByJob, findStockMatch,
+} from '../data/partsToOrder.js';
 
 // The Parts to Order page — the chase list of parts waiting to be ordered or to
 // arrive. Nothing here touches job state: ticking a part off clears it from this
@@ -45,6 +48,62 @@ function Notice({ children }) {
   );
 }
 
+// The stock check is advisory and can fail on its own without anything being
+// wrong with the list. It gets its own quiet grey note, deliberately NOT the
+// red Notice above — red on this page means "your save did not happen", and a
+// PartsBox outage must never read as a lost part.
+function QuietNote({ children }) {
+  if (!children) return null;
+  return (
+    <div style={{
+      background: '#1f2937', border: `1px solid ${BORDER}`, color: '#9ca3af',
+      borderRadius: 8, padding: '10px 12px', fontSize: 12, lineHeight: 1.5,
+      marginBottom: 18,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// One "you may already have this" flag. Only an exact part-number match is
+// allowed to speak with certainty; everything else is worded as a maybe, and a
+// single-word match is softened further still. The flag is a door, not just a
+// notice — the button opens the inventory drawer already searched.
+function StockFlag({ match, onCheckStock }) {
+  if (!match) return null;
+  const { part, quantity, certain, matchedTermCount, searchText } = match;
+  const weak = !certain && matchedTermCount < 2;
+  const name = part['part/name'] || 'a part';
+
+  return (
+    <div style={{
+      marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      background: certain ? '#1c2a1c' : '#1f2937',
+      border: `1px solid ${certain ? '#3f6212' : BORDER}`,
+      borderRadius: 8, padding: '8px 10px',
+      opacity: weak ? 0.75 : 1,
+    }}>
+      <div style={{ flex: 1, minWidth: 180, fontSize: 12, lineHeight: 1.5, color: certain ? '#bef264' : '#9ca3af' }}>
+        {certain
+          ? <>PartsBox: <strong>{quantity} in stock</strong> — same part number, “{name}”.</>
+          : weak
+            ? <>Possibly already in stock — something called “{name}” loosely matches. Worth a look.</>
+            : <>You may already have this — “{name}” looks similar ({quantity} in stock).</>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onCheckStock?.(searchText)}
+        style={{
+          flexShrink: 0, padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+          border: `1px solid ${BORDER}`, background: '#111827', color: '#d1d5db', cursor: 'pointer',
+        }}
+      >
+        Check stock
+      </button>
+    </div>
+  );
+}
+
 const fieldStyle = {
   width: '100%', boxSizing: 'border-box',
   background: '#111827', border: `1px solid ${BORDER}`, borderRadius: 6,
@@ -56,17 +115,22 @@ const labelStyle = {
   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 };
 
-export default function PartsToOrderPage() {
+export default function PartsToOrderPage({ onCheckStock }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [writeError, setWriteError] = useState(null);
+  // Third, separate state on purpose — a PartsBox outage is not a failed save
+  // and must not share the red box with one.
+  const [stockCheckError, setStockCheckError] = useState(null);
+  const [inventory, setInventory] = useState([]);
   const [busy, setBusy] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [neededForJob, setNeededForJob] = useState('');
+  const [partNumber, setPartNumber] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -88,11 +152,30 @@ export default function PartsToOrderPage() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Inventory loads once on open, same as the drawer does. Read-only: this page
+  // never writes to PartsBox. If it fails, the flags simply don't appear and
+  // everything else on the page still works.
+  useEffect(() => {
+    let cancelled = false;
+    getAllParts()
+      .then(parts => { if (!cancelled) { setInventory(parts || []); setStockCheckError(null); } })
+      .catch(e => {
+        if (cancelled) return;
+        setInventory([]);
+        setStockCheckError(`Stock check unavailable — couldn't reach PartsBox (${errorText(e)}). The list still works; you just won't see "already in stock" flags.`);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const { active, resolved } = partitionParts(itemsById);
+  const activeGroups = groupPartsByJob(active);
+
+  // What the add form is currently suggesting, recomputed as it is typed.
+  const draftMatch = findStockMatch(inventory, { description, partNumber });
 
   async function handleAdd(e) {
     e.preventDefault();
-    const payload = buildPartPayload({ description, category, neededForJob });
+    const payload = buildPartPayload({ description, category, neededForJob, partNumber });
     if (!payload) {
       setWriteError('Type what the part is before adding it.');
       return;
@@ -104,6 +187,7 @@ export default function PartsToOrderPage() {
       setDescription('');
       setCategory('');
       setNeededForJob('');
+      setPartNumber('');
       await refresh();
     } catch (err) {
       // The typed values are left in the boxes on purpose, so nothing is lost
@@ -143,6 +227,7 @@ export default function PartsToOrderPage() {
 
         <Notice>{loadError}</Notice>
         <Notice>{writeError}</Notice>
+        <QuietNote>{stockCheckError}</QuietNote>
 
         {/* Add a part */}
         <form
@@ -165,6 +250,21 @@ export default function PartsToOrderPage() {
           </div>
 
           <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle} htmlFor="pto-pn">Part number (optional)</label>
+            <input
+              id="pto-pn"
+              style={fieldStyle}
+              value={partNumber}
+              onChange={e => setPartNumber(e.target.value)}
+              placeholder="If you have it — turns a maybe into a certainty"
+              autoComplete="off"
+            />
+          </div>
+
+          {/* Advisory only. It never blocks the save below it. */}
+          <StockFlag match={draftMatch} onCheckStock={onCheckStock} />
+
+          <div style={{ marginBottom: 18, marginTop: 18 }}>
             <label style={labelStyle} htmlFor="pto-cat">Category (optional)</label>
             <input
               id="pto-cat"
@@ -216,36 +316,59 @@ export default function PartsToOrderPage() {
             }}>
               To order · {active.length}
             </div>
-            {active.map(part => (
-              <div
-                key={part.id}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 14,
-                  background: PANEL_BG, border: `1px solid ${BORDER}`, borderRadius: 10,
-                  padding: '16px 18px', marginBottom: 12,
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, color: '#f3f4f6', lineHeight: 1.4 }}>
-                    {part.description}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, lineHeight: 1.6 }}>
-                    {part.category || 'part'}
-                    {part.neededForJob ? ` · for job ${part.neededForJob}` : ' · shop stock'}
-                    {` · added ${formatAdded(part.addedAt)}`}
-                  </div>
+            {/* Grouped by job for display only — nothing about the rows or the
+                database changes, and the job number is still free text. */}
+            {activeGroups.map(group => (
+              <div key={group.key || '__shop__'} style={{ marginBottom: 26 }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 600, color: '#e5e7eb',
+                  marginBottom: 10, paddingLeft: 2,
+                }}>
+                  {group.label}
+                  <span style={{ color: '#6b7280', fontWeight: 400 }}> · {group.parts.length}</span>
                 </div>
-                <button
-                  onClick={() => handleResolve(part, true)}
-                  disabled={busy}
-                  style={{
-                    flexShrink: 0, padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    border: '1px solid #15803d', background: '#14532d', color: '#86efac',
-                    cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-                  }}
-                >
-                  Got it
-                </button>
+
+                {group.parts.map(part => (
+                  <div
+                    key={part.id}
+                    style={{
+                      background: PANEL_BG, border: `1px solid ${BORDER}`, borderRadius: 10,
+                      padding: '16px 18px', marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, color: '#f3f4f6', lineHeight: 1.4 }}>
+                          {part.description}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, lineHeight: 1.6 }}>
+                          {part.category || 'part'}
+                          {part.partNumber ? ` · part no. ${part.partNumber}` : ''}
+                          {` · added ${formatAdded(part.addedAt)}`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleResolve(part, true)}
+                        disabled={busy}
+                        style={{
+                          flexShrink: 0, padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                          border: '1px solid #15803d', background: '#14532d', color: '#86efac',
+                          cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
+                        }}
+                      >
+                        Got it
+                      </button>
+                    </div>
+
+                    <StockFlag
+                      match={findStockMatch(inventory, {
+                        description: part.description,
+                        partNumber: part.partNumber,
+                      })}
+                      onCheckStock={onCheckStock}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -282,6 +405,7 @@ export default function PartsToOrderPage() {
                       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
                         {part.category || 'part'}
                         {part.neededForJob ? ` · for job ${part.neededForJob}` : ' · shop stock'}
+                        {part.partNumber ? ` · part no. ${part.partNumber}` : ''}
                         {` · added ${formatAdded(part.addedAt)}`}
                       </div>
                     </div>

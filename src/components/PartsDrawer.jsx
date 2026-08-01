@@ -4,15 +4,19 @@ import {
   totalStock, isLowStock, stockByStorage,
   addStock, removeStock,
 } from '../utils/partsbox.js';
+import { parseTerms } from '../data/partsToOrder.js';
 
 const DRAWER_WIDTH = 440;
 
-export default function PartsDrawer({ onClose }) {
+// `initialSearch` lets the Parts to Order page's "check stock" control open this
+// drawer already searched for the part in question. Default '' — opening the
+// drawer any other way behaves exactly as before.
+export default function PartsDrawer({ onClose, initialSearch = '' }) {
   const [parts, setParts] = useState([]);
   const [storages, setStorages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
   const [showLowOnly, setShowLowOnly] = useState(false);
   const [action, setAction] = useState(null); // { partId, type, qty, storageId, comment, lots? }
   const [saving, setSaving] = useState(false);
@@ -41,24 +45,17 @@ export default function PartsDrawer({ onClose }) {
 
   const storageMap = Object.fromEntries(storages.map(s => [s['storage/id'], s['storage/name']]));
 
-  // Parse terms: space-split, but "quoted phrases" stay together. -word or -"phrase" excludes.
-  function parseTerms(raw) {
-    const tokens = [];
-    const re = /(-?"[^"]*"|-?\S+)/g;
-    let m;
-    while ((m = re.exec(raw)) !== null) {
-      let tok = m[1];
-      const negate = tok.startsWith('-');
-      if (negate) tok = tok.slice(1);
-      if (tok.startsWith('"') && tok.endsWith('"')) tok = tok.slice(1, -1);
-      if (tok) tokens.push({ term: tok.toLowerCase(), negate });
-    }
-    return tokens;
-  }
+  // parseTerms now lives in src/data/partsToOrder.js so the drawer and the
+  // Parts to Order page share one copy of the search grammar. The parser is
+  // shared; the matcher below is NOT.
   const tokens = parseTerms(search);
   const positive = tokens.filter(t => !t.negate);
   const negative = tokens.filter(t => t.negate);
 
+  // Five fields, INCLUDING the storage-location name below. Do not swap this
+  // for matchesPart() from partsToOrder.js: that one searches four fields on
+  // purpose, and using it here would silently kill bin/shelf search in the
+  // drawer — searching "PTS-BIN 4" to see what's in a bin is a feature here.
   function matchesTerm(p, t) {
     return (
       p['part/name']?.toLowerCase().includes(t) ||
