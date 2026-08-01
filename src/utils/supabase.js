@@ -999,6 +999,11 @@ export async function loadPartsToOrder() {
         // Nullable, added round 2. Rows written before the column existed read
         // back as undefined here, so it is normalised to null.
         partNumber: item.part_number ?? null,
+        // Nullable, added 2026-08-01. The NAME as it was at save time, not a
+        // reference into the suppliers table — rows written before the column
+        // existed, and parts saved before a supplier was decided, read back as
+        // null here.
+        supplier: item.supplier ?? null,
         addedAt: item.added_at,
         resolved: item.resolved,
       };
@@ -1019,6 +1024,7 @@ export async function addPartsToOrderItems(items) {
       category: item.category || 'part',
       needed_for_job: item.neededForJob ?? null,
       part_number: item.partNumber ?? null,
+      supplier: item.supplier ?? null,
       added_at: item.addedAt || new Date().toISOString(),
       resolved: item.resolved || false,
     }));
@@ -1079,6 +1085,141 @@ export function subscribeToPartsToOrder(callback) {
   } catch (e) {
     console.error('Supabase subscribe to parts to order error:', e);
     return () => {};
+  }
+}
+
+// ============ SUPPLIERS (managed list — 2026-08-01) ============
+//
+// Names only. This list feeds the supplier dropdown on the Parts to Order page
+// and nothing else.
+//
+// Nothing here ever touches parts_to_order. The supplier NAME is copied onto a
+// part when the part is saved, so removing or renaming a supplier below cannot
+// change a single saved part row. That is deliberate and load-bearing: a part
+// keeps the name it was ordered under forever. See the schema comment on
+// parts_to_order.supplier.
+//
+// Same failure contract as parts_to_order above — log, then RE-THROW, so a
+// failed write reaches the screen instead of looking like a success.
+
+export async function loadSuppliers() {
+  try {
+    const { data, error } = await getClient()
+      .from('suppliers')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(r => ({ id: String(r.id), name: r.name }));
+  } catch (e) {
+    console.error('Supabase load suppliers error:', e);
+    throw e;
+  }
+}
+
+export async function addSupplier({ id, name }) {
+  try {
+    const { error } = await getClient()
+      .from('suppliers')
+      .insert([{ id: id || `sup-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name }]);
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase add supplier error:', e);
+    throw e;
+  }
+}
+
+// Renames the entry in the list ONLY. Parts already saved against the old name
+// keep it and go on grouping under it. That is the agreed behaviour, not an
+// oversight — see the brief's "never rewrite saved part rows".
+export async function renameSupplier(id, name) {
+  try {
+    const { error } = await getClient()
+      .from('suppliers')
+      .update({ name })
+      .eq('id', String(id));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase rename supplier error:', e);
+    throw e;
+  }
+}
+
+// Removes it from the dropdown. Parts tagged with it are untouched and still
+// group under that name.
+export async function removeSupplier(id) {
+  try {
+    const { error } = await getClient()
+      .from('suppliers')
+      .delete()
+      .eq('id', String(id));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase remove supplier error:', e);
+    throw e;
+  }
+}
+
+// ============ APP SETTINGS (shared across devices — 2026-08-01) ============
+//
+// A key/value store for the four settings that used to live in localStorage:
+// benchKeywords, benchHours, hourlyRate, weeklyTarget. `value` is JSONB, so
+// each key stores whatever shape that setting already had.
+//
+// Throws on failure like everything above. The caller (useAppSettings) catches
+// a failed LOAD and falls back to built-in defaults so the app still works —
+// but it has to be told the load failed to do that, which a swallowed error
+// would prevent. A blank keyword list is not an acceptable fallback: it changes
+// which bench every job lands on.
+
+export async function loadAppSettings() {
+  try {
+    const { data, error } = await getClient()
+      .from('app_settings')
+      .select('*');
+    if (error) throw error;
+    const byKey = {};
+    (data || []).forEach(r => { byKey[r.key] = r.value; });
+    return byKey;
+  } catch (e) {
+    console.error('Supabase load app settings error:', e);
+    throw e;
+  }
+}
+
+// A deliberate save by the tech, in Settings. Last write wins, which is what
+// you want when someone is looking at the screen and changing a number.
+export async function saveAppSetting(key, value) {
+  try {
+    const { error } = await getClient()
+      .from('app_settings')
+      .upsert({ key, value }, { onConflict: 'key' });
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase save app setting error:', e);
+    throw e;
+  }
+}
+
+// The first-load migration write, and NOT the same thing as saving.
+//
+// `ignoreDuplicates: true` is what makes supabase-js emit
+// INSERT ... ON CONFLICT (key) DO NOTHING. That is the entire safety mechanism
+// for the localStorage → shared-store migration: three devices seed
+// independently, only the iMac has real keyword edits, and nothing client-side
+// can arbitrate between them. First writer wins in the database, every later
+// seed is a no-op, and a MacBook with empty localStorage cannot overwrite the
+// real list. Never change this to a plain upsert, and do not add a
+// "seeded already" flag in localStorage — a per-device flag cannot see the
+// other two devices, which is the whole problem.
+export async function seedAppSetting(key, value) {
+  try {
+    const { error } = await getClient()
+      .from('app_settings')
+      .upsert({ key, value }, { onConflict: 'key', ignoreDuplicates: true });
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase seed app setting error:', e);
+    throw e;
   }
 }
 
