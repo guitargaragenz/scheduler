@@ -8,12 +8,19 @@ Council questions 1 and 2 plus the leftover on question 3 (how forgiving the wor
 should be). Then builder, independent verifier, browser test, merge.
 
 **Two things already established this session — do not re-derive them:**
-- **`PartsDrawer.jsx:52-82` already implements the keyword search this build needs** —
-  multi-word AND matching with `-word` exclusion, across `part/name`, `part/description`,
-  `part/mpn`, `part/tags` and the storage-location name. **Reuse it; do not write a second
-  matcher.** Lifting it into `src/data/partsToOrder.js` so both the drawer and the page
-  share one implementation is the sensible move, and it is what the round-1 verifier
-  checked for on the wrap-gap rule.
+- **`PartsDrawer.jsx:44-82` already implements the keyword search this build needs** —
+  `parseTerms` (:44-57) then `matchesTerm` (:62-72): multi-word AND matching with `-word`
+  exclusion, across `part/name`, `part/description`, `part/mpn`, `part/tags` (:64-67) and
+  the storage-location name (:68-70). **Reuse this logic; do not write a second matcher
+  from scratch.** Two notes that go together:
+  - Lifting it into `src/data/partsToOrder.js` so the drawer and the page share one copy
+    is the sensible move. **That makes two edits to the drawer, not one** — the search prop
+    plus swapping its local matcher for the shared import. Both are permitted; nothing else
+    in the drawer moves. Council may instead say leave the drawer alone entirely and copy
+    the logic into `partsToOrder.js` — that is a legitimate call, but it must be a decision,
+    not a drift.
+  - **The page searches four fields, not five.** Drop the storage-location match. A part
+    should not flag as in-stock because a shelf happens to be named "amp parts".
 - **PartsBox has no search endpoint.** Their own app pulls `part/all` and filters in the
   browser. Client-side filtering is not a workaround here; it is how PartsBox works.
 
@@ -25,7 +32,7 @@ mean the round-3 write-back is smaller than it looked: the hard part is not crea
 part, it is that `stock/add` needs a storage location, so something must say which drawer
 the part went into.
 **Date:** 2026-08-01.
-**Repo state:** `main` @ `fb0b476`, clean. Round 1 shipped the same day at `9a925ef`
+**Repo state:** `main` @ `b110dc4`, clean. Round 1 shipped the same day at `9a925ef`
 (record: [`docs/briefs/parts-to-order-page-round-1.md`](../docs/briefs/parts-to-order-page-round-1.md)).
 **Asked for by Trevor 2026-08-01**, straight after seeing round 1 live:
 
@@ -39,9 +46,11 @@ the part went into.
 The page works but it's a flat list. Three changes: put a job's parts together, let a
 part carry its part number, and warn when something on the list is already on the shelf.
 
-The three are one build because **item 2 is what makes item 3 reliable.** Matching
-"TDA7294 amplifier chip" against PartsBox by text alone is guesswork; matching on a part
-number is exact.
+The three are one build because they share one screen and one check. **The keyword match
+is the everyday path** — most parts are typed at the bench with no number to hand — and it
+is stated as a maybe. **The part number, when there is one, turns that maybe into a
+certainty.** Do not build the keyword path as a fallback; build it as the main road, with
+the part number as the upgrade.
 
 ## What already exists (verified against the code 2026-08-01, not from memory)
 
@@ -50,7 +59,7 @@ number is exact.
   `totalStock(part)` sums a part's quantity across storage locations. **No new API work
   is needed** — this build consumes what's already there.
 - A PartsBox part carries `part/name`, `part/description`, **`part/mpn`** (manufacturer
-  part number) and `part/tags`. `PartsDrawer.jsx:64-68` already searches across all four.
+  part number) and `part/tags`. `PartsDrawer.jsx:64-67` already searches across all four.
   **`part/mpn` is the join** between the two systems.
 - `parts_to_order` (`docs/supabase-schema.sql:160-167`) has no part-number column.
 - Round 1's page is `src/components/PartsToOrderPage.jsx`, with its testable logic split
@@ -95,15 +104,12 @@ add/remove behaviour.
 
 **Matching rule, in priority order:** exact `part/mpn` match on the part number →
 otherwise a **keyword search** of what was typed against `part/name`, `part/description`,
-`part/mpn` and `part/tags` (the same four fields `PartsDrawer.jsx:64-68` searches),
-matching on individual words rather than the whole string. A part-number match is stated
-as certain; a keyword match is stated as a maybe. **Never merge the two systems, and
-never present a keyword match as definite.**
-
-**The keyword search is the common case, not the fallback** — Trevor, 2026-08-01: *"not
-always having part numbers at hand a keyword or sim search might be good too."* Most
-parts are typed at the bench with no number to hand. A build where the keyword path is an
-afterthought is a build that flags almost nothing.
+`part/mpn` and `part/tags` (the four fields at `PartsDrawer.jsx:64-67` — **not** the
+storage-location match at `:68-70`), matching on individual words rather than the whole
+string. A part-number match is stated as certain; a keyword match is stated as a maybe.
+**Never merge the two systems, and never present a keyword match as definite.** The
+keyword path is the everyday one, per the summary above — see Council question 3 for what
+is still open about it.
 
 **4. Never block.** The check warns and nothing more. It cannot refuse a save, cannot
 remove a part from the list, and cannot tick one off. If PartsBox is unreachable the page
@@ -134,17 +140,12 @@ same red inline error that round 1 reserved for failed writes.
 2. **How stale can the flag be?** No caching is proposed. If the call is slow enough to
    matter, is a short cache better than a spinner?
 3. ~~**Is the text match worth having at all?**~~ **Answered by Trevor 2026-08-01 — keep
-   it, and treat it as the common case, not the fallback:** *"not always having part
-   numbers at hand a keyword or sim search might be good too."*
-   Most entries are typed at the bench with no number to hand, so a build that only
-   matched on part numbers would flag almost nothing. **The keyword search must work
-   well on its own**, not just as a degraded version of the exact match — searching
-   `part/name`, `part/description`, `part/mpn` and `part/tags` (the same four fields
-   `PartsDrawer.jsx:64-68` searches), on any word typed, not just whole-string
-   containment. Still labelled a maybe, never presented as certain.
-   **Left for Council:** how forgiving the word match should be — plain word matching, or
-   something that tolerates a typo or a plural — and whether a weak match should be shown
-   at all or filtered out.
+   it, and treat it as the everyday path.** His words: *"not always having part numbers at
+   hand a keyword or sim search might be good too."* The rule this settled is stated once,
+   in the Scope section above; it is not restated here.
+   **What is still open, and is the actual question for Council:** how forgiving the word
+   match should be — plain word matching, or something that tolerates a typo or a plural —
+   and whether a weak match should be shown at all or filtered out.
 
 ## Carried over from round 1, still not fixed
 
