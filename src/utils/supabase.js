@@ -967,6 +967,18 @@ export function subscribeToPendingRevenueReview(callback) {
 // can be needed for a job number that no longer exists in `jobs` (or for no
 // job in particular, e.g. general shop stock), and this table must not fail
 // to insert just because that job row was deleted or never existed.
+//
+// FAILURE CONTRACT (changed 2026-08-01, when the page below them was built):
+// all four read/write functions here log and then RE-THROW. They used to
+// swallow the error and return normally — an empty map from a failed read, and
+// nothing at all from a failed write. That is why nobody noticed that the table
+// had no RLS policy for its first month: every insert the Sunday board meeting
+// made was rejected by Postgres and looked like a success to its caller.
+// PartsToOrderPage.jsx catches these and puts the failure on screen as
+// persistent text. Do not put the swallowing catches back.
+//
+// subscribeToPartsToOrder is deliberately left alone: its try/catch governs
+// subscription setup, not a write, and it has to return an unsubscribe function.
 
 export async function loadPartsToOrder() {
   try {
@@ -991,7 +1003,7 @@ export async function loadPartsToOrder() {
     return itemsById;
   } catch (e) {
     console.error('Supabase load parts to order error:', e);
-    return {};
+    throw e;
   }
 }
 
@@ -1012,6 +1024,7 @@ export async function addPartsToOrderItems(items) {
     if (error) throw error;
   } catch (e) {
     console.error('Supabase add parts to order items error:', e);
+    throw e;
   }
 }
 
@@ -1024,6 +1037,7 @@ export async function removePartsToOrderItem(itemId) {
     if (error) throw error;
   } catch (e) {
     console.error('Supabase remove parts to order item error:', e);
+    throw e;
   }
 }
 
@@ -1039,6 +1053,7 @@ export async function markPartResolved(id, resolved) {
     if (error) throw error;
   } catch (e) {
     console.error('Supabase mark part resolved error:', e);
+    throw e;
   }
 }
 

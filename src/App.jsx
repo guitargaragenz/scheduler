@@ -20,6 +20,7 @@ import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
 import ProjectsPage from './components/ProjectsPage.jsx';
+import PartsToOrderPage from './components/PartsToOrderPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
@@ -81,7 +82,10 @@ export default function App() {
   const [pomoJob, setPomoJob] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showRevenueBreakdown, setShowRevenueBreakdown] = useState(false);
+  // showParts is the PartsBox inventory DRAWER (PartsDrawer.jsx) — a different
+  // system entirely. showPartsToOrder below is the parts-to-order chase list page.
   const [showParts, setShowParts] = useState(false);
+  const [showPartsToOrder, setShowPartsToOrder] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
@@ -520,6 +524,21 @@ export default function App() {
               Sheet
             </button>
 
+            {/* Deliberately not sitting beside the "Parts" button further down:
+                that one opens the PartsBox inventory drawer, this one opens the
+                parts-to-order chase list. Two different things. */}
+            <button
+              onClick={() => setShowPartsToOrder(p => !p)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showPartsToOrder ? '#b45309' : '#334155'}`,
+                background: showPartsToOrder ? '#451a03' : '#1e293b',
+                color: showPartsToOrder ? '#fcd34d' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showPartsToOrder ? 700 : 400,
+              }}
+            >
+              Parts to Order
+            </button>
+
             <button
               onClick={() => setShowWeekView(w => !w)}
               style={{
@@ -601,6 +620,8 @@ export default function App() {
             />
           ) : showProjects ? (
             <ProjectsPage jobs={jobs} />
+          ) : showPartsToOrder ? (
+            <PartsToOrderPage />
           ) : showWeekView ? (
             <>
               <CalendarGrid
