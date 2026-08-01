@@ -3,8 +3,10 @@ doc_status: live
 # Brief — One Parking Lot, fed from the Daily Log
 
 **Status:** ✅ APPROVED by Trevor 2026-08-01 ("yes perfect"), including the recommendation to
-retire the markdown list. Next step: Council (protocol step 2). Queued behind **Parts to Order
-round 2**, which holds the pending-brief slot — round 1 shipped at `9a925ef`.
+retire the markdown list. **Council done 2026-08-01 — both reviewers "ship with changes"; their
+amendments are in the "Council amendments" section below and override the body where they
+disagree.** Next step: builder, Merge A only (protocol step 3). Parts to Order round 2 shipped
+at `a702e6b`, so nothing is queued ahead.
 **Date:** 2026-08-01.
 **Branch:** to be cut from `main` once Parts to Order round 2 has merged.
 **Asked for by Trevor 2026-08-01:** *"the i/p to Parking Lot>meetings etc is through Bujo.
@@ -146,6 +148,68 @@ Behaviour, settled with Trevor 2026-08-01:
   designed to avoid touching them.
 - **Any change to `scheduledSlots`, `calendarSlot`, the `jobs[]` shape, or
   `useGoogleCalendar.js`.** Nothing here needs them.
+
+## Council amendments — 2026-08-01, two independent reviewers, both verdicts "ship with changes"
+
+These override the corresponding paragraphs above where they disagree.
+
+**A. Two merges, not one.** Merge A = items 1 + 2 (wipe fix, migration, markdown deleted).
+Merge B = item 3 (`#PL`), cut only after A has been live for a real day. Reason: if `#PL` has a
+bug and the whole thing is reverted, the revert re-opens the live wipe bug. Nothing is gained by
+shipping them together.
+
+**B. Order inside Merge A is fixed, and it is not the brief's order.**
+1. `loadParkingLot()` returns `null` on error, and `ParkingLotPage.jsx:52-61` treats `null` as
+   "touch nothing". Cheapest and purely defensive — it goes first.
+2. Then `saveParkingLot()` → per-item diff, `clearParkingLot()` deleted. Not before step 1,
+   because until step 1 lands, testing step 2 can still trigger the seed overwrite.
+3. Then the markdown migration. One-way door; run it against a table already proven safe to
+   write to. **Run the script and confirm the items render in the app before deleting
+   `admin/context/parking-lot.md`** — separate step, not the same commit.
+4. `INITIAL_ITEMS` and the seeding branch deleted last. **Council recommends deleting them —
+   both reviewers.** The JSON backup is the recovery path; a stale June seed is a worse one.
+
+**C. The diff must handle edits, not just adds and removes.** `performSave()`'s `deferredItems`
+logic (`useDailyLog.js:213-225`) computes upserts as "id not already persisted". Ported
+literally, an edited parking lot item — `updateTitle`/`updateDetails`/`toggleStatus` at
+`ParkingLotPage.jsx:74-84` — would never be written. The rule is: upsert when the id is new
+**or** its `content` has changed.
+
+**D. Check what is actually in the `content` column before writing the diff.**
+`supabase.js:656` does `content: item.content || item`, and the page never sets `item.content`
+— so the real stored shape may not be the JSON string the brief describes. Read a live row
+first.
+
+**E. The Sunday meeting change is bigger than the brief implies — verified 2026-08-01.**
+Nothing anywhere reads the `parking_lot` table for the meeting. `board_meeting_export.mjs:29-33`
+explicitly dropped `parkingLotItems`, and `sunday-board-meeting.js:14-36` is comment text
+telling the live chat to read the markdown file. So deleting the markdown file with no other
+change leaves the meeting with **no parking lot at all**. Both must change:
+- `scripts/board_meeting_export.mjs` — pull the `parking_lot` table and return it in its JSON.
+- `.claude/workflows/sunday-board-meeting.js:14-38` — rewrite the comment block; the
+  two-parking-lots explanation is history once this ships.
+
+**F. `#PL` must be fire-and-forget, outside the Daily Log's save path.** Trigger it from
+`addBullet` (`useDailyLog.js:269-296`) but call the parking-lot write directly — never inside
+`updateState`, `scheduleSave` or `performSave`, and never behind `readyRef`. Two reasons: a
+parking-lot failure must not be able to block or corrupt the daily-log save that was hardened
+after the 2026-07-05 overwrite, and a write inside the state updater can double-file when React
+re-runs it. Hook it in `addBullet` only — not `upsertScheduledBullet`.
+
+**G. Realtime can clobber typing — pre-existing, fix it while in here.**
+`subscribeToParkingLot` (`supabase.js:680-699`) reloads on every change and
+`ParkingLotPage.jsx:62` does a raw `setItems(data)`. An echo landing mid-edit overwrites what
+Trevor is typing. There is no "keep local while a save is pending" guard like `useDailyLog.js`
+has (`touchedLogKeysRef`, `applyServer`, lines 137-156). Add one, or ignore echoes during an
+in-flight save.
+
+**H. RLS — checked, no action.** `docs/supabase-schema.sql:61-66` gives `parking_lot` no RLS,
+matching every table except `parts_to_order`. This is deliberate and correct here.
+
+**Checklist corrections.** Item 3 means a unit test mocking the client, not manual throttling —
+it must be automatable. Item 5 must also count the **migrated markdown items**, not just the 8
+existing rows, or the migration can lose content and still pass. Item 7 must read
+`scripts/board_meeting_export.mjs` as well; the workflow file alone cannot prove it.
 
 ## Blast radius
 
