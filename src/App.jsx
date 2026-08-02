@@ -586,7 +586,10 @@ export default function App() {
                 fontSize: 12, cursor: 'pointer', fontWeight: showWeekView ? 700 : 400,
               }}
             >
-              {showWeekView ? 'Day View' : 'Week View'}
+              {/* The view you are looking at, not the one the click would switch
+                  to — reading "Week View" while looking at a single day was
+                  backwards. */}
+              {showWeekView ? 'Week View' : 'Day View'}
             </button>
 
             {/* The Board is a page selection like any other, it just happens to
