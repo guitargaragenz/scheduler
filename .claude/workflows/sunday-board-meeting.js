@@ -100,7 +100,11 @@ const schedulableNow = backlog.filter(j => j.schedulable || j.readyToStart)
 // 2026-07-31). It replaces the old 'PARTS' string, which never existed in
 // ACTION_OPTIONS and so matched nothing — this count silently read 0 every
 // week no matter how many jobs were actually parts-blocked.
-const partsJobs = backlog.filter(j => j.action === 'WP' || j.inTransit)
+// Searches ALL jobs, not just backlog: a job waiting on parts is very often
+// off the backlog already, so filtering over `backlog` hid them. On
+// 2026-08-03 that reported "nothing is parts-blocked" while 1705 and 1679
+// were both sitting on WP.
+const partsJobs = jobs.filter(j => j.action === 'WP' || j.inTransit)
 const customerWaitingJobs = backlog.filter(j => j.awaiting || j.action === 'CI')
 const quickWinCandidates = schedulableNow
   .filter(j => Number(j.hours) > 0 && Number(j.hours) <= 2)
