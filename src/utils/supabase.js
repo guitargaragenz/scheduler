@@ -1,4 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+// The departure gate's token. Imported rather than re-declared so the two ends
+// of the gate can never drift apart into a check that always passes.
+// pdfImportPlan.js is pure (it imports only data/jobs.js, which imports
+// nothing), so there is no cycle and no client is pulled into its tests.
+import { MULTITRACK_DEPARTURE_SOURCE } from '../data/pdfImportPlan.js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -103,6 +108,15 @@ const JOB_COLUMN_MAP = {
   // silently, and that import would write rows carrying nothing but `job`: a
   // no-op that looks exactly like a successful import.
   firstSeen: 'first_seen',
+  // The soft delete. Set when Multitrack drops a job off the printout, cleared
+  // when the same job number comes back on a later one. Without an entry here
+  // toJobRow() drops the key silently, and a departure would write nothing
+  // while looking like it worked — which is exactly how the return path was
+  // broken before it was ever built (council amendment 1).
+  departedAt: 'departed_at',
+  // Where a departing job's Google Calendar event ids are parked so the next
+  // sync preview can offer them for deletion. See the migration file.
+  departedGcalEventIds: 'departed_gcal_event_ids',
 };
 
 // vb/backlog/project are booleans on the app-shape job but stored as 'Y'/'N'
@@ -195,6 +209,23 @@ export const PDF_IMPORT_FIELDS = Object.freeze(['job', 'customer', 'mfr', 'model
 // hours figure he set from experience, on every single drop.
 export const PDF_NEW_JOB_FIELDS = Object.freeze(['bench', 'hours']);
 
+// The one field a RETURNING job is allowed to carry: departed_at, and only
+// ever set back to null. A job number that departed and then reappears on a
+// later printout must be un-departed by the same write that refreshes its six
+// PDF fields, or it stays invisible forever with its hours, tag and notes
+// stranded on a row nothing can see.
+//
+// Deliberately its own list rather than an addition to PDF_IMPORT_FIELDS: a
+// plain update of a job already on the board must never touch this column, and
+// separating the lists makes that structural instead of careful.
+// `done` rides along for a workshop reason, not a technical one: a completed job
+// never comes back. Trevor's rule is that returning work is rebooked under a new
+// job number, no exceptions — so a job number reappearing on the printout is by
+// definition live work, whatever its `done` flag said weeks ago. Left set, the
+// job returns to the Jobs Sheet but stays hidden on the Jobs page, which filters
+// `!j.done` (JobsPage.jsx:17).
+export const PDF_RETURN_FIELDS = Object.freeze(['departedAt', 'done']);
+
 /**
  * The Brief G PDF writer. Deliberately its own writer, not a general one.
  *
@@ -227,9 +258,26 @@ export async function writePdfImportBatch(writes) {
       // Guard 2: the allow-list. Anything outside it is a programming error
       // upstream, so fail loudly instead of quietly dropping the key and
       // leaving a half-wrong import looking healthy.
+      // isNew and isReturning are mutually exclusive by construction in
+      // buildPdfImportPlan(): a job number is either absent from the jobs table
+      // entirely (new), or present with departed_at set (returning), or present
+      // and live (a plain update). Checked here anyway — if both ever arrived
+      // together it would mean the plan matched one job number against two
+      // different rows, and that is not a batch to guess at.
+      if (w.isNew && w.isReturning) {
+        throw new Error(`refusing batch: job ${w.id} is marked both new and returning`);
+      }
       const allowed = w.isNew
         ? [...PDF_IMPORT_FIELDS, ...PDF_NEW_JOB_FIELDS]
-        : PDF_IMPORT_FIELDS;
+        : w.isReturning
+          ? [...PDF_IMPORT_FIELDS, ...PDF_RETURN_FIELDS]
+          : PDF_IMPORT_FIELDS;
+      // A returning write exists to CLEAR departed_at. Anything else in that
+      // column from this path would be an import departing a job through the
+      // return door, bypassing the departure plan Trevor approved on screen.
+      if (w.isReturning && w.data?.departedAt != null) {
+        throw new Error(`refusing batch: job ${w.id} is marked returning but sets departed_at to a value`);
+      }
       const stray = Object.keys(w.data || {}).filter(k => !allowed.includes(k));
       if (stray.length > 0) {
         throw new Error(`refusing batch: job ${w.id} carried fields the PDF cannot own (${stray.join(', ')})`);
@@ -300,6 +348,180 @@ export async function logPdfImport({ filename, rowCount, ids }) {
     if (error) throw error;
   } catch (e) {
     console.warn('PDF import log not persisted (see console line above):', e?.message || e);
+  }
+}
+
+// ============ DEPARTURES (the board follows the printout) ============
+
+// Every job number the jobs table knows about, and whether it is currently
+// departed — read UNFILTERED, straight from the table.
+//
+// This is the whole point of council amendment 1. The in-memory `jobs[]` has
+// already had departed rows filtered out of it by normalizeJobsFromDb(), so a
+// returning job number looks brand new to anything that consults it: the
+// importer would build a blank job and upsert it, silently orphaning the real
+// row's hours, tag, action, bench and notes behind a departed_at nothing ever
+// clears. The importer must decide "new vs returning vs already here" against
+// this, and nothing else.
+//
+// Two columns only. This runs on every Multitrack PDF drop and there is no
+// reason to pull the whole board across the wire to answer a set-membership
+// question.
+export async function loadJobIdentities() {
+  try {
+    const { data, error } = await getClient()
+      .from('jobs')
+      .select('id, departed_at');
+    if (error) throw error;
+    return (data || []).map(r => ({ id: String(r.id), departedAt: r.departed_at || null }));
+  } catch (e) {
+    console.error('Supabase load job identities error:', e);
+    // null, NOT [] — an empty array is indistinguishable from "the table is
+    // empty", and the caller would read every job on the printout as new and
+    // every job on the board as departed. The caller must refuse the import
+    // rather than act on a failed read.
+    return null;
+  }
+}
+
+/**
+ * Mark jobs as departed: off the board, row intact.
+ *
+ * `departures` is [{ id, job, gcalEventIds }]. Each row gets, in one write:
+ *   - departed_at = now                  (the soft delete itself)
+ *   - scheduled=false, calendar_slot=null, gcal_event_id=null,
+ *     gcal_event_ids=[]                  (council amendment 3a — nothing on the
+ *                                         calendar may point at a job that no
+ *                                         longer renders)
+ *   - departed_gcal_event_ids = the ids it was holding, parked for the next
+ *     sync preview to offer for deletion (amendment 3b — the customer's actual
+ *     Google Calendar booking is NOT deleted here, and must not be)
+ *
+ * Nothing else is touched. Tag, action, hours, bench, VB/BL/PJ, pomo log, bump
+ * history and session notes are all left exactly as they are — that is what
+ * makes a departure recoverable and a return path possible at all.
+ *
+ * `job` rides along for the same reason it does in writeJbaImportBatch(): this
+ * is an upsert, and Postgres validates jobs.job NOT NULL against the proposed
+ * insert row BEFORE resolving ON CONFLICT onto the existing row.
+ *
+ * Returns { ok, written } / { ok: false, error }, matching the other writers.
+ * Refuses the WHOLE batch on any bad row — a half-departed board is worse than
+ * one that departed nothing, because it looks like it worked.
+ */
+export async function writeDepartureBatch(departures, source) {
+  // The gate (council amendment 6). `source` is the token buildPdfImportPlan()
+  // emits and nothing else does — buildJbaImportPlan()'s plan has no
+  // departureSource key at all, so the Jobs-by-Age path arrives here with
+  // `undefined` and is refused. Checked BEFORE the empty-list shortcut, so a
+  // wrong-source call cannot pass by happening to have nothing to write.
+  if (source !== MULTITRACK_DEPARTURE_SOURCE) {
+    const e = new Error(
+      `refusing departures: "${source}" is not the Multitrack printout. Only the Multitrack jobs list may take jobs off the board.`
+    );
+    console.error('Supabase departure batch error:', e);
+    return { ok: false, error: e };
+  }
+  if (!departures || departures.length === 0) return { ok: true, written: 0 };
+  try {
+    const departedAt = new Date().toISOString();
+    const rows = departures.map(d => {
+      // Same guard as every other import writer: top-level jobs only. The app's
+      // own split cards ("1620_Electronics_0") are derived and never persisted,
+      // so they cannot depart — they simply stop being generated once their
+      // parent is filtered out.
+      if (!/^\d+$/.test(String(d.id ?? ''))) {
+        throw new Error(`refusing batch: "${d.id}" is not a top-level Multitrack job number`);
+      }
+      if (!d.job) {
+        throw new Error(`refusing batch: job ${d.id} has no job number`);
+      }
+      return {
+        id: String(d.id),
+        job: d.job,
+        departed_at: departedAt,
+        scheduled: false,
+        calendar_slot: null,
+        gcal_event_id: null,
+        gcal_event_ids: [],
+        departed_gcal_event_ids: d.gcalEventIds || [],
+        updated_at: departedAt,
+      };
+    });
+    // Every row here carries the identical column set by construction, so the
+    // union/NULL-fill hazard the other writers group around cannot arise. One
+    // request.
+    const { error } = await getClient().from('jobs').upsert(rows, { onConflict: 'id' });
+    if (error) throw error;
+    return { ok: true, written: rows.length };
+  } catch (e) {
+    console.error('Supabase departure batch error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Free every scheduled_slots row held by these job ids.
+//
+// scheduled_slots.job_id is ON DELETE CASCADE, but a departure is a soft delete
+// — the row stays, so nothing cascades and the slots would survive. A surviving
+// slot is not cosmetic: App.jsx only renders a slot whose job it can find, so
+// the cell LOOKS empty, while useScheduler still reads the stale id as occupied
+// and silently refuses the next booking there.
+export async function deleteScheduledSlotsForJobs(jobIds) {
+  if (!jobIds || jobIds.length === 0) return { ok: true, removed: 0 };
+  try {
+    const { error } = await getClient()
+      .from('scheduled_slots')
+      .delete()
+      .in('job_id', jobIds.map(String));
+    if (error) throw error;
+    return { ok: true, removed: jobIds.length };
+  } catch (e) {
+    console.error('Supabase delete scheduled slots for jobs error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Departed jobs still holding Google Calendar event ids. Read unfiltered and
+// straight from the table, because these rows are by definition invisible to
+// the in-memory board. Feeds the proposed-deletion list in previewSync().
+export async function loadDepartedGcalEvents() {
+  try {
+    const { data, error } = await getClient()
+      .from('jobs')
+      .select('id, job, mfr, model, departed_gcal_event_ids')
+      .not('departed_at', 'is', null)
+      .not('departed_gcal_event_ids', 'is', null);
+    if (error) throw error;
+    return (data || [])
+      .filter(r => (r.departed_gcal_event_ids || []).length > 0)
+      .map(r => ({
+        id: String(r.id),
+        job: r.job,
+        label: `#${r.job}${[r.mfr, r.model].filter(Boolean).length ? ` ${[r.mfr, r.model].filter(Boolean).join(' ')}` : ''}`,
+        eventIds: r.departed_gcal_event_ids || [],
+      }));
+  } catch (e) {
+    console.error('Supabase load departed gcal events error:', e);
+    return [];
+  }
+}
+
+// Called only AFTER the events have actually been deleted from Google Calendar,
+// so a failed clear costs a retry of an already-gone event (harmless) rather
+// than losing the ids while the bookings still exist (not recoverable).
+export async function clearDepartedGcalEventIds(jobIds) {
+  if (!jobIds || jobIds.length === 0) return { ok: true };
+  try {
+    const { error } = await getClient()
+      .from('jobs')
+      .update({ departed_gcal_event_ids: [] })
+      .in('id', jobIds.map(String));
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase clear departed gcal event ids error:', e);
+    return { ok: false, error: e };
   }
 }
 

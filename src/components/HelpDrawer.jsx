@@ -19,7 +19,7 @@ function highlight(text, query) {
   );
 }
 
-export default function HelpDrawer({ onClose }) {
+export default function HelpDrawer() {
   const [search, setSearch] = useState('');
   const [openId, setOpenId] = useState(null);
   const [section, setSection] = useState('All');
@@ -47,12 +47,14 @@ export default function HelpDrawer({ onClose }) {
   }, [q, section]);
 
   return (
+    // A page in the body, not a fixed overlay. It used to sit above the header
+    // at zIndex 200, which covered the very button that closes it and left the
+    // small × as the only way out. Now the "?" button in the header stays
+    // visible and reachable, exactly like Sheet, Projects and Parts to Order.
     <div style={{
-      position: 'fixed', top: 0, right: 0, width: 460, height: '100vh',
-      background: '#0a1628', borderLeft: '1px solid #1e3a5f',
-      display: 'flex', flexDirection: 'column', zIndex: 200,
+      flex: 1, overflow: 'hidden', background: '#0a1628',
+      display: 'flex', flexDirection: 'column',
       fontFamily: 'system-ui, sans-serif',
-      boxShadow: '-8px 0 32px rgba(0,0,0,0.6)',
     }}>
 
       {/* Header */}
@@ -69,10 +71,6 @@ export default function HelpDrawer({ onClose }) {
             {filtered.length} of {HELP_ARTICLES.length} articles
           </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer', padding: '2px 6px' }}
-        >×</button>
       </div>
 
       {/* Search */}

@@ -59,6 +59,20 @@ memory file — this file loads automatically, every time, for every session and
 - **Brevity by default, full context for real stakes.** Status updates are short ("X broke, we did Y,
   it's fixed") except for risk/safety caveats, irreversible actions, and genuine decision points —
   those always get full plain-English explanation, never compressed.
+- **Short answers, always. This is an accessibility requirement, not a style preference.**
+  (2026-08-02, in Trevor's words: "with an ADHD mind long text and jargon just shuts me down.")
+  A wall of text doesn't get skimmed, it gets abandoned — so a long answer isn't a thorough
+  answer, it's a failed one. Length is a correctness property here.
+  - Answer the question asked, then stop. Lead with the answer. Cut the reasoning that got
+    there, the alternatives weighed, and the tour of adjacent things he didn't ask about.
+  - Default to a few sentences or a short list. Headings, tables and nested bullets on anything
+    that wasn't asked for as a document are noise.
+  - Long only when he asks for detail, or for the exceptions above — risk, irreversible actions,
+    genuine decision points. Even then: shortest version that carries the stakes, and put the
+    thing he must know first, not last.
+  - Never trade jargon for brevity. Short *and* plain English. Both, always.
+  - When a lot genuinely needs saying, write it to a file and give him the one-line summary —
+    don't dump it into chat.
 
 ---
 
@@ -128,6 +142,18 @@ burns more than it saved. Cheap everywhere else; careful where the live job data
   self-contained work only.
 - **Synthesis happens in the main conversation.** Never spawn an agent to summarise other
   agents' output — the main session already holds it all.
+
+---
+
+## Workshop rules that the code must respect
+
+Trevor's operating rules, not app behaviour. Written down because a build already got
+designed around not knowing one of them (2026-08-02).
+
+- **A completed job never comes back.** If work returns to the bench, it is rebooked under a
+  new job number — no exceptions. So a job number reappearing on a Multitrack printout is
+  live work by definition, whatever its `done` flag said before. Anything that treats a
+  returning job number as possibly-still-complete is modelling a case that cannot happen.
 
 ---
 

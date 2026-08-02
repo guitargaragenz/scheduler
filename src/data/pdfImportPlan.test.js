@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildPdfImportPlan, buildNewJob, applyPdfFields } from './pdfImportPlan.js';
+import { buildPdfImportPlan, buildNewJob, applyPdfFields, MULTITRACK_DEPARTURE_SOURCE } from './pdfImportPlan.js';
+
+// The unfiltered read of the jobs table that the importer now requires before
+// it will depart anything. `[{ id, departedAt }]` — departedAt null means the
+// job is on the board, a timestamp means it departed on an earlier printout.
+const known = (...ids) => ids.map(id => ({ id: String(id), departedAt: null }));
+const knownDeparted = (...ids) => ids.map(id => ({ id: String(id), departedAt: '2026-07-01T00:00:00Z' }));
 
 const parsedJob = (ref, over = {}) => ({
   ref,
@@ -52,7 +58,10 @@ describe('buildPdfImportPlan — the count sanity check', () => {
 describe('buildPdfImportPlan — the three counts and two lists', () => {
   const parsed = [parsedJob('1601'), parsedJob('1602'), parsedJob('1603')];
   const jobs = [boardJob('1602'), boardJob('1603'), boardJob('1700')];
-  const plan = buildPdfImportPlan({ parsed, statedCount: 3, jobs, filename: 'jobs.pdf' });
+  const plan = buildPdfImportPlan({
+    parsed, statedCount: 3, jobs, filename: 'jobs.pdf',
+    knownJobIds: known('1602', '1603', '1700'),
+  });
 
   it('counts brand-new jobs and names them', () => {
     expect(plan.newJobs.map(j => j.id)).toEqual(['1601']);
@@ -67,9 +76,192 @@ describe('buildPdfImportPlan — the three counts and two lists', () => {
     expect(plan.missing.map(m => m.id)).toEqual(['1700']);
   });
 
-  it('never deletes or completes a missing job — it only reports it', () => {
+  it('departs a job that dropped off the printout — but never through the PDF field writer', () => {
+    // The six-field writer must not be the thing that departs a job. The
+    // departure is its own write, with its own allow-list and its own gate.
     expect(plan.writes.map(w => w.id).sort()).toEqual(['1601', '1602', '1603']);
     expect(plan.writes.some(w => w.id === '1700')).toBe(false);
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+  });
+});
+
+// Checklist item 7, the regression guard. This failure mode is silent and
+// destructive: nothing on screen would look wrong afterwards, the jobs would
+// simply be gone.
+describe('buildPdfImportPlan — no job that IS on the printout ever departs', () => {
+  it('departs nothing when every board job is on the printout', () => {
+    const parsed = [parsedJob('1601'), parsedJob('1602')];
+    const jobs = [boardJob('1601'), boardJob('1602')];
+    const plan = buildPdfImportPlan({
+      parsed, statedCount: 2, jobs, knownJobIds: known('1601', '1602'),
+    });
+    expect(plan.departures).toEqual([]);
+    expect(plan.missing).toEqual([]);
+  });
+
+  it('departs only the board jobs absent from the printout, never a listed one', () => {
+    const parsed = [parsedJob('1601'), parsedJob('1602'), parsedJob('1603')];
+    const jobs = [boardJob('1601'), boardJob('1602'), boardJob('1603'), boardJob('1700'), boardJob('1701')];
+    const plan = buildPdfImportPlan({
+      parsed, statedCount: 3, jobs, knownJobIds: known('1601', '1602', '1603', '1700', '1701'),
+    });
+    expect(plan.departures.map(d => d.id).sort()).toEqual(['1700', '1701']);
+    const printedIds = parsed.map(p => p.ref);
+    for (const d of plan.departures) {
+      expect(printedIds).not.toContain(d.id);
+    }
+  });
+
+  it("never departs the app's own split cards — they are not Multitrack's to drop", () => {
+    const jobs = [
+      boardJob('1620'),
+      { ...boardJob('1620_Electronics_0'), parentId: '1620' },
+      { ...boardJob('1689_Luthier_1'), isDerived: true, parentId: null },
+    ];
+    const plan = buildPdfImportPlan({
+      parsed: [parsedJob('1620')], statedCount: 1, jobs, knownJobIds: known('1620'),
+    });
+    expect(plan.departures).toEqual([]);
+  });
+});
+
+// Checklist item 6 — a PDF that fails the count check must depart NOTHING.
+// This is the only refusal standing between a misread file and jobs vanishing,
+// so it is worth proving it stops departures specifically, not just writes.
+describe('buildPdfImportPlan — a refused PDF departs nothing', () => {
+  const jobs = [boardJob('1601'), boardJob('1700')];
+  const args = { jobs, knownJobIds: known('1601', '1700') };
+
+  it('a count mismatch returns no plan at all, so there is nothing to depart', () => {
+    const plan = buildPdfImportPlan({ parsed: [parsedJob('1601')], statedCount: 46, ...args });
+    expect(plan.ok).toBe(false);
+    expect(plan.departures).toBeUndefined();
+    expect(plan.writes).toBeUndefined();
+  });
+
+  it('a missing stated count returns no plan either', () => {
+    const plan = buildPdfImportPlan({ parsed: [parsedJob('1601')], statedCount: null, ...args });
+    expect(plan.ok).toBe(false);
+    expect(plan.departures).toBeUndefined();
+  });
+
+  it('a duplicated job number returns no plan either', () => {
+    const plan = buildPdfImportPlan({
+      parsed: [parsedJob('1601'), parsedJob('1601')], statedCount: 2, ...args,
+    });
+    expect(plan.ok).toBe(false);
+    expect(plan.departures).toBeUndefined();
+  });
+});
+
+// Council amendment 1 — the return path. This is the one the original brief
+// would have shipped broken.
+describe('buildPdfImportPlan — a departed job number coming back', () => {
+  const parsed = [parsedJob('1619')];
+  // 1619 is NOT on the board (normalizeJobsFromDb filtered it out), but its row
+  // is very much still in the table, carrying every field Trevor put on it.
+  const plan = buildPdfImportPlan({
+    parsed, statedCount: 1, jobs: [], knownJobIds: knownDeparted('1619'),
+  });
+
+  it('is recognised as returning, not as a brand-new job', () => {
+    expect(plan.returning.map(r => r.id)).toEqual(['1619']);
+    expect(plan.newJobs).toEqual([]);
+  });
+
+  it('clears departed_at on the way back in', () => {
+    const write = plan.writes.find(w => w.id === '1619');
+    expect(write.isReturning).toBe(true);
+    expect(write.isNew).toBeFalsy();
+    expect('departedAt' in write.data).toBe(true);
+    expect(write.data.departedAt).toBeNull();
+  });
+
+  it('does not send bench or hours, so the fields on the row survive', () => {
+    // buildNewJob() would have guessed a bench from the description and reset
+    // hours to 1 or 0. That is what strands the real values.
+    const write = plan.writes.find(w => w.id === '1619');
+    expect(Object.keys(write.data).sort())
+      .toEqual(['customer', 'departedAt', 'desc', 'done', 'job', 'mfr', 'model', 'status']);
+  });
+
+  // Trevor's rule: a completed job never comes back — returning work is rebooked
+  // under a new number. So a reappearing job number is live work by definition,
+  // and a stale `done` from before it departed must not survive the round trip.
+  // Left set, the job reappears on the Jobs Sheet but stays invisible on the
+  // Jobs page, which filters `!j.done`.
+  it('clears done, so a job that was marked done before it departed comes back live', () => {
+    const write = plan.writes.find(w => w.id === '1619');
+    expect(write.data.done).toBe(false);
+  });
+
+  it('is not counted as departing, even though it is not on the board', () => {
+    expect(plan.departures).toEqual([]);
+  });
+
+  it('treats an unknown job number as genuinely new', () => {
+    const fresh = buildPdfImportPlan({
+      parsed: [parsedJob('1999')], statedCount: 1, jobs: [], knownJobIds: knownDeparted('1619'),
+    });
+    expect(fresh.newJobs.map(j => j.id)).toEqual(['1999']);
+    expect(fresh.returning).toEqual([]);
+  });
+});
+
+// Without a trustworthy unfiltered read, departing is not safe at any price:
+// an empty list reads as "every job on the board is missing from this printout".
+describe('buildPdfImportPlan — no unfiltered read, no departures', () => {
+  const parsed = [parsedJob('1601')];
+  const jobs = [boardJob('1601'), boardJob('1700')];
+
+  it('departs nothing when knownJobIds was not supplied', () => {
+    const plan = buildPdfImportPlan({ parsed, statedCount: 1, jobs });
+    expect(plan.canDepart).toBe(false);
+    expect(plan.departures).toEqual([]);
+    expect(plan.missing).toEqual([]);
+  });
+
+  it('still imports the printout normally', () => {
+    const plan = buildPdfImportPlan({ parsed, statedCount: 1, jobs });
+    expect(plan.ok).toBe(true);
+    expect(plan.existingCount).toBe(1);
+  });
+});
+
+// Council amendment 3a — the calendar ids have to be captured while the job is
+// still on the board, because after departure it is filtered out of jobs[] and
+// they are unreachable from memory.
+describe('buildPdfImportPlan — a departing job carries its calendar bookings out', () => {
+  it('captures gcalEventIds from the departing job', () => {
+    const jobs = [boardJob('1700', { gcalEventIds: ['ev1', 'ev2'], gcalEventId: 'ev1' })];
+    const plan = buildPdfImportPlan({
+      parsed: [parsedJob('1601')], statedCount: 1, jobs, knownJobIds: known('1700'),
+    });
+    expect(plan.departures[0].gcalEventIds).toEqual(['ev1', 'ev2']);
+  });
+
+  it('falls back to the older single gcalEventId', () => {
+    const jobs = [boardJob('1700', { gcalEventIds: [], gcalEventId: 'solo' })];
+    const plan = buildPdfImportPlan({
+      parsed: [parsedJob('1601')], statedCount: 1, jobs, knownJobIds: known('1700'),
+    });
+    expect(plan.departures[0].gcalEventIds).toEqual(['solo']);
+  });
+
+  it('is an empty list for a job that was never on the calendar', () => {
+    const jobs = [boardJob('1700')];
+    const plan = buildPdfImportPlan({
+      parsed: [parsedJob('1601')], statedCount: 1, jobs, knownJobIds: known('1700'),
+    });
+    expect(plan.departures[0].gcalEventIds).toEqual([]);
+  });
+});
+
+// Council amendment 6 — the Jobs-by-Age gate, at code level.
+describe('buildPdfImportPlan — the departure token', () => {
+  it('stamps the Multitrack token on its plan', () => {
+    const plan = buildPdfImportPlan({ parsed: [parsedJob('1601')], statedCount: 1 });
+    expect(plan.departureSource).toBe(MULTITRACK_DEPARTURE_SOURCE);
   });
 });
 

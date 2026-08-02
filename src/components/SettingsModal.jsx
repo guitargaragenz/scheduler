@@ -173,7 +173,7 @@ function SupplierEditor({ suppliers = [], onAdd, onRename, onRemove }) {
 const BENCH_HOUR_DEFAULTS = { Luthier: 1.5, Setup: 1.5, Finishing: 1.5 };
 
 export default function SettingsModal({
-  onClose, isSignedIn, onSignIn, onSignOut, isConfigured,
+  isSignedIn, onSignIn, onSignOut, isConfigured,
   // A settings write that failed. Shown at the top of the modal rather than
   // logged, because a setting that looks saved and isn't is the whole reason
   // this moved off localStorage.
@@ -203,19 +203,22 @@ export default function SettingsModal({
   }
 
   return (
+    // A page in the body, not a fixed modal over the whole app. It used to sit
+    // at zIndex 1000 behind a backdrop, covering the ⚙ button that closes it and
+    // leaving the small × as the way out. Now the header stays visible and
+    // reachable, exactly like Sheet, Projects and Parts to Order.
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      flex: 1, overflow: 'auto', background: '#111827',
+      display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+      padding: '24px 20px',
+    }}>
       <div style={{
         background: '#1e293b', border: '1px solid #334155', borderRadius: 12,
-        width: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+        width: 560, maxWidth: '100%', display: 'flex', flexDirection: 'column',
       }}>
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0' }}>Settings</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Tabs */}
@@ -233,7 +236,7 @@ export default function SettingsModal({
           ))}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+        <div style={{ padding: '16px 20px' }}>
 
           {(saveError || supplierError) && (
             <div style={{
