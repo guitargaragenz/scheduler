@@ -145,6 +145,18 @@ burns more than it saved. Cheap everywhere else; careful where the live job data
 
 ---
 
+## Workshop rules that the code must respect
+
+Trevor's operating rules, not app behaviour. Written down because a build already got
+designed around not knowing one of them (2026-08-02).
+
+- **A completed job never comes back.** If work returns to the bench, it is rebooked under a
+  new job number — no exceptions. So a job number reappearing on a Multitrack printout is
+  live work by definition, whatever its `done` flag said before. Anything that treats a
+  returning job number as possibly-still-complete is modelling a case that cannot happen.
+
+---
+
 ## Rules
 
 ### Trevor never runs git himself — Claude runs every git command

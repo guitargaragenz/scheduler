@@ -218,7 +218,13 @@ export const PDF_NEW_JOB_FIELDS = Object.freeze(['bench', 'hours']);
 // Deliberately its own list rather than an addition to PDF_IMPORT_FIELDS: a
 // plain update of a job already on the board must never touch this column, and
 // separating the lists makes that structural instead of careful.
-export const PDF_RETURN_FIELDS = Object.freeze(['departedAt']);
+// `done` rides along for a workshop reason, not a technical one: a completed job
+// never comes back. Trevor's rule is that returning work is rebooked under a new
+// job number, no exceptions — so a job number reappearing on the printout is by
+// definition live work, whatever its `done` flag said weeks ago. Left set, the
+// job returns to the Jobs Sheet but stays hidden on the Jobs page, which filters
+// `!j.done` (JobsPage.jsx:17).
+export const PDF_RETURN_FIELDS = Object.freeze(['departedAt', 'done']);
 
 /**
  * The Brief G PDF writer. Deliberately its own writer, not a general one.

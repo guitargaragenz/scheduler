@@ -182,7 +182,17 @@ describe('buildPdfImportPlan — a departed job number coming back', () => {
     // hours to 1 or 0. That is what strands the real values.
     const write = plan.writes.find(w => w.id === '1619');
     expect(Object.keys(write.data).sort())
-      .toEqual(['customer', 'departedAt', 'desc', 'job', 'mfr', 'model', 'status']);
+      .toEqual(['customer', 'departedAt', 'desc', 'done', 'job', 'mfr', 'model', 'status']);
+  });
+
+  // Trevor's rule: a completed job never comes back — returning work is rebooked
+  // under a new number. So a reappearing job number is live work by definition,
+  // and a stale `done` from before it departed must not survive the round trip.
+  // Left set, the job reappears on the Jobs Sheet but stays invisible on the
+  // Jobs page, which filters `!j.done`.
+  it('clears done, so a job that was marked done before it departed comes back live', () => {
+    const write = plan.writes.find(w => w.id === '1619');
+    expect(write.data.done).toBe(false);
   });
 
   it('is not counted as departing, even though it is not on the board', () => {

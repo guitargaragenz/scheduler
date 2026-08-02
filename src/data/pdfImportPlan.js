@@ -255,7 +255,12 @@ export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = 
       isReturning: true,
       // departedAt: null is the whole point of this write. Without it the
       // upsert refreshes the six PDF fields on a row that stays invisible.
-      data: { ...pdfFieldsOf(p), departedAt: null },
+      //
+      // done: false because a completed job never returns — returning work is
+      // rebooked under a new number. So a reappearing job number is live work,
+      // and a stale `done` from before it departed would hide it from the Jobs
+      // page (which filters `!j.done`) while the Jobs Sheet still showed it.
+      data: { ...pdfFieldsOf(p), departedAt: null, done: false },
     })),
   ];
 
