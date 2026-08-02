@@ -143,7 +143,10 @@ export default function App() {
   // --- Hooks ---
   const { pendingRevenueReview, addDisappearedJobs, resolveItem: resolvePendingRevenueReviewItem } = usePendingRevenueReview();
 
-  useSupabase({
+  // Captured for its loadJobs — the PDF import needs a full re-read after a
+  // departure or a return, neither of which can be applied to the on-screen
+  // board by hand. Nothing else about this call changed.
+  const supabaseOps = useSupabase({
     jobs, scheduledSlots, setJobs, setScheduledSlots,
     setFirebaseReady, setLastSyncedAt,
     setCompletedJobs, setDoneJobIds,
@@ -267,6 +270,7 @@ export default function App() {
     benchKeywords, benchHours, justSavedAt,
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
+    reloadJobs: supabaseOps.loadJobs,
   });
 
   // Dropping a Multitrack PDF only ever gets as far as the preview screen.

@@ -5,7 +5,10 @@ import {
 } from '../utils/googleCalendar.js';
 import { slotKey } from '../utils/calendar.js';
 import { findAvailableSlots, slotsNeeded } from '../utils/scheduler.js';
-import { isSupabaseConfigured, appendConflictLog, batchWriteJobsState } from '../utils/supabase.js';
+import {
+  isSupabaseConfigured, appendConflictLog, batchWriteJobsState,
+  loadDepartedGcalEvents, clearDepartedGcalEventIds,
+} from '../utils/supabase.js';
 import { jobsStateFieldsFor } from '../data/joinJobs.js';
 // persistMove is a module-level primitive exported from useScheduler.js (same
 // import pattern as appendConflictLog above). The poll now writes bumps through
@@ -357,6 +360,29 @@ export function useGoogleCalendar({
       });
     }
 
+    // Bookings left behind by jobs that came off the board on a Multitrack
+    // import. The import cleared the job's own calendar fields and its
+    // scheduled_slots rows immediately — that part is unconditional and has
+    // already happened — but it deliberately did NOT touch Google Calendar.
+    //
+    // The reason is asymmetry of damage. A departure runs unattended off a PDF
+    // upload, and the count check on that PDF catches a MISREAD file, not a
+    // WRONG one: a filtered subset or a stale export can be entirely
+    // self-consistent and still depart most of the workshop. A departed job is
+    // recoverable by design; a deleted customer booking is not. So the events
+    // come here instead — to the approval step every other calendar write in
+    // this app already goes through — and die only on Trevor's confirm.
+    //
+    // These jobs are invisible to `jobs[]` by definition, so the ids are read
+    // straight from the rows, where the import parked them.
+    //
+    // Fetched BEFORE leftovers are worked out, and marked consumed, so a
+    // departed job's booking is offered once — as a proposed deletion Trevor
+    // can approve — rather than twice, also as an untouchable "possible
+    // leftover" telling him to sort it out by hand.
+    const departedEvents = isSupabaseConfigured() ? await loadDepartedGcalEvents() : [];
+    departedEvents.forEach(d => d.eventIds.forEach(id => consumed.add(id)));
+
     // Leftovers = app-shaped job events ("#<num> • ...") the plan didn't claim.
     // Only that pattern, so a personal #PERSONAL block (or any hand-made
     // #-note) is never flagged for deletion. Surfaced for Trevor's eye only —
@@ -371,12 +397,12 @@ export function useGoogleCalendar({
 
     setSyncStatus('idle');
 
-    if (!jobPlans.length && !leftovers.length) {
+    if (!jobPlans.length && !leftovers.length && !departedEvents.length) {
       showToast('Nothing to sync — no scheduled jobs this week');
       return;
     }
 
-    setSyncPlan({ jobPlans, leftovers });
+    setSyncPlan({ jobPlans, leftovers, departedEvents });
   }
 
   // EXECUTE phase — writes the already-approved plan verbatim. Does NOT re-read
@@ -384,7 +410,7 @@ export function useGoogleCalendar({
   // id-persistence path (stateWrites → batchWriteJobsState) and failure handling.
   async function executePlan(plan) {
     if (!plan) return;
-    const { jobPlans } = plan;
+    const { jobPlans, departedEvents = [] } = plan;
     setSyncStatus('syncing');
 
     let ok = 0;
@@ -435,6 +461,39 @@ export function useGoogleCalendar({
       ok++;
     }
     setJobs(updatedJobs);
+
+    // The departed jobs' bookings, now that Trevor has confirmed. Ordering is
+    // deliberately the same as unscheduleJob()'s: the DB write that made these
+    // events orphans (the departure) has already persisted, so deleting now can
+    // only ever be catching up with a decision that already stuck — never
+    // destroying a booking for a write that got rolled back.
+    //
+    // The id list is cleared only AFTER the delete succeeds, and only for jobs
+    // whose events all went. A failed clear costs a retry of an already-deleted
+    // event on the next sync, which Google treats as a no-op. Clearing first
+    // would lose the ids while the bookings were still sitting on the calendar,
+    // and nothing would ever find them again.
+    // deleteEvent() logs and swallows its own errors rather than throwing (see
+    // googleCalendar.js) — so there is no per-event success to test here, and
+    // pretending otherwise with a try/catch would just be decoration. What CAN
+    // be told apart is a run whose Google session died partway through, and in
+    // that case nothing was deleted and the ids must be kept for the next
+    // attempt. Skipped entirely if the sign-in went during the job loop above.
+    let departedCleared = 0;
+    if (!authExpired) {
+      for (const d of departedEvents) {
+        for (const id of d.eventIds) {
+          await deleteEvent(id);
+        }
+        if (isSupabaseConfigured()) {
+          const cleared = await clearDepartedGcalEventIds([d.id]);
+          if (cleared?.ok) departedCleared++;
+        }
+      }
+    }
+    if (departedCleared > 0) {
+      addChangelog(`Removed ${departedCleared} Google Calendar booking${departedCleared === 1 ? '' : 's'} for jobs that came off the printout`);
+    }
 
     if (isSupabaseConfigured() && stateWrites.length > 0) {
       const result = await batchWriteJobsState(stateWrites);

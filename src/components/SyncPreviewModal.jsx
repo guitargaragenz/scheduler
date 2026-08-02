@@ -31,11 +31,18 @@ const ACTION_COLOR = {
 };
 
 export default function SyncPreviewModal({ plan, onConfirm, onCancel }) {
-  const { jobPlans, leftovers } = plan;
+  const { jobPlans, leftovers, departedEvents = [] } = plan;
 
   const creates = jobPlans.reduce((n, jp) => n + jp.blocks.filter(b => b.action === 'create').length, 0);
   const updates = jobPlans.reduce((n, jp) => n + jp.blocks.filter(b => b.action === 'update').length, 0);
-  const deletes = jobPlans.reduce((n, jp) => n + jp.deleteIds.length, 0);
+  const departedDeletes = departedEvents.reduce((n, d) => n + d.eventIds.length, 0);
+  const deletes = jobPlans.reduce((n, jp) => n + jp.deleteIds.length, 0) + departedDeletes;
+
+  // Removing a departed job's booking is real work, and on many syncs it is the
+  // ONLY work. Gating the button on jobPlans alone would leave those events
+  // permanently un-deletable on any week with nothing else scheduled — the one
+  // path that exists to get rid of them, disabled.
+  const nothingToDo = jobPlans.length === 0 && departedEvents.length === 0;
 
   return (
     <div style={{
@@ -83,6 +90,26 @@ export default function SyncPreviewModal({ plan, onConfirm, onCancel }) {
           ))}
         </div>
 
+        {departedEvents.length > 0 && (
+          <div style={{ background: '#1a1010', border: '1px solid #4a2020', borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 12, color: '#d46a6a', fontWeight: 600, marginBottom: 6 }}>
+              Bookings to remove — jobs off the printout ({departedDeletes})
+            </div>
+            <div style={{ fontSize: 11, color: '#a06a6a', marginBottom: 8 }}>
+              These jobs came off the board on a Multitrack import, but their Google Calendar
+              bookings are still there. Nothing was deleted at import time — confirming below is
+              what removes them. If any of these are appointments you still want, press cancel:
+              a deleted booking can’t be brought back.
+            </div>
+            {departedEvents.map(d => (
+              <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#a88', padding: '1px 0' }}>
+                <span>{d.label}</span>
+                <span>{d.eventIds.length} event{d.eventIds.length === 1 ? '' : 's'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {leftovers.length > 0 && (
           <div style={{ background: '#1a1410', border: '1px solid #3a2a15', borderRadius: 10, padding: 14 }}>
             <div style={{ fontSize: 12, color: '#c88a3a', fontWeight: 600, marginBottom: 6 }}>
@@ -103,12 +130,12 @@ export default function SyncPreviewModal({ plan, onConfirm, onCancel }) {
 
         <button
           onClick={onConfirm}
-          disabled={jobPlans.length === 0}
+          disabled={nothingToDo}
           style={{
             width: '100%', background: '#1a2e1a', color: '#4a9e5a', border: 'none',
             borderRadius: 8, padding: '10px 0', fontSize: 13, fontWeight: 600,
-            cursor: jobPlans.length === 0 ? 'default' : 'pointer',
-            opacity: jobPlans.length === 0 ? 0.5 : 1,
+            cursor: nothingToDo ? 'default' : 'pointer',
+            opacity: nothingToDo ? 0.5 : 1,
           }}
         >
           Confirm &amp; sync

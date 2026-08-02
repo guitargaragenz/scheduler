@@ -18,6 +18,22 @@ export function isTopLevelJob(job) {
   return !job.parentId && !job.isDerived && /^\d+$/.test(String(job.id ?? ''));
 }
 
+// The departure gate (council amendment 6).
+//
+// Departing a job is the one thing an import does that takes work OFF the
+// board, and only ONE printout is allowed to do it: the Multitrack jobs list,
+// where a job dropping off genuinely means "finished or invoiced". The
+// Jobs-by-Age printout is a different population entirely — its `missing[]`
+// means "no booked-in date available", not "job finished" — and a future edit
+// that let it depart would silently wipe most of the workshop.
+//
+// So this is a token, not a comment. It is produced by buildPdfImportPlan()
+// and by nothing else, it is required by writeDepartureBatch(), and
+// buildJbaImportPlan() has no way to emit it: its plan simply has no
+// departureSource key, so the JBA path hands `undefined` to the writer and the
+// writer refuses. Verified by test, not asserted.
+export const MULTITRACK_DEPARTURE_SOURCE = 'multitrack-printout';
+
 export function jobLabel(job) {
   const kit = [job.mfr, job.model].filter(Boolean).join(' ');
   const who = job.customer ? ` — ${job.customer}` : '';
@@ -121,10 +137,22 @@ export function applyPdfFields(job, parsedJob) {
  *
  * Returns either { ok: false, error } — nothing may be written — or a plan:
  *   { ok: true, filename, statedCount,
- *     newJobs[], existingCount, missing[],   // the preview screen
- *     writes[] }                             // what writePdfImportBatch gets
+ *     newJobs[], existingCount, returning[], departures[],  // the preview screen
+ *     writes[], departureSource }            // what the writers get
+ *
+ * `knownJobIds` is the UNFILTERED list of job identities straight from the
+ * jobs table — [{ id, departedAt }] — and it is not optional decoration.
+ * The in-memory `jobs` array has already had departed rows filtered out of it,
+ * so on its own it cannot tell "job number we have never seen" from "job number
+ * that departed last month and is back". Getting that wrong writes a blank new
+ * job over a real row and strands its hours, tag and notes behind a departed_at
+ * that nothing ever clears (council amendment 1).
+ *
+ * Passing `null` (no database configured, or the read failed) is honoured
+ * rather than guessed at: the plan comes back with canDepart false and departs
+ * nothing. Departing on a failed read would empty the board.
  */
-export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = '', benchKeywords = {} }) {
+export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = '', benchKeywords = {}, knownJobIds = null }) {
   // Refusal 1 — the count sanity check. The printout ends with Multitrack's
   // own tally ("46 Jobs found"). If we read a different number of rows than
   // the PDF says it printed, we have misread the document, and importing part
@@ -162,22 +190,50 @@ export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = 
   const topLevel = jobs.filter(isTopLevelJob);
   const onBoard = new Map(topLevel.map(j => [String(j.id), j]));
 
+  // The unfiltered view of the jobs table. `canDepart` is false when we do not
+  // have one — see the doc comment above.
+  const canDepart = Array.isArray(knownJobIds);
+  const departedIds = new Set(
+    (knownJobIds || []).filter(k => k.departedAt).map(k => String(k.id))
+  );
+
   const newJobs = [];
   const updates = [];
+  const returning = [];
   for (const p of parsed) {
     const ref = String(p.ref);
     const current = onBoard.get(ref);
-    if (current) updates.push({ parsed: p, current });
-    else newJobs.push(buildNewJob(p, benchKeywords));
+    if (current) {
+      updates.push({ parsed: p, current });
+    } else if (departedIds.has(ref)) {
+      // Departed and back. Its row still holds everything Trevor put on it, so
+      // this must be an UPDATE that clears departed_at — never a fresh
+      // buildNewJob(), which would overwrite bench and hours with guesses.
+      returning.push({ id: ref, label: `#${ref}`, parsed: p });
+    } else {
+      newJobs.push(buildNewJob(p, benchKeywords));
+    }
   }
 
-  // Reported, never acted on. A job that has dropped off the printout has
-  // usually been finished or invoiced in Multitrack, but "usually" is not
-  // good enough to delete live job data on, so this build only tells Trevor.
+  // Jobs on the board that this printout no longer lists. Multitrack has
+  // finished or invoiced them, so they come off the board — the row stays, with
+  // every app-owned field intact, and comes back whole if the number ever
+  // reappears. This is the list Trevor sees, by number, before he presses
+  // Import: it is the last line of defence against a wrong-population PDF,
+  // which the count refusal above cannot catch.
   const inPdf = new Set(parsed.map(p => String(p.ref)));
-  const missing = topLevel
-    .filter(j => !inPdf.has(String(j.id)))
-    .map(j => ({ id: String(j.id), label: jobLabel(j) }));
+  const departingJobs = canDepart ? topLevel.filter(j => !inPdf.has(String(j.id))) : [];
+  const missing = departingJobs.map(j => ({ id: String(j.id), label: jobLabel(j) }));
+  const departures = departingJobs.map(j => ({
+    id: String(j.id),
+    job: j.job,
+    label: jobLabel(j),
+    // Captured here, while the job is still on the board and still in memory.
+    // After departure it is filtered out of jobs[] and these ids are only
+    // reachable from the row itself, which is why writeDepartureBatch() parks
+    // them in departed_gcal_event_ids rather than dropping them.
+    gcalEventIds: j.gcalEventIds?.length ? j.gcalEventIds : (j.gcalEventId ? [j.gcalEventId] : []),
+  }));
 
   const writes = [
     ...newJobs.map(j => ({
@@ -193,6 +249,14 @@ export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = 
       isNew: false,
       data: pdfFieldsOf(p),
     })),
+    ...returning.map(({ parsed: p }) => ({
+      id: String(p.ref),
+      isNew: false,
+      isReturning: true,
+      // departedAt: null is the whole point of this write. Without it the
+      // upsert refreshes the six PDF fields on a row that stays invisible.
+      data: { ...pdfFieldsOf(p), departedAt: null },
+    })),
   ];
 
   return {
@@ -203,7 +267,12 @@ export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = 
     newLabels: newJobs.map(j => ({ id: j.id, label: jobLabel(j) })),
     existingCount: updates.length,
     updates,
+    returning: returning.map(({ id, label }) => ({ id, label })),
     missing,
+    departures,
+    canDepart,
+    // The token writeDepartureBatch() demands. Only this function emits it.
+    departureSource: MULTITRACK_DEPARTURE_SOURCE,
     writes,
   };
 }

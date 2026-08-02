@@ -4,7 +4,7 @@ import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsBy
 import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
 import { buildJbaImportPlan } from '../data/jbaImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport } from '../utils/supabase.js';
+import { isSupabaseConfigured, saveCompletedJobs, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport, loadJobIdentities, writeDepartureBatch, deleteScheduledSlotsForJobs } from '../utils/supabase.js';
 import { jobAgeDays } from '../utils/jobAge.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
@@ -37,6 +37,14 @@ export function useJobs({
   setSidebarOpen,
   showToast,
   addChangelog,
+  // useSupabase's loadJobs — a full unfiltered re-read, re-normalized. Called
+  // after an import that departed or returned jobs, because neither can be
+  // applied to the on-screen board by hand: a departed job has to leave with
+  // its derived split cards (which only expandAutoSplits() can regenerate
+  // correctly), and a RETURNING job's real fields live on a row this client has
+  // never loaded. Our own writes mute the realtime echo for five seconds, so
+  // without this the board would sit wrong until the next manual reload.
+  reloadJobs,
 }) {
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
@@ -294,9 +302,27 @@ export function useJobs({
         ? parseJobsByAgeTextItems(pages)
         : parseTextItems(pages);
 
+      // The unfiltered read of the jobs table, for the Multitrack path only.
+      // The board in memory has had departed rows filtered out of it, so it
+      // cannot tell a never-seen job number from one that departed and is back
+      // — and getting that wrong writes a blank job over a real row.
+      //
+      // A FAILED read refuses the import outright rather than carrying on with
+      // an empty list: an empty list would read every job on the printout as
+      // brand new and every job on the board as departed, which is the whole
+      // workshop off the board in one click.
+      let knownJobIds = null;
+      if (!isJba && isSupabaseConfigured()) {
+        knownJobIds = await loadJobIdentities();
+        if (knownJobIds == null) {
+          showToast("⚠ Couldn't read the current job list from the database. Nothing imported — try again.");
+          return null;
+        }
+      }
+
       const plan = isJba
         ? buildJbaImportPlan({ parsed, statedCount, jobs, filename: file.name })
-        : buildPdfImportPlan({ parsed, statedCount, jobs, filename: file.name, benchKeywords });
+        : buildPdfImportPlan({ parsed, statedCount, jobs, filename: file.name, benchKeywords, knownJobIds });
 
       if (!plan.ok) {
         showToast(`⚠ ${plan.error}`);
@@ -400,20 +426,93 @@ export function useJobs({
     }
     applyLocally();
 
+    // --- Departures: the board follows the printout ---
+    //
+    // Runs only AFTER the six-field write has landed. A departure is the
+    // destructive half of this import, and doing it while the constructive half
+    // may have failed would take jobs off the board on the strength of a PDF
+    // that never actually imported.
+    const departures = plan.canDepart ? (plan.departures || []) : [];
+    let departedOk = false;
+    if (departures.length > 0) {
+      const departedIds = departures.map(d => String(d.id));
+      const departedIdSet = new Set(departedIds);
+      // Genuine PERSISTED child rows of a departing parent — manually-created
+      // subtasks, which are real rows in the jobs table. These need deleting.
+      //
+      // Auto-split bench cards (1620_Electronics_0 and the like) are NOT these:
+      // they are derived, isDerived, never written to the table, and
+      // regenerated on every load by expandAutoSplits(). They disappear on
+      // their own the moment their parent is filtered out. Deleting them is not
+      // possible because there is nothing there to delete.
+      const persistedChildren = jobs.filter(j =>
+        j.parentId && !j.isDerived && departedIdSet.has(String(j.parentId))
+      );
+      const parentsWithStoredChildren = [...new Set(persistedChildren.map(j => String(j.parentId)))];
+
+      const depRes = await writeDepartureBatch(departures, plan.departureSource);
+      if (!depRes?.ok) {
+        showToast('⚠ Imported, but the jobs that left the printout could not be removed — reload before trusting the board');
+      } else {
+        departedOk = true;
+        // Free the calendar. scheduled_slots.job_id cascades on a real DELETE,
+        // but a departure is a soft delete so nothing cascades — a surviving
+        // slot row would leave a cell that looks empty and silently refuses the
+        // next booking. Departed parents and their stored children both.
+        await deleteScheduledSlotsForJobs([
+          ...departedIds,
+          ...persistedChildren.map(j => String(j.id)),
+        ]);
+        // Stored children go for real (their own slots cascade with them).
+        for (const parentId of parentsWithStoredChildren) {
+          await deleteChildJobs(parentId);
+        }
+        // Local slot map, so the calendar is right before the reload lands.
+        const goneIds = new Set([...departedIds, ...persistedChildren.map(j => String(j.id))]);
+        setScheduledSlots(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(k => { if (goneIds.has(String(next[k]))) delete next[k]; });
+          return next;
+        });
+      }
+    }
+
+    // Departed jobs must leave the board with their derived split cards, and
+    // returning jobs arrive carrying fields this client has never loaded.
+    // Neither can be faked in local state — re-read instead.
+    if ((departedOk || (plan.returning?.length ?? 0) > 0) && reloadJobs) {
+      justSavedAt.current = Date.now();
+      await reloadJobs();
+    }
+
     // Forensics, not bookkeeping: this is how "what did that import actually
     // write" stays answerable later. Best-effort by design, so it is not
     // awaited and cannot hold up or fail the import.
+    //
+    // Departed job numbers are included: they were genuinely touched by this
+    // import, and "which import took 1619 off the board" is exactly the
+    // question this record exists to answer.
     logPdfImport({
       filename: plan.filename,
-      rowCount: res.written,
-      ids: plan.writes.map(w => w.id),
+      rowCount: res.written + (departedOk ? departures.length : 0),
+      ids: [
+        ...plan.writes.map(w => w.id),
+        ...(departedOk ? departures.map(d => `departed:${d.id}`) : []),
+      ],
     });
 
     const newCount = plan.newJobs.length;
-    showToast(`Imported ${newCount} new job${newCount === 1 ? '' : 's'} · ${plan.existingCount} updated`);
+    const backCount = plan.returning?.length ?? 0;
+    const goneCount = departedOk ? departures.length : 0;
+    showToast(
+      `Imported ${newCount} new job${newCount === 1 ? '' : 's'} · ${plan.existingCount} updated` +
+      (backCount > 0 ? ` · ${backCount} back` : '') +
+      (goneCount > 0 ? ` · ${goneCount} removed` : '')
+    );
     addChangelog(
       `Multitrack PDF imported — ${newCount} new, ${plan.existingCount} updated` +
-      (plan.missing.length > 0 ? `, ${plan.missing.length} no longer on the printout` : '')
+      (backCount > 0 ? `, ${backCount} back on the board` : '') +
+      (goneCount > 0 ? `, ${goneCount} removed (off the printout): ${departures.map(d => d.id).join(', ')}` : '')
     );
   }
 

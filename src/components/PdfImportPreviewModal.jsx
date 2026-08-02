@@ -19,19 +19,22 @@ const box = { background: '#161616', border: '1px solid #252525', borderRadius: 
 const warnBox = { background: '#1a1410', border: '1px solid #3a2a15', borderRadius: 10, padding: 14 };
 const rowStyle = { fontSize: 12, color: '#aaa', padding: '1px 0' };
 
-// "On the board but not on this printout" — identical meaning and identical
-// do-nothing behaviour for both printouts, so it is written once.
-function MissingBlock({ missing, what }) {
+const dangerBox = { background: '#1a1010', border: '1px solid #4a2020', borderRadius: 10, padding: 14 };
+
+// "On the board but not in this file" — the Jobs-by-Age half, which genuinely
+// does nothing about it. That printout is a different population: a job absent
+// from it has no booked-in date recorded, which is not the same fact as
+// "finished". Only the Multitrack jobs list takes work off the board.
+function MissingDatesBlock({ missing }) {
   if (missing.length === 0) return null;
   return (
     <div style={warnBox}>
       <div style={{ fontSize: 12, color: '#c88a3a', fontWeight: 600, marginBottom: 6 }}>
-        On the board but not on this printout ({missing.length})
+        On the board but not in this file ({missing.length})
       </div>
       <div style={{ fontSize: 11, color: '#8a6a3a', marginBottom: 8 }}>
-        Usually these have been finished or invoiced in Multitrack. This import leaves them
-        exactly as they are — nothing is deleted{what === 'jobs' ? ' or marked done' : ', and no date is cleared'}.
-        Check them by hand.
+        This file only carries booked-in dates, so it changes nothing about these jobs — they stay
+        on the board exactly as they are, and no date is cleared.
       </div>
       {missing.map(m => (
         <div key={m.id} style={{ fontSize: 12, color: '#a88', padding: '1px 0' }}>{m.label}</div>
@@ -40,17 +43,78 @@ function MissingBlock({ missing, what }) {
   );
 }
 
+// The consequential block on this screen, and the reason it is red rather than
+// amber. The count check on the file only proves we read every row the PDF said
+// it had — it cannot tell that the RIGHT report was printed. A filtered subset
+// or a stale export can be perfectly self-consistent and still take most of the
+// workshop off the board. So the job numbers are listed, not just counted:
+// a wrong report should be obvious on sight, before Import is pressed.
+function DepartingBlock({ departures }) {
+  if (departures.length === 0) return null;
+  return (
+    <div style={dangerBox}>
+      <div style={{ fontSize: 12, color: '#d46a6a', fontWeight: 600, marginBottom: 6 }}>
+        Coming off the board ({departures.length})
+      </div>
+      <div style={{ fontSize: 11, color: '#a06a6a', marginBottom: 8 }}>
+        These are on the board but not on this printout, so Multitrack has finished or invoiced
+        them. Pressing Import removes them from the Jobs Sheet, the Sidebar, the Jobs page and the
+        Projects page, and frees any calendar slots they hold.
+        <br />
+        Nothing is deleted — every one keeps its tag, action, hours, bench and notes, and comes
+        back exactly as it was if it turns up on a later printout.
+        <br />
+        <strong style={{ color: '#c88a3a' }}>
+          Check this list before importing. If jobs you are still working on are on it, this is the
+          wrong report — press cancel.
+        </strong>
+      </div>
+      <div style={{ fontSize: 12, color: '#caa', fontWeight: 600, padding: '2px 0 6px' }}>
+        Job {departures.map(d => d.id).join(', ')}
+      </div>
+      {departures.map(d => (
+        <div key={d.id} style={{ fontSize: 12, color: '#a88', padding: '1px 0' }}>{d.label}</div>
+      ))}
+    </div>
+  );
+}
+
+// A job number that came off the board on an earlier printout and is back on
+// this one. It is not a new job: its row was kept, so its tag, action, hours,
+// bench and notes are all still on it and come back with it.
+function ReturningBlock({ returning }) {
+  if (!returning || returning.length === 0) return null;
+  return (
+    <div style={box}>
+      <div style={{ fontSize: 12, color: '#7dd3fc', fontWeight: 600, marginBottom: 6 }}>
+        Back on the board ({returning.length})
+      </div>
+      <div style={{ fontSize: 11, color: '#4a7a8a', marginBottom: 8 }}>
+        These came off the board on an earlier printout and are on this one again. They come back
+        with their tag, action, hours, bench and notes intact — not as blank new jobs.
+      </div>
+      {returning.map(r => (
+        <div key={r.id} style={rowStyle}>{r.label}</div>
+      ))}
+    </div>
+  );
+}
+
 function JobsSummary({ plan }) {
+  const departing = plan.departures?.length ?? 0;
+  const back = plan.returning?.length ?? 0;
   return (
     <>
-      {plan.newLabels.length} new · {plan.existingCount} already here · {plan.missing.length} not in this one.
+      {plan.newLabels.length} new · {plan.existingCount} already here
+      {back > 0 ? ` · ${back} back` : ''} · {departing} coming off the board.
       Nothing is written until you confirm.
     </>
   );
 }
 
 function JobsBlocks({ plan }) {
-  const { newLabels, missing } = plan;
+  const { newLabels } = plan;
+  const departures = plan.departures || [];
   const newCount = newLabels.length;
   return (
     <>
@@ -64,7 +128,8 @@ function JobsBlocks({ plan }) {
           newLabels.map(n => <div key={n.id} style={rowStyle}>{n.label}</div>)
         )}
       </div>
-      <MissingBlock missing={missing} what="jobs" />
+      <ReturningBlock returning={plan.returning} />
+      <DepartingBlock departures={departures} />
       <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>
         Your Tag, Hours, Action, VB and BL stay exactly as you left them — the Multitrack
         printout doesn’t carry them, so this import can’t change them.
@@ -134,7 +199,7 @@ function JbaBlocks({ plan }) {
         </div>
       )}
 
-      <MissingBlock missing={missing} what="dates" />
+      <MissingDatesBlock missing={missing} />
 
       <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>
         This file changes one thing and one thing only: the date each job came in the door.
