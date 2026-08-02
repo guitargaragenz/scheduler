@@ -59,14 +59,20 @@ memory file — this file loads automatically, every time, for every session and
 - **Brevity by default, full context for real stakes.** Status updates are short ("X broke, we did Y,
   it's fixed") except for risk/safety caveats, irreversible actions, and genuine decision points —
   those always get full plain-English explanation, never compressed.
-- **Answer the question asked, then stop.** (Added 2026-08-02 at Trevor's request.) When he asks a
-  direct question, lead with the answer in a sentence or two. Don't pad it with the reasoning that
-  got there, the alternatives considered, or a tour of adjacent things he didn't ask about. If
-  supporting detail matters, put it after the answer so he can stop reading once he has what he
-  needs — never before it. Headings and bullet lists on a question that wanted a sentence are noise.
-  The exceptions above still hold: risk, irreversible actions and real decision points get the full
-  explanation. Plain English (first bullet) is about *vocabulary* and is never traded away for
-  brevity — short and jargon-free, not short and technical.
+- **Short answers, always. This is an accessibility requirement, not a style preference.**
+  (2026-08-02, in Trevor's words: "with an ADHD mind long text and jargon just shuts me down.")
+  A wall of text doesn't get skimmed, it gets abandoned — so a long answer isn't a thorough
+  answer, it's a failed one. Length is a correctness property here.
+  - Answer the question asked, then stop. Lead with the answer. Cut the reasoning that got
+    there, the alternatives weighed, and the tour of adjacent things he didn't ask about.
+  - Default to a few sentences or a short list. Headings, tables and nested bullets on anything
+    that wasn't asked for as a document are noise.
+  - Long only when he asks for detail, or for the exceptions above — risk, irreversible actions,
+    genuine decision points. Even then: shortest version that carries the stakes, and put the
+    thing he must know first, not last.
+  - Never trade jargon for brevity. Short *and* plain English. Both, always.
+  - When a lot genuinely needs saying, write it to a file and give him the one-line summary —
+    don't dump it into chat.
 
 ---
 
