@@ -1,4 +1,4 @@
-doc_status: live
+doc_status: closed
 
 # Pending Brief — The board follows the printout (departed jobs)
 
