@@ -223,7 +223,29 @@ export default function App() {
   // so a job Trevor marks INC leaves the Ready pile the moment he commits.
   const handleJobsSheetSaved = useCallback((updates) => {
     setJobs(prev => prev.map(j => (updates[j.id] ? applySheetEdits(j, updates[j.id]) : j)));
-  }, [setJobs]);
+  }, []);
+
+  // The body renders the first of these flags that is true, in a fixed order,
+  // so they only ever behaved as one exclusive page selection. The buttons were
+  // independent toggles, though: with the Sheet open, clicking Projects set
+  // showProjects but left showJobsSheet set, and the Sheet — earlier in the
+  // chain — kept rendering. Nothing appeared to happen, and the page had to be
+  // closed before another would open.
+  //
+  // Selecting a page now clears the others. Clicking the page you are already
+  // on still closes it, which is how the back-to-the-calendar gesture works.
+  // showWeekView is deliberately not in here: it is the calendar's own mode,
+  // not a page, and must survive switching pages and coming back.
+  const selectPage = useCallback((page) => {
+    setShowJobsSheet(page === 'jobsSheet' ? (v => !v) : false);
+    setShowJobs(page === 'jobs' ? (v => !v) : false);
+    setShowProjects(page === 'projects' ? (v => !v) : false);
+    setShowPartsToOrder(page === 'partsToOrder' ? (v => !v) : false);
+    // The Parking Lot is reached by #parking-lot, so leaving it has to clear the
+    // hash too, or a reload drops straight back into it.
+    setShowParkingLot(false);
+    if (window.location.hash === '#parking-lot') window.history.replaceState(null, '', '#');
+  }, []);
 
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList, setFocusList } = useFocusList();
@@ -510,47 +532,6 @@ export default function App() {
               {syncLabels[gcal.syncStatus]}
             </button>
 
-            {isMobile && (
-              <button
-                onClick={() => setShowJobs(j => !j)}
-                style={{
-                  padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobs ? '#0369a1' : '#334155'}`,
-                  background: showJobs ? '#0c4a6e' : '#1e293b',
-                  color: showJobs ? '#7dd3fc' : '#94a3b8',
-                  fontSize: 12, cursor: 'pointer', fontWeight: showJobs ? 700 : 400,
-                }}
-              >
-                Jobs
-              </button>
-            )}
-
-            <button
-              onClick={() => setShowJobsSheet(s => !s)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobsSheet ? '#4f46e5' : '#334155'}`,
-                background: showJobsSheet ? '#1e1b4b' : '#1e293b',
-                color: showJobsSheet ? '#a5b4fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showJobsSheet ? 700 : 400,
-              }}
-            >
-              Sheet
-            </button>
-
-            {/* Deliberately not sitting beside the "Parts" button further down:
-                that one opens the PartsBox inventory drawer, this one opens the
-                parts-to-order chase list. Two different things. */}
-            <button
-              onClick={() => setShowPartsToOrder(p => !p)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showPartsToOrder ? '#b45309' : '#334155'}`,
-                background: showPartsToOrder ? '#451a03' : '#1e293b',
-                color: showPartsToOrder ? '#fcd34d' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showPartsToOrder ? 700 : 400,
-              }}
-            >
-              Parts to Order
-            </button>
-
             <button
               onClick={() => setShowWeekView(w => !w)}
               style={{
@@ -563,8 +544,34 @@ export default function App() {
               {showWeekView ? 'Day View' : 'Week View'}
             </button>
 
+            {isMobile && (
+              <button
+                onClick={() => selectPage('jobs')}
+                style={{
+                  padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobs ? '#0369a1' : '#334155'}`,
+                  background: showJobs ? '#0c4a6e' : '#1e293b',
+                  color: showJobs ? '#7dd3fc' : '#94a3b8',
+                  fontSize: 12, cursor: 'pointer', fontWeight: showJobs ? 700 : 400,
+                }}
+              >
+                Jobs
+              </button>
+            )}
+
             <button
-              onClick={() => setShowProjects(r => !r)}
+              onClick={() => selectPage('jobsSheet')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showJobsSheet ? '#4f46e5' : '#334155'}`,
+                background: showJobsSheet ? '#1e1b4b' : '#1e293b',
+                color: showJobsSheet ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showJobsSheet ? 700 : 400,
+              }}
+            >
+              Sheet
+            </button>
+
+            <button
+              onClick={() => selectPage('projects')}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: `1px solid ${showProjects ? '#4f46e5' : '#334155'}`,
                 background: showProjects ? '#1e1b4b' : '#1e293b',
@@ -573,6 +580,21 @@ export default function App() {
               }}
             >
               Projects
+            </button>
+
+            {/* Deliberately not sitting beside the "Parts" button further down:
+                that one opens the PartsBox inventory drawer, this one opens the
+                parts-to-order chase list. Two different things. */}
+            <button
+              onClick={() => selectPage('partsToOrder')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showPartsToOrder ? '#b45309' : '#334155'}`,
+                background: showPartsToOrder ? '#451a03' : '#1e293b',
+                color: showPartsToOrder ? '#fcd34d' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showPartsToOrder ? 700 : 400,
+              }}
+            >
+              Parts to Order
             </button>
 
             <button
