@@ -56,8 +56,13 @@ export const meta = {
 }
 
 phase('Gather')
-const todayISO = args?.todayISO
-const weekStartISO = args?.weekStartISO
+// `args` sometimes arrives as a JSON string rather than an object, which used to
+// leave both dates undefined and crash the run on "Invalid Date" before a single
+// agent had spawned. Accept either shape.
+const parsedArgs = typeof args === 'string' ? JSON.parse(args) : (args || {})
+const todayISO = parsedArgs.todayISO
+const weekStartISO = parsedArgs.weekStartISO
+if (!weekStartISO) throw new Error('sunday-board-meeting needs args { todayISO, weekStartISO }')
 // The week we REPORT on is the one just worked, not the one being planned.
 // `weekStartISO` is the Monday of the week ahead, so completed_jobs rows —
 // which are stamped with the week the work happened in — never matched it and
@@ -68,16 +73,22 @@ const reportedWeekStart = new Date(weekStartISO + 'T00:00:00Z')
 reportedWeekStart.setUTCDate(reportedWeekStart.getUTCDate() - 7)
 const weekKey = reportedWeekStart.toISOString().slice(0, 10)
 
-const rawExport = await agent(
-  'Run `node scripts/board_meeting_export.mjs` from the repo root and return ONLY the raw stdout JSON it prints, verbatim, with no commentary, no markdown fences.',
-  { label: 'supabase-export', phase: 'Gather' }
-)
-
-let data
-try {
-  data = JSON.parse(rawExport)
-} catch (e) {
-  throw new Error('board_meeting_export.mjs did not return valid JSON: ' + String(rawExport).slice(0, 500))
+// Preferred path: the caller runs `node scripts/board_meeting_export.mjs` itself
+// and passes the parsed object in as args.exportData. The old path — a subagent
+// echoing the script's stdout back as text — kept failing outright, because the
+// export is ~44KB and the agent refuses to reproduce a payload that size. There
+// is no way to make that hop reliable, so don't reinstate it as the default.
+let data = parsedArgs.exportData
+if (!data) {
+  const rawExport = await agent(
+    'Run `node scripts/board_meeting_export.mjs` from the repo root and return ONLY the raw stdout JSON it prints, verbatim, with no commentary, no markdown fences.',
+    { label: 'supabase-export', phase: 'Gather' }
+  )
+  try {
+    data = JSON.parse(rawExport)
+  } catch (e) {
+    throw new Error('board_meeting_export.mjs did not return valid JSON: ' + String(rawExport).slice(0, 500))
+  }
 }
 
 // data.jobs is already top-level-only and parent_id-filtered by the export
