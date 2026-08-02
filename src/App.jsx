@@ -262,18 +262,21 @@ export default function App() {
   // chain — kept rendering. Nothing appeared to happen, and the page had to be
   // closed before another would open.
   //
-  // Selecting a page now clears the others. Clicking the page you are already
-  // on still closes it, which is how the back-to-the-calendar gesture works.
+  // Selecting a page clears the others — the buttons are plain switches, not
+  // toggles. `null` means the Board, which is what renders when no page flag is
+  // set; the Board has its own header button rather than being reached by
+  // clicking the lit-up page button a second time.
+  //
   // showWeekView is deliberately not in here: it is the calendar's own mode,
   // not a page, and must survive switching pages and coming back.
   const selectPage = useCallback((page) => {
-    setShowJobsSheet(page === 'jobsSheet' ? (v => !v) : false);
-    setShowJobs(page === 'jobs' ? (v => !v) : false);
-    setShowProjects(page === 'projects' ? (v => !v) : false);
-    setShowPartsToOrder(page === 'partsToOrder' ? (v => !v) : false);
-    setShowParts(page === 'parts' ? (v => !v) : false);
-    setShowHelp(page === 'help' ? (v => !v) : false);
-    setShowSettings(page === 'settings' ? (v => !v) : false);
+    setShowJobsSheet(page === 'jobsSheet');
+    setShowJobs(page === 'jobs');
+    setShowProjects(page === 'projects');
+    setShowPartsToOrder(page === 'partsToOrder');
+    setShowParts(page === 'parts');
+    setShowHelp(page === 'help');
+    setShowSettings(page === 'settings');
     // Leaving the Parts page drops the search the Parts to Order page seeded it
     // with, so re-opening it plainly doesn't come back still filtered.
     if (page !== 'parts') setPartsDrawerSearch('');
@@ -432,6 +435,12 @@ export default function App() {
   const syncColors = { idle: '#64748b', syncing: '#fbbf24', synced: '#22c55e', error: '#ef4444' };
   const syncLabels = { idle: 'Sync', syncing: 'Syncing…', synced: 'Synced ✓', error: 'Sync Error' };
 
+  // No page flag set means the Board is what the body is rendering. Kept in step
+  // with the page chain below — a new page needs adding here too, or the Board
+  // button will read as lit while that page is open.
+  const onBoard = !showParkingLot && !showJobsSheet && !showJobs && !showProjects
+    && !showPartsToOrder && !showParts && !showHelp && !showSettings;
+
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
   const currentWeekKey = weekDays[0] ? localDateKey(weekDays[0]) : undefined;
@@ -578,6 +587,22 @@ export default function App() {
               }}
             >
               {showWeekView ? 'Day View' : 'Week View'}
+            </button>
+
+            {/* The Board is a page selection like any other, it just happens to
+                be the one that renders when no page flag is set. Without this
+                button the only way back was clicking the lit-up page button
+                again, which made every page button a toggle. */}
+            <button
+              onClick={() => selectPage(null)}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${onBoard ? '#0369a1' : '#334155'}`,
+                background: onBoard ? '#0c4a6e' : '#1e293b',
+                color: onBoard ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: onBoard ? 700 : 400,
+              }}
+            >
+              Board
             </button>
 
             {isMobile && (
