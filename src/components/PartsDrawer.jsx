@@ -6,12 +6,10 @@ import {
 } from '../utils/partsbox.js';
 import { parseTerms } from '../data/partsToOrder.js';
 
-const DRAWER_WIDTH = 440;
-
 // `initialSearch` lets the Parts to Order page's "check stock" control open this
 // drawer already searched for the part in question. Default '' — opening the
 // drawer any other way behaves exactly as before.
-export default function PartsDrawer({ onClose, initialSearch = '' }) {
+export default function PartsDrawer({ initialSearch = '' }) {
   const [parts, setParts] = useState([]);
   const [storages, setStorages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,12 +123,14 @@ export default function PartsDrawer({ onClose, initialSearch = '' }) {
   }
 
   return (
+    // A page in the body, not a fixed overlay. It used to sit above the header
+    // at zIndex 200, hiding the Parts button that closes it and leaving the
+    // small × as the only way out. Now the header stays visible and reachable,
+    // exactly like Sheet, Projects and Parts to Order.
     <div style={{
-      position: 'fixed', top: 0, right: 0, width: DRAWER_WIDTH, height: '100vh',
-      background: '#0f1a2e', borderLeft: '1px solid #1e3a5f',
-      display: 'flex', flexDirection: 'column', zIndex: 200,
+      flex: 1, overflow: 'hidden', background: '#0f1a2e',
+      display: 'flex', flexDirection: 'column',
       fontFamily: 'system-ui, sans-serif',
-      boxShadow: '-8px 0 32px rgba(0,0,0,0.6)',
     }}>
       {/* Header */}
       <div style={{
@@ -149,13 +149,6 @@ export default function PartsDrawer({ onClose, initialSearch = '' }) {
             </div>
           )}
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none', border: 'none', color: '#64748b', fontSize: 20,
-            cursor: 'pointer', lineHeight: 1, padding: '2px 6px',
-          }}
-        >×</button>
       </div>
 
       {/* Search + filter */}

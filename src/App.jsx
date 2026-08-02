@@ -225,6 +225,36 @@ export default function App() {
     setJobs(prev => prev.map(j => (updates[j.id] ? applySheetEdits(j, updates[j.id]) : j)));
   }, []);
 
+  // Lifted out of the Settings JSX when Settings became a page — same handler,
+  // same behaviour, just no longer written inline in a prop.
+  const handleBenchKeywordsChange = useCallback((kw) => {
+    setBenchKeywords(kw);
+    // Re-infer benches over the CURRENT jobs, in place — this handler
+    // never rebuilds the jobs array from a source file.
+    // Skip split children (bench chosen by the
+    // user or the split logic) and split parents (changing their
+    // bench would drift auto-split child IDs and orphan their
+    // scheduled slots).
+    //
+    // `bench` is CSV/Sheet-owned in the new jobsMaster/jobsState
+    // schema (architecture brief design decision #2) — this handler
+    // is the one deliberate app-side exception, so it writes the
+    // updated bench straight to each affected job's jobsMaster doc
+    // explicitly, rather than relying on the generic jobsState
+    // diff-save (which never touches jobsMaster fields at all).
+    const reinferred = [];
+    setJobs(prev => prev.map(j => {
+      if (j.parentId || j.isSplit || j.hasSubtasks) return j;
+      const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true);
+      if (bench !== j.bench) reinferred.push({ ...j, bench });
+      return { ...j, bench };
+    }));
+    if (isSupabaseConfigured() && reinferred.length > 0) {
+      justSavedAt.current = Date.now();
+      reinferred.forEach(j => saveJob(j.id, pickMasterFields(j)));
+    }
+  }, [setBenchKeywords, setJobs, justSavedAt]);
+
   // The body renders the first of these flags that is true, in a fixed order,
   // so they only ever behaved as one exclusive page selection. The buttons were
   // independent toggles, though: with the Sheet open, clicking Projects set
@@ -241,6 +271,12 @@ export default function App() {
     setShowJobs(page === 'jobs' ? (v => !v) : false);
     setShowProjects(page === 'projects' ? (v => !v) : false);
     setShowPartsToOrder(page === 'partsToOrder' ? (v => !v) : false);
+    setShowParts(page === 'parts' ? (v => !v) : false);
+    setShowHelp(page === 'help' ? (v => !v) : false);
+    setShowSettings(page === 'settings' ? (v => !v) : false);
+    // Leaving the Parts page drops the search the Parts to Order page seeded it
+    // with, so re-opening it plainly doesn't come back still filtered.
+    if (page !== 'parts') setPartsDrawerSearch('');
     // The Parking Lot is reached by #parking-lot, so leaving it has to clear the
     // hash too, or a reload drops straight back into it.
     setShowParkingLot(false);
@@ -598,7 +634,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowParts(p => !p)}
+              onClick={() => selectPage('parts')}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
                 background: showParts ? '#1e3a5f' : '#1e293b',
@@ -610,7 +646,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowHelp(h => !h)}
+              onClick={() => selectPage('help')}
               style={{
                 padding: '7px 12px', borderRadius: 6, border: '1px solid #334155',
                 background: showHelp ? '#1e3a5f' : '#1e293b',
@@ -622,10 +658,12 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => selectPage('settings')}
               style={{
-                padding: '7px 14px', borderRadius: 6, border: '1px solid #334155',
-                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showSettings ? '#4f46e5' : '#334155'}`,
+                background: showSettings ? '#1e1b4b' : '#1e293b',
+                color: showSettings ? '#a5b4fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showSettings ? 700 : 400,
               }}
             >
               ⚙ Settings
@@ -659,7 +697,42 @@ export default function App() {
               suppliers={suppliers}
               onCheckStock={term => {
                 setPartsDrawerSearch(term || '');
-                setShowParts(true);
+                selectPage('parts');
+              }}
+            />
+          ) : showParts ? (
+            // Keyed on the seeded search so arriving from "check stock" with a
+            // different part remounts the page and re-runs its initial search,
+            // rather than keeping whatever was typed last time.
+            <PartsDrawer key={partsDrawerSearch} initialSearch={partsDrawerSearch} />
+          ) : showHelp ? (
+            <HelpDrawer />
+          ) : showSettings ? (
+            <SettingsModal
+              saveError={settingsSaveError}
+              suppliers={suppliers}
+              supplierError={supplierError}
+              onAddSupplier={addSupplier}
+              onRenameSupplier={renameSupplier}
+              onRemoveSupplier={removeSupplier}
+              isSignedIn={gcal.signedIn}
+              onSignIn={gcal.handleSignIn}
+              onSignOut={gcal.handleSignOut}
+              isConfigured={isConfigured()}
+              benchKeywords={benchKeywords}
+              defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
+              onBenchKeywordsChange={handleBenchKeywordsChange}
+              hourlyRate={hourlyRate}
+              onHourlyRateChange={setHourlyRate}
+              weeklyRevenueTarget={weeklyTarget}
+              onWeeklyTargetChange={setWeeklyTarget}
+              benchHours={benchHours}
+              onBenchHoursChange={setBenchHours}
+              onOpenSummary={() => { setShowSettings(false); setShowSummary(true); }}
+              onOpenParkingLot={() => {
+                setShowSettings(false);
+                setShowParkingLot(true);
+                window.history.replaceState(null, '', '#parking-lot');
               }}
             />
           ) : showWeekView ? (
@@ -827,74 +900,6 @@ export default function App() {
           onTargetChange={setWeeklyTarget}
           onClose={() => setShowSummary(false)}
         />
-      )}
-
-      {showSettings && (
-        <SettingsModal
-          onClose={() => setShowSettings(false)}
-          saveError={settingsSaveError}
-          suppliers={suppliers}
-          supplierError={supplierError}
-          onAddSupplier={addSupplier}
-          onRenameSupplier={renameSupplier}
-          onRemoveSupplier={removeSupplier}
-          isSignedIn={gcal.signedIn}
-          onSignIn={gcal.handleSignIn}
-          onSignOut={gcal.handleSignOut}
-          isConfigured={isConfigured()}
-          benchKeywords={benchKeywords}
-          defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
-          onBenchKeywordsChange={kw => {
-            setBenchKeywords(kw);
-            // Re-infer benches over the CURRENT jobs, in place — this handler
-            // never rebuilds the jobs array from a source file.
-            // Skip split children (bench chosen by the
-            // user or the split logic) and split parents (changing their
-            // bench would drift auto-split child IDs and orphan their
-            // scheduled slots).
-            //
-            // `bench` is CSV/Sheet-owned in the new jobsMaster/jobsState
-            // schema (architecture brief design decision #2) — this handler
-            // is the one deliberate app-side exception, so it writes the
-            // updated bench straight to each affected job's jobsMaster doc
-            // explicitly, rather than relying on the generic jobsState
-            // diff-save (which never touches jobsMaster fields at all).
-            const reinferred = [];
-            setJobs(prev => prev.map(j => {
-              if (j.parentId || j.isSplit || j.hasSubtasks) return j;
-              const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true);
-              if (bench !== j.bench) reinferred.push({ ...j, bench });
-              return { ...j, bench };
-            }));
-            if (isSupabaseConfigured() && reinferred.length > 0) {
-              justSavedAt.current = Date.now();
-              reinferred.forEach(j => saveJob(j.id, pickMasterFields(j)));
-            }
-          }}
-          hourlyRate={hourlyRate}
-          onHourlyRateChange={setHourlyRate}
-          weeklyRevenueTarget={weeklyTarget}
-          onWeeklyTargetChange={setWeeklyTarget}
-          benchHours={benchHours}
-          onBenchHoursChange={setBenchHours}
-          onOpenSummary={() => { setShowSettings(false); setShowSummary(true); }}
-          onOpenParkingLot={() => {
-            setShowSettings(false);
-            setShowParkingLot(true);
-            window.history.replaceState(null, '', '#parking-lot');
-          }}
-        />
-      )}
-
-      {showParts && (
-        <PartsDrawer
-          initialSearch={partsDrawerSearch}
-          onClose={() => { setShowParts(false); setPartsDrawerSearch(''); }}
-        />
-      )}
-
-      {showHelp && (
-        <HelpDrawer onClose={() => setShowHelp(false)} />
       )}
 
       {showCloseDay && (
