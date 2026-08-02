@@ -177,6 +177,11 @@ printout, and the board becomes the printout — automatically, no button for hi
    import will use — not a one-off script. If the mechanism can't clear the current backlog,
    it isn't the right mechanism.
 
+   **Amendment 7 (Trevor, 2026-08-02) — preview before live.** The clear runs on the Vercel
+   preview first, against a copy, so Trevor can see the board at 39 before anything touches
+   live data. Only after he's looked at it does the same path run against the real board.
+   The builder stops at the preview clear and hands back — it does not run this live.
+
 7. **Jobs-by-Age import does not depart anything.** That PDF is a different population; its
    `missing[]` means "no date available", not "job finished". Leave it alone.
 
