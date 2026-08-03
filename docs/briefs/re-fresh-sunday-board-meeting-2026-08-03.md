@@ -18,22 +18,34 @@ Resolved since this brief was written — the sections below are stale on these 
   in (`f65479d`), working tree clean. Nothing to commit, don't re-ask.
 - **The parts-blocked miscount is fixed** (`7a2e5ea`). The count now finds WP jobs wherever
   they sit, not just on the backlog. The carried-over Ops report below still contains the OLD
-  wrong text ("nothing is parts-blocked") — the truth is **2 parts-blocked: 1705 and 1679**.
+  wrong text ("nothing is parts-blocked").
+  **Superseded by the live export below: only 1705 is parts-blocked now, not two.**
 
 Resolved 2026-08-04, second pass — meetings can now run anywhere, on any model:
 - **The export reads environment variables**, not just `.env` files, so a web session can run it
   once `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set on the environment. Only the anon
   key is involved — the same one the app ships to every browser. `.env` still wins on Micky/Moby.
-  **Trevor's outstanding action: add those two variables in his web environment settings.** Until
-  he does, web sessions still can't run a meeting.
-- **Web sessions also need the Supabase host on the environment's network allowlist.** Tested
-  2026-08-04 with real keys: the script read them fine and reached the client, then failed with
-  "Host not in allowlist: ttlvuforvphwyrfotgot.supabase.co". Environment variables alone are not
-  enough — both settings are required, and they live in the same claude.ai/code environment
-  settings area.
+- **Web sessions also need the Supabase host on the environment's network allowlist** — the two
+  settings live in the same claude.ai/code environment dialog, and variables alone are not enough.
+  Both are now configured on Trevor's "Supabase access" environment.
+- **Confirmed working end to end 2026-08-04**: a web session on `main` ran the export and pulled
+  live data. Board meetings no longer need Micky. A session must be on `main` at `519e88d` or
+  later, and must use the "Supabase access" environment, not Default.
 - **All four agents in the workflow are pinned to `sonnet`.** They previously inherited the
   session's model, so an Opus session spawned four Opus agents to summarise counts. The live half
   is conversation and needs no premium model either — so the whole meeting runs on default.
+
+### Live export 2026-08-04 13:27 UTC — use these, not the carried-over reports below
+
+55 top-level jobs, 1 completed job, 0 ad-hoc tasks, 2 open parts_to_order, 16 open Parking Lot
+items. Statuses: Booked In 17, Active 16, On Hold 10, Waiting 6, To Be Inv 6.
+Open parts: Ernie Ball Primo Slinky (1616), TDA7294 (1705).
+
+Two things this changes:
+- **Only 1705 is parts-blocked.** 1679 has moved to Active — its rivet sourcing is no longer
+  holding it. Every earlier note saying "1705 and 1679" is out of date.
+- **Completed still reads 1.** That is the mark-done bug (Parking Lot pk-md-04) wiping the table
+  on hard refresh, not a one-job week. Do not report it as the week's takings.
 
 Still open:
 - **Moby setup — PARKED 2026-08-04.** Trevor AirDropped `.env`/`.env.local` to Moby and it still
