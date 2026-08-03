@@ -8,6 +8,23 @@ Continuing work in the GGNZ Scheduler project. Goal of this session: run steps 2
 Sunday board meeting with Trevor — the live conversation. Step 1 (the auto-gathered reports)
 already ran; its output is embedded below. **Do not re-run the workflow.**
 
+## Update 2026-08-04 — read this before the rest of the file
+
+The meeting still has NOT happened. It is still at step 2 (not-completed reasons). Nothing
+has been written: no schedule, no focus_list, no parts_to_order rows, no minutes, no Apple Note.
+
+Resolved since this brief was written — the sections below are stale on these two points:
+- **The workflow fixes are committed.** Both the `args`-parsing fix and the exportData fix are
+  in (`f65479d`), working tree clean. Nothing to commit, don't re-ask.
+- **The parts-blocked miscount is fixed** (`7a2e5ea`). The count now finds WP jobs wherever
+  they sit, not just on the backlog. The carried-over Ops report below still contains the OLD
+  wrong text ("nothing is parts-blocked") — the truth is **2 parts-blocked: 1705 and 1679**.
+
+Still open:
+- **`.env` to Moby** — Trevor said yes. He AirDrops `.env` and `.env.local` from Micky to Moby
+  himself (both are gitignored and must never go through git). Not done yet as of 2026-08-04.
+- The Finance caveat below still stands in full — $50 is not the real week.
+
 ## Where things stand
 
 The `sunday-board-meeting` workflow ran successfully for week starting 2026-08-03, reporting on
