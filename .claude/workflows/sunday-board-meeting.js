@@ -82,7 +82,7 @@ let data = parsedArgs.exportData
 if (!data) {
   const rawExport = await agent(
     'Run `node scripts/board_meeting_export.mjs` from the repo root and return ONLY the raw stdout JSON it prints, verbatim, with no commentary, no markdown fences.',
-    { label: 'supabase-export', phase: 'Gather' }
+    { label: 'supabase-export', phase: 'Gather', model: 'sonnet' }
   )
   try {
     data = JSON.parse(rawExport)
@@ -122,19 +122,26 @@ const partsToOrder = data.partsToOrder || [] // already resolved=false only, per
 log(`Loaded ${jobs.length} jobs (${backlog.length} backlog, ${schedulableNow.length} schedulable now), ${completedThisWeek.length} completed this week, ${partsToOrder.length} open parts_to_order item(s)`)
 
 phase('Reports')
+// Every agent() in this file pins model: 'sonnet'. Subagents otherwise inherit
+// the session's model, so running the meeting from an Opus session spawned four
+// Opus agents to turn a handful of counts into three lines each — the exact leak
+// CLAUDE.md's "Model Discipline" section exists to stop. These are summarise-some-
+// numbers jobs; Sonnet does them fine, and the meeting now costs the same whatever
+// model Trevor happens to be on. The live half of the meeting is conversation, so
+// it needs no premium model either.
 const [opsReport, financeReport, adminReport] = await parallel([
   () => agent(
     `You are the Ops/Scheduler seat at GGNZ's weekly board meeting. Give a 2-3 line report, no preamble, plain text.
 Data: ${backlog.length} backlog jobs total. ${schedulableNow.length} schedulable right now. ${partsJobs.length} parts-blocked/in-transit. ${customerWaitingJobs.length} awaiting customer.
 Report backlog health using these counts. Do not rank jobs by age — job-age tracking is not available (no intake-date data), so do not mention "days stuck" or similar. Do not propose a schedule — that's a live conversation with Trevor, not this report's job.`,
-    { label: 'ops-report', phase: 'Reports' }
+    { label: 'ops-report', phase: 'Reports', model: 'sonnet' }
   ),
   () => agent(
     `You are the Finance seat at GGNZ's weekly board meeting. Give a 2-3 line report, no preamble, plain text.
 Data: ${completedThisWeek.length} jobs completed in the week just worked (week starting ${weekKey}; the week being planned is ${weekStartISO}). Invoiced total EX GST: $${invoicedExGst.toFixed(2)}. Incl GST (x1.15): $${invoicedIncGst.toFixed(2)}.
 Lead with the ex-GST figure — that is the number Trevor works in.
 Report the numbers plainly. Trevor mentioned he is currently low on cash — note that context if the numbers are thin, but don't editorialize beyond one line.`,
-    { label: 'finance-report', phase: 'Reports' }
+    { label: 'finance-report', phase: 'Reports', model: 'sonnet' }
   ),
   () => agent(
     `You are the Admin seat at GGNZ's weekly board meeting — a seat covering parts, maintenance, and customer-comms admin work that competes for Trevor's time without ever competing for his bench-time schedule. Give a short report (4-6 lines max), plain text, no preamble.
@@ -145,7 +152,7 @@ Ad-hoc/maintenance tasks tracked in the app: ${JSON.stringify(data.adHocTasks)}
 List: (1) parts to chase this week, by job number, (2) customers who need a call/update, by job number, (3) anything in the open parts-to-order list that looks stale or worth flagging.
 This is a SCAN-SIDE report only — a snapshot of what's already tracked. Do not ask Trevor questions or invite him to add items here; live additions happen later in the chat session, not in this report.
 Each of these should be phrased as something that could take a real bench-time slot, not just an FYI.`,
-    { label: 'admin-report', phase: 'Reports' }
+    { label: 'admin-report', phase: 'Reports', model: 'sonnet' }
   ),
 ])
 
