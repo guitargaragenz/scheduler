@@ -20,10 +20,17 @@ Resolved since this brief was written — the sections below are stale on these 
   they sit, not just on the backlog. The carried-over Ops report below still contains the OLD
   wrong text ("nothing is parts-blocked") — the truth is **2 parts-blocked: 1705 and 1679**.
 
+Resolved 2026-08-04, second pass — meetings can now run anywhere, on any model:
+- **The export reads environment variables**, not just `.env` files, so a web session can run it
+  once `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set on the environment. Only the anon
+  key is involved — the same one the app ships to every browser. `.env` still wins on Micky/Moby.
+  **Trevor's outstanding action: add those two variables in his web environment settings.** Until
+  he does, web sessions still can't run a meeting.
+- **All four agents in the workflow are pinned to `sonnet`.** They previously inherited the
+  session's model, so an Opus session spawned four Opus agents to summarise counts. The live half
+  is conversation and needs no premium model either — so the whole meeting runs on default.
+
 Still open:
-- **Board meetings can only run where `.env` is — currently Micky only.** Web/iPhone sessions
-  cannot run one: no `.env`, so no Supabase read (job list, parking lot) and no step-10 writes.
-  Don't start a board meeting from a web session. Confirmed 2026-08-04.
 - **Moby setup — PARKED 2026-08-04.** Trevor AirDropped `.env`/`.env.local` to Moby and it still
   didn't work: Moby's clone lives in iCloud Drive, which offloads and part-syncs files, so git
   and the dev server both break on it. Fix when picked up: clone fresh to `~/scheduler` on Moby
