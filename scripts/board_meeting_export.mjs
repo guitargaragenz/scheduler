@@ -39,6 +39,7 @@
 // markdown file is deleted. If this script stops exporting it, the meeting has
 // no parking lot at all.
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
@@ -190,12 +191,55 @@ const parkingLotItems = parkingLotRows
   })
   .filter(item => item.status !== 'done');
 
+// What actually shipped since the last meeting. Added 2026-08-04 because the
+// export was data-only: the meeting could see Trevor's workload but had no way
+// to know what had been built, so it re-proposed work that was already done and
+// he risked approving fixes for things that were already fixed.
+//
+// Read from git rather than from a hand-kept list, because a list is another
+// thing to remember and this needs no maintenance. Merge commits are excluded —
+// their subjects just repeat the branch's own commits.
+//
+// Failure here must never take the meeting down: no git, no history, a shallow
+// clone with nothing in range — all return an empty list, and the meeting runs
+// exactly as it did before this existed.
+function shippedSince(days = 8) {
+  try {
+    const out = execFileSync(
+      'git',
+      ['log', `--since=${days}.days`, '--no-merges', '--date=short', '--pretty=%h\t%ad\t%s'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+    return out
+      .split('\n')
+      .filter(Boolean)
+      .map(line => {
+        const [commit, date, ...rest] = line.split('\t');
+        return { commit, date, subject: rest.join('\t') };
+      });
+  } catch {
+    return [];
+  }
+}
+
+// The "why" behind the above — the Shipped notes written into the briefs index
+// when work merges. Sent whole; it's short, and the meeting can read it.
+function shippedNotes() {
+  try {
+    return readFileSync('docs/briefs/README.md', 'utf8');
+  } catch {
+    return '';
+  }
+}
+
 process.stdout.write(JSON.stringify({
   jobs,
   completedJobs,
   adHocTasks,
   partsToOrder,
   parkingLotItems,
+  shippedSinceLastMeeting: shippedSince(),
+  briefsIndex: shippedNotes(),
   exportedAt: new Date().toISOString(),
 }, null, 2));
 
