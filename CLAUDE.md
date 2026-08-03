@@ -73,6 +73,13 @@ memory file — this file loads automatically, every time, for every session and
   - Never trade jargon for brevity. Short *and* plain English. Both, always.
   - When a lot genuinely needs saying, write it to a file and give him the one-line summary —
     don't dump it into chat.
+  - **`tt` and `tl` are mid-sentence corrections. Act on them immediately.** Trevor types `tt`
+    ("too technical") or `tl` ("too long") the moment an answer goes wrong, often while a reply
+    is still being written — he is not a fast typer, hence two letters. Treat either as a full
+    instruction, not a passing remark: stop, re-say the same thing in plain English or in a
+    fraction of the length, and carry that register for the rest of the session rather than
+    drifting back. Never ask what he means by it, and never make him spell it out. Agreed
+    2026-08-04.
 
 ---
 
