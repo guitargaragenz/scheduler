@@ -169,37 +169,39 @@ export default function ProjectsPage({ jobs }) {
 
   const filterActions = ['CI', 'WP', 'INC', 'RS', 'RS-C', 'DG', 'FB', 'GTS'];
 
+  // Sized to sit inside a tab, not to fill a page. This used to be a
+  // full-height centred block; under the tab strip that read as a second empty
+  // page nested in the first. Wording unchanged.
   if (projects.length === 0) {
     return (
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#111827', color: '#6b7280',
-      }}>
-        <div style={{ textAlign: 'center', maxWidth: 380 }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>📋</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#9ca3af', marginBottom: 8 }}>No projects yet</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>
-            To add a job to Projects, open the Jobs Sheet page and tick
-            the <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>PJ</code> box
-            on any long-running job you want to track here. It shows up straight away —
-            there's nothing to run and nothing to re-import.
-          </div>
+      <div style={{ padding: '32px 4px', color: '#6b7280', maxWidth: 520 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#9ca3af', marginBottom: 6 }}>No project jobs yet</div>
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+          To add a job here, open the Jobs Sheet page and tick
+          the <code style={{ background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#86efac' }}>PJ</code> box
+          on any long-running job you want to track. It shows up straight away —
+          there's nothing to run and nothing to re-import.
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', background: '#111827', color: '#f9fafb' }}>
-      <div style={{ maxWidth: 1140, margin: '0 auto', padding: '24px 20px' }}>
+    <div style={{ color: '#f9fafb' }}>
+      <div>
 
-        {/* Page header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>Projects</div>
-            <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
-              Long-running projects · {today} · {projects.length} jobs
-            </div>
+        {/* The page title and subtitle that used to sit here are gone. This
+            component is a tab now, and the tab strip above it already says
+            "Project Jobs" — rendering its own header too put a page inside a
+            page and the word "Projects" on screen twice. The count and date
+            moved into the one-line summary below; the action filter is
+            untouched and stays exactly as it was. */}
+        <div style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          gap: 16, marginBottom: 16, flexWrap: 'wrap',
+        }}>
+          <div style={{ fontSize: 12, color: '#9ca3af' }}>
+            Long-running customer projects · {today} · {projects.length} jobs
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button
