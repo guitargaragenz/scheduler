@@ -7,6 +7,7 @@ import {
   subscribeToDailyLogs,
 } from '../utils/supabase.js';
 import { localDateKey } from '../utils/calendar.js';
+import { hasParkingLotTag, fileBulletToParkingLot } from '../utils/parkingLotTag.js';
 
 // crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — Safari disables it
 // entirely over plain http:// on a LAN IP, which breaks local iPhone testing. Fall back to a
@@ -266,11 +267,26 @@ export function useDailyLog() {
     });
   }
 
+  // `#PL` files the bullet into the Parking Lot and LEAVES IT IN THE DAY —
+  // no removal, no special close-day treatment. See src/utils/parkingLotTag.js.
+  //
+  // Council amendment F: the parking-lot write is fire-and-forget and lives
+  // HERE, outside updateState — not inside the state updater (which React may
+  // re-run, double-filing the item), not inside scheduleSave/performSave, and
+  // not behind readyRef (which gates the daily-log store, not this). It is
+  // deliberately not awaited, and fileBulletToParkingLot() cannot throw or
+  // reject, so a parking-lot failure can never reach the daily-log save.
   function addBullet(text, jobId = null, meta = null) {
     const key = todayKey();
+    const filesToParkingLot = hasParkingLotTag(text);
+    // Set inside the updater, read after it — same pattern autoCarryForward
+    // uses for onJobBumped. Only a local boolean, never a write, and
+    // idempotent if React re-runs the updater.
+    let bulletWasAdded = false;
     updateState(prev => {
       const day = prev.logs[key] ?? { bullets: [], closedAt: null, locked: false };
       if (day.locked) return prev;
+      bulletWasAdded = true;
       return {
         ...prev,
         logs: {
@@ -287,12 +303,19 @@ export function useDailyLog() {
                 done: false,
                 createdAt: new Date().toISOString(),
                 migration: null,
+                // Marker only — purely so the UI can show that this bullet
+                // landed in the Parking Lot. Nothing reads it for behaviour.
+                ...(filesToParkingLot ? { parkingLot: true } : {}),
               },
             ],
           },
         },
       };
     });
+
+    if (filesToParkingLot && bulletWasAdded) {
+      fileBulletToParkingLot(text); // deliberately not awaited — see comment above
+    }
   }
 
   // Insert `bullet` so that, restricted to the subsequence of job-bullets (jobId != null),
