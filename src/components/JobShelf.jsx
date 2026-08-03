@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import JobCard from './JobCard.jsx';
 import DeferredItemsList from './DeferredItemsList.jsx';
-import { benchColors, HOURS_BUCKETS, blockedPile } from '../data/jobs.js';
+import { benchColors, HOURS_BUCKETS, blockedPile, partsMayHaveArrived } from '../data/jobs.js';
 
 export const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
@@ -16,6 +16,16 @@ const PILES = [
 ];
 export const PILE_VALUES = PILES.map(p => `pile:${p.key}`);
 export const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:') ? sel.slice(5) : null);
+
+// 🔧 Parts Arrived — a fourth chip in the same row, but deliberately NOT a pile.
+//
+// Piles are the blocked jobs: undraggable, benchless, `blockedPile(j) != null`.
+// A parts-arrived job is the exact opposite — WP is a label only and does not
+// change `schedulable`, so these are workable, draggable, benched jobs. Giving
+// it its own `filter:` namespace rather than `pile:` is what keeps that true:
+// `pileOf()` returns null for it, so `dragModeVisible()` still offers the
+// Regular / 🚨 Urgent toggle above cards that genuinely can be dragged.
+export const PARTS_ARRIVED_VALUE = 'filter:partsArrived';
 
 // Whether to offer the Regular / 🚨 Urgent drag-mode toggle. Hide it only when
 // a blocked pile is what's actually driving the list, because those cards can't
@@ -69,7 +79,7 @@ export default function JobShelf({
   // (active, but nothing can ever match it).
   const [selectedBench, setSelectedBench] = useState(() => {
     const stored = localStorage.getItem('jobShelfBench');
-    if (stored && (BENCH_ORDER.includes(stored) || PILE_VALUES.includes(stored))) return stored;
+    if (stored && (BENCH_ORDER.includes(stored) || PILE_VALUES.includes(stored) || stored === PARTS_ARRIVED_VALUE)) return stored;
     if (stored) localStorage.removeItem('jobShelfBench');
     return null;
   });
@@ -114,6 +124,14 @@ export default function JobShelf({
     count: topLevel.filter(j => blockedPile(j) === p.key).length,
   }));
 
+  // These jobs are also counted by their bench chip, and that is correct here —
+  // unlike the Week View sidebar, which lists every group at once and therefore
+  // has to carve them out to avoid printing the same card twice. This panel only
+  // ever shows ONE filter's worth of cards at a time, so nothing is on screen
+  // twice. Taking them out of the bench chips would instead hide real, bookable
+  // work from the bench he is actually picking from.
+  const partsArrivedCount = topLevel.filter(partsMayHaveArrived).length;
+
   // Count only the focus jobs this shelf can actually list, so the pill's number
   // always matches what clicking it reveals. `topLevel` has already dropped the
   // done and scheduled ones, which is why this reads lower than focusList.length.
@@ -134,7 +152,9 @@ export default function JobShelf({
 
   const visible = (searching
     ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
-    : selectedPile
+    : selectedBench === PARTS_ARRIVED_VALUE
+      ? topLevel.filter(partsMayHaveArrived)
+      : selectedPile
       ? topLevel.filter(j => blockedPile(j) === selectedPile)
       : selectedBench
         ? topLevel.filter(j => j.bench === selectedBench && blockedPile(j) == null)
@@ -256,7 +276,7 @@ export default function JobShelf({
                 filled, so they read as "not a bench" at a glance. Each pile
                 gets its own colour (Trevor, 2026-07-28) so Waiting/Planning/
                 Hold/In Transit are distinguishable without reading the label. */}
-            {pileCounts.some(p => p.count > 0) && (
+            {(pileCounts.some(p => p.count > 0) || partsArrivedCount > 0) && (
               <div style={{ flexBasis: '100%', height: 0 }} />
             )}
             {pileCounts.filter(p => p.count > 0).map(({ key, label, count, color }) => {
@@ -278,6 +298,28 @@ export default function JobShelf({
                 </span>
               );
             })}
+
+            {/* 🔧 Parts Arrived — jobs Trevor still has tagged WP that Multitrack
+                has stopped calling stuck. Hidden entirely at zero: a chip reading
+                0 every day is a chip he stops seeing. Question mark dropped from
+                the label only because the row has no space for it; the app still
+                does not know the parts turned up, which is why clicking it shows
+                him the jobs rather than doing anything to them. */}
+            {partsArrivedCount > 0 && (
+              <span
+                onClick={() => pickBench(PARTS_ARRIVED_VALUE)}
+                title="Still tagged WP, but Multitrack no longer says waiting — parts may have arrived"
+                style={{
+                  fontSize: 9, padding: '4px 9px', borderRadius: 11, fontWeight: 600, cursor: 'pointer',
+                  background: 'transparent',
+                  color: '#4ade80',
+                  opacity: selectedBench === PARTS_ARRIVED_VALUE ? 1 : 0.5,
+                  border: '1px solid #4ade80',
+                }}
+              >
+                🔧 Parts Arrived <span style={{ opacity: 0.7 }}>{partsArrivedCount}</span>
+              </span>
+            )}
           </div>
         )}
 
