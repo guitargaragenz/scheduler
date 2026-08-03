@@ -119,7 +119,20 @@ const invoicedExGst = completedThisWeek.reduce((s, r) => s + (Number(r.invoiceAm
 const invoicedIncGst = invoicedExGst * 1.15
 const partsToOrder = data.partsToOrder || [] // already resolved=false only, per the export script
 
-log(`Loaded ${jobs.length} jobs (${backlog.length} backlog, ${schedulableNow.length} schedulable now), ${completedThisWeek.length} completed this week, ${partsToOrder.length} open parts_to_order item(s)`)
+// What was actually built since the last meeting. Without this the meeting is
+// data-only: it can see the workload but not the progress, so it re-proposes
+// work that already shipped and Trevor risks approving fixes for things that
+// are already fixed. Added 2026-08-04 after exactly that near-miss.
+//
+// The export returns [] if git isn't available, so an old export or a
+// git-less environment degrades to the previous behaviour rather than failing.
+const shipped = data.shippedSinceLastMeeting || []
+const shippedBlock = shipped.length === 0
+  ? 'No record of shipped work is available for this period — do not assume nothing shipped, and do not propose builds as if the app were unchanged.'
+  : `ALREADY SHIPPED since the last meeting (${shipped.length} commits, newest first) — treat every one of these as DONE. Do not propose, re-propose, or flag any of it as work to do:
+${shipped.slice(0,60).map(c => `- ${c.date} ${c.subject}`).join('\n')}`
+
+log(`Loaded ${jobs.length} jobs (${backlog.length} backlog, ${schedulableNow.length} schedulable now), ${completedThisWeek.length} completed this week, ${partsToOrder.length} open parts_to_order item(s), ${shipped.length} commit(s) shipped since the last meeting`)
 
 phase('Reports')
 // Every agent() in this file pins model: 'sonnet'. Subagents otherwise inherit
@@ -133,6 +146,8 @@ const [opsReport, financeReport, adminReport] = await parallel([
   () => agent(
     `You are the Ops/Scheduler seat at GGNZ's weekly board meeting. Give a 2-3 line report, no preamble, plain text.
 Data: ${backlog.length} backlog jobs total. ${schedulableNow.length} schedulable right now. ${partsJobs.length} parts-blocked/in-transit. ${customerWaitingJobs.length} awaiting customer.
+${shippedBlock}
+
 Report backlog health using these counts. Do not rank jobs by age — job-age tracking is not available (no intake-date data), so do not mention "days stuck" or similar. Do not propose a schedule — that's a live conversation with Trevor, not this report's job.`,
     { label: 'ops-report', phase: 'Reports', model: 'sonnet' }
   ),
@@ -149,6 +164,8 @@ Parts-blocked or in-transit jobs (${partsJobs.length}): ${JSON.stringify(partsJo
 Customer waiting on input/update (${customerWaitingJobs.length}): ${JSON.stringify(customerWaitingJobs.slice(0,10).map(j=>({job:j.job, customer:j.customer, action:j.action})))}
 Open parts-to-order items already tracked (${partsToOrder.length}): ${JSON.stringify(partsToOrder.slice(0,15).map(p=>({description:p.description, category:p.category, neededForJob:p.neededForJob})))}
 Ad-hoc/maintenance tasks tracked in the app: ${JSON.stringify(data.adHocTasks)}
+${shippedBlock}
+
 List: (1) parts to chase this week, by job number, (2) customers who need a call/update, by job number, (3) anything in the open parts-to-order list that looks stale or worth flagging.
 This is a SCAN-SIDE report only — a snapshot of what's already tracked. Do not ask Trevor questions or invite him to add items here; live additions happen later in the chat session, not in this report.
 Each of these should be phrased as something that could take a real bench-time slot, not just an FYI.`,
