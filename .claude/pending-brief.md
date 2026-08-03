@@ -56,18 +56,20 @@ Both are legitimate. They cannot share a name in the nav.
 
 ## Scope — two merges
 
-### Merge A — free up the name
+### Merge A — two tabs behind one nav button
 
-1. Rename the existing page to **Project Jobs** (component file, nav label, page heading).
-   The word "Jobs" is the honest distinguisher: those are jobs, these won't be.
-2. Take **Project Jobs off the top nav** and reach it from Settings instead.
+**Decided by Trevor 2026-08-03, replacing an earlier "move it into Settings" plan.** Settings
+is a modal (`SettingsModal.jsx`) and would have cramped a full-width aged chart, and burying it
+there meant hunting for it. Tabs are better: one nav button, both views behind it.
 
-   **Judgement call, flag for Trevor:** Settings is a modal (`SettingsModal.jsx`), not a page.
-   Rendering a full-width aged chart inside a modal would cramp it. So Project Jobs **stays a
-   full page** and keeps its existing render path — only the entry point moves, from a top-nav
-   button to a link inside the Settings modal. If Trevor meant it literally inside the modal,
-   say so and this changes.
-3. No change to what the page shows, filters, or computes. Rename and re-route only.
+1. The **Projects** top-nav button stays exactly where it is. It now opens a page with two
+   tabs:
+   - **Workshop** — the planner (Merge B). Default tab.
+   - **Project Jobs** — the existing page, renamed. "Jobs" is the honest distinguisher: those
+     are customer jobs, the planner's aren't.
+2. `ProjectsPage.jsx` becomes the Project Jobs tab's content, **unchanged** — same sections,
+   same age bands, same action filter, same computation. It is moved and renamed, not edited.
+3. Which tab was last open does not need to persist. Workshop opens by default every time.
 
 ### Merge B — the Workshop Projects planner
 
