@@ -1,80 +1,77 @@
-doc_status: closed
+doc_status: live
 
-# Parts arrived — surface WP jobs Multitrack has already unstuck
+# Tell him parts have arrived — don't make him find it
 
-**Shipped 2026-08-03 at `337dd5b`, merged `8aae628`.** Verifier passed every checklist item,
-441/441 tests, browser-confirmed live on job #1679. Everything below is the record of what was
-built, not a task list.
+**Raised by Trevor 2026-08-03.** Awaiting approval.
 
-**Raised by Trevor 2026-08-03.** Scope-locked below.
-
-> Previous occupant of this file — "The board follows the printout (departed jobs)" — shipped
-> 2026-08-02 via PR #8 (`335ad8a`, follow-up `7a2e5ea`) and is closed. Its record is in
-> `docs/briefs/README.md` and in git history.
+> Previous occupant — "Parts arrived — surface WP jobs Multitrack has already unstuck" —
+> shipped 2026-08-03 at `337dd5b`, merged `8aae628`, and is closed. Record in
+> `docs/briefs/README.md`.
 
 ## The problem
 
-> "I could miss jobs that come free when scheduling."
+That build put a 🔧 PARTS ARRIVED? group in the Week View sidebar. Trevor's verdict on seeing
+it live: **"it's too easy to miss."** He's right — it's a group inside a panel that is closed
+by default, on a view he isn't in most of the day. A notice you have to go looking for isn't
+a notice.
 
-A job tagged **WP** (Waiting Parts) keeps that tag until Trevor deletes it by hand. Multitrack
-flips the job's status back to Active on the next PDF drop, but the tag stays. So a job that is
-genuinely ready to book still reads as parts-blocked while he's picking the week's work, and it
-just doesn't get chosen. The failure is silent.
+## Scope — two pieces
 
-## Why the app can't clear it for him
+### 1. Chip on the Day View job panel — pure UI
 
-The PDF import writes six fields only — `PDF_IMPORT_FIELDS`, `src/utils/supabase.js:203`:
-job, customer, mfr, model, status, desc. Action (WP/INC/CI/FB…), Tag, Hours, VB and BL are his
-hand-kept columns, and `writePdfImportBatch`'s allow-list makes the import *incapable* of
-reaching them, not merely careful about it. That is what stops one bad drop blanking every
-hand-set field in the workshop. **Do not weaken it.**
+The Day View panel (`JobShelf.jsx`) has pile chips — Waiting / Planning / Hold. Add a fourth,
+`🔧 Parts Arrived (n)`, in the same row and the same style. Clicking it filters the list to
+those jobs, exactly like the other chips. Hidden when the count is zero.
 
-So this build surfaces the contradiction. It never writes.
+Membership is the existing `partsMayHaveArrived()` (`src/data/jobs.js`) — no new rule.
 
-## Scope — all of it, and nothing else
+### 2. Banner after a PDF import — has state, so this is the careful half
 
-One new group in the Sidebar, following the existing BACKLOG / ✅ READY TO START / 📞 WAITING
-pattern (`src/components/Sidebar.jsx:261–300`): a labelled header with a count, hidden entirely
-when empty, cards rendered by the same `renderJob`.
+A bar across the top of the app after an import that turns up qualifying jobs:
 
-- **Membership:** `action === 'WP'` **and** the job is not in a blocked pile — i.e.
-  `blockedPile(job) === null` (`src/data/jobs.js:105`). Multitrack no longer says it's waiting.
-- **These jobs must be REMOVED from the main unscheduled list**, not shown twice. WP does not
-  change `schedulable` (`src/data/jobsSheet.js:41–46`), so they are in `displayed` today.
-- Cards stay draggable and schedulable exactly as now. This is a relabel, not a lock.
-- Hidden in focus mode, like every other group.
-- Suggested header: `🔧 PARTS ARRIVED?` — the question mark is the point. The app is saying
-  "Multitrack says this isn't waiting any more", not "your parts are here".
+> 🔧 2 jobs may have parts now — #1679, #1705   ✕
+
+- Visible on **every** screen, not just Week View or Board.
+- Clicking a job number jumps to that job.
+- **Stays until he clicks ✕.** No timer, no auto-dismiss. His words: "stay until I toggle it."
+- Survives a page reload while showing.
+- Reappears on a later import **only for job numbers he hasn't already dismissed.** Otherwise
+  it is the same nag every drop and he stops reading it — which is the exact failure this
+  build exists to fix.
+
+Dismissed job numbers are the new stored state. Store them in `app_settings` alongside the
+other per-device settings, seeded the same way; a job number leaves the dismissed list when it
+stops qualifying, so a genuine re-block and re-arrive notifies again.
 
 ## Out of scope — do not build
 
-- Clearing or editing the WP tag. Not automatically, not with a button. He clears it in the
-  Sheet, and the group empties itself.
-- Any change to the import, `PDF_IMPORT_FIELDS`, or `writePdfImportBatch`.
-- Chips on job cards. He chose a list; the chip would vanish on the same edit anyway.
-- FB, INC, CI or any other action code. WP only.
+- Clearing or editing the WP tag. Still his column, still cleared in the Jobs Sheet only.
+- Any change to `PDF_IMPORT_FIELDS` or `writePdfImportBatch`. The import's inability to reach
+  his hand-kept columns is a safety property, not an oversight.
+- Notifying on anything other than WP.
+- Sound, browser notifications, email. A bar on screen, nothing else.
 
-## Verify before building — true as of 2026-08-03, check anyway
+## Verify before building — check, don't trust this file
 
 | Fact | Where |
 |---|---|
-| `PDF_IMPORT_FIELDS` is the six-field allow-list | `src/utils/supabase.js:203` |
-| `'WP'` is in `ACTION_OPTIONS` | `src/data/jobsSheet.js:51` |
-| WP is a label only, does not change `schedulable` | `src/data/jobsSheet.js:41–46` |
-| `blockedPile()` returns null for workable jobs | `src/data/jobs.js:105` |
-| The group pattern to copy | `src/components/Sidebar.jsx:261–300` |
+| `partsMayHaveArrived()` exists and is exported | `src/data/jobs.js` |
+| The pile chips to copy | `src/components/JobShelf.jsx` |
+| How settings are stored and seeded | `app_settings`, `src/utils/supabase.js` |
+| The import path that fires the banner | `writePdfImportBatch`, `src/utils/supabase.js` |
 
 ## Done means
 
-- A WP job whose status is Active appears in the new group and **not** in the main list.
-- A WP job still `Waiting`/`On Hold`/`In Transit` stays where it is today — not in the group.
-- A job with no WP tag is unaffected.
-- Clearing WP in the Jobs Sheet moves the job back to the main list, no reload.
-- Group is invisible when nothing qualifies.
-- Full test suite passes. New tests cover the membership rule and the not-shown-twice rule.
+- Day View shows `🔧 Parts Arrived (n)`; clicking it filters; hidden at zero.
+- Importing the 3/8 PDF over the 2/8 state raises the banner naming Gav Comber's job.
+- The banner stays through a page reload and through moving between screens.
+- ✕ dismisses it; the next import does **not** raise it again for the same job.
+- A job that re-blocks and comes free again **does** notify again.
+- Full test suite passes, with new tests on the dismissed-list rule.
 
-Protocol: builder → verifier → browser test → merge. **Council dropped on Trevor's call,
-2026-08-03** ("no council I thought this was a quick fix?") — and he was right: this reads
-`jobs[]` but changes no shape and touches no blast-radius file (`scheduledSlots`,
-`calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js`/`utils/supabase.js`, the `jobs[]`
-shape). An earlier draft of this line called for the full protocol; that overcalled it.
+Protocol: builder → verifier → browser test (real 2/8 → 3/8 import) → merge. No council —
+same reasoning as last time: no blast-radius file is touched. The banner adds a settings row;
+it does not change the `jobs[]` shape or the scheduling state.
+
+**Real test data on the Mac:** `/Users/admin/Downloads/*JOBS DROP BOX/` —
+`GGNZ JBA 2:8.pdf` + `Jobs 2:8.pdf`, then `GGNZ JBA 3:8.pdf` + `Jobs 3:8.pdf`.
