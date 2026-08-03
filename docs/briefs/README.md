@@ -33,8 +33,6 @@ the status line.
 
 Nothing is live. The next session picks from Parked, or from whatever Trevor raises.
 
-Also open, not scoped: after a PDF import the board shows the old description until the page is reloaded (`src/hooks/useJobs.js:319` refreshes dates only). Data is correct, screen is stale.
-
 ## Parked — agreed in principle, waiting on something
 
 > **Standing order, Trevor 2026-07-29:** *"save all UI changes until after PDF drop implemented
@@ -45,6 +43,7 @@ Also open, not scoped: after a PDF import the board shows the old description un
 
 | Brief | Date | Waiting on |
 |-------|------|------------|
+| [parked-stale-description-after-import.md](parked-stale-description-after-import.md) | noted 2026-08-01, parked 2026-08-03 | Nothing — it's a real bug, just not picked up. After a PDF import the board shows the old description until the page is reloaded; the data is correct, the screen is stale. `src/hooks/useJobs.js:319` refreshes dates only. Blast-radius (`jobs[]`), so full protocol when it's taken on. Not scoped, not approved. |
 | [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | 2026-07-29, item 3 shipped 2026-07-30 | **White sheet instead of dark — done (`ce1cc65`).** Still open: **Enter-to-move-down a row** (the real complaint: every cell needs the mouse today) and **30-minute snapping on hand-typed hours** (`parseHoursInput()` in `jobsSheet.js`, not the UI). Both are behaviour changes on an app-owned column, so they go through the full protocol. Not approved, not scoped. |
 | [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | 2026-07-27, re-scoped 2026-07-29 | Nothing — Brief F shipped. **Three of its four findings were already fixed** and the brief has been cut down accordingly: the wording is aligned on "Waiting", and `useSupabase.js:43` now folds `blockedPile()` into `schedulable` so the screens agree on which jobs are stuck. What's left is narrow — the Sidebar's three buckets don't match `blockedPile()`'s four piles, so `🔒 ON HOLD` is a catch-all bin. Not scoped, not approved. |
 | [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | 2026-07-27, refs re-verified 2026-07-29 | The first Sunday board meeting run. Parts captured at the bench, shown as the stuck reason on the job. Split out of Brief E — the `parts_to_order` list is empty until the meeting fills it, so the UI would ship showing nothing. Not approved, not scoped. |
