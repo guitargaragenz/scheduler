@@ -21,8 +21,15 @@ Resolved since this brief was written — the sections below are stale on these 
   wrong text ("nothing is parts-blocked") — the truth is **2 parts-blocked: 1705 and 1679**.
 
 Still open:
-- **`.env` to Moby** — Trevor said yes. He AirDrops `.env` and `.env.local` from Micky to Moby
-  himself (both are gitignored and must never go through git). Not done yet as of 2026-08-04.
+- **Board meetings can only run where `.env` is — currently Micky only.** Web/iPhone sessions
+  cannot run one: no `.env`, so no Supabase read (job list, parking lot) and no step-10 writes.
+  Don't start a board meeting from a web session. Confirmed 2026-08-04.
+- **Moby setup — PARKED 2026-08-04.** Trevor AirDropped `.env`/`.env.local` to Moby and it still
+  didn't work: Moby's clone lives in iCloud Drive, which offloads and part-syncs files, so git
+  and the dev server both break on it. Fix when picked up: clone fresh to `~/scheduler` on Moby
+  (outside iCloud), AirDrop the two env files into it, then delete the iCloud copy — two clones
+  on one machine is the same out-of-sync failure as 2026-06-14. Nothing is lost by deleting it;
+  only the gitignored env files are not on GitHub.
 - The Finance caveat below still stands in full — $50 is not the real week.
 
 ## Where things stand
