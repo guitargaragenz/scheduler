@@ -5,7 +5,6 @@ import {
 } from '@dnd-kit/core';
 import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
-import { isConfigured } from './utils/googleCalendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
 import { applySheetEdits } from './data/jobsSheet.js';
@@ -743,10 +742,6 @@ export default function App() {
               onAddSupplier={addSupplier}
               onRenameSupplier={renameSupplier}
               onRemoveSupplier={removeSupplier}
-              isSignedIn={gcal.signedIn}
-              onSignIn={gcal.handleSignIn}
-              onSignOut={gcal.handleSignOut}
-              isConfigured={isConfigured()}
               benchKeywords={benchKeywords}
               defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
               onBenchKeywordsChange={handleBenchKeywordsChange}

@@ -173,7 +173,6 @@ function SupplierEditor({ suppliers = [], onAdd, onRename, onRemove }) {
 const BENCH_HOUR_DEFAULTS = { Luthier: 1.5, Setup: 1.5, Finishing: 1.5 };
 
 export default function SettingsModal({
-  isSignedIn, onSignIn, onSignOut, isConfigured,
   // A settings write that failed. Shown at the top of the modal rather than
   // logged, because a setting that looks saved and isn't is the whole reason
   // this moved off localStorage.
@@ -225,7 +224,11 @@ export default function SettingsModal({
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #334155' }}>
           {/* Changelog tab removed 2026-08-01 — it was read-only, months out of
               date, and the git history is the real record. */}
-          {['keywords', 'suppliers', 'rates', 'calendar', 'pages'].map(tab => (
+          {/* Calendar tab removed 2026-08-03 — connect/disconnect already lives in
+              the main header, so this was a second door to the same switch. The
+              two pages that were buried inside the old "pages" tab now sit in the
+              row it left behind: they are one click, not a tab with a panel. */}
+          {['keywords', 'suppliers', 'rates'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '10px 18px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
@@ -233,6 +236,13 @@ export default function SettingsModal({
               fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
               cursor: 'pointer', textTransform: 'capitalize',
             }}>{tab}</button>
+          ))}
+          {[['Summary', onOpenSummary], ['Parking Lot', onOpenParkingLot]].map(([label, onOpen]) => (
+            <button key={label} onClick={onOpen} style={{
+              padding: '10px 18px', background: 'none', border: 'none',
+              borderBottom: '2px solid transparent',
+              color: '#64748b', fontSize: 13, fontWeight: 400, cursor: 'pointer',
+            }}>{label}</button>
           ))}
         </div>
 
@@ -332,60 +342,6 @@ export default function SettingsModal({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {activeTab === 'calendar' && (
-            <div>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 10 }}>Google Calendar</h3>
-              {!isConfigured ? (
-                <div style={{ padding: '10px 14px', background: '#0f172a', borderRadius: 8, border: '1px solid #334155' }}>
-                  <p style={{ fontSize: 12, color: '#f87171', marginBottom: 8 }}>
-                    ⚠ Google API credentials not configured. Add VITE_GOOGLE_CLIENT_ID and VITE_GOOGLE_API_KEY to your .env file.
-                  </p>
-                  <p style={{ fontSize: 11, color: '#64748b' }}>
-                    1. Go to Google Cloud Console → APIs & Services → Credentials<br/>
-                    2. Create OAuth 2.0 Client ID (Web application)<br/>
-                    3. Add authorized origin: https://guitargaragenz.github.io<br/>
-                    4. Create API Key restricted to Calendar API<br/>
-                    5. Add to .env.local: VITE_GOOGLE_CLIENT_ID=... VITE_GOOGLE_API_KEY=...
-                  </p>
-                </div>
-              ) : isSignedIn ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 13, color: '#22c55e' }}>✓ Connected to guitargaragenz@gmail.com</span>
-                  <button onClick={onSignOut} style={{
-                    padding: '5px 12px', background: '#7f1d1d', border: '1px solid #ef4444',
-                    borderRadius: 6, color: '#fca5a5', fontSize: 12, cursor: 'pointer',
-                  }}>Sign Out</button>
-                </div>
-              ) : (
-                <button onClick={onSignIn} style={{
-                  padding: '8px 16px', background: '#1e3a5f', border: '1px solid #2563eb',
-                  borderRadius: 6, color: '#bfdbfe', fontSize: 13, cursor: 'pointer', fontWeight: 600,
-                }}>
-                  Connect Google Calendar
-                </button>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'pages' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={onOpenSummary} style={{
-                padding: '10px 14px', background: '#0f172a', border: '1px solid #334155',
-                borderRadius: 8, color: '#e2e8f0', fontSize: 13, cursor: 'pointer',
-                textAlign: 'left', fontWeight: 600,
-              }}>
-                Summary
-              </button>
-              <button onClick={onOpenParkingLot} style={{
-                padding: '10px 14px', background: '#0f172a', border: '1px solid #334155',
-                borderRadius: 8, color: '#e2e8f0', fontSize: 13, cursor: 'pointer',
-                textAlign: 'left', fontWeight: 600,
-              }}>
-                Parking Lot
-              </button>
             </div>
           )}
 
