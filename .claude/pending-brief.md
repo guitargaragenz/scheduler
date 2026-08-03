@@ -1,10 +1,32 @@
-doc_status: live
+doc_status: closed
 
-# Pending Brief — Workshop Projects: a planner for non-paying shop work
+# Workshop Projects — a planner for shop work that isn't a paying job
 
-**Status: approved by Trevor ("yp", 2026-08-03), including the tab-strip shape. Council
-complete — two independent `ggnz-council` reviewers, both "ship with changes", 2026-08-03.
-Their rulings are folded into the text below and listed at the end. Ready for `ggnz-builder`.**
+**Shipped 2026-08-03, merged at `947ab5a`.** 541/541 tests, verifier passed all 13 checklist
+items, browser-confirmed on the Vercel preview. Everything below is the record of what was
+built, not a task list.
+
+Four decisions the builder made that the brief didn't cover, all accepted:
+- Project Jobs sits outside the scrolling region, so it stays put when the project tabs overflow.
+- Text fields save 0.6s after typing stops and flush on leaving the page; ticks, adds, deletes
+  and reorders save immediately.
+- No "started from the Daily Log" provenance line — it would have been a fifth stored field.
+- A delete link for projects. The brief was silent, and a planner that only grows fills with
+  dead tabs.
+
+Checklist item 11 could not be met as written: it asked the new table's row-level security to
+match `parking_lot`'s, and `parking_lot` has none. Matching therefore meant adding none, and the
+reasoning is written into `docs/supabase-schema.sql` so the absence doesn't later read as an
+oversight. **If RLS is ever turned on project-wide, `workshop_projects` must be included** or the
+planner reads empty in production while passing locally.
+
+Raised by Trevor on seeing it live, deliberately not built: the same planner shape would suit
+**customer project jobs** too. That needs its own conversation about what planning a customer
+project involves before anyone scopes it.
+
+Noticed in passing, worth a separate tidy-up: `docs/supabase-schema.sql` has no `daily_logs`
+table in it at all, though the app reads and writes one. The file has drifted from the real
+database.
 
 > Previous occupant of this file — "Tell him parts have arrived, don't make him find it" —
 > shipped 2026-08-03 at `aa6dc0b`, merged `b2cf93c`, and is closed. Its record is in git

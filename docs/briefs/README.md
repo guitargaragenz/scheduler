@@ -33,6 +33,20 @@ the status line.
 
 Nothing is live. The next session picks from Parked, or from whatever Trevor raises.
 
+**Shipped 2026-08-03 — Workshop Projects** (`947ab5a`, brief closed in
+`.claude/pending-brief.md`). The Projects page is now a tab strip: one tab per workshop
+project — shelving, the cutting room, jigs — with the old aged customer-jobs view pinned on
+the right as **Project Jobs**. A project holds title, notes, steps and parts, and deliberately
+no status or dates: Trevor asked for a planner, not a tracker. `#PRJ` on a Daily Log bullet
+starts one, mirroring `#PL`.
+
+Raised while building it, not scoped: the same planner shape would suit **customer project
+jobs**. Needs its own conversation about what planning a customer project involves before
+anyone writes a brief for it.
+
+Also noticed, not scoped: `docs/supabase-schema.sql` is missing the `daily_logs` table the app
+actually uses — the schema file has drifted from the live database.
+
 ## Parked — agreed in principle, waiting on something
 
 > **Standing order, Trevor 2026-07-29:** *"save all UI changes until after PDF drop implemented
