@@ -257,6 +257,43 @@ export function ProjectPane({ project, onChange, onDelete }) {
   );
 }
 
+// The planner side of the pane, split out as a pure component purely so its
+// three states — loading, load-failed, nothing-here-yet — can be rendered and
+// tested without waiting on a network round trip.
+export function PlannerBody({ loaded, loadFailed, project, onChange, onDelete }) {
+  return (
+    <>
+      {/* Deliberately louder than the Parking Lot, which fails silently. Trevor
+          should know his planner is showing him nothing because the network
+          failed, not because it's empty — the two look identical otherwise. */}
+      {loadFailed && (
+        <div style={{ fontSize: 13, color: '#fca5a5', marginBottom: 16 }}>
+          Couldn't load projects — nothing has been changed.
+        </div>
+      )}
+      {!loaded && !loadFailed && (
+        <div style={{ fontSize: 13, color: '#475569' }}>Loading…</div>
+      )}
+      {loaded && !project && !loadFailed && (
+        <div style={{ fontSize: 13, color: '#475569', maxWidth: 520, lineHeight: 1.6 }}>
+          No workshop projects yet. Hit <strong style={{ color: '#94a3b8' }}>+</strong> to start
+          one, or put <code style={{
+            background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#5eead4',
+          }}>#PRJ</code> on a Daily Log bullet.
+        </div>
+      )}
+      {project && (
+        <ProjectPane
+          key={project.id}
+          project={project}
+          onChange={onChange}
+          onDelete={onDelete}
+        />
+      )}
+    </>
+  );
+}
+
 export default function WorkshopProjectsPage({ jobs }) {
   const [projects, setProjects] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -466,32 +503,13 @@ export default function WorkshopProjectsPage({ jobs }) {
           {isJobsTab ? (
             <ProjectsPage jobs={jobs} />
           ) : (
-            <>
-              {loadFailed && (
-                <div style={{ fontSize: 13, color: '#fca5a5', marginBottom: 16 }}>
-                  Couldn't load projects — nothing has been changed.
-                </div>
-              )}
-              {!loaded && !loadFailed && (
-                <div style={{ fontSize: 13, color: '#475569' }}>Loading…</div>
-              )}
-              {loaded && !activeProject && !loadFailed && (
-                <div style={{ fontSize: 13, color: '#475569', maxWidth: 520, lineHeight: 1.6 }}>
-                  No workshop projects yet. Hit <strong style={{ color: '#94a3b8' }}>+</strong> to start
-                  one, or put <code style={{
-                    background: '#1f2937', padding: '1px 6px', borderRadius: 4, color: '#5eead4',
-                  }}>#PRJ</code> on a Daily Log bullet.
-                </div>
-              )}
-              {activeProject && (
-                <ProjectPane
-                  key={activeProject.id}
-                  project={activeProject}
-                  onChange={updateProject}
-                  onDelete={() => deleteProject(activeProject.id)}
-                />
-              )}
-            </>
+            <PlannerBody
+              loaded={loaded}
+              loadFailed={loadFailed}
+              project={activeProject}
+              onChange={updateProject}
+              onDelete={() => activeProject && deleteProject(activeProject.id)}
+            />
           )}
         </div>
       </div>
