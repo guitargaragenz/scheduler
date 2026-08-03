@@ -2,17 +2,19 @@ doc_status: live
 
 # Pending Brief — Workshop Projects: a planner for non-paying shop work
 
-**Status: approved by Trevor ("yp", 2026-08-03), including the tab-strip shape. Next step is
-council — two `ggnz-council` reviewers — before `ggnz-builder` starts.**
+**Status: approved by Trevor ("yp", 2026-08-03), including the tab-strip shape. Council
+complete — two independent `ggnz-council` reviewers, both "ship with changes", 2026-08-03.
+Their rulings are folded into the text below and listed at the end. Ready for `ggnz-builder`.**
 
 > Previous occupant of this file — "Tell him parts have arrived, don't make him find it" —
 > shipped 2026-08-03 at `aa6dc0b`, merged `b2cf93c`, and is closed. Its record is in git
 > history and in `docs/briefs/README.md`.
 >
-> Still open and still approved, untouched by this brief:
-> **Merge B (the `#PL` tag)** in
-> [docs/briefs/one-parking-lot-fed-from-bujo.md](../docs/briefs/one-parking-lot-fed-from-bujo.md).
-> Council amendment F remains binding there.
+> The Parking Lot `#PL` tag — which an earlier draft of this brief listed as still open — has
+> **shipped** at `dc86976`, and its brief
+> ([docs/briefs/one-parking-lot-fed-from-bujo.md](../docs/briefs/one-parking-lot-fed-from-bujo.md))
+> is closed. `#PRJ` therefore has nothing to wait for. Amendment F's constraint still applies to
+> the tag write itself: fire-and-forget, outside the save path.
 
 ## The problem, in Trevor's words
 
@@ -69,10 +71,15 @@ there meant hunting for it. Tabs are better: one nav button, both views behind i
 2. **Project Jobs** is a further tab, pinned at the **far right** of the strip and separated
    from the projects by a divider, so it reads as a different kind of thing. "Jobs" is the
    honest distinguisher: those are customer jobs, the planner's aren't.
-3. `ProjectsPage.jsx` becomes the Project Jobs tab's content, **unchanged** — same sections,
-   same age bands, same action filter, same computation. It is moved and renamed, not edited.
-4. The first project opens by default. Which tab was last open does not need to persist.
-5. The strip scrolls sideways when there are more projects than fit. It must never wrap to a
+3. `ProjectsPage.jsx` becomes the Project Jobs tab's content. Its **computation is untouched** —
+   same sections, same age bands, same action filter, same job counts.
+4. **It does need one presentation edit, and the brief previously denied this.** The component
+   renders its own page header (`ProjectsPage.jsx:196-227` — title, subtitle, date, count) and
+   its own full-page empty state (`:172-190`). Under a tab strip both become a page inside a
+   page: two headers, the word "Projects" twice. Strip the header block or fold it into the tab
+   strip, and shrink the empty state to fit a tab rather than a page. Nothing else changes.
+5. The first project opens by default. Which tab was last open does not need to persist.
+6. The strip scrolls sideways when there are more projects than fit. It must never wrap to a
    second row and must never make the page itself scroll sideways.
 
 ### Merge B — the Workshop Projects planner
@@ -95,11 +102,15 @@ tab strip described in Merge A.
 complete, or any notion of "overdue". Trevor asked for a planner, not a tracker. Anything that
 can nag him is out of scope by design — it's the thing that would make him stop opening it.
 
-**Creating one:** the `+` at the end of the tab strip, and — if and only if Merge B of the Parking
-Lot brief has shipped first — a `#PRJ` tag on a Daily Log bullet that opens a project with the
-bullet text as its title. The `#PRJ` half **depends on `#PL` landing first** and reuses its
-tag-matching (case-insensitive, word-boundary, must not fire on near-misses). If `#PL` has not
-shipped when this is built, ship the `+` tab alone and leave `#PRJ` for a follow-up.
+**Creating one:** the `+` at the end of the tab strip, or a `#PRJ` tag on a Daily Log bullet,
+which opens a project with the bullet text as its title and leaves the bullet in the day.
+
+**`#PRJ` is in scope — the dependency this brief used to hedge on is already resolved.** Council
+checked: the Parking Lot `#PL` build shipped at `dc86976`, its brief is closed, and
+`src/utils/parkingLotTag.js` exists with exactly the matching to copy (`#PL\b`, case-insensitive,
+word boundary). Follow that file's pattern, including the constraint that governed it: the write
+is **fire-and-forget, outside the Daily Log save path** — never inside `updateState`,
+`performSave` or `readyRef`.
 
 **Doing one:** out of scope. When Trevor actually wants to do a project he books it as an
 Admin bench job by hand, and the project page stays as the plan behind it. No automatic job
@@ -107,12 +118,22 @@ creation, no link between the two records in this build.
 
 ## Storage
 
-A new Supabase table, following the pattern the Parking Lot already established
-(`src/utils/supabase.js`). Two tables or one with a nested list is a builder call, but:
+**One new table, `workshop_projects`** — council settled the shape. A row per project: title,
+notes, plus `steps` and `parts` as jsonb arrays. That is not a new pattern to invent; `daily_logs`
+already stores nested arrays in jsonb (`src/utils/supabase.js:1756-1757`). There is no
+relationship here that splitting into two tables would serve.
 
-- Reads must **fail safe**. This is the exact bug Merge A of the Parking Lot brief existed to
-  fix: a failed read wrote a seed list over real data. A failed read here shows an error and
-  writes nothing.
+Follow `loadParkingLot` / `saveParkingLot` (`src/utils/supabase.js:915-986`): fail-safe read
+returning `null` rather than `[]`, and a diff-based upsert/delete rather than clear-and-reinsert.
+
+- **A failed read must not write.** This is the exact bug Merge A of the Parking Lot brief
+  existed to fix — a failed read wrote a seed list over real data.
+- **Say so on screen when a read fails.** Council flagged, correctly, that the Parking Lot's
+  shipped behaviour is *silent* — `applyServer` returns and there is no error message anywhere
+  in `ParkingLotPage.jsx`. So this is a deliberate deviation from the precedent, not a
+  copy-paste: a plain inline line of text ("Couldn't load projects — nothing has been changed"),
+  no new error component. Trevor should know his planner is showing him nothing because the
+  network failed, rather than because it's empty.
 - No seed data, no starter examples. An empty planner is empty.
 
 ## Not in scope — say no to these
@@ -136,14 +157,39 @@ Merge A:
    page body does not scroll sideways.
 4. The Project Jobs tab's sections, age bands, action filter and job counts are unchanged
    from `5c89d26`.
+5. The Project Jobs tab shows one header, not two, and no full-page empty state inside the tab.
 
 Merge B:
-5. A new project can be created, named, and reopened after a page reload.
-6. Notes, steps and parts all persist.
-7. A step can be ticked and unticked; nothing anywhere shows a date or a status.
-8. A failed Supabase read shows an error and does not write.
-9. If `#PRJ` is in the build: `#PRJ` in a Daily Log bullet creates a project and the bullet
-   stays in the day; near-miss tags do not fire it.
-10. Full test suite passes.
-11. Nothing in `git diff` touches the blast-radius files listed above.
+6. A new project can be created, named, and reopened after a page reload.
+7. Notes, steps and parts all persist.
+8. A step can be ticked and unticked; nothing anywhere shows a date or a status.
+9. A failed Supabase read writes nothing and shows the inline "couldn't load" line.
+10. `#PRJ` in a Daily Log bullet creates a project and the bullet stays in the day; near-miss
+   tags do not fire it; the write is outside the Daily Log save path.
+11. The `workshop_projects` table's row-level security and anon-key access match `parking_lot`'s.
+    A misconfigured table fails silently in production and passes locally.
+12. Full test suite passes.
+13. Nothing in `git diff` touches the blast-radius files listed above.
 
+
+## Council rulings — 2026-08-03, two independent reviewers, both "ship with changes"
+
+Folded into the text above. Recorded here so the builder can see what changed and why.
+
+1. **`#PRJ` is no longer conditional.** Reviewer 2 found the `#PL` dependency already
+   satisfied (`dc86976`, `src/utils/parkingLotTag.js`). The old hedge would have led a builder
+   to ship the fallback for no reason.
+2. **Merge A does require editing `ProjectsPage.jsx` after all.** Reviewer 1 found its own page
+   header and full-page empty state, which would stack under the tab strip. The old wording
+   ("moved and renamed, not edited") was wrong, and the checklist would have passed a page that
+   looked broken because it only checked computation.
+3. **"Shows an error" had no precedent to copy.** Reviewer 1 checked: the Parking Lot fails
+   silently. Kept as a deliberate improvement, now stated as such so it doesn't read as
+   copy-paste or get built as something larger.
+4. **One table with jsonb arrays**, matching `daily_logs` — reviewer 2 settled what the brief
+   had left as a builder call.
+5. **New checklist item on row-level security**, reviewer 2: a misconfigured table fails
+   silently in production and passes locally.
+
+Both reviewers confirmed the blast-radius files are untouched, and that the brief's claims about
+`ProjectsPage.jsx:137` and the `App.jsx` nav wiring match the live code.
