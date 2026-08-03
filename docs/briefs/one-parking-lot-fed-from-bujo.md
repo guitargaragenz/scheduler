@@ -1,4 +1,20 @@
-doc_status: live
+doc_status: closed
+
+> **Finished 2026-08-03. Merge A shipped at `05b11cc`, Merge B at `dc86976`.** Nothing in this
+> file is work any more. It is kept for the reasoning, not the task list.
+>
+> **Merge B — the `#PL` tag — as built:** a Daily Log bullet containing `#PL` files a Parking
+> Lot item and stays in the day, marked with a small `⇢ PL` badge. `#PLAN` and `#PLASTIC` do
+> not fire; `#pl` does. Close-day is untouched. The matcher, title-stripper and write live in
+> `src/utils/parkingLotTag.js`; `addBullet` (`useDailyLog.js`) calls it un-awaited, outside
+> `updateState`. Amendment F is enforced by four tests that parse the source and fail if the
+> call is ever moved into the save path — that guard is the part worth knowing about.
+> It writes one item with no baseline, so `saveParkingLot` can only add a row, never delete
+> one. 427 tests pass. Verified by `ggnz-verifier`, then live: Trevor's `#pl` bullet appeared
+> in the Parking Lot while `#PLAN` and `#plastic` filed nothing.
+>
+> Left undone, deliberately: `ParkingLotPage.jsx` and `parkingLotTag.js` each have their own
+> copy of the `pk-` id generator. Tidy-up, not a bug.
 
 > **Merge A shipped 2026-08-01 at `05b11cc`.** Items 1 and 2 are done — the wipe is fixed,
 > the two lists are one, `admin/context/parking-lot.md` is deleted, and the Sunday export
