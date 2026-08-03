@@ -62,15 +62,31 @@ function loadEnvFile(name, env) {
 }
 
 // Keys can be split across .env / .env.local — load both, .env.local wins
-// on overlap (Vite convention).
+// on overlap (Vite convention). Real environment variables are the base layer
+// and lose to both, so Micky/Moby keep behaving exactly as before.
+//
+// The process.env layer exists so this script can run where there are no .env
+// files at all — a Claude Code web session, where the keys are set on the
+// environment instead. Without it a web session cannot export, which means it
+// cannot run a board meeting (no job list, no parking lot). Added 2026-08-04.
+// Only the anon key is involved: the same key the app already ships to every
+// browser that loads the Scheduler, so this adds no exposure the app doesn't
+// already have.
 function loadEnv() {
-  const env = {};
+  const env = { ...process.env };
   loadEnvFile('.env', env);
   loadEnvFile('.env.local', env);
   return env;
 }
 
 const env = loadEnv();
+if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+  throw new Error(
+    'Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. Put them in .env (or .env.local) ' +
+    'at the repo root, or set them as environment variables. Without them this script ' +
+    'cannot read Supabase and the board meeting has no data.'
+  );
+}
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
 async function loadAll(table, order) {

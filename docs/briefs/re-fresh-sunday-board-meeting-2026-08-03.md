@@ -20,9 +20,28 @@ Resolved since this brief was written — the sections below are stale on these 
   they sit, not just on the backlog. The carried-over Ops report below still contains the OLD
   wrong text ("nothing is parts-blocked") — the truth is **2 parts-blocked: 1705 and 1679**.
 
+Resolved 2026-08-04, second pass — meetings can now run anywhere, on any model:
+- **The export reads environment variables**, not just `.env` files, so a web session can run it
+  once `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set on the environment. Only the anon
+  key is involved — the same one the app ships to every browser. `.env` still wins on Micky/Moby.
+  **Trevor's outstanding action: add those two variables in his web environment settings.** Until
+  he does, web sessions still can't run a meeting.
+- **Web sessions also need the Supabase host on the environment's network allowlist.** Tested
+  2026-08-04 with real keys: the script read them fine and reached the client, then failed with
+  "Host not in allowlist: ttlvuforvphwyrfotgot.supabase.co". Environment variables alone are not
+  enough — both settings are required, and they live in the same claude.ai/code environment
+  settings area.
+- **All four agents in the workflow are pinned to `sonnet`.** They previously inherited the
+  session's model, so an Opus session spawned four Opus agents to summarise counts. The live half
+  is conversation and needs no premium model either — so the whole meeting runs on default.
+
 Still open:
-- **`.env` to Moby** — Trevor said yes. He AirDrops `.env` and `.env.local` from Micky to Moby
-  himself (both are gitignored and must never go through git). Not done yet as of 2026-08-04.
+- **Moby setup — PARKED 2026-08-04.** Trevor AirDropped `.env`/`.env.local` to Moby and it still
+  didn't work: Moby's clone lives in iCloud Drive, which offloads and part-syncs files, so git
+  and the dev server both break on it. Fix when picked up: clone fresh to `~/scheduler` on Moby
+  (outside iCloud), AirDrop the two env files into it, then delete the iCloud copy — two clones
+  on one machine is the same out-of-sync failure as 2026-06-14. Nothing is lost by deleting it;
+  only the gitignored env files are not on GitHub.
 - The Finance caveat below still stands in full — $50 is not the real week.
 
 ## Where things stand
