@@ -65,6 +65,40 @@ CREATE TABLE IF NOT EXISTS parking_lot (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Workshop projects (the planner for shop work that isn't a paying job —
+-- shelving, rearranging the cutting room, jigs). One row per project.
+--
+-- Deliberately has NO status, due date, priority or percent-complete column.
+-- Trevor asked for a planner, not a tracker: anything that can nag him is the
+-- thing that would make him stop opening it. Do not add one later without a
+-- brief that says so.
+--
+-- `steps` and `parts` are jsonb arrays rather than child tables. There is no
+-- relationship here that splitting would serve, and daily_logs already stores
+-- nested arrays in jsonb, so this is the existing pattern rather than a new one.
+--   steps: [{ id, text, done }]
+--   parts: [{ id, description, qty }]   -- qty is free text ("2 sheets"), not a number
+--
+-- `created_at` is load-bearing, not bookkeeping: the tab strip orders projects
+-- by it, so the tabs stay put and don't reshuffle as Trevor edits them.
+--
+-- RLS: none, matching parking_lot and every other table in this file. This
+-- schema enables row-level security nowhere, so the anon key reaches this table
+-- exactly as it reaches parking_lot. If RLS is ever turned on project-wide,
+-- this table must be included or the planner silently reads empty in
+-- production while passing locally.
+CREATE TABLE IF NOT EXISTS workshop_projects (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  notes TEXT,
+  steps JSONB DEFAULT '[]'::jsonb,
+  parts JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_workshop_projects_created_at ON workshop_projects(created_at);
+
 -- Ad-hoc tasks (quick bujo notes scheduled onto the calendar)
 CREATE TABLE IF NOT EXISTS ad_hoc_tasks (
   id TEXT PRIMARY KEY,
@@ -327,6 +361,7 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS first_seen DATE;
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
 ALTER PUBLICATION supabase_realtime ADD TABLE parking_lot;
+ALTER PUBLICATION supabase_realtime ADD TABLE workshop_projects;
 ALTER PUBLICATION supabase_realtime ADD TABLE ad_hoc_tasks;
 ALTER PUBLICATION supabase_realtime ADD TABLE focus_list;
 ALTER PUBLICATION supabase_realtime ADD TABLE pending_revenue_review;

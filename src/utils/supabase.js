@@ -1006,6 +1006,156 @@ export function subscribeToParkingLot(callback) {
   }
 }
 
+// ============ WORKSHOP PROJECTS ============
+//
+// The planner for shop work that isn't a paying job. Additive only — nothing
+// below touches jobs, scheduled_slots or any existing function.
+//
+// Modelled directly on loadParkingLot/saveParkingLot above, for the same
+// reasons: a failed read returns null (never []) so a network blip can't be
+// mistaken for an empty table, and the save is a per-item diff against a
+// baseline rather than a clear-and-reinsert. Those two rules together are what
+// the Parking Lot's Merge A existed to fix after a failed read wrote a seed
+// list over real data. Don't relax either one here.
+//
+// The one deliberate difference from parking_lot: real columns instead of a
+// single serialised `content` blob, because steps and parts are arrays and
+// jsonb is what daily_logs already uses for exactly that.
+
+function normalizeStep(step) {
+  return {
+    id: step?.id ?? '',
+    text: typeof step?.text === 'string' ? step.text : '',
+    done: step?.done === true,
+  };
+}
+
+function normalizePart(part) {
+  return {
+    id: part?.id ?? '',
+    description: typeof part?.description === 'string' ? part.description : '',
+    // Free text on purpose — "2 sheets", "a couple", "5m". Not a number, and
+    // deliberately not wired to PartsBox or Parts to Order.
+    qty: typeof part?.qty === 'string' ? part.qty : '',
+  };
+}
+
+// The comparison key the save-diff uses to decide "has this project actually
+// changed". Must be stable — same fields, same order, every time — or every
+// save re-upserts every row.
+function serializeWorkshopProject(project) {
+  return JSON.stringify({
+    id: project.id,
+    title: project.title ?? '',
+    notes: project.notes ?? '',
+    steps: (project.steps || []).map(normalizeStep),
+    parts: (project.parts || []).map(normalizePart),
+  });
+}
+
+function parseWorkshopProjectRow(row) {
+  return {
+    id: row?.id,
+    title: typeof row?.title === 'string' ? row.title : '',
+    notes: typeof row?.notes === 'string' ? row.notes : '',
+    steps: Array.isArray(row?.steps) ? row.steps.map(normalizeStep) : [],
+    parts: Array.isArray(row?.parts) ? row.parts.map(normalizePart) : [],
+    createdAt: row?.created_at ?? null,
+  };
+}
+
+// Returns null — NOT [] — when the read fails. Same contract as
+// loadParkingLot() and loadDailyLogs(), and the page depends on it: on null it
+// shows the "couldn't load" line and writes nothing at all.
+//
+// Ascending by created_at so the tab strip keeps projects in the order they
+// were created and tabs don't reshuffle underneath him as he edits.
+export async function loadWorkshopProjects() {
+  try {
+    const { data, error } = await getClient()
+      .from('workshop_projects')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(parseWorkshopProjectRow);
+  } catch (e) {
+    console.error('Supabase load workshop projects error:', e);
+    return null;
+  }
+}
+
+// Per-item diff against `baseline` — the list the caller last saw the table
+// holding. Never a whole-table rewrite. Same three rules as saveParkingLot:
+//   - upsert a project when its id is NEW or its content has CHANGED
+//   - delete only ids that were in the baseline and are not in `projects`, so
+//     an empty baseline deletes nothing whatever the table holds
+//   - never write created_at on an upsert; the column defaults on insert and
+//     resending it would reshuffle the tab order of every edited project.
+export async function saveWorkshopProjects(projects, baseline = []) {
+  try {
+    const current = projects || [];
+    const baselineContent = new Map(
+      (baseline || []).map(p => [p.id, serializeWorkshopProject(p)])
+    );
+    const currentIds = new Set(current.map(p => p.id));
+
+    const removeIds = Array.from(baselineContent.keys()).filter(id => !currentIds.has(id));
+    const upserts = current.filter(p => {
+      const was = baselineContent.get(p.id);
+      return was === undefined || was !== serializeWorkshopProject(p);
+    });
+
+    if (removeIds.length > 0) {
+      const { error } = await getClient()
+        .from('workshop_projects')
+        .delete()
+        .in('id', removeIds);
+      if (error) throw error;
+    }
+
+    if (upserts.length > 0) {
+      const records = upserts.map(p => ({
+        id: p.id,
+        title: p.title ?? '',
+        notes: p.notes ?? '',
+        steps: (p.steps || []).map(normalizeStep),
+        parts: (p.parts || []).map(normalizePart),
+        updated_at: new Date().toISOString(),
+      }));
+      const { error } = await getClient()
+        .from('workshop_projects')
+        .upsert(records, { onConflict: 'id' });
+      if (error) throw error;
+    }
+
+    return { ok: true, upsertedIds: upserts.map(p => p.id), removedIds: removeIds };
+  } catch (e) {
+    console.error('Supabase save workshop projects error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+export function subscribeToWorkshopProjects(callback) {
+  try {
+    const channel = getClient()
+      .channel('public:workshop_projects')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'workshop_projects' },
+        () => {
+          loadWorkshopProjects().then(callback);
+        }
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  } catch (e) {
+    console.error('Supabase subscribe to workshop projects error:', e);
+    return () => {};
+  }
+}
+
 // ============ AD HOC TASKS ============
 
 export async function loadAdHocTasks() {

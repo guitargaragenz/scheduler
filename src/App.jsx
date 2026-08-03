@@ -19,7 +19,10 @@ import PomoDrawer from './components/PomoDrawer.jsx';
 import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
-import ProjectsPage from './components/ProjectsPage.jsx';
+// The Projects nav button now opens the tab strip, not the old page directly.
+// WorkshopProjectsPage renders ProjectsPage itself, as the pinned "Project
+// Jobs" tab at the far right.
+import WorkshopProjectsPage from './components/WorkshopProjectsPage.jsx';
 import PartsToOrderPage from './components/PartsToOrderPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
@@ -756,7 +759,7 @@ export default function App() {
               onJobClick={job => { setEditingJob(job); }}
             />
           ) : showProjects ? (
-            <ProjectsPage jobs={jobs} />
+            <WorkshopProjectsPage jobs={jobs} />
           ) : showPartsToOrder ? (
             <PartsToOrderPage
               suppliers={suppliers}
