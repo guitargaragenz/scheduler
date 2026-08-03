@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
-import { BENCH_COLORS, HOURS_BUCKETS } from '../data/jobs.js';
+import { BENCH_COLORS, HOURS_BUCKETS, partsMayHaveArrived } from '../data/jobs.js';
 
 export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
   const [search, setSearch] = useState('');
@@ -67,12 +67,22 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
   // already drops them, this list was the odd one out and was padding every section
   // (and the focus pill) with finished work.
   const unscheduled   = jobs.filter(j => !j.scheduled && !j.parentId && !j.done);
-  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart);
-  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart);
-  const readyToStart  = unscheduled.filter(j => j.readyToStart);
+
+  // Still tagged WP, but Multitrack has stopped calling it stuck. Carved out of
+  // the three schedulable groups below rather than added alongside them — these
+  // jobs are schedulable today (WP is a label and deliberately does not change
+  // `schedulable`), so without the `!partsMayHaveArrived` guards they would show
+  // in two places at once.
+  const partsArrived  = unscheduled.filter(partsMayHaveArrived);
+  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart && !partsMayHaveArrived(j));
+  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart && !partsMayHaveArrived(j));
+  const readyToStart  = unscheduled.filter(j => j.readyToStart && !partsMayHaveArrived(j));
   const awaiting      = unscheduled.filter(j => j.awaiting);
   const inTransit     = unscheduled.filter(j => j.inTransit);
-  const onHold        = unscheduled.filter(j => !j.schedulable && !j.awaiting && !j.inTransit);
+  // `onHold` is the catch-all for everything the groups above didn't claim, so it
+  // needs the same guard: a WP job carrying some status the app doesn't classify
+  // would otherwise land here as well as in Parts Arrived.
+  const onHold        = unscheduled.filter(j => !j.schedulable && !j.awaiting && !j.inTransit && !partsMayHaveArrived(j));
 
   // Count only the focus jobs the sidebar can actually list, so the pill's number
   // matches what clicking it reveals. `unscheduled` has already dropped the done and
@@ -82,9 +92,13 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
 
   const isFocusMode = !!highlightedJobId;
 
-  let displayed, displayedBacklog, displayedReady, displayedAwaiting, displayedTransit, displayedHold;
+  let displayed, displayedBacklog, displayedReady, displayedAwaiting, displayedTransit, displayedHold, displayedPartsArrived;
   if (isFocusMode) {
-    displayed          = [...active, ...backlog].filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    // partsArrived joins the focus-mode pool for the same reason backlog does:
+    // focus mode is "show me this one job", and a job carved out of the main
+    // list would otherwise be unfindable by clicking it.
+    displayed          = [...active, ...backlog, ...partsArrived].filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
+    displayedPartsArrived = [];
     displayedBacklog   = [];
     displayedReady     = [];
     displayedAwaiting  = [];
@@ -107,6 +121,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
     const matchFocus = j => !showFocusOnly || focusSet.has(String(j.job));
     const match      = j => matchText(j) && matchBench(j) && matchHours(j) && matchFocus(j);
     displayed          = active.filter(match);
+    displayedPartsArrived = partsArrived.filter(match);
     displayedBacklog   = backlog.filter(match);
     displayedReady     = readyToStart.filter(match);
     displayedAwaiting  = awaiting.filter(match);
@@ -257,6 +272,20 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
               </div>
             )}
             {displayed.map(job => renderJob(job, isFocusMode))}
+
+            {/* Parts Arrived? — still tagged WP, but Multitrack has moved it off
+                Waiting. Sits directly under the main list because it is the group
+                that needs a decision, not the one that can wait. The tag is never
+                cleared here; it clears when Trevor edits the row in the Jobs
+                Sheet, and the group empties itself. */}
+            {!isFocusMode && displayedPartsArrived.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#34d399', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #065f46' }}>
+                  🔧 PARTS ARRIVED? ({displayedPartsArrived.length})
+                </div>
+                {displayedPartsArrived.map(job => renderJob(job))}
+              </div>
+            )}
 
             {/* Backlog — schedulable, lower priority queue, draggable */}
             {!isFocusMode && displayedBacklog.length > 0 && (

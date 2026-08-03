@@ -145,6 +145,27 @@ export function blockedReason(job) {
   return 'waiting — see Multitrack';
 }
 
+// A job Trevor tagged WP (Waiting Parts) that Multitrack no longer calls stuck.
+//
+// WP is his own marker — Multitrack does not print an action code, so the PDF
+// import cannot clear it (PDF_IMPORT_FIELDS, supabase.js). The tag therefore
+// outlives the hold: the status flips back to Active on the next drop and the WP
+// sits there until he deletes it in the Jobs Sheet. While it does, the job reads
+// as parts-blocked when he is picking the week's work and quietly never gets
+// chosen — his words, 2026-08-03: "I could miss jobs that come free".
+//
+// This only reports the disagreement. Nothing anywhere may use it to clear the
+// tag: the import's inability to reach his hand-kept columns is what stops one
+// bad drop blanking the whole workshop's tags.
+//
+// Question mark in the UI label is deliberate. The app knows Multitrack stopped
+// saying "waiting"; it does not know the parts actually arrived.
+export function partsMayHaveArrived(job) {
+  if (!job) return false;
+  if ((job.action || '').trim().toUpperCase() !== 'WP') return false;
+  return blockedPile(job) === null;
+}
+
 // A job the app couldn't classify: not blocked (blocked jobs have no bench on
 // purpose), but no bench either. Drives the amber "needs a bench" chip.
 export function needsBench(job) {
