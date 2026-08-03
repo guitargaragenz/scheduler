@@ -99,6 +99,42 @@ CREATE TABLE IF NOT EXISTS workshop_projects (
 
 CREATE INDEX IF NOT EXISTS idx_workshop_projects_created_at ON workshop_projects(created_at);
 
+-- Daily Log — one row per day, keyed by date rather than by a generated id, so
+-- a day can be upserted on `date_key` without first looking up its row.
+--
+-- Added to this file 2026-08-03. The table has existed in the live database for
+-- months and the app reads and writes it every day; it was created directly in
+-- Supabase and never written down here. Recovered from how the code uses it
+-- (`loadDailyLogs`/`saveDailyLogDays` in `src/utils/supabase.js`), NOT read back
+-- from the live database — so treat the column types as the app's requirements
+-- rather than a verified dump.
+--
+-- `bullets` is a jsonb array, each entry roughly { id, text, done, checklist[] }
+-- with the checklist nested inside. `locked` and `closed_at` are what closeDay
+-- sets; a closed day is still readable, just not editable.
+CREATE TABLE IF NOT EXISTS daily_logs (
+  date_key TEXT PRIMARY KEY,
+  bullets JSONB DEFAULT '[]'::jsonb,
+  closed_at TIMESTAMPTZ,
+  locked BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Deferred items — bullets carried out of a day rather than completed in it.
+-- Written per item (upsert the ones present, delete the ids removed), never as
+-- a whole-table rewrite. Same 2026-08-03 caveat as daily_logs above: recovered
+-- from `saveDeferredItems`, not from the live database.
+CREATE TABLE IF NOT EXISTS deferred_items (
+  id TEXT PRIMARY KEY,
+  job_id TEXT,
+  bullet_text TEXT,
+  text TEXT,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_deferred_items_created_at ON deferred_items(created_at);
+
 -- Ad-hoc tasks (quick bujo notes scheduled onto the calendar)
 CREATE TABLE IF NOT EXISTS ad_hoc_tasks (
   id TEXT PRIMARY KEY,
@@ -362,6 +398,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
 ALTER PUBLICATION supabase_realtime ADD TABLE parking_lot;
 ALTER PUBLICATION supabase_realtime ADD TABLE workshop_projects;
+-- subscribeToDailyLogs listens to both of these, so both must be published or
+-- the Daily Log stops syncing between devices without erroring anywhere.
+ALTER PUBLICATION supabase_realtime ADD TABLE daily_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE deferred_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE ad_hoc_tasks;
 ALTER PUBLICATION supabase_realtime ADD TABLE focus_list;
 ALTER PUBLICATION supabase_realtime ADD TABLE pending_revenue_review;
