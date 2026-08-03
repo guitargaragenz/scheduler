@@ -26,6 +26,11 @@ Resolved 2026-08-04, second pass — meetings can now run anywhere, on any model
   key is involved — the same one the app ships to every browser. `.env` still wins on Micky/Moby.
   **Trevor's outstanding action: add those two variables in his web environment settings.** Until
   he does, web sessions still can't run a meeting.
+- **Web sessions also need the Supabase host on the environment's network allowlist.** Tested
+  2026-08-04 with real keys: the script read them fine and reached the client, then failed with
+  "Host not in allowlist: ttlvuforvphwyrfotgot.supabase.co". Environment variables alone are not
+  enough — both settings are required, and they live in the same claude.ai/code environment
+  settings area.
 - **All four agents in the workflow are pinned to `sonnet`.** They previously inherited the
   session's model, so an Opus session spawned four Opus agents to summarise counts. The live half
   is conversation and needs no premium model either — so the whole meeting runs on default.
