@@ -8,6 +8,7 @@ import {
 } from '../utils/supabase.js';
 import { localDateKey } from '../utils/calendar.js';
 import { hasParkingLotTag, fileBulletToParkingLot } from '../utils/parkingLotTag.js';
+import { hasWorkshopProjectTag, fileBulletToWorkshopProject } from '../utils/workshopProjectTag.js';
 
 // crypto.randomUUID() only exists in secure contexts (HTTPS/localhost) — Safari disables it
 // entirely over plain http:// on a LAN IP, which breaks local iPhone testing. Fall back to a
@@ -276,9 +277,15 @@ export function useDailyLog() {
   // not behind readyRef (which gates the daily-log store, not this). It is
   // deliberately not awaited, and fileBulletToParkingLot() cannot throw or
   // reject, so a parking-lot failure can never reach the daily-log save.
+  // `#PRJ` opens a Workshop Project and, like `#PL`, LEAVES THE BULLET IN THE
+  // DAY. Same fire-and-forget rules, same reasons — see
+  // src/utils/workshopProjectTag.js. The two tags are independent: a bullet
+  // carrying both files to both, which is odd but harmless and not worth a
+  // rule forbidding it.
   function addBullet(text, jobId = null, meta = null) {
     const key = todayKey();
     const filesToParkingLot = hasParkingLotTag(text);
+    const filesToWorkshopProject = hasWorkshopProjectTag(text);
     // Set inside the updater, read after it — same pattern autoCarryForward
     // uses for onJobBumped. Only a local boolean, never a write, and
     // idempotent if React re-runs the updater.
@@ -306,6 +313,10 @@ export function useDailyLog() {
                 // Marker only — purely so the UI can show that this bullet
                 // landed in the Parking Lot. Nothing reads it for behaviour.
                 ...(filesToParkingLot ? { parkingLot: true } : {}),
+                // Marker only, same as parkingLot above — purely so the UI can
+                // show that this bullet started a project. Nothing reads it
+                // for behaviour.
+                ...(filesToWorkshopProject ? { workshopProject: true } : {}),
               },
             ],
           },
@@ -315,6 +326,10 @@ export function useDailyLog() {
 
     if (filesToParkingLot && bulletWasAdded) {
       fileBulletToParkingLot(text); // deliberately not awaited — see comment above
+    }
+
+    if (filesToWorkshopProject && bulletWasAdded) {
+      fileBulletToWorkshopProject(text); // deliberately not awaited — see comment above
     }
   }
 

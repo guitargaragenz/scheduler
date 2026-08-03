@@ -343,6 +343,17 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddC
                 ⇢ PL
               </span>
             )}
+            {bullet.workshopProject && (
+              <span
+                title="Opened a Workshop Project"
+                style={{
+                  marginLeft: 5, fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap',
+                  background: '#134e4a', color: '#99f6e4', borderRadius: 4, padding: '1px 4px',
+                }}
+              >
+                ⇢ PRJ
+              </span>
+            )}
             {isJob && !done && (
               <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
             )}
