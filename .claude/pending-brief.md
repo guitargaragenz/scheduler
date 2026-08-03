@@ -1,8 +1,19 @@
-doc_status: live
+doc_status: closed
 
 # Tell him parts have arrived — don't make him find it
 
-**Raised by Trevor 2026-08-03.** Awaiting approval.
+**Shipped 2026-08-03 at `aa6dc0b`, merged `b2cf93c`.** 478/478 tests, verifier passed,
+browser-confirmed live on job #1679 (banner shows, survives reload, dismisses on ✕ and stays
+dismissed; chip filters). Everything below is the record of what was built, not a task list.
+
+Two deviations from the scope as written, both accepted:
+- The banner is derived from the current jobs, so on first load it names every qualifying job,
+  not only ones that just changed.
+- The brief said three pile chips; there are four, so Parts Arrived is the fifth.
+
+The real 2/8 → 3/8 import was **not** re-run — the live data was already the 3/8 state and
+Gav Comber's job was the one the banner named, so the case was proven without rewriting live
+job data.
 
 > Previous occupant — "Parts arrived — surface WP jobs Multitrack has already unstuck" —
 > shipped 2026-08-03 at `337dd5b`, merged `8aae628`, and is closed. Record in
