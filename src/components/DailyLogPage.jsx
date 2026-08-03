@@ -332,6 +332,17 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddC
                 {sessionBadge}
               </span>
             )}
+            {bullet.parkingLot && (
+              <span
+                title="Filed to the Parking Lot"
+                style={{
+                  marginLeft: 5, fontSize: 9, fontWeight: 700, whiteSpace: 'nowrap',
+                  background: '#312e81', color: '#c7d2fe', borderRadius: 4, padding: '1px 4px',
+                }}
+              >
+                ⇢ PL
+              </span>
+            )}
             {isJob && !done && (
               <span style={{ marginLeft: 5, fontSize: 10, color: '#334155' }}>›</span>
             )}
