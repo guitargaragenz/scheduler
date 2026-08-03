@@ -1,8 +1,12 @@
-doc_status: live
+doc_status: closed
 
 # Parts arrived — surface WP jobs Multitrack has already unstuck
 
-**Raised by Trevor 2026-08-03.** Awaiting his approval. Scope-locked below.
+**Shipped 2026-08-03 at `337dd5b`, merged `8aae628`.** Verifier passed every checklist item,
+441/441 tests, browser-confirmed live on job #1679. Everything below is the record of what was
+built, not a task list.
+
+**Raised by Trevor 2026-08-03.** Scope-locked below.
 
 > Previous occupant of this file — "The board follows the printout (departed jobs)" — shipped
 > 2026-08-02 via PR #8 (`335ad8a`, follow-up `7a2e5ea`) and is closed. Its record is in
