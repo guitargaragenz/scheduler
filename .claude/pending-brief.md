@@ -1,88 +1,142 @@
-doc_status: closed
+doc_status: live
 
-# Tell him parts have arrived — don't make him find it
+# Pending Brief — Workshop Projects: a planner for non-paying shop work
 
-**Shipped 2026-08-03 at `aa6dc0b`, merged `b2cf93c`.** 478/478 tests, verifier passed,
-browser-confirmed live on job #1679 (banner shows, survives reload, dismisses on ✕ and stays
-dismissed; chip filters). Everything below is the record of what was built, not a task list.
+**Status: drafted 2026-08-03, awaiting Trevor's approval ("yp"). Not yet reviewed by council.**
 
-Two deviations from the scope as written, both accepted:
-- The banner is derived from the current jobs, so on first load it names every qualifying job,
-  not only ones that just changed.
-- The brief said three pile chips; there are four, so Parts Arrived is the fifth.
+> Previous occupant of this file — "Tell him parts have arrived, don't make him find it" —
+> shipped 2026-08-03 at `aa6dc0b`, merged `b2cf93c`, and is closed. Its record is in git
+> history and in `docs/briefs/README.md`.
+>
+> Still open and still approved, untouched by this brief:
+> **Merge B (the `#PL` tag)** in
+> [docs/briefs/one-parking-lot-fed-from-bujo.md](../docs/briefs/one-parking-lot-fed-from-bujo.md).
+> Council amendment F remains binding there.
 
-The real 2/8 → 3/8 import was **not** re-run — the live data was already the 3/8 state and
-Gav Comber's job was the one the banner named, so the case was proven without rewriting live
-job data.
+## The problem, in Trevor's words
 
-> Previous occupant — "Parts arrived — surface WP jobs Multitrack has already unstuck" —
-> shipped 2026-08-03 at `337dd5b`, merged `8aae628`, and is closed. Record in
-> `docs/briefs/README.md`.
+> "I have a lot of jobs that I want to do in the workshop that aren't paying work. Things like
+> maintenance work such as making shelves, rearranging the cutting room and similar."
 
-## The problem
+And, on what he wants it to be:
 
-That build put a 🔧 PARTS ARRIVED? group in the Week View sidebar. Trevor's verdict on seeing
-it live: **"it's too easy to miss."** He's right — it's a group inside a panel that is closed
-by default, on a view he isn't in most of the day. A notice you have to go looking for isn't
-a notice.
+> "It's not a tracker as such, it's more of a planner."
 
-## Scope — two pieces
+Today that work has nowhere to live. The three candidate homes all fail for the same reason —
+none of them is a place to *think*:
 
-### 1. Chip on the Day View job panel — pure UI
+- **The Daily Log** holds it for one day, then it's gone from view.
+- **The Parking Lot** is a flat idea list. Shelving isn't an idea, it's a job with steps and
+  parts, and a flat list can't hold that.
+- **A job on the board** is bookable work, which is the opposite of a planner — it demands a
+  date before he's finished thinking.
 
-The Day View panel (`JobShelf.jsx`) has pile chips — Waiting / Planning / Hold. Add a fourth,
-`🔧 Parts Arrived (n)`, in the same row and the same style. Clicking it filters the list to
-those jobs, exactly like the other chips. Hidden when the count is zero.
+The consequence is that shop work gets re-thought from scratch every time it surfaces, and
+mostly doesn't get done.
 
-Membership is the existing `partsMayHaveArrived()` (`src/data/jobs.js`) — no new rule.
+## The name collision — checked against the code 2026-08-03, not from memory
 
-### 2. Banner after a PDF import — has state, so this is the careful half
+`src/components/ProjectsPage.jsx` already owns the word "Projects", and the top nav already has
+a **Projects** button (`src/App.jsx`, `selectPage('projects')`).
 
-A bar across the top of the app after an import that turns up qualifying jobs:
+**What that page actually is:** it filters `jobs.filter(j => j.project && !j.parentId && !j.done)`
+(`ProjectsPage.jsx:137`) — jobs Multitrack has flagged as projects — and groups them into three
+age-banded sections by what they're waiting on: Needs Input (CI, WP), Needs Thinking (INC, RS,
+RS-C, DG), Ready to Schedule (GTS, FB). It is a **customer multi-job overview**, aged, with an
+action filter.
 
-> 🔧 2 jobs may have parts now — #1679, #1705   ✕
+So there are two different things wanting one word:
 
-- Visible on **every** screen, not just Week View or Board.
-- Clicking a job number jumps to that job.
-- **Stays until he clicks ✕.** No timer, no auto-dismiss. His words: "stay until I toggle it."
-- Survives a page reload while showing.
-- Reappears on a later import **only for job numbers he hasn't already dismissed.** Otherwise
-  it is the same nag every drop and he stops reading it — which is the exact failure this
-  build exists to fix.
+| | What it is | Whose work |
+|---|---|---|
+| Existing Projects page | Multitrack-flagged customer jobs, by action age | Paying |
+| Workshop Projects (this brief) | Shelving, cutting room, jigs | Not paying |
 
-Dismissed job numbers are the new stored state. Store them in `app_settings` alongside the
-other per-device settings, seeded the same way; a job number leaves the dismissed list when it
-stops qualifying, so a genuine re-block and re-arrive notifies again.
+Both are legitimate. They cannot share a name in the nav.
 
-## Out of scope — do not build
+## Scope — two merges
 
-- Clearing or editing the WP tag. Still his column, still cleared in the Jobs Sheet only.
-- Any change to `PDF_IMPORT_FIELDS` or `writePdfImportBatch`. The import's inability to reach
-  his hand-kept columns is a safety property, not an oversight.
-- Notifying on anything other than WP.
-- Sound, browser notifications, email. A bar on screen, nothing else.
+### Merge A — free up the name
 
-## Verify before building — check, don't trust this file
+1. Rename the existing page to **Project Jobs** (component file, nav label, page heading).
+   The word "Jobs" is the honest distinguisher: those are jobs, these won't be.
+2. Take **Project Jobs off the top nav** and reach it from Settings instead.
 
-| Fact | Where |
-|---|---|
-| `partsMayHaveArrived()` exists and is exported | `src/data/jobs.js` |
-| The pile chips to copy | `src/components/JobShelf.jsx` |
-| How settings are stored and seeded | `app_settings`, `src/utils/supabase.js` |
-| The import path that fires the banner | `writePdfImportBatch`, `src/utils/supabase.js` |
+   **Judgement call, flag for Trevor:** Settings is a modal (`SettingsModal.jsx`), not a page.
+   Rendering a full-width aged chart inside a modal would cramp it. So Project Jobs **stays a
+   full page** and keeps its existing render path — only the entry point moves, from a top-nav
+   button to a link inside the Settings modal. If Trevor meant it literally inside the modal,
+   say so and this changes.
+3. No change to what the page shows, filters, or computes. Rename and re-route only.
 
-## Done means
+### Merge B — the Workshop Projects planner
 
-- Day View shows `🔧 Parts Arrived (n)`; clicking it filters; hidden at zero.
-- Importing the 3/8 PDF over the 2/8 state raises the banner naming Gav Comber's job.
-- The banner stays through a page reload and through moving between screens.
-- ✕ dismisses it; the next import does **not** raise it again for the same job.
-- A job that re-blocks and comes free again **does** notify again.
-- Full test suite passes, with new tests on the dismissed-list rule.
+A new page. Visual reference: the mockup approved 2026-08-03
+(`claude.ai/code/artifact/d6e561a7-89f3-4517-b6ab-8896f96fa2ba`).
 
-Protocol: builder → verifier → browser test (real 2/8 → 3/8 import) → merge. No council —
-same reasoning as last time: no blast-radius file is touched. The banner adds a settings row;
-it does not change the `jobs[]` shape or the scheduling state.
+**Layout:** list of projects on the left, the selected one on the right.
 
-**Real test data on the Mac:** `/Users/admin/Downloads/*JOBS DROP BOX/` —
-`GGNZ JBA 2:8.pdf` + `Jobs 2:8.pdf`, then `GGNZ JBA 3:8.pdf` + `Jobs 3:8.pdf`.
+**A project holds exactly four things:**
+
+- **Title** — one line.
+- **Notes** — free text. The brain-dump. This is the point of the feature.
+- **Steps** — a plain checklist. Add, tick, reorder. No dates, no assignment.
+- **Parts** — description plus quantity. Free text, deliberately *not* wired to PartsBox or
+  Parts to Order in this build.
+
+**What a project deliberately does NOT have:** status, due date, priority, percentage
+complete, or any notion of "overdue". Trevor asked for a planner, not a tracker. Anything that
+can nag him is out of scope by design — it's the thing that would make him stop opening it.
+
+**Creating one:** a "+ New" button on the page, and — if and only if Merge B of the Parking
+Lot brief has shipped first — a `#PRJ` tag on a Daily Log bullet that opens a project with the
+bullet text as its title. The `#PRJ` half **depends on `#PL` landing first** and reuses its
+tag-matching (case-insensitive, word-boundary, must not fire on near-misses). If `#PL` has not
+shipped when this is built, ship the "+ New" button alone and leave `#PRJ` for a follow-up.
+
+**Doing one:** out of scope. When Trevor actually wants to do a project he books it as an
+Admin bench job by hand, and the project page stays as the plan behind it. No automatic job
+creation, no link between the two records in this build.
+
+## Storage
+
+A new Supabase table, following the pattern the Parking Lot already established
+(`src/utils/supabase.js`). Two tables or one with a nested list is a builder call, but:
+
+- Reads must **fail safe**. This is the exact bug Merge A of the Parking Lot brief existed to
+  fix: a failed read wrote a seed list over real data. A failed read here shows an error and
+  writes nothing.
+- No seed data, no starter examples. An empty planner is empty.
+
+## Not in scope — say no to these
+
+- **Any change to `scheduledSlots`, `calendarSlot`, the `jobs[]` shape, `useGoogleCalendar.js`,
+  `useSupabase.js` or `src/utils/supabase.js`'s existing functions.** Nothing here needs them.
+  New table access is additive only.
+- **Any change to what the existing Project Jobs page computes or displays.** Merge A is a
+  rename and a re-route.
+- **Linking projects to jobs, parts inventory, the calendar, or the board.**
+- **Status, dates, reminders, or notifications on projects.** See above — this is the design.
+- **The Parking Lot `#PL` build.** Separate brief, still live, unaffected by this one.
+
+## Checklist for the verifier
+
+Merge A:
+1. Top nav no longer has a "Projects" button.
+2. Project Jobs is reachable from the Settings modal and renders full-page as before.
+3. The page's sections, age bands, action filter and job counts are unchanged from `5c89d26`.
+
+Merge B:
+4. A new project can be created, named, and reopened after a page reload.
+5. Notes, steps and parts all persist.
+6. A step can be ticked and unticked; nothing anywhere shows a date or a status.
+7. A failed Supabase read shows an error and does not write.
+8. If `#PRJ` is in the build: `#PRJ` in a Daily Log bullet creates a project and the bullet
+   stays in the day; near-miss tags do not fire it.
+9. Full test suite passes.
+10. Nothing in `git diff` touches the blast-radius files listed above.
+
+## Open question for Trevor
+
+Only one, and it doesn't block approval — the Settings entry point in Merge A, item 2. Full
+page reached from Settings (recommended), or literally inside the modal?
