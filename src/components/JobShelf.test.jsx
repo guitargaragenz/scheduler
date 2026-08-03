@@ -24,7 +24,7 @@ globalThis.localStorage = {
   removeItem: k => { delete store[k]; },
 };
 
-const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER } = await import('./JobShelf.jsx');
+const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER, PARTS_ARRIVED_VALUE } = await import('./JobShelf.jsx');
 const { blockedPile } = await import('../data/jobs.js');
 
 // One of each: a Planning job (INC), a Hold job (On Hold), a Transit job
@@ -187,4 +187,55 @@ describe('drag-mode toggle visibility', () => {
   // them — dragModeVisible() is tested directly instead, and its correctness
   // depends on mirroring `visible`'s searching → pile → bench → focusOnly
   // precedence. Reshuffle that order and this guard goes quietly wrong.
+});
+
+// --- 🔧 Parts Arrived chip ---
+//
+// A WP job Multitrack has moved off Waiting. Deliberately given a bench: these
+// are workable jobs, which is the whole reason missing them costs money.
+const PARTS_ARRIVED = { id: 'pa1', job: 1679, status: 'Active', action: 'WP', bench: 'Setup', mfr: 'Fender', model: 'Telecaster', days: 7 };
+// Still genuinely stuck — WP tag AND Multitrack still saying Waiting.
+const STILL_WAITING_PARTS = { id: 'pa2', job: 1705, status: 'Waiting', action: 'WP', bench: null, mfr: 'Gibson', model: 'SG', days: 8 };
+
+describe('🔧 Parts Arrived chip', () => {
+  it('counts the WP jobs Multitrack has moved off Waiting', () => {
+    const markup = render([PARTS_ARRIVED, STILL_WAITING_PARTS, WORKABLE]);
+    expect(chipCount(markup, '🔧 Parts Arrived')).toBe(1);
+  });
+
+  it('is hidden entirely when nothing qualifies', () => {
+    const markup = render([WORKABLE, STILL_WAITING_PARTS]);
+    expect(markup).not.toContain('Parts Arrived');
+  });
+
+  it('filters the list to those jobs when selected', () => {
+    const markup = render([PARTS_ARRIVED, STILL_WAITING_PARTS, WORKABLE], PARTS_ARRIVED_VALUE);
+    expect(markup).toContain('#1679');
+    expect(markup).not.toContain('#1001');
+    expect(markup).not.toContain('#1705');
+  });
+
+  it('keeps a stored Parts Arrived selection rather than clearing it as junk', () => {
+    render([PARTS_ARRIVED], PARTS_ARRIVED_VALUE);
+    expect(store.jobShelfBench).toBe(PARTS_ARRIVED_VALUE);
+  });
+
+  // WP does not change `schedulable`, so these cards CAN be dragged onto the
+  // calendar. Namespacing the chip `filter:` instead of `pile:` is what keeps
+  // the drag-mode toggle on screen above them.
+  it('is not treated as a blocked pile', () => {
+    expect(pileOf(PARTS_ARRIVED_VALUE)).toBe(null);
+    expect(PILE_VALUES).not.toContain(PARTS_ARRIVED_VALUE);
+    expect(dragModeVisible({ selectedPile: pileOf(PARTS_ARRIVED_VALUE), searching: false })).toBe(true);
+  });
+
+  // The Week View sidebar carves these jobs out of its other groups because it
+  // lists every group at once. This panel shows one filter at a time, so the
+  // job stays in its bench chip — hiding real bookable work from the bench he
+  // is picking from would be the worse bug.
+  it('leaves the job in its bench count too, because only one filter shows at a time', () => {
+    const markup = render([PARTS_ARRIVED]);
+    expect(chipCount(markup, 'Setup')).toBe(1);
+    expect(chipCount(markup, '🔧 Parts Arrived')).toBe(1);
+  });
 });

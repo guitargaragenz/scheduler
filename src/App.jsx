@@ -7,6 +7,7 @@ import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js'
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
+import { noticeJobs, pruneDismissed, dismissAll } from './data/partsArrivedNotice.js';
 import { applySheetEdits } from './data/jobsSheet.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -32,6 +33,7 @@ import SyncPreviewModal from './components/SyncPreviewModal.jsx';
 import PdfImportPreviewModal from './components/PdfImportPreviewModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
 import RevenueReviewBanner from './components/RevenueReviewBanner.jsx';
+import PartsArrivedBanner from './components/PartsArrivedBanner.jsx';
 import RevenueBreakdown from './components/RevenueBreakdown.jsx';
 import { useSupabase } from './hooks/useSupabase.js';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar.js';
@@ -55,6 +57,7 @@ export default function App() {
     benchHours, setBenchHours,
     weeklyTarget, setWeeklyTarget,
     hourlyRate, setHourlyRate,
+    partsArrivedDismissed, setPartsArrivedDismissed,
   } = useAppSettings();
 
   // The managed supplier list — edited in Settings, offered on the Parts to
@@ -385,6 +388,41 @@ export default function App() {
       setSidebarOpen(true);
     }
   }, [jobs]);
+
+  // --- "Parts may have arrived" banner ---
+  //
+  // Worked out from the jobs on screen and the dismissed list, not remembered
+  // from the import that raised it. That is deliberate: after a page reload
+  // there is no import result left to remember, only the jobs and the list. One
+  // piece of stored state gives both "survives a reload" and "don't nag me
+  // twice about the same job" without two flags that could disagree.
+  const partsArrivedNotice = noticeJobs(jobs, partsArrivedDismissed);
+
+  // Drop dismissals that have nothing left to suppress. This is the mechanism
+  // behind "a job that re-blocks and later comes free notifies again" — the
+  // dismissal goes away the moment Multitrack puts the job back on Waiting, so
+  // the next arrival is news again.
+  //
+  // Guarded on settingsReady and a non-empty board: before the first snapshot
+  // lands, `jobs` is [] and EVERY dismissal would look stale. Pruning then
+  // would wipe the list on every page load and re-nag him about everything.
+  useEffect(() => {
+    if (!settingsReady || jobs.length === 0) return;
+    const pruned = pruneDismissed(partsArrivedDismissed, jobs);
+    // pruneDismissed returns the same array instance when nothing was dropped,
+    // so this cannot loop or write on every render.
+    if (pruned !== partsArrivedDismissed) setPartsArrivedDismissed(pruned);
+  }, [jobs, partsArrivedDismissed, setPartsArrivedDismissed, settingsReady]);
+
+  const handleDismissPartsArrived = useCallback(() => {
+    setPartsArrivedDismissed(dismissAll(jobs, partsArrivedDismissed));
+  }, [jobs, partsArrivedDismissed, setPartsArrivedDismissed]);
+
+  // Same jump as the ?job= deep link: open the drawer on that job.
+  const handleOpenNoticeJob = useCallback((job) => {
+    setEditingJob(job);
+    setSidebarOpen(true);
+  }, []);
 
   // Auto-close focus mode once all split cards are scheduled
   useEffect(() => {
@@ -861,11 +899,22 @@ export default function App() {
         }}
       />
 
+      {/* Sits directly under the conflict banner, above the revenue review, and
+          is one line high — which is why the revenue banner below can offset by
+          a flat 44 rather than measuring anything. */}
+      <PartsArrivedBanner
+        jobs={partsArrivedNotice}
+        onJobClick={handleOpenNoticeJob}
+        onDismiss={handleDismissPartsArrived}
+        top={conflictEvents.length > 0 ? 56 + 46 + conflictEvents.length * 20 : 56}
+      />
+
       <RevenueReviewBanner
         items={pendingRevenueReview}
         onDone={handleRevenueReviewDone}
         onCancelled={handleRevenueReviewCancelled}
-        top={conflictEvents.length > 0 ? 56 + 46 + conflictEvents.length * 20 : 56}
+        top={(conflictEvents.length > 0 ? 56 + 46 + conflictEvents.length * 20 : 56)
+          + (partsArrivedNotice.length > 0 ? 44 : 0)}
       />
 
       <Toast message={toast} onDismiss={() => setToast('')} />

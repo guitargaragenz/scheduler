@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   isSupabaseConfigured, loadAppSettings, saveAppSetting, seedAppSetting,
 } from '../utils/supabase.js';
+import { sanitizeDismissed } from '../data/partsArrivedNotice.js';
 
 // The four settings that used to live in localStorage and now follow Trevor
 // between the iMac, the MacBook and the phone.
@@ -17,7 +18,14 @@ import {
 // preferences (like the Parts to Order group-by toggle) are not here either —
 // those genuinely belong to one browser.
 
-export const SETTING_KEYS = ['benchKeywords', 'weeklyTarget', 'hourlyRate', 'benchHours'];
+// `partsArrivedDismissed` joined the four in 2026-08-03. It is not a preference
+// — it is the list of job numbers Trevor has already waved away on the
+// "parts may have arrived" banner. It rides in here rather than getting its own
+// table because it wants exactly what this store already provides: shared
+// across his three devices (dismissing on the iMac must not re-nag on the
+// phone) and surviving a reload. It has no localStorage predecessor, so the
+// seed step below simply never has anything to offer for it.
+export const SETTING_KEYS = ['benchKeywords', 'weeklyTarget', 'hourlyRate', 'benchHours', 'partsArrivedDismissed'];
 
 // Built-in fallbacks. These are what a failed load falls back to, so they must
 // keep the app fully working — never a blank keyword list.
@@ -26,6 +34,7 @@ export const SETTINGS_DEFAULTS = {
   weeklyTarget: 2000,
   hourlyRate: 85,
   benchHours: {},
+  partsArrivedDismissed: [],
 };
 
 /**
@@ -91,6 +100,7 @@ export function sanitizeSettings(raw = {}) {
     benchHours: sanitizeBenchHours(raw.benchHours),
     weeklyTarget: sanitizeNumber(raw.weeklyTarget, SETTINGS_DEFAULTS.weeklyTarget),
     hourlyRate: sanitizeNumber(raw.hourlyRate, SETTINGS_DEFAULTS.hourlyRate),
+    partsArrivedDismissed: sanitizeDismissed(raw.partsArrivedDismissed),
   };
 }
 
@@ -206,6 +216,8 @@ export function useAppSettings() {
     benchHours: settings.benchHours,
     weeklyTarget: settings.weeklyTarget,
     hourlyRate: settings.hourlyRate,
+    partsArrivedDismissed: settings.partsArrivedDismissed,
+    setPartsArrivedDismissed: useCallback(v => update('partsArrivedDismissed', v), [update]),
     setBenchKeywords: useCallback(v => update('benchKeywords', v), [update]),
     setBenchHours: useCallback(v => update('benchHours', v), [update]),
     setWeeklyTarget: useCallback(v => update('weeklyTarget', v), [update]),
