@@ -30,8 +30,8 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-
-Nothing is live. The next session picks from Parked, or from whatever Trevor raises.
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-04 | **Blocked work goes to Admin, and a board to see it on.** Approved by Trevor, not yet through council. Build 1: `inferBench()` returns `Admin` instead of stripping the bench off blocked work, `DG`/`VB`/`BL` join the blocked set, `readyToStart` is deleted as dead logic, and the drawer's bench dropdown stops silently writing Luthier. Build 2: a read-only board view, built from bench cards rather than jobs. Build 2 waits for Build 1 to merge. |
+| [re-fresh-blocked-work-to-admin-and-board.md](re-fresh-blocked-work-to-admin-and-board.md) | 2026-08-04 | Handoff for the above — start here in a fresh session. Names the files, the dead ends already hit, and what to re-check against live data before trusting the brief's numbers. |
 
 **Shipped 2026-08-03 — Workshop Projects** (`947ab5a`, brief closed in
 `.claude/pending-brief.md`). The Projects page is now a tab strip: one tab per workshop
