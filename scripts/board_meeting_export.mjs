@@ -106,8 +106,18 @@ const [jobRows, completedRows, adHocRows, partsRows, parkingLotRows] = await Pro
 
 // Top-level jobs only — split children (parent_id set) are bench-card
 // breakdowns of a top-level job, not separate backlog items.
+//
+// Departed jobs are excluded too. A job that drops off the Multitrack printout
+// is SOFT-deleted: the row stays, with departed_at stamped (writeDepartureBatch
+// in src/utils/supabase.js), and the app filters it out on load — see
+// `const live = dbJobs.filter(j => !j.departed_at)` in src/hooks/useSupabase.js.
+// This export never had that filter, so every board meeting was reported off a
+// job list the app itself does not show. Caught 2026-08-04, when the meeting
+// reported 55 jobs — including 5 Sheep as Chips jobs closed months ago —
+// against a printout showing 36. Same filter as the app, or the numbers drift
+// again.
 const jobs = jobRows
-  .filter(row => !row.parent_id)
+  .filter(row => !row.parent_id && !row.departed_at)
   .map(row => {
     const backlog = row.bl === 'Y';
     const { readyToStart, awaiting, inTransit, schedulable } =
