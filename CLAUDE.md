@@ -162,6 +162,14 @@ designed around not knowing one of them (2026-08-02).
   live work by definition, whatever its `done` flag said before. Anything that treats a
   returning job number as possibly-still-complete is modelling a case that cannot happen.
 
+- **Glue needs at least 12 hours to set.** Any glue-up — a neck join, a bridge, a brace, a
+  crack — has to be booked at least 12 hours before the next piece of work on that same
+  guitar. In practice that means a glue session and the work that depends on it cannot share
+  a day: glue late one day, carry on the next. Added 2026-08-04, after a week schedule put a
+  1635 neck glue and the rest of its bench cards on the same Friday. Hours alone will always
+  say it fits; the glue does not care. Anything that packs a job's sessions by available
+  hours needs this rule, or it will keep proposing schedules that cannot physically happen.
+
 ---
 
 ## Rules
