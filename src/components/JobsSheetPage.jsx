@@ -8,7 +8,7 @@
 // morning's triage gets typed in one pass, and a half-typed Action is a job in
 // the wrong pile. One button, one write, one confirmation.
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { isTopLevelJob } from '../data/pdfImportPlan.js';
 import { batchWriteJobsState, isSupabaseConfigured } from '../utils/supabase.js';
 import {
@@ -58,6 +58,7 @@ const SHEET_CSS = `
   height: 30px;
   font-size: 12.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  vertical-align: top;
 }
 .gsheet th:last-child, .gsheet td:last-child { border-right: none; }
 
@@ -97,6 +98,30 @@ const SHEET_CSS = `
 .gsheet tbody tr:nth-child(odd)  td.freeze { background: #f1f5f9; }
 .gsheet tbody tr:hover td.freeze { background: #e0e7ff; }
 
+/* Desc wraps. It is the one column with no width of its own — it takes whatever
+   the other eleven leave over — and the fault text is routinely longer than
+   that, so on anything short of a fullscreen window it was ellipsed after a few
+   words and the only way to read a job was the hover tooltip. Wrapping trades a
+   uniform 30px row for rows as tall as their description, which is the right
+   trade on a page whose whole job is reading fault text and triaging off it.
+   The 30px height above stays the row MINIMUM, so short descriptions are
+   unchanged and only the long ones grow. Cells are top-aligned (above) so a
+   three-line row does not leave the other eleven columns floating in the middle
+   of it. */
+.gsheet td.wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  padding: 7px 8px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* The single-line cells keep their content on the old 30px centreline rather
+   than sticking to the top edge of a now-taller row. Line-height does this
+   without padding, so the inputs and checkboxes inside them are untouched. */
+.gsheet th, .gsheet td:not(.wrap) { line-height: 30px; }
+
 .gsheet td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .gsheet td.mid { text-align: center; }
 
@@ -128,53 +153,11 @@ select.gcell { cursor: pointer; }
   border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
 .gsheet input[type=checkbox]:disabled { opacity: .55; }
-
-/* Column resizers — a drag strip on the right edge of every header cell, the
-   same as the boundary between column letters in Sheets. Each grip resizes the
-   column to its LEFT, which is what makes a column feel draggable from both
-   sides: Desc's own grip widens Desc, and the grip on Status (Desc's left
-   boundary) narrows Status and hands the room to Desc.
-   overflow:visible so the grip is not clipped by the cell's own ellipsis rule. */
-.gsheet th { overflow: visible; }
-.gsheet th .colgrip {
-  position: absolute; top: 0; right: -3px; width: 7px; height: 100%;
-  cursor: col-resize; z-index: 5; background: transparent;
-  border: none; padding: 0;
-}
-.gsheet th .colgrip::after {
-  content: ''; position: absolute; top: 4px; bottom: 4px; left: 3px;
-  width: 1px; background: #94a3b8; opacity: 0; transition: opacity .12s;
-}
-.gsheet th .colgrip:hover::after,
-.gsheet th .colgrip.dragging::after { opacity: 1; background: #4f46e5; width: 2px; }
 `;
 
-// The grid, in order. `width` is the default; null means "no width of its own"
-// — Desc soaks up whatever the other eleven leave over, which is how the page
-// behaved before any of this and what a reset returns to.
-//
-// `cls` mirrors what the header and body cells already carried: `freeze` is the
-// sticky job-number column, `mine` marks the six columns Trevor owns and
-// `fence` draws the shaded-range line down the left of them.
-const COLUMNS = Object.freeze([
-  { key: 'job',      label: 'Job',      width: 58,  cls: 'freeze' },
-  { key: 'customer', label: 'Customer', width: 150, cls: '' },
-  { key: 'mfr',      label: 'Mfr',      width: 100, cls: '' },
-  { key: 'model',    label: 'Model',    width: 130, cls: '' },
-  { key: 'status',   label: 'Status',   width: 92,  cls: '' },
-  { key: 'desc',     label: 'Desc',     width: null, cls: '' },
-  { key: 'tag',      label: 'Tag',      width: 72,  cls: 'mine fence' },
-  { key: 'hours',    label: 'Hours',    width: 68,  cls: 'mine' },
-  { key: 'action',   label: 'Action',   width: 86,  cls: 'mine' },
-  { key: 'vb',       label: 'VB',       width: 40,  cls: 'mine' },
-  { key: 'bl',       label: 'BL',       width: 40,  cls: 'mine' },
-  { key: 'pj',       label: 'PJ',       width: 40,  cls: 'mine' },
-]);
-
-// Below this a column is unreadable and, worse, its grip lands on top of the
-// next one's and the grid becomes impossible to drag back out.
-const COL_MIN_PX = 36;
-const COL_WIDTHS_KEY = 'ggnz.jobsSheet.colWidths';
+function headerCell(label, cls) {
+  return <th key={label} className={cls}>{label}</th>;
+}
 
 export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved }) {
   // Top-level jobs only. Split and derived cards have ids like
@@ -190,91 +173,6 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null); // { ok, text }
-
-  // Dragged column widths, keyed by COLUMNS key. A key that is absent means
-  // "still at its default" — so an empty object is the untouched grid, and
-  // resetting a column is a delete rather than a value. Kept in localStorage:
-  // these are workspace preferences, not job data, and re-dragging them on
-  // every visit is the thing being fixed.
-  const [colWidths, setColWidths] = useState(() => {
-    try {
-      const parsed = JSON.parse(window.localStorage.getItem(COL_WIDTHS_KEY) || '{}');
-      const clean = {};
-      for (const c of COLUMNS) {
-        const n = Number(parsed?.[c.key]);
-        if (Number.isFinite(n) && n >= COL_MIN_PX) clean[c.key] = n;
-      }
-      return clean;
-    } catch {
-      return {}; // private mode, or a stored value we can no longer parse
-    }
-  });
-  const [draggingKey, setDraggingKey] = useState(null);
-  const colRefs = useRef({});
-
-  useEffect(() => {
-    try {
-      if (Object.keys(colWidths).length === 0) window.localStorage.removeItem(COL_WIDTHS_KEY);
-      else window.localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(colWidths));
-    } catch {
-      // Storage unavailable. The widths still apply for this session.
-    }
-  }, [colWidths]);
-
-  const widthOf = useCallback(
-    col => (colWidths[col.key] !== undefined ? colWidths[col.key] : col.width),
-    [colWidths]
-  );
-
-  // Once ANY column has been dragged the table has to size to its own columns
-  // rather than to the container: table-layout:fixed rescales specified widths
-  // to fill a width:100% table, so a widened column would otherwise just squash
-  // its neighbours back. Desc is the one column allowed no width of its own, so
-  // while it is still on auto there is nothing to overflow and 100% is right.
-  const totalWidth = useMemo(() => {
-    if (widthOf(COLUMNS[5]) === null) return null; // Desc still auto
-    return COLUMNS.reduce((sum, c) => sum + (widthOf(c) ?? 0), 0);
-  }, [widthOf]);
-
-  // Drag to resize. Every grip resizes the column it sits on — i.e. the one to
-  // the LEFT of the boundary being dragged, exactly as a spreadsheet does. That
-  // is what lets Desc be widened from either side: its own grip pushes its right
-  // edge out, and Status's grip pulls Desc's left edge in.
-  //
-  // Starting width is measured off the rendered header cell rather than taken
-  // from state, so the first drag on a column still at auto picks up where it
-  // actually sits instead of jumping to a guess. The header cell is measured,
-  // not the <col>: browsers disagree on whether a <col> reports a layout box.
-  const startResize = useCallback((e, col) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth =
-      colRefs.current[col.key]?.getBoundingClientRect().width ?? col.width ?? COL_MIN_PX;
-    setDraggingKey(col.key);
-
-    const onMove = ev => {
-      const next = Math.max(COL_MIN_PX, Math.round(startWidth + (ev.clientX - startX)));
-      setColWidths(prev => (prev[col.key] === next ? prev : { ...prev, [col.key]: next }));
-    };
-    const onUp = () => {
-      setDraggingKey(null);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, []);
-
-  // Double-click a grip to put that one column back to its default — the escape
-  // hatch for a column dragged somewhere silly.
-  const resetResize = useCallback(col => {
-    setColWidths(prev => {
-      if (prev[col.key] === undefined) return prev;
-      const next = { ...prev };
-      delete next[col.key];
-      return next;
-    });
-  }, []);
 
   const draftFor = useCallback(
     (job) => drafts[job.id] || initialRowDraft(job),
@@ -427,35 +325,35 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
             No jobs on the board.
           </div>
         ) : (
-          <table
-            className="gsheet"
-            style={totalWidth === null ? undefined : { width: totalWidth, minWidth: '100%' }}
-          >
+          <table className="gsheet">
             <colgroup>
-              {COLUMNS.map(col => {
-                const w = widthOf(col);
-                return <col key={col.key} style={w === null ? undefined : { width: w }} />;
-              })}
+              <col style={{ width: 58 }} />{/* Job */}
+              <col style={{ width: 150 }} />{/* Customer */}
+              <col style={{ width: 100 }} />{/* Mfr */}
+              <col style={{ width: 130 }} />{/* Model */}
+              <col style={{ width: 92 }} />{/* Status */}
+              <col />{/* Desc */}
+              <col style={{ width: 72 }} />{/* Tag */}
+              <col style={{ width: 68 }} />{/* Hours */}
+              <col style={{ width: 86 }} />{/* Action */}
+              <col style={{ width: 40 }} />{/* VB */}
+              <col style={{ width: 40 }} />{/* BL */}
+              <col style={{ width: 40 }} />{/* PJ */}
             </colgroup>
             <thead>
               <tr>
-                {COLUMNS.map(col => (
-                  <th
-                    key={col.key}
-                    ref={el => { colRefs.current[col.key] = el; }}
-                    className={col.cls || undefined}
-                  >
-                    {col.label}
-                    <button
-                      type="button"
-                      className={draggingKey === col.key ? 'colgrip dragging' : 'colgrip'}
-                      onMouseDown={e => startResize(e, col)}
-                      onDoubleClick={() => resetResize(col)}
-                      title={`Drag to resize ${col.label} · double-click to reset`}
-                      aria-label={`Resize the ${col.label} column`}
-                    />
-                  </th>
-                ))}
+                {headerCell('Job', 'freeze')}
+                {headerCell('Customer', '')}
+                {headerCell('Mfr', '')}
+                {headerCell('Model', '')}
+                {headerCell('Status', '')}
+                {headerCell('Desc', '')}
+                {headerCell('Tag', 'mine fence')}
+                {headerCell('Hours', 'mine')}
+                {headerCell('Action', 'mine')}
+                {headerCell('VB', 'mine')}
+                {headerCell('BL', 'mine')}
+                {headerCell('PJ', 'mine')}
               </tr>
             </thead>
             <tbody>
@@ -472,7 +370,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                     <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
                     <td className="ro" title={job.model || ''}>{job.model}</td>
                     <td className="ro">{job.status}</td>
-                    <td className="ro" title={job.desc || ''}>{job.desc}</td>
+                    <td className="ro wrap">{job.desc}</td>
 
                     {/* Tag — picking one fills in the matching hours */}
                     <td className="mine fence">
