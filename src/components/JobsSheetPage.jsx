@@ -8,7 +8,7 @@
 // morning's triage gets typed in one pass, and a half-typed Action is a job in
 // the wrong pile. One button, one write, one confirmation.
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { isTopLevelJob } from '../data/pdfImportPlan.js';
 import { batchWriteJobsState, isSupabaseConfigured } from '../utils/supabase.js';
 import {
@@ -58,6 +58,7 @@ const SHEET_CSS = `
   height: 30px;
   font-size: 12.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  vertical-align: top;
 }
 .gsheet th:last-child, .gsheet td:last-child { border-right: none; }
 
@@ -97,6 +98,50 @@ const SHEET_CSS = `
 .gsheet tbody tr:nth-child(odd)  td.freeze { background: #f1f5f9; }
 .gsheet tbody tr:hover td.freeze { background: #e0e7ff; }
 
+/* Desc wraps. It is the one column with no width of its own — it takes whatever
+   the other eleven leave over — and the fault text is routinely longer than
+   that, so on anything short of a fullscreen window it was ellipsed after a few
+   words and the only way to read a job was the hover tooltip. Wrapping trades a
+   uniform 30px row for rows as tall as their description, which is the right
+   trade on a page whose whole job is reading fault text and triaging off it.
+   The 30px height above stays the row MINIMUM, so short descriptions are
+   unchanged and only the long ones grow. Cells are top-aligned (above) so a
+   three-line row does not leave the other eleven columns floating in the middle
+   of it. */
+.gsheet td.wrap {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  padding: 7px 8px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+/* The single-line cells keep their content on the old 30px centreline rather
+   than sticking to the top edge of a now-taller row. Line-height does this
+   without padding, so the inputs and checkboxes inside them are untouched. */
+.gsheet th, .gsheet td:not(.wrap) { line-height: 30px; }
+
+/* Desc resizer — the drag strip on the right edge of the Desc header, the same
+   as the boundary between column letters in Sheets. Wrapping decides how the
+   text breaks; this decides how wide it breaks in. Only Desc gets one: it is
+   the only column with no width of its own, so it is the only one that can be
+   widened without stealing from a neighbour.
+   overflow:visible so the grip is not clipped by the header cell's own
+   ellipsis rule. */
+.gsheet th.resizable { overflow: visible; }
+.gsheet th .colgrip {
+  position: absolute; top: 0; right: -3px; width: 7px; height: 100%;
+  cursor: col-resize; z-index: 5; background: transparent;
+  border: none; padding: 0;
+}
+.gsheet th .colgrip::after {
+  content: ''; position: absolute; top: 4px; bottom: 4px; left: 3px;
+  width: 1px; background: #94a3b8; opacity: 0; transition: opacity .12s;
+}
+.gsheet th .colgrip:hover::after,
+.gsheet th .colgrip.dragging::after { opacity: 1; background: #4f46e5; width: 2px; }
+
 .gsheet td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .gsheet td.mid { text-align: center; }
 
@@ -130,6 +175,15 @@ select.gcell { cursor: pointer; }
 .gsheet input[type=checkbox]:disabled { opacity: .55; }
 `;
 
+// Sum of every fixed column width in the colgroup below, Desc excluded. Needed
+// because table-layout:fixed with width:100% rescales specified widths to fit
+// the container — so a widened Desc only actually gets wider if the table is
+// told to be exactly as wide as its columns add up to. Must stay in step with
+// the colgroup.
+const FIXED_COLS_PX = 58 + 150 + 100 + 130 + 92 + 72 + 68 + 86 + 40 + 40 + 40;
+const DESC_MIN_PX = 120;
+const DESC_WIDTH_KEY = 'ggnz.jobsSheet.descWidth';
+
 function headerCell(label, cls) {
   return <th key={label} className={cls}>{label}</th>;
 }
@@ -148,6 +202,59 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState(null); // { ok, text }
+
+  // Desc column width. null means auto — Desc soaks up whatever the other
+  // eleven columns leave over, which is the default and what a reset returns
+  // to. A number means Trevor has dragged it, and the table then sizes to its
+  // columns and scrolls sideways rather than squashing Desc back. Kept in
+  // localStorage: a workspace preference, not job data, and re-dragging it on
+  // every visit is the thing being fixed.
+  const [descWidth, setDescWidth] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem(DESC_WIDTH_KEY);
+      const n = raw === null ? NaN : Number(raw);
+      return Number.isFinite(n) && n >= DESC_MIN_PX ? n : null;
+    } catch {
+      return null; // private mode / storage disabled — auto width still works
+    }
+  });
+  const [dragging, setDragging] = useState(false);
+  const descThRef = useRef(null);
+
+  useEffect(() => {
+    try {
+      if (descWidth === null) window.localStorage.removeItem(DESC_WIDTH_KEY);
+      else window.localStorage.setItem(DESC_WIDTH_KEY, String(descWidth));
+    } catch {
+      // Storage unavailable. The width still applies for this session.
+    }
+  }, [descWidth]);
+
+  // Starting width is measured off the rendered header cell rather than taken
+  // from state, so the first drag from auto picks up where the column actually
+  // sits instead of jumping to a guess. The header cell is measured, not the
+  // <col>: browsers disagree on whether a <col> reports a layout box.
+  const startResize = useCallback(e => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = descThRef.current?.getBoundingClientRect().width ?? DESC_MIN_PX;
+    setDragging(true);
+
+    const onMove = ev => {
+      setDescWidth(Math.max(DESC_MIN_PX, Math.round(startWidth + (ev.clientX - startX))));
+    };
+    const onUp = () => {
+      setDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
+
+  // Double-click the grip to go back to auto — the escape hatch for a column
+  // dragged somewhere silly.
+  const resetResize = useCallback(() => setDescWidth(null), []);
 
   const draftFor = useCallback(
     (job) => drafts[job.id] || initialRowDraft(job),
@@ -300,14 +407,17 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
             No jobs on the board.
           </div>
         ) : (
-          <table className="gsheet">
+          <table
+            className="gsheet"
+            style={descWidth === null ? undefined : { width: FIXED_COLS_PX + descWidth, minWidth: '100%' }}
+          >
             <colgroup>
               <col style={{ width: 58 }} />{/* Job */}
               <col style={{ width: 150 }} />{/* Customer */}
               <col style={{ width: 100 }} />{/* Mfr */}
               <col style={{ width: 130 }} />{/* Model */}
               <col style={{ width: 92 }} />{/* Status */}
-              <col />{/* Desc */}
+              <col style={descWidth === null ? undefined : { width: descWidth }} />{/* Desc */}
               <col style={{ width: 72 }} />{/* Tag */}
               <col style={{ width: 68 }} />{/* Hours */}
               <col style={{ width: 86 }} />{/* Action */}
@@ -322,7 +432,17 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                 {headerCell('Mfr', '')}
                 {headerCell('Model', '')}
                 {headerCell('Status', '')}
-                {headerCell('Desc', '')}
+                <th key="Desc" className="resizable" ref={descThRef}>
+                  Desc
+                  <button
+                    type="button"
+                    className={dragging ? 'colgrip dragging' : 'colgrip'}
+                    onMouseDown={startResize}
+                    onDoubleClick={resetResize}
+                    title="Drag to resize · double-click to reset"
+                    aria-label="Resize the Desc column"
+                  />
+                </th>
                 {headerCell('Tag', 'mine fence')}
                 {headerCell('Hours', 'mine')}
                 {headerCell('Action', 'mine')}
@@ -345,7 +465,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
                     <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
                     <td className="ro" title={job.model || ''}>{job.model}</td>
                     <td className="ro">{job.status}</td>
-                    <td className="ro" title={job.desc || ''}>{job.desc}</td>
+                    <td className="ro wrap">{job.desc}</td>
 
                     {/* Tag — picking one fills in the matching hours */}
                     <td className="mine fence">
