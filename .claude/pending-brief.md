@@ -68,7 +68,15 @@ not just overriding, so the next session doesn't re-argue it.
      first three. The two screens disagree today.
    - **`VB` (Virtual Booking)** blocks. The customer still has the instrument, so the job cannot
      be worked whatever else it says. This needs `blockedPile()` to receive `vb`, which it is not
-     currently passed — check every call site.
+     currently passed. **Council narrowed this for you:** `JobCard.jsx:13` and `JobShelf.jsx`
+     (×4) already pass the whole job object, and `vb` is already on it (`useSupabase.js:135`,
+     `jobsSheet.js:118`) — those sites need no change. Only three sites build a *partial*
+     object and will silently no-op if missed: `jobs.js:25` (the call **inside** `inferBench`
+     itself — the easy one to overlook), `useSupabase.js:87`, and `pdfImportPlan.js:70`
+     (leave that one at `vb: false`; the PDF never carries VB, same as its hardcoded action).
+     Threading `vb` into `inferBench` means an 8th positional parameter — `jobs.test.js:190-205`
+     calls it positionally (`inferBench(...setupJob, {})`), so check the test call sites, don't
+     wait for a failure to find them.
    - **`BL` (Backlog)** blocks. **Verified no-op on today's data**: all 10 live `BL=Y` jobs are
      already blocked by their action or status, so nothing moves. It is a belt-and-braces rule.
 
@@ -78,18 +86,53 @@ not just overriding, so the next session doesn't re-argue it.
    clause. Remove it from `deriveJobStatusFlags()` and from `blockedPile()`, and remove the
    `readyToStart` flag from the export shape — check `board_meeting_export.mjs`, which reports it.
 
+   **Both reviewers independently found this rule under-scoped — here is the full list.** The
+   brief named three places; there are six, and `Sidebar.jsx` was not in the file list at all:
+   - `src/data/jobs.js:113,212,217` — `blockedPile`'s exemption, the flag itself, and
+     `schedulable` (which currently reads `schedulable || readyToStart`).
+   - `src/components/Sidebar.jsx:77-79, 113, 126, 300-308` — a whole rendered **"✅ READY TO
+     START"** bucket, plus `readyToStart` used to *build* the `active` and `backlog` filters.
+     Deleting the flag without touching this file leaves a permanently-empty section and dead
+     variables, and checklist item 5 cannot pass.
+   - `scripts/board_meeting_export.mjs:123,143`.
+   - `.claude/workflows/sunday-board-meeting.js:98` — unlisted anywhere in the brief. Harmless
+     today (`schedulable || readyToStart` degrades cleanly) but it is a touch point.
+   - Tests asserting on it: `src/data/jobs.test.js:100,104-105`,
+     `src/data/jobsSheet.test.js:183-185`, `src/components/Sidebar.test.jsx:37,99`.
+
 4. **A bench that isn't set must never look set.** In `JobDrawer.jsx`, add an explicit
    "Needs a bench" option that is selected when `row.bench` is empty, and refuse to save a row
    still on it. Ship this **even though rule 1 should mean no job reaches the drawer bench-less** —
    the display bug is independent of what fills the field, and it is the half that silently
-   corrupts data.
+   corrupts data. Council confirmed rule 1 does **not** close this on its own: `inferBench`'s
+   final fallback (`jobs.js:60`) still returns `null` for a genuinely unclassifiable job that
+   isn't blocked. Both reviewers judged the sentinel the right fix and simpler than reordering
+   `ALL_BENCHES`. Concretely: add the sentinel to the options only when `!row.bench`, select it
+   in `initRows()` when `job.bench` is empty, and gate `handleSave()` (`JobDrawer.jsx:139-142`)
+   before it calls `onSave`.
 
-5. **Backfill.** Nine live jobs currently sit at `bench = null` (393, 693, 842, 919, 1175, 1706,
-   112, 182, 341, 1448, 1604 — verify the list against live data at build time, it moves). Set
-   them to Admin in one write, listed in the PR body by job number.
+5. **Backfill — ships as its own commit, after rule 1 is verified. Not in the same write.**
+   The corrected list, re-derived against live Supabase on **2026-08-05**, is **nine** jobs:
+   **1604, 842, 919, 1175, 1706, 112, 182, 341, 1448.** The brief previously listed eleven;
+   **393 and 693 already carry a stored bench** and must not be touched. Re-derive again at
+   build time — it moves with each import. Set them to Admin, listed in the PR body by number.
 
-6. `needsBench()` (`jobs.js:171`) is exported and called nowhere. With rule 1 it can never return
-   true. Delete it.
+   **Why separate:** `useSupabase.js:97` reads `bench` verbatim and never re-infers it, so the
+   backfill is a one-way write while the code change is a revert away. Backfilled first (or in
+   the same commit), a later revert leaves nine rows reading `Admin` with nothing to tell them
+   apart from real Admin work. Code change → verify on staging → then backfill.
+
+6. `needsBench()` (`jobs.js:171`) is exported and called nowhere — council confirmed zero
+   callers, and the "amber needs-a-bench chip" its comment describes does not exist. Delete it.
+
+7. **Keep `blockedPile()` as the discriminator — do not invent a second bench value.** Council
+   raised the obvious objection to Trevor's ruling: once blocked work carries Admin, a bench
+   filter mixes parked jobs with real admin tasks. It does not need solving, because the app
+   already answers it everywhere — `JobShelf.jsx:119,124` gate every bench count and list on
+   `blockedPile(j) == null`, `JobCard.jsx:13` keys drag-disable off it, and `useSupabase.js:139`
+   computes `schedulable` independently of `bench`. **Verified non-risk:** null → `'Admin'`
+   makes a blocked job read as workable nowhere. Build 2's greyed Admin cards must read
+   `blockedPile()` for the same reason, not the bench string.
 
 ### Out of scope
 
@@ -105,17 +148,51 @@ not just overriding, so the next session doesn't re-argue it.
 2. A job that is Active or Booked In with `GTS` keeps its real inferred bench.
 3. `DG` behaves identically to `INC` everywhere, including on the Projects page.
 4. A `VB` job is blocked regardless of status and action.
-5. `readyToStart` appears nowhere in `src/` or `scripts/`.
+5. `readyToStart` appears nowhere in `src/`, `scripts/` or `.claude/workflows/` — including the
+   Sidebar's "✅ READY TO START" bucket, which is gone rather than left rendering empty, and the
+   `active`/`backlog` filters it fed.
 6. The export script runs and does not reference `readyToStart`.
 7. Opening a bench-less job in the drawer shows "Needs a bench", not Luthier.
 8. Saving a drawer row still on "Needs a bench" is refused, with a message that says why.
-9. The backfilled jobs read `Admin` in Supabase.
+9. The backfilled jobs read `Admin` in Supabase, and the backfill is its own commit landing
+   after the code change — jobs 393 and 693 were not touched.
 10. `needsBench` is gone, and nothing imports it.
 11. Existing splits are untouched — 1632, 1635, 1679, 1703, 1520 and 1621 keep their bench cards
     and hours exactly as they are. **This is the one that matters most:** Trevor rebuilt those
     splits by hand on 2026-08-04.
 12. Scheduled slots for this week are untouched.
-13. Full test suite passes (543 at time of writing).
+13. Full test suite passes. Expect edits — not just a green run — in `jobs.test.js:100,104-105`,
+    `jobsSheet.test.js:183-185`, `Sidebar.test.jsx:37,99` (all assert on `readyToStart`) and
+    `jobs.test.js:190-205` (positional `inferBench` calls, now an 8th parameter).
+14. A blocked job carrying `Admin` still reads as blocked, not workable: it stays out of the
+    Admin bench count and list on the shelf, and stays undraggable.
+
+### Council rulings — 2026-08-05, two independent reviewers, both "ship with changes"
+
+Folded into the text above. Recorded here so the builder can see what changed and why.
+
+1. **Rule 3 was under-scoped, and both reviewers found it independently.** `Sidebar.jsx` was
+   not in the brief's file list, yet it renders a whole "✅ READY TO START" bucket and uses the
+   flag to build two more. `.claude/workflows/sunday-board-meeting.js:98` was unlisted too.
+2. **Rule 5 must be its own commit, after the code change.** The backfill is a one-way write
+   (`useSupabase.js:97` never re-infers `bench`); shipping it atomically with a revertible code
+   change leaves nine rows unrecoverable if rule 1 is backed out.
+3. **The backfill list was wrong.** Eleven names, of which 393 and 693 already have a bench.
+   Corrected to nine against live data on 2026-08-05.
+4. **The VB threading is smaller than "check every call site" implies** — three partial-object
+   sites, not eight — but includes the call inside `inferBench` itself and an 8th positional
+   parameter that `jobs.test.js` calls positionally.
+5. **The Admin-collision objection was raised and answered, not waved away.** `blockedPile()`
+   is already the discriminator everywhere; null → `'Admin'` makes a blocked job read as
+   workable nowhere. Written in as rule 7 so Build 2 doesn't re-derive it from the bench string.
+6. **Rule 4 still needed even after rule 1** — `inferBench`'s final fallback can still return
+   `null` for an unclassifiable non-blocked job.
+
+Both reviewers confirmed the brief's account of `inferBench`, `blockedPile`,
+`deriveJobStatusFlags`, the `JobDrawer` `<select>` bug and the `DG`/`ProjectsPage` inconsistency
+matches the live code. Live-data re-check on 2026-08-05: `DG` matches zero jobs today, `VB=Y`
+matches one (1676), and all ten `BL=Y` jobs are already blocked — so rules 2's `DG` and `BL`
+clauses are correct rules that move nothing today.
 
 ---
 
