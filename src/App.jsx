@@ -29,6 +29,7 @@ import ParkingLotPage from './components/ParkingLotPage.jsx';
 import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import JobsSheetPage from './components/JobsSheetPage.jsx';
+import BenchBoardPage from './components/BenchBoardPage.jsx';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
@@ -106,6 +107,9 @@ export default function App() {
   // Brief G, Build 1b — the Jobs Sheet: the one screen where Trevor edits the
   // six columns the app now owns (Tag, Hours, Action, VB, BL, PJ).
   const [showJobsSheet, setShowJobsSheet] = useState(false);
+  // The Bench board. Named "Bench", not "Board" — "Board" is already this app's
+  // name for the calendar, and two pages called Board would be unusable.
+  const [showBench, setShowBench] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
@@ -276,6 +280,7 @@ export default function App() {
   // not a page, and must survive switching pages and coming back.
   const selectPage = useCallback((page) => {
     setShowJobsSheet(page === 'jobsSheet');
+    setShowBench(page === 'bench');
     setShowJobs(page === 'jobs');
     setShowProjects(page === 'projects');
     setShowPartsToOrder(page === 'partsToOrder');
@@ -479,7 +484,7 @@ export default function App() {
   // with the page chain below — a new page needs adding here too, or the Board
   // button will read as lit while that page is open.
   const onBoard = !showParkingLot && !showJobsSheet && !showJobs && !showProjects
-    && !showPartsToOrder && !showParts && !showHelp && !showSettings;
+    && !showPartsToOrder && !showParts && !showHelp && !showSettings && !showBench;
 
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
@@ -674,6 +679,21 @@ export default function App() {
               Sheet
             </button>
 
+            {/* Sits beside the calendar rather than replacing anything: the
+                calendar asks you to promise when, the Bench board only asks
+                what's stopping a card. */}
+            <button
+              onClick={() => selectPage('bench')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showBench ? '#0369a1' : '#334155'}`,
+                background: showBench ? '#0c4a6e' : '#1e293b',
+                color: showBench ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showBench ? 700 : 400,
+              }}
+            >
+              Bench
+            </button>
+
             <button
               onClick={() => selectPage('projects')}
               style={{
@@ -758,6 +778,8 @@ export default function App() {
               jobs={jobs}
               onJobClick={job => { setEditingJob(job); }}
             />
+          ) : showBench ? (
+            <BenchBoardPage jobs={jobs} />
           ) : showProjects ? (
             <WorkshopProjectsPage jobs={jobs} />
           ) : showPartsToOrder ? (
