@@ -55,6 +55,22 @@ not just overriding, so the next session doesn't re-argue it.
 
 ## Build 1 — blocked work carries Admin
 
+> **✅ SHIPPED 2026-08-05, merged at `bd6b0a4` (PR #21).** 552/552 tests, verifier passed all 14
+> checklist items, browser-confirmed by Trevor on the Vercel preview. Everything in this section
+> is now the record of what was built, not a task list. **Build 2 below is the live work.**
+>
+> Two things settled during the browser test, both now workshop rules rather than code:
+> - The Sidebar's "✅ READY TO START" section was hidden when empty and had always been empty —
+>   Trevor had never once seen it. Confirms the deletion was right.
+> - A concern that blocking `BL` would mute the "🔧 PARTS ARRIVED?" notice for backlog jobs is
+>   **void**: Trevor removes the `BL` tag the moment he orders parts, so `BL` and `WP` never
+>   coexist. Written into CLAUDE.md's workshop rules. **Do not build the exception.**
+>
+> Shipped alongside it, outside this brief: the calendar-bump banner had never recorded which
+> job moved (`appendConflictLog` dropped all five fields every caller sent, and the reader handed
+> raw database rows to a banner expecting a different shape). Trevor hit it live —
+> "#undefined undefined undefined → moved to undefinedInvalid Date". Fixed in the same PR.
+
 ### In scope
 
 1. **`inferBench()` returns `'Admin'` instead of `null`** for anything `blockedPile()` matches.

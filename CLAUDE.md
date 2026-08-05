@@ -170,6 +170,13 @@ designed around not knowing one of them (2026-08-02).
   live work by definition, whatever its `done` flag said before. Anything that treats a
   returning job number as possibly-still-complete is modelling a case that cannot happen.
 
+- **A job is never Backlog and Waiting Parts at the same time.** Ordering parts for a backlog
+  job is the moment Trevor takes the `BL` tag off it, so `BL` and `WP` cannot coexist on one
+  job. Added 2026-08-05, after Build 1 made `BL` block and this looked like it would mute the
+  "🔧 PARTS ARRIVED?" notice for backlog jobs. It cannot: the combination doesn't occur.
+  Anything proposing an exception so a `BL` job can still report parts arriving is modelling a
+  case that does not exist — the same shape as "a completed job never comes back".
+
 - **Glue needs at least 12 hours to set.** Any glue-up — a neck join, a bridge, a brace, a
   crack — has to be booked at least 12 hours before the next piece of work on that same
   guitar. In practice that means a glue session and the work that depends on it cannot share
