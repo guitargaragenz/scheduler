@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toBenchCards, columnFor } from './BenchBoardPage.jsx';
+import { toBenchCards, columnFor, groupCards } from './BenchBoardPage.jsx';
 
 const job = (over = {}) => ({
   id: over.id ?? 'j1', job: '1000', customer: 'C', status: 'Active', action: 'GTS',
@@ -44,6 +44,50 @@ describe('toBenchCards', () => {
     const cards = toBenchCards([job({ id: 'p', hasSubtasks: true, subtasks: ['gone'] })]);
     expect(cards).toHaveLength(1);
     expect(cards[0].card.id).toBe('p');
+  });
+});
+
+describe('groupCards', () => {
+  const split = () => toBenchCards([
+    job({ id: 'p', bench: 'Luthier', hasSubtasks: true, subtasks: ['a', 'b'] }),
+    job({ id: 'a', parentId: 'p', bench: 'Luthier', hours: 2 }),
+    job({ id: 'b', parentId: 'p', bench: 'Fretwork', hours: 3 }),
+  ]);
+
+  it('collapses a job\'s pieces into one group', () => {
+    const groups = groupCards(split());
+    expect(groups).toHaveLength(1);
+    expect(groups[0].pieces).toHaveLength(2);
+  });
+
+  it('leaves unsplit jobs as their own single-piece groups', () => {
+    const groups = groupCards(toBenchCards([job({ id: 'x' }), job({ id: 'y' })]));
+    expect(groups).toHaveLength(2);
+    expect(groups.every(g => g.pieces.length === 1)).toBe(true);
+  });
+
+  // Grouping is per column, so a booked piece and its unbooked sibling stay
+  // in the columns they belong to rather than being forced together.
+  it('keeps pieces separate when they sit in different columns', () => {
+    const cards = split();
+    const byColumn = {};
+    for (const c of cards) (byColumn[columnFor(c)] ||= []).push(c);
+    cards[0].card.calendarSlot = 'mon-1';
+    const regrouped = {};
+    for (const c of cards) (regrouped[columnFor(c)] ||= []).push(c);
+    expect(Object.keys(regrouped).sort()).toEqual(['bench', 'ready']);
+    expect(groupCards(regrouped.bench)).toHaveLength(1);
+    expect(groupCards(regrouped.ready)).toHaveLength(1);
+  });
+
+  it('does not merge two different jobs that are both split', () => {
+    const groups = groupCards(toBenchCards([
+      job({ id: 'p1', hasSubtasks: true, subtasks: ['a1'] }),
+      job({ id: 'a1', parentId: 'p1' }),
+      job({ id: 'p2', hasSubtasks: true, subtasks: ['a2'] }),
+      job({ id: 'a2', parentId: 'p2' }),
+    ]));
+    expect(groups).toHaveLength(2);
   });
 });
 

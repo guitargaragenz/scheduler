@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { blockedPile, blockedReason, benchColors } from '../data/jobs.js';
 
 // A read-only board of the open work, cut two ways: by what's stopping a card,
@@ -77,6 +77,42 @@ export function columnFor({ card, parent }) {
 
   if (pile === 'hold') return 'parked';
   return 'other';
+}
+
+// Collapse a column's cards so a split job reads as ONE card with a
+// "▶ 2 sub-tasks" toggle, the same shape as JobsPage's rows, instead of
+// filling the column with pieces of the same guitar.
+//
+// Grouping happens per column, not across the board. Pieces of one job mostly
+// land in the same column — columnFor reads status off the parent — but a
+// booked piece goes to 'On the bench' while its unbooked sibling stays in
+// 'Ready to start'. Grouping globally would force one of those two into the
+// wrong column, so each column groups only what it actually holds, and a job
+// with work in two columns correctly shows a card in each.
+//
+// Only used by the blocking cut. The bench cut deliberately does NOT group:
+// separating a Fretwork piece from its Luthier parent is the entire reason
+// that view exists, so collapsing them back together would undo it.
+export function groupCards(cards) {
+  const groups = [];
+  const byParent = new Map();
+
+  for (const entry of cards) {
+    // An unsplit job is its own group and never gets a toggle.
+    if (!entry.piece) {
+      groups.push({ key: entry.card.id, parent: entry.parent, pieces: [entry] });
+      continue;
+    }
+    const existing = byParent.get(entry.parent.id);
+    if (existing) {
+      existing.pieces.push(entry);
+      continue;
+    }
+    const group = { key: entry.parent.id, parent: entry.parent, pieces: [entry] };
+    byParent.set(entry.parent.id, group);
+    groups.push(group);
+  }
+  return groups;
 }
 
 // `other` is a catch-all, not a designed column: it holds the In Transit and
@@ -168,7 +204,7 @@ export default function BenchBoardPage({ jobs }) {
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: '100%' }}>
           {columns.map(col => (
-            <Column key={col.key} col={col} />
+            <Column key={col.key} col={col} grouped={cut === 'blocking'} />
           ))}
         </div>
       </div>
@@ -176,8 +212,11 @@ export default function BenchBoardPage({ jobs }) {
   );
 }
 
-function Column({ col }) {
+function Column({ col, grouped }) {
   const total = totalHours(col.cards);
+  // One entry per group, so expanding one guitar's pieces doesn't expand
+  // another job that happens to sit in the same column.
+  const [open, setOpen] = useState({});
   const over = col.key === 'bench' && col.cards.length > BENCH_CAP;
 
   return (
@@ -212,12 +251,48 @@ function Column({ col }) {
         <div style={{ fontSize: 12, color: '#475569', padding: '8px 2px' }}>Nothing here.</div>
       )}
 
-      {col.cards.map(c => <Card key={c.card.id} entry={c} colour={col.colour} />)}
+      {!grouped && col.cards.map(c => <Card key={c.card.id} entry={c} colour={col.colour} />)}
+
+      {grouped && groupCards(col.cards).map(g => {
+        // A single piece needs no toggle — a "1 sub-task" dropdown is just a
+        // card with an extra click in front of it.
+        if (g.pieces.length === 1) {
+          return <Card key={g.key} entry={g.pieces[0]} colour={col.colour} />;
+        }
+        const isOpen = open[g.key];
+        return (
+          <Fragment key={g.key}>
+            <Card
+              entry={{ card: g.parent, parent: g.parent, piece: null }}
+              colour={col.colour}
+              // The parent's own `hours` is the whole job. In this column it
+              // must read as the hours actually sitting here, or a job split
+              // across two columns would count its full hours in both.
+              hoursOverride={totalHours(g.pieces)}
+              benchOverride={[...new Set(g.pieces.map(p => p.card.bench).filter(Boolean))]}
+            />
+            <div
+              onClick={() => setOpen(prev => ({ ...prev, [g.key]: !prev[g.key] }))}
+              style={{
+                fontSize: 11, color: '#94a3b8', cursor: 'pointer',
+                padding: '1px 6px 2px 10px', userSelect: 'none', marginTop: -4,
+              }}
+            >
+              {isOpen ? '▼' : '▶'} {g.pieces.length} sub-tasks
+            </div>
+            {isOpen && g.pieces.map(p => (
+              <div key={p.card.id} style={{ marginLeft: 12 }}>
+                <Card entry={p} colour={col.colour} />
+              </div>
+            ))}
+          </Fragment>
+        );
+      })}
     </section>
   );
 }
 
-function Card({ entry, colour }) {
+function Card({ entry, colour, hoursOverride, benchOverride }) {
   const { card, parent, piece } = entry;
   const booked = Boolean(card.calendarSlot || parent.calendarSlot);
   // The reason is the parent's — a split piece has no status of its own.
@@ -231,7 +306,9 @@ function Card({ entry, colour }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, marginBottom: 2 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{parent.job}</span>
         {piece && <span style={{ fontSize: 10.5, color: '#fcd34d' }}>{piece}</span>}
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748b' }}>{hrs(card.hours)}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, color: '#64748b' }}>
+          {hrs(hoursOverride ?? card.hours)}
+        </span>
       </div>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.3 }}>
         {parent.customer}
@@ -241,7 +318,12 @@ function Card({ entry, colour }) {
       </div>
 
       <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
-        {card.bench && <Chip colors={benchColors(card.bench)}>{card.bench}</Chip>}
+        {/* A collapsed split shows every bench its pieces touch, so the two
+            benches on a Luthier+Fretwork job are visible without expanding
+            it — that visibility is the point of the board. */}
+        {benchOverride
+          ? benchOverride.map(b => <Chip key={b} colors={benchColors(b)}>{b}</Chip>)
+          : card.bench && <Chip colors={benchColors(card.bench)}>{card.bench}</Chip>}
         {booked && <Chip colors={{ bg: '#0c4a6e', border: '#0369a1', text: '#7dd3fc' }}>booked</Chip>}
         {/* The reason is shown on the card as well as implied by the column,
             because "waiting — see Multitrack" and "backlog" both land in the
