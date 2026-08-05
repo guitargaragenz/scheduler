@@ -95,7 +95,7 @@ if (!data) {
 // script itself — no `days` field is present (see header note above).
 const jobs = data.jobs || []
 const backlog = jobs.filter(j => j.backlog)
-const schedulableNow = backlog.filter(j => j.schedulable || j.readyToStart)
+const schedulableNow = backlog.filter(j => j.schedulable)
 // WP is Trevor's own "waiting parts" marker on the Action column (added
 // 2026-07-31). It replaces the old 'PARTS' string, which never existed in
 // ACTION_OPTIONS and so matched nothing — this count silently read 0 every

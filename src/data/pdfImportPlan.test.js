@@ -361,10 +361,17 @@ describe('applyPdfFields', () => {
   });
 
   it('re-derives the status flags so the job moves pile straight away', () => {
-    // Board job was Waiting (blocked). The PDF says Active, so it becomes
-    // workable immediately rather than after the next reload — status from
-    // the PDF always wins, because it is what drives the pile colours.
-    expect(merged.schedulable).toBe(true);
+    // Board job was Waiting (blocked). The PDF says Active, so the STATUS flag
+    // flips immediately rather than after the next reload — status from the PDF
+    // always wins, because it is what drives the pile colours.
+    expect(merged.status).toBe('Active');
+    expect(merged.awaiting).toBe(false);
+    expect(merged.inTransit).toBe(false);
+    // ...but this fixture also carries VB=Y and BL=Y, and as of 2026-08-05 both
+    // block. The guitar is not in the shop, so an Active status cannot make it
+    // workable. Was asserting `schedulable === true`.
+    expect(merged.vb).toBe(true);
+    expect(merged.schedulable).toBe(false);
   });
 
   it("still respects an action Trevor set, which the PDF cannot see", () => {

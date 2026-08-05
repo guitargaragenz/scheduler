@@ -34,7 +34,7 @@ const job = (over) => ({
   id: '1001', job: '1001', customer: 'A', mfr: 'Fender', model: 'Strat',
   desc: 'setup', bench: 'Setup', hours: 2, status: 'Active', action: '',
   scheduled: false, done: false, backlog: false,
-  schedulable: true, readyToStart: false, awaiting: false, inTransit: false,
+  schedulable: true, awaiting: false, inTransit: false,
   ...over,
 });
 
@@ -89,14 +89,21 @@ describe('Sidebar — the Parts Arrived? group', () => {
     expect(cardCount(html, '1001')).toBe(1);
   });
 
-  it('does not duplicate a WP job that is also backlog', () => {
-    const html = render([job({ action: 'WP', status: 'Active', backlog: true })]);
+  // BL blocks as of 2026-08-05, so a WP job that is also backlog is no longer
+  // "come free" — it is blocked, and belongs in ON HOLD, listed once. This test
+  // used to assert it appeared under PARTS ARRIVED?.
+  it('treats a WP job that is also backlog as blocked, and lists it once', () => {
+    const html = render([job({ action: 'WP', status: 'Active', backlog: true, schedulable: false })]);
     expect(cardCount(html, '1001')).toBe(1);
-    expect(html).toContain('PARTS ARRIVED?');
+    expect(html).not.toContain('PARTS ARRIVED?');
+    expect(html).toContain('ON HOLD');
   });
 
-  it('does not duplicate a WP job that is also ready to start', () => {
-    const html = render([job({ action: 'WP', status: 'On Hold', backlog: true, readyToStart: true })]);
+  // Was "does not duplicate a WP job that is also ready to start". The READY TO
+  // START group and its flag went on 2026-08-05; an On Hold WP job is now
+  // simply a held job, and must still be listed exactly once.
+  it('lists an On Hold WP job exactly once', () => {
+    const html = render([job({ action: 'WP', status: 'On Hold', backlog: true, schedulable: false })]);
     expect(cardCount(html, '1001')).toBe(1);
   });
 

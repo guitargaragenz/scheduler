@@ -96,13 +96,30 @@ describe('blockedPile', () => {
     expect(blockedPile(job({ status: 'To Be Inv', action: '' }))).toBeNull();
   });
 
-  it('does not block On Hold + BL=Y + GTS — parts arrived, good to start', () => {
-    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: true }))).toBeNull();
+  // Replaces the two On Hold + BL=Y + GTS tests that asserted the opposite.
+  // That exemption (readyToStart) was deleted 2026-08-05 — Trevor: "that would
+  // never happen." On Hold now wins whatever BL and GTS say.
+  it('blocks On Hold + BL=Y + GTS — the old readyToStart exemption is gone', () => {
+    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: true }))).toBe('hold');
+    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: false }))).toBe('hold');
   });
 
-  it('still blocks On Hold + GTS when the backlog flag is not set', () => {
-    // readyToStart needs all three; two of three is still stuck.
-    expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: false }))).toBe('hold');
+  it('treats DG exactly like INC — both are planning, whatever the status', () => {
+    expect(blockedPile(job({ status: 'Active', action: 'DG' }))).toBe('planning');
+    expect(blockedPile(job({ status: 'Booked In', action: 'DG' }))).toBe('planning');
+    expect(blockedPile(job({ status: 'On Hold', action: 'dg' }))).toBe('planning');
+  });
+
+  it('blocks a VB job regardless of status and action — the guitar is not in the shop', () => {
+    expect(blockedPile(job({ status: 'Active', action: 'GTS', vb: true }))).toBe('waiting');
+    expect(blockedPile(job({ status: 'Booked In', action: '', vb: true }))).toBe('waiting');
+    // A real status still wins, because it says more than "VB".
+    expect(blockedPile(job({ status: 'On Hold', action: '', vb: true }))).toBe('hold');
+  });
+
+  it('blocks a BL job that nothing else caught', () => {
+    expect(blockedPile(job({ status: 'Active', action: 'GTS', backlog: true }))).toBe('hold');
+    expect(blockedPile(job({ status: 'Active', action: 'GTS', backlog: false }))).toBeNull();
   });
 
   it('tolerates a missing job without throwing', () => {
@@ -145,6 +162,18 @@ describe('blockedReason — CI takes priority over status', () => {
     expect(blockedReason({ status: 'On Hold', action: 'INC' })).toBe('planning');
   });
 
+  it('reports "planning" for RS, RS-C and DG too, not just INC', () => {
+    expect(blockedReason({ status: 'Active', action: 'RS' })).toBe('planning');
+    expect(blockedReason({ status: 'Active', action: 'RS-C' })).toBe('planning');
+    expect(blockedReason({ status: 'Active', action: 'DG' })).toBe('planning');
+  });
+
+  it('says what is actually stopping a VB or BL job', () => {
+    expect(blockedReason({ status: 'Active', action: 'GTS', vb: true }))
+      .toBe('customer still has the instrument');
+    expect(blockedReason({ status: 'Active', action: 'GTS', backlog: true })).toBe('backlog');
+  });
+
   it('returns null for a workable job', () => {
     expect(blockedReason({ status: 'Active', action: '' })).toBeNull();
   });
@@ -180,6 +209,33 @@ describe('benchColors', () => {
 // Added with the shared-settings build, 2026-08-01. Bench keywords now arrive
 // over the network instead of from this browser, so a partial or odd-shaped
 // keyword object is reachable in more ways than "the tech deleted every chip".
+// Trevor's ruling, 2026-08-04: blocked work carries the Admin bench, not a
+// blank. A bench is a promise you can work the job; Admin is the honest answer
+// for work that is his to sort out.
+describe('inferBench — blocked work gets Admin', () => {
+  it('returns Admin for every blocked shape, not null', () => {
+    expect(inferBench('full setup', 'On Hold', '', '', 'Fender')).toBe('Admin');
+    expect(inferBench('full setup', 'Waiting', '', '', 'Fender')).toBe('Admin');
+    expect(inferBench('full setup', 'In Transit', '', '', 'Fender')).toBe('Admin');
+    expect(inferBench('full setup', 'Active', 'INC', '', 'Fender')).toBe('Admin');
+    expect(inferBench('full setup', 'Active', 'DG', '', 'Fender')).toBe('Admin');
+    // 8th positional parameter is vb; 7th is backlog.
+    expect(inferBench('full setup', 'Active', 'GTS', '', 'Fender', undefined, true, false)).toBe('Admin');
+    expect(inferBench('full setup', 'Active', 'GTS', '', 'Fender', undefined, false, true)).toBe('Admin');
+  });
+
+  it('leaves a workable job on its real inferred bench', () => {
+    expect(inferBench('full setup and restring', 'Active', 'GTS', '', 'Fender')).toBe('Setup');
+    expect(inferBench('refret', 'Booked In', 'GTS', '', 'Fender')).toBe('Fretwork');
+  });
+
+  it('still returns null for a workable job it genuinely cannot classify', () => {
+    // Not the Admin case — this one needs a human to pick the bench, and
+    // JobDrawer's "Needs a bench" option is what catches it.
+    expect(inferBench('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody')).toBeNull();
+  });
+});
+
 describe('inferBench with broken keyword settings', () => {
   const setupJob = ['full setup and restring', 'Booked In', '', '', 'Fender'];
 

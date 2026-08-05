@@ -65,9 +65,15 @@ function pdfFieldsOf(parsedJob) {
 // whoever changes one of the three inputs has to recompute them itself, or a
 // job Trevor moves to INC keeps its old pile until the next reload. One copy,
 // so the PDF path and the sheet page can never disagree about the rule.
-export function statusFlagsFor(fields, backlog = false) {
+//
+// `vb` defaults to false because the PDF never carries VB — the same reason
+// `action` is hardcoded empty on the new-job path. Callers that DO have a real
+// job in hand (the Jobs Sheet, and applyPdfFields updating an existing row)
+// pass it, or a VB job would read as schedulable here while blockedPile() calls
+// it blocked everywhere else.
+export function statusFlagsFor(fields, backlog = false, vb = false) {
   const flags = deriveJobStatusFlags(fields.status, fields.action ?? '', backlog);
-  const blocked = blockedPile({ status: fields.status, action: fields.action ?? '', backlog }) != null;
+  const blocked = blockedPile({ status: fields.status, action: fields.action ?? '', backlog, vb }) != null;
   return { ...flags, schedulable: flags.schedulable && !blocked };
 }
 
@@ -87,7 +93,7 @@ export function statusFlagsFor(fields, backlog = false) {
 export function buildNewJob(parsedJob, benchKeywords = {}) {
   const fields = pdfFieldsOf(parsedJob);
   const flags = statusFlagsFor(fields);
-  const bench = inferBench(fields.desc, fields.status, '', fields.model, fields.mfr, benchKeywords, false);
+  const bench = inferBench(fields.desc, fields.status, '', fields.model, fields.mfr, benchKeywords, false, false);
   // Same rule the CSV importer used: a job with no hours figure that is ready to be
   // worked on gets one hour, so it is schedulable rather than invisible.
   // Anything blocked stays at 0 until Trevor says otherwise.
@@ -129,7 +135,7 @@ export function buildNewJob(parsedJob, benchKeywords = {}) {
 /** Apply only the six PDF fields to a job already on the board. */
 export function applyPdfFields(job, parsedJob) {
   const fields = pdfFieldsOf(parsedJob);
-  return { ...job, ...fields, ...statusFlagsFor({ ...fields, action: job.action }, job.backlog === true) };
+  return { ...job, ...fields, ...statusFlagsFor({ ...fields, action: job.action }, job.backlog === true, job.vb === true) };
 }
 
 /**

@@ -208,5 +208,8 @@ export function buildSheetWrites(jobs, drafts) {
 export function applySheetEdits(job, changes) {
   const { job: _ignored, ...fields } = changes;
   const merged = { ...job, ...fields };
-  return { ...merged, ...statusFlagsFor(merged, merged.backlog === true) };
+  // VB is one of the six editable boxes on this page, and it blocks a job as of
+  // 2026-08-05 — so it has to be handed over here too, or ticking VB leaves the
+  // job reading schedulable until the next reload.
+  return { ...merged, ...statusFlagsFor(merged, merged.backlog === true, merged.vb === true) };
 }

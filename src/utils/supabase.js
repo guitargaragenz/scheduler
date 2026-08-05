@@ -807,14 +807,34 @@ export function subscribeToScheduledSlots(callback) {
 
 // ============ CONFLICT LOG ============
 
+// The banner is the only reader, and it wants the job: number, maker, model,
+// where it landed, when. Every caller has always supplied exactly that
+// (useGoogleCalendar.js:170,177 and App.jsx:1026), and this function used to
+// drop all five on the floor — it mapped `e.slotId` / `e.jobId` / `e.type`,
+// which no caller has ever sent, so every row written since this table existed
+// is blank. Trevor saw the result on 2026-08-05: "#undefined undefined
+// undefined → moved to undefinedInvalid Date". The count was right because the
+// count is just the number of rows; nothing else survived the write.
+//
+// The five fields go in `details`, which is already JSONB and was being written
+// as `{}`. No schema change, and an old blank row still loads — it just has
+// nothing in it, which is the truth about that row.
 export async function appendConflictLog(events) {
   try {
     const records = events.map(e => ({
       id: `${Date.now()}-${Math.random()}`,
-      slot_id: e.slotId,
-      job_id: e.jobId,
-      conflict_type: e.type,
-      details: e.details || {},
+      slot_id: e.slotId ?? null,
+      job_id: e.jobId ?? null,
+      conflict_type: e.type ?? (e.unscheduled ? 'unscheduled' : 'bumped'),
+      details: {
+        ts: e.ts ?? new Date().toISOString(),
+        jobNum: e.jobNum ?? null,
+        mfr: e.mfr ?? null,
+        model: e.model ?? null,
+        newSlot: e.newSlot ?? null,
+        unscheduled: e.unscheduled === true,
+        ...(e.details || {}),
+      },
       created_at: new Date().toISOString(),
     }));
 
@@ -834,7 +854,22 @@ export async function loadConflictLog() {
       .select('*')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data || [];
+    // Hand the banner the shape it renders, not the raw row. Returning raw rows
+    // was the other half of the blank-banner bug: ConflictBanner reads `jobNum`,
+    // `mfr`, `model`, `newSlot` and `ts`, and a database row has none of those
+    // at the top level. `ts` falls back to `created_at` so the pre-fix rows at
+    // least carry a real date instead of "Invalid Date".
+    return (data || []).map(row => {
+      const d = row.details || {};
+      return {
+        ts: d.ts || row.created_at,
+        jobNum: d.jobNum ?? null,
+        mfr: d.mfr ?? '',
+        model: d.model ?? '',
+        newSlot: d.newSlot ?? null,
+        unscheduled: d.unscheduled === true,
+      };
+    });
   } catch (e) {
     console.error('Supabase load conflict log error:', e);
     return [];

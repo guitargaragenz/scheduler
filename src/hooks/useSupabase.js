@@ -77,6 +77,7 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
 
   const mapped = live.map(j => {
     const backlog = j.bl === 'Y' || j.bl === true;
+    const vb = j.vb === 'Y' || j.vb === true;
     const statusFlags = deriveJobStatusFlags(j.status, j.action, backlog);
     // The old status-flag rule (above) doesn't know about blockedPile(), the
     // newer rule that puts INC-action and waiting/on-hold jobs in the
@@ -84,7 +85,10 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
     // could read schedulable here while blockedPile() treats it as blocked
     // everywhere else, so the two screens disagree. Fold blockedPile() in so
     // ACTIVE/BACKLOG bucketing agrees with the bench-less-job rule.
-    const isBlocked = blockedPile({ status: j.status, action: j.action, backlog }) != null;
+    // `vb` is passed explicitly: this is a PARTIAL object, so a VB job would
+    // silently read as workable here while every screen that hands blockedPile
+    // the whole job treats it as blocked.
+    const isBlocked = blockedPile({ status: j.status, action: j.action, backlog, vb }) != null;
 
     return {
       id: j.id,
@@ -132,7 +136,7 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       // Lowercase to match the shape src/data/jobs.js has always produced
       // (job.vb/job.backlog/job.project) — the uppercase VB/BL/PJ here was
       // dead weight nothing downstream ever read.
-      vb: j.vb === 'Y' || j.vb === true,
+      vb,
       backlog,
       project: j.pj === 'Y' || j.pj === true,
       ...statusFlags,

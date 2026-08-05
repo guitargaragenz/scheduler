@@ -15,9 +15,15 @@ export default function ConflictBanner({ events, onDismiss }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {events.map((e, i) => (
             <div key={i} style={{ fontSize: 12, color: '#fca5a5' }}>
-              {e.unscheduled
-                ? `#${e.jobNum} ${e.mfr} ${e.model} — removed from calendar, no room left this week`
-                : `#${e.jobNum} ${e.mfr} ${e.model} → moved to ${e.newSlot}`
+              {/* A row written before 2026-08-05 carries no job details at all —
+                  appendConflictLog dropped them. Say so plainly rather than
+                  printing "#undefined undefined undefined", which is what Trevor
+                  saw. There is nothing to recover for those rows. */}
+              {e.jobNum == null
+                ? 'A job was moved, but which one wasn’t recorded — check Google Calendar'
+                : e.unscheduled
+                  ? `#${e.jobNum} ${e.mfr} ${e.model} — removed from calendar, no room left this week`
+                  : `#${e.jobNum} ${e.mfr} ${e.model} → moved to ${e.newSlot}`
               }
               <span style={{ color: '#f87171', marginLeft: 8, fontSize: 11 }}>
                 {new Date(e.ts).toLocaleString('en-NZ', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}
