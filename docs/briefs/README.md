@@ -30,8 +30,8 @@ the status line.
 
 | Brief | Date | Status |
 |-------|------|--------|
-| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-04 | **Blocked work goes to Admin, and a board to see it on.** Approved by Trevor, not yet through council. Build 1: `inferBench()` returns `Admin` instead of stripping the bench off blocked work, `DG`/`VB`/`BL` join the blocked set, `readyToStart` is deleted as dead logic, and the drawer's bench dropdown stops silently writing Luthier. Build 2: a read-only board view, built from bench cards rather than jobs. Build 2 waits for Build 1 to merge. |
-| [re-fresh-blocked-work-to-admin-and-board.md](re-fresh-blocked-work-to-admin-and-board.md) | 2026-08-04 | Handoff for the above — start here in a fresh session. Names the files, the dead ends already hit, and what to re-check against live data before trusting the brief's numbers. |
+| [`.claude/pending-brief.md`](../../.claude/pending-brief.md) | 2026-08-04 | **Build 1 shipped 2026-08-05 (`bd6b0a4`, PR #21) — Build 2 is the live work.** Build 1: `inferBench()` returns `Admin` instead of stripping the bench off blocked work, `DG`/`VB`/`BL` block, `readyToStart` deleted as dead logic, and the drawer's bench dropdown no longer silently writes Luthier. Nine bench-less jobs backfilled. **Build 2 — a read-only board view built from bench cards rather than jobs — has not started and needs council.** Its column names are Claude's guess at Trevor's vocabulary and he should rename them before anyone builds. |
+| [re-fresh-blocked-work-to-admin-and-board.md](re-fresh-blocked-work-to-admin-and-board.md) | 2026-08-04 | Handoff for the above. **Its "next steps" 1–6 are done** — PR #20 merged, council run, Build 1 built, verified and merged. Still current for Build 2: the file list, the live-data warning, and the "avoid repeating" section. |
 
 **Shipped 2026-08-03 — Workshop Projects** (`947ab5a`, brief closed in
 `.claude/pending-brief.md`). The Projects page is now a tab strip: one tab per workshop
