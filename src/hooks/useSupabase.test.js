@@ -29,11 +29,24 @@ describe('normalizeJobsFromDb — schedulable agrees with blockedPile', () => {
     expect(job.schedulable).toBe(true);
   });
 
-  it('keeps an On Hold + BL + GTS ready-to-start job schedulable', () => {
+  // Was "keeps an On Hold + BL + GTS ready-to-start job schedulable". That
+  // exemption (readyToStart) was deleted 2026-08-05 — Trevor: "that would never
+  // happen." On Hold is on hold, whatever BL and GTS say.
+  it('does not let BL + GTS rescue an On Hold job', () => {
     const [job] = normalizeJobsFromDb([
       dbJob({ job: 2002, status: 'On Hold', action: 'GTS', bl: 'Y' }),
     ]);
-    expect(job.schedulable).toBe(true);
+    expect(job.schedulable).toBe(false);
+  });
+
+  // `vb` is passed to blockedPile from a PARTIAL object here, so it is the one
+  // that silently no-ops if dropped.
+  it('marks a VB job unschedulable even when its status says Active', () => {
+    const [job] = normalizeJobsFromDb([
+      dbJob({ job: 4004, status: 'Active', action: 'GTS', vb: 'Y' }),
+    ]);
+    expect(job.vb).toBe(true);
+    expect(job.schedulable).toBe(false);
   });
 
   it('marks a stalled Waiting job unschedulable', () => {

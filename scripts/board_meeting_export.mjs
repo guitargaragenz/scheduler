@@ -11,7 +11,7 @@
 // the SAME table/column names supabase.js uses so the two never drift
 // apart.
 //
-// Job-status derivation (readyToStart/awaiting/inTransit/schedulable) is
+// Job-status derivation (awaiting/inTransit/schedulable) is
 // imported from src/data/jobs.js rather than reimplemented here — same rule
 // the CSV importer uses, applied to a stored Supabase row instead of a
 // fresh CSV line.
@@ -120,7 +120,7 @@ const jobs = jobRows
   .filter(row => !row.parent_id && !row.departed_at)
   .map(row => {
     const backlog = row.bl === 'Y';
-    const { readyToStart, awaiting, inTransit, schedulable } =
+    const { awaiting, inTransit, schedulable } =
       deriveJobStatusFlags(row.status, row.action, backlog);
     return {
       id: row.id,
@@ -140,7 +140,6 @@ const jobs = jobRows
       calendarSlot: row.calendar_slot || null,
       hasSubtasks: row.has_subtasks,
       done: row.done,
-      readyToStart,
       awaiting,
       inTransit,
       schedulable,

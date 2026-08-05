@@ -5,24 +5,35 @@ export const DEFAULT_BENCH_KEYWORDS = {
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
 };
 
-// `backlog` is the 7th positional parameter (settled at council 2026-07-27) and
-// is the raw boolean, not 'Y'/'N'. It exists only so this function can ask
-// blockedPile the question properly: On Hold + BL=Y + GTS ("parts arrived, good
-// to start") is NOT blocked, and without the backlog flag we cannot tell it
-// apart from a genuinely-on-hold job.
-//
-// No live job matches that combination today (checked 2026-07-27 — job 1175 was
-// thought to, but its GTS turned out to be a stale CSV value; it is really CI).
-// Keep the parameter anyway: without it, the first real ready-to-start job would
-// lose its bench here while Sidebar.jsx simultaneously listed it under READY TO
-// START. Two screens, one job, opposite answers — that is the bug being closed.
-export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS, backlog = false) {
-  // Blocked work gets NO bench. Deliberately delegated to blockedPile rather
-  // than re-testing the status strings here: a second copy of the rule is how
-  // jobs 393 and 693 (Booked In + INC) ended up sitting in the Planning pile
-  // while still carrying an Electronics bench from the manufacturer regexes
-  // below. One rule, one function, every screen agrees.
-  if (blockedPile({ status, action, backlog: backlog === true })) return null;
+// `backlog` is the 7th positional parameter and `vb` the 8th. Both are raw
+// booleans, not 'Y'/'N'. They exist so this function can ask blockedPile the
+// question properly — BL and VB are both blocking conditions and neither can be
+// read off status/action alone.
+export function inferBench(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS, backlog = false, vb = false) {
+  // Blocked work carries the ADMIN bench. Trevor's ruling, 2026-08-04:
+  // "if something's blocked and hits a bench then that's falsely saying it's
+  // GTS." A bench is a promise you can work the job; Admin is the honest answer
+  // for work that is his to sort out rather than his to build. This is what the
+  // app did before Supabase and what he asked for at the time.
+  //
+  // This replaces an earlier comment here arguing the opposite ("returns null,
+  // not 'Admin' — Admin is a real bench for real admin work"). That decision was
+  // made against the request and produced the bug Trevor found on 2026-08-04:
+  // nine live jobs with no bench on the outside, all showing Luthier inside the
+  // drawer because a <select> with an unmatched value displays its first option.
+  // Do not revert this to null on the strength of the old comment.
+  //
+  // Admin does NOT make a blocked job look workable. blockedPile() stays the
+  // one discriminator everywhere — JobShelf's bench counts and lists, JobCard's
+  // drag-disable, and useSupabase's `schedulable` all gate on it, not on the
+  // bench string. Anything new must do the same.
+  //
+  // Deliberately delegated to blockedPile rather than re-testing the status
+  // strings here: a second copy of the rule is how jobs 393 and 693 (Booked In +
+  // INC) ended up sitting in the Planning pile while still carrying an
+  // Electronics bench from the manufacturer regexes below. One rule, one
+  // function, every screen agrees.
+  if (blockedPile({ status, action, backlog: backlog === true, vb: vb === true })) return 'Admin';
 
   const d = (desc + ' ' + model).toLowerCase();
   const m = mfr.toLowerCase();
@@ -53,10 +64,12 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
   if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
 
-  // Couldn't classify it. Returns null, not 'Admin' — Admin is a real bench for
-  // real admin work, not the bin for "nothing else matched". An unclassified
-  // job gets the amber "needs a bench" chip instead, so it's visible and
-  // fixable rather than silently mis-filed.
+  // Couldn't classify it, and it is NOT blocked — so this is not the Admin case
+  // above. Still null: a workable job the regexes can't place needs a human to
+  // pick the bench, and filing it under Admin would hide that. JobDrawer's
+  // "Needs a bench" option is what catches it (it refuses to save on that
+  // option), which is why that guard is still needed even though blocked work
+  // now gets Admin.
   return null;
 }
 
@@ -87,19 +100,35 @@ export function parseDays(raw) {
 // current three-locked-sections sprawl happened, and it is what makes a job
 // show up as blocked on one screen and workable on another.
 //
-// 'planning' is `INC`, `RS`, or `RS-C` alone, deliberately status-independent
-// (settled at council 2026-07-27, RS/RS-C added 2026-07-28). On the live data
+// 'planning' is `INC`, `RS`, `RS-C` or `DG` alone, deliberately status-independent
+// (settled at council 2026-07-27, RS/RS-C added 2026-07-28, DG 2026-08-05). On the live data
 // the only two INC jobs are 393 and 693, both `Booked In`, so gating on
 // `Waiting + INC` as the spec originally said would have matched zero jobs and
 // shipped an empty pile. INC is the action code MT uses to mean "Incubating" —
 // the job is still turning over in Trevor's head, nowhere near planning or
 // quoting yet. RS (Research) and RS-C (Research with Claude) are the same
 // still-figuring-it-out phase — whatever the status column says, so a future
-// `Active + INC/RS/RS-C` job leaving the active list is intended, not a
-// regression.
+// `Active + INC/RS/RS-C/DG` job leaving the active list is intended, not a
+// regression. `DG` (To be Diagnosed) joined them 2026-08-05: ProjectsPage.jsx
+// has always grouped all four together under "Needs Thinking" while this
+// function listed only three, so the two screens disagreed. They now match.
 //
-// `readyToStart` (On Hold + BL=Y + GTS — parts arrived, good to start) is NOT
-// blocked: it is the one On Hold case that is genuinely schedulable.
+// There is no longer a `readyToStart` exemption. It modelled On Hold + BL=Y +
+// GTS ("parts arrived, good to start"), which Trevor ruled on 2026-08-04 "would
+// never happen" — it never matched a live job, and it was the one rule that
+// fought the BL clause below. Deleted rather than left dormant.
+//
+// VB and BL are read off the job, not derived from status/action:
+//   - VB (Virtual Booking) — the customer still has the instrument, so the job
+//     cannot be worked whatever else it says. Checked AFTER the status piles so
+//     a VB job that is also On Hold reads 'hold', the more useful answer; a VB
+//     job with a workable status falls to 'waiting', which is honest — what it
+//     is waiting for is the guitar arriving.
+//   - BL (Backlog) — old work still on the books, and belt-and-braces: all ten
+//     live BL=Y jobs on 2026-08-05 were already blocked by their status or
+//     action, so this clause moves nothing today. It lands in 'hold' rather
+//     than a new pile on purpose — a pile with no chip in JobShelf's PILES row
+//     is a job that counts nowhere and disappears off the shelf entirely.
 //
 // On Hold wins over everything below it, including CI (action code) — Trevor
 // paused the job on purpose, so it stays 'hold' even if the customer is also
@@ -107,15 +136,15 @@ export function parseDays(raw) {
 export function blockedPile(job) {
   if (!job) return null;
   const act = (job.action || '').trim().toUpperCase();
-  if (['INC', 'RS', 'RS-C'].includes(act)) return 'planning';
+  if (['INC', 'RS', 'RS-C', 'DG'].includes(act)) return 'planning';
 
   const status = job.status || '';
-  const { readyToStart } = deriveJobStatusFlags(status, job.action, job.backlog === true);
-  if (readyToStart) return null;
-
   if (status === 'On Hold') return 'hold';
   if (status === 'In Transit') return 'transit';
   if (status === 'Waiting') return 'waiting';
+
+  if (job.vb === true) return 'waiting';
+  if (job.backlog === true) return 'hold';
   return null;
 }
 
@@ -138,10 +167,18 @@ export function blockedReason(job) {
   // On Hold + CI — checking status === 'On Hold' first used to report
   // "on hold", which just restates the status column. "waiting on the
   // customer" tells Trevor who to chase, so CI is checked ahead of status.
-  if (act === 'INC') return 'planning';
+  // All four still-figuring-it-out codes read 'planning', matching the pile
+  // above and the Projects page's "Needs Thinking" group. Only INC was listed
+  // here before, so RS/RS-C jobs sat in the planning pile while reporting
+  // "waiting — see Multitrack" as the reason.
+  if (['INC', 'RS', 'RS-C', 'DG'].includes(act)) return 'planning';
   if (act === 'CI') return 'waiting on the customer';
   if (status === 'In Transit') return 'in transit';
   if (status === 'On Hold') return 'on hold';
+  // Reached only when the status column says nothing is wrong, so the flag on
+  // the job is the whole reason. Says what is actually stopping it.
+  if (job?.vb === true) return 'customer still has the instrument';
+  if (job?.backlog === true) return 'backlog';
   return 'waiting — see Multitrack';
 }
 
@@ -166,13 +203,9 @@ export function partsMayHaveArrived(job) {
   return blockedPile(job) === null;
 }
 
-// A job the app couldn't classify: not blocked (blocked jobs have no bench on
-// purpose), but no bench either. Drives the amber "needs a bench" chip.
-export function needsBench(job) {
-  if (!job) return false;
-  if (job.bench) return false;
-  return blockedPile(job) === null;
-}
+// needsBench() lived here until 2026-08-05. It was exported and called from
+// nowhere, and the amber "needs a bench" chip its comment described was never
+// built. JobDrawer's "Needs a bench" option is the real guard now.
 
 // Difficulty bands. EZ → Medium → Tricky → Hard, in that order.
 //
@@ -199,23 +232,23 @@ export function hoursRange(h) {
 // other reader that has to reconstruct them from a stored job row that only
 // carries status/action/backlog (e.g. scripts/board_meeting_export.mjs and
 // useSupabase.js's normalise step, which read Supabase rows). Pulled out
-// as its own function so both places derive readyToStart/awaiting/inTransit/
-// schedulable from the exact same rule, rather than a second ad-hoc copy
-// silently drifting from this one over time.
+// as its own function so both places derive awaiting/inTransit/schedulable
+// from the exact same rule, rather than a second ad-hoc copy silently drifting
+// from this one over time.
 //
 // `backlog` here is already a boolean (obj.BL === 'Y' at CSV-parse time, or
 // the `bl` column read back as 'Y'/'N' from Supabase) — not the raw 'Y'/'N'
-// string.
-export function deriveJobStatusFlags(status, action, backlog) {
+// string. It is no longer read: the `readyToStart` flag that needed it (On Hold
+// + BL=Y + GTS) was deleted 2026-08-05 per Trevor — "that would never happen".
+// The parameter stays so every existing caller keeps working unchanged.
+export function deriveJobStatusFlags(status, action, backlog) { // eslint-disable-line no-unused-vars
   const act = (action || '').trim().toUpperCase();
-  // On Hold + BL=Y + GTS → graduated to schedulable (parts arrived / good to start)
-  const readyToStart = status === 'On Hold' && backlog === true && act === 'GTS';
   // Waiting + INC or CI → awaiting customer/incubating (visible but locked)
   const awaiting = status === 'Waiting' && ['INC', 'CI'].includes(act);
   // In Transit → visible but locked
   const inTransit = status === 'In Transit';
-  const schedulable = ['Active', 'Booked In'].includes(status) || readyToStart;
-  return { readyToStart, awaiting, inTransit, schedulable };
+  const schedulable = ['Active', 'Booked In'].includes(status);
+  return { awaiting, inTransit, schedulable };
 }
 
 export function createSubtasks(job, benchHours = {}) {

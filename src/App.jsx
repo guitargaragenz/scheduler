@@ -250,7 +250,7 @@ export default function App() {
     const reinferred = [];
     setJobs(prev => prev.map(j => {
       if (j.parentId || j.isSplit || j.hasSubtasks) return j;
-      const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true);
+      const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true, j.vb === true);
       if (bench !== j.bench) reinferred.push({ ...j, bench });
       return { ...j, bench };
     }));

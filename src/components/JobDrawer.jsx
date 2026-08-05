@@ -4,6 +4,17 @@ import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
+// The sentinel for "this row has no bench yet".
+//
+// Why it exists (Trevor, 2026-08-04): a <select> whose value matches none of
+// its options displays the FIRST one. ALL_BENCHES starts with 'Luthier', so a
+// bench-less job opened here read "Luthier" — and pressing Save wrote Luthier
+// for real. Not cosmetic: a silent mis-file waiting on any save. The option is
+// added only when the row genuinely has no bench, so it never appears as a
+// choice on a job that is already filed, and handleSave() refuses to write a
+// row still sitting on it.
+const NEEDS_BENCH = '';
+
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function fromTimeValue(val) {
@@ -56,13 +67,16 @@ function initRows(job, allJobs = []) {
       return rows;
     }
   }
-  return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
+  // `|| NEEDS_BENCH` normalises null/undefined to the sentinel so the <select>
+  // has a real matching option instead of falling through to its first one.
+  return [{ bench: job.bench || NEEDS_BENCH, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
 export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus }) {
   const [rows, setRows] = useState(() => initRows(job, jobs));
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
+  const [saveError, setSaveError] = useState(null);
   const modalRef = useRef(null);
 
   useEffect(() => {
@@ -137,6 +151,13 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
   }
 
   function handleSave() {
+    // Refuse rather than guess. Writing a bench the tech never picked is the
+    // exact mis-file this guard exists to stop.
+    if (rows.some(r => !r.bench)) {
+      setSaveError('Pick a bench first — one row still says "Needs a bench".');
+      return;
+    }
+    setSaveError(null);
     onSave(job, rows);
     onClose();
   }
@@ -218,13 +239,16 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                 }}>
                   <div style={{ width: 3, alignSelf: 'stretch', background: colors.border, borderRadius: 2, flexShrink: 0 }} />
                   {isSubtaskEdit ? (
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: colors.text }}>{row.bench}</span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: colors.text }}>{row.bench || 'Needs a bench'}</span>
                   ) : (
                     <select
                       value={row.bench}
                       onChange={e => setBench(ri, e.target.value)}
                       style={{ flex: 1, background: 'transparent', border: 'none', color: colors.text, fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                     >
+                      {!row.bench && (
+                        <option value={NEEDS_BENCH} style={{ background: '#1e293b', color: '#e2e8f0' }}>Needs a bench</option>
+                      )}
                       {ALL_BENCHES.map(b => <option key={b} value={b} style={{ background: '#1e293b', color: '#e2e8f0' }}>{b}</option>)}
                     </select>
                   )}
@@ -375,6 +399,13 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                 </div>
               ))}
             </div>
+          )}
+
+          {saveError && (
+            <div style={{
+              background: '#450a0a', border: '1px solid #b91c1c', borderRadius: 6,
+              padding: '7px 10px', fontSize: 11, color: '#fca5a5', marginTop: 4,
+            }}>{saveError}</div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>

@@ -179,11 +179,24 @@ describe('the board after a Commit', () => {
     expect(after.schedulable).toBe(false);
   });
 
-  it('graduates an On Hold + GTS job to ready once BL is ticked', () => {
-    const j = job({ status: 'On Hold', action: 'GTS', backlog: false, readyToStart: false, schedulable: false });
+  // Replaces a test that asserted ticking BL "graduated" an On Hold + GTS job
+  // to ready. That was the readyToStart rule, deleted 2026-08-05 — Trevor:
+  // "that would never happen." On Hold stays on hold.
+  it('keeps an On Hold + GTS job unschedulable when BL is ticked', () => {
+    const j = job({ status: 'On Hold', action: 'GTS', backlog: false, schedulable: false });
     const after = applySheetEdits(j, { backlog: true, job: '1601' });
-    expect(after.readyToStart).toBe(true);
-    expect(after.schedulable).toBe(true);
+    expect(after.readyToStart).toBeUndefined();
+    expect(after.schedulable).toBe(false);
+  });
+
+  // VB is one of the six editable boxes and now blocks the job, so the page has
+  // to re-derive schedulable itself — the realtime echo that would otherwise do
+  // it is muted for five seconds after our own write.
+  it('takes a job out of the schedulable pile the moment VB is ticked', () => {
+    const j = job({ status: 'Active', action: 'GTS', vb: false, schedulable: true });
+    const after = applySheetEdits(j, { vb: true, job: '1601' });
+    expect(after.vb).toBe(true);
+    expect(after.schedulable).toBe(false);
   });
 
   it('does not put the NOT NULL passenger `job` into the board state', () => {

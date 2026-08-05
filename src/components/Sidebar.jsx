@@ -74,9 +74,11 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
   // `schedulable`), so without the `!partsMayHaveArrived` guards they would show
   // in two places at once.
   const partsArrived  = unscheduled.filter(partsMayHaveArrived);
-  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !j.readyToStart && !partsMayHaveArrived(j));
-  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !j.readyToStart && !partsMayHaveArrived(j));
-  const readyToStart  = unscheduled.filter(j => j.readyToStart && !partsMayHaveArrived(j));
+  // The `!j.readyToStart` guards that used to sit on these two, and the READY TO
+  // START group they carved out, went with the flag itself on 2026-08-05 —
+  // On Hold + BL=Y + GTS is a case Trevor says cannot happen.
+  const active        = unscheduled.filter(j => j.schedulable && !j.backlog && !partsMayHaveArrived(j));
+  const backlog       = unscheduled.filter(j => j.schedulable && j.backlog && !partsMayHaveArrived(j));
   const awaiting      = unscheduled.filter(j => j.awaiting);
   const inTransit     = unscheduled.filter(j => j.inTransit);
   // `onHold` is the catch-all for everything the groups above didn't claim, so it
@@ -92,7 +94,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
 
   const isFocusMode = !!highlightedJobId;
 
-  let displayed, displayedBacklog, displayedReady, displayedAwaiting, displayedTransit, displayedHold, displayedPartsArrived;
+  let displayed, displayedBacklog, displayedAwaiting, displayedTransit, displayedHold, displayedPartsArrived;
   if (isFocusMode) {
     // partsArrived joins the focus-mode pool for the same reason backlog does:
     // focus mode is "show me this one job", and a job carved out of the main
@@ -100,7 +102,6 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
     displayed          = [...active, ...backlog, ...partsArrived].filter(j => j.id === highlightedJobId || j.parentId === highlightedJobId);
     displayedPartsArrived = [];
     displayedBacklog   = [];
-    displayedReady     = [];
     displayedAwaiting  = [];
     displayedTransit   = [];
     displayedHold      = [];
@@ -123,7 +124,6 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
     displayed          = active.filter(match);
     displayedPartsArrived = partsArrived.filter(match);
     displayedBacklog   = backlog.filter(match);
-    displayedReady     = readyToStart.filter(match);
     displayedAwaiting  = awaiting.filter(match);
     displayedTransit   = inTransit.filter(match);
     displayedHold      = onHold.filter(match);
@@ -294,16 +294,6 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
                   BACKLOG ({displayedBacklog.length})
                 </div>
                 {displayedBacklog.map(job => renderJob(job))}
-              </div>
-            )}
-
-            {/* Ready to Start — On Hold + BL=Y + GTS: parts arrived, good to go */}
-            {!isFocusMode && displayedReady.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: 1, padding: '4px 0 6px', borderTop: '1px solid #78350f' }}>
-                  ✅ READY TO START ({displayedReady.length})
-                </div>
-                {displayedReady.map(job => renderJob(job))}
               </div>
             )}
 
