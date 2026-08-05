@@ -80,6 +80,14 @@ memory file — this file loads automatically, every time, for every session and
     fraction of the length, and carry that register for the rest of the session rather than
     drifting back. Never ask what he means by it, and never make him spell it out. Agreed
     2026-08-04.
+  - **`sz` means "are we still in the smart zone?"** — a straight answer on whether this
+    session's context has degraded and whether he should start a fresh one. Agreed 2026-08-04,
+    after he asked it the long way mid-session. Answer it honestly and in two or three
+    sentences: what is actually degrading (repeating himself, stale facts, drift off the task),
+    what is still solid, and a plain yes or no on starting fresh. **Never answer it with
+    reassurance.** "We're fine!" is worthless to him — if the honest answer is that a fresh
+    session would be better, say so and offer to write the handoff. If the answer is genuinely
+    "keep going", say what the evidence for that is.
 
 ---
 

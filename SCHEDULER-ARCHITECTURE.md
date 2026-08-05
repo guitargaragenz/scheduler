@@ -22,6 +22,51 @@ that file stays pure session-protocol and this loads only when actually working 
   in-app Upload CSV buttons are retired (Brief H, Builds 2a–2c). Git history has them if anyone
   ever needs to see how they worked.
 
+## Trevor's shorthand — the codes on every job
+
+Written down here 2026-08-04, because they weren't. Working out what `VB` meant took a dig
+through one help article and a board-meeting note from a week earlier, and `DG` was defined
+nowhere at all despite being a valid option, colour-coded on the Daily Log and grouped under
+"Needs Thinking" on the Projects page. If a code is added or its meaning shifts, change it here.
+
+**Action codes** — the next required step on a job. One per job, set on the Jobs Sheet.
+
+| Code | Means | Notes |
+|---|---|---|
+| `GTS` | Good To Start | Nothing in the way. The only action that means "workable". |
+| `DG` | To be Diagnosed | Fault not established yet. Batches well — a diagnosing day. |
+| `INC` | Incubating | Still turning over in Trevor's head. Nowhere near quoting. |
+| `RS` | Research | Same still-figuring-it-out phase as INC. |
+| `RS-C` | Research with Claude | As RS, done in a session here. |
+| `CI` | Customer Involved | Waiting on the customer. Chase them, not the job. |
+| `WP` | Waiting Parts | Trevor's own marker — Multitrack's "Waiting Parts" status is flattened to plain `Waiting` on import, so the app cannot tell a parts hold from a customer hold on status alone. |
+| `FB` | Fabrication | A jig or fixture must be made first. Book the jig as a manual split on the **Admin** bench — jig time is real hours but never charged out. |
+
+`INC`, `RS`, `RS-C` and `DG` all mean the same thing to the scheduler: not ready to plan.
+
+**Flags** — checkboxes on the Jobs Sheet, independent of the action code.
+
+| Flag | Means | Notes |
+|---|---|---|
+| `VB` | Virtual Booking | The customer keeps the instrument until near bench time. **The guitar is not in the shop**, so a VB job cannot be worked whatever else it says. |
+| `BL` | Backlog | Old work still on the books. |
+| `PJ` | Project | Long-running work. Drives the Projects page. |
+
+**Difficulty tags** — set one and it fills in the matching hours, which are then Trevor's to
+override. The hours are the bottom of the next band up, so the number offered is the honest
+worst case rather than a midpoint that under-books the day.
+
+| Tag | Fills in | Band |
+|---|---|---|
+| `EZ` | 1.5h | ≤ 1.5h |
+| `M` | 3h | ≤ 3h |
+| `T` | 5.5h | ≤ 5.5h |
+| `H` | 6h | > 5.5h |
+
+A tag fills the Hours box once and never touches it again, so most jobs' hours deliberately
+differ from their tag's default — 29 of 36 on 2026-08-04. **A tag/hours mismatch is normal and
+is not a bug**; do not build anything that flags it.
+
 ## Shipped features
 
 ### Projects view
