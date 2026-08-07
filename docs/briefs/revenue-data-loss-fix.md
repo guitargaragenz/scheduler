@@ -4,7 +4,8 @@ doc_status: live
 
 # Brief — the revenue record stops being deletable
 
-**Status: awaiting Trevor's approval. No build has started.**
+**Status: APPROVED by Trevor 2026-08-07. Council complete — both reviewers approved with changes,
+all folded in (section 5). Cleared for Build 1.**
 
 Audited 2026-08-07 against the live code and the live database. Source material:
 [source-revenue-data-loss-interview.md](source-revenue-data-loss-interview.md) (now superseded by
@@ -134,7 +135,8 @@ From the 2026-08-06 interview. A council reviewer **cannot** overrule these.
    so nothing is stable. Use the job id as the key and insert with `ON CONFLICT DO NOTHING`, so
    ticking the same job twice cannot duplicate it. This is safe because of the standing workshop
    rule: *a completed job never comes back — returning work is rebooked under a new job number.*
-   Split pieces must be checked for distinct ids before this is relied on (see Open Questions).
+   Split pieces confirmed distinct by both council reviewers — see ruling 1. **A conflict must be
+   detected and reported, not swallowed — see ruling 4.**
 4. **Failures are never silent.** A failed append must surface a toast, in the same shape as the
    existing `'⚠ Mark-done did not save — reload and re-check this job'` at `useJobs.js:272`.
 5. **The reconfirm path stops throwing the job number away.** `buildManualInvoiceJob()` returns
@@ -168,15 +170,58 @@ the fix itself.** Build 2 does not block Build 1 and should ship second.
 
 ---
 
-## 5. Open questions for council
+## 5. Council rulings — RESOLVED 2026-08-07
 
-1. **Split jobs.** `handleMarkDone` is called per job with `job.id`. If split pieces can share an id
-   with their parent, keying on job id would swallow a legitimate second row. Verify against
-   `getJobSplits()` in `src/data/jobs.js` before committing to the key.
-2. **The 1712 row has `job_number` null.** Repair it as part of this build, or leave it for Trevor's
-   manual backfill? (Recommendation: repair it — the `jobs` row for 1712 has the number.)
-3. **`doneJobIds`** is currently written alongside the records. Where does it live once the save is
-   append-only, and does it have the same wipe problem?
+Two independent `ggnz-council` reviewers. **Both returned APPROVE WITH CHANGES.** Both confirmed
+every code claim in this brief against the live code, and both independently reached the same
+answers on questions 1 and 3.
+
+1. **Split jobs — SAFE, keying on job id is correct.** `getJobSplits()` (`src/data/jobs.js:342-350`)
+   filters on `parentId === job.id`; split children are separate `jobs[]` rows with their own
+   distinct `id`. `handleMarkDone` is called per piece with that piece's own id. Two legitimate
+   revenue rows cannot collide. Schema is compatible with no migration —
+   `completed_jobs.id` is already `TEXT PRIMARY KEY` (`docs/supabase-schema.sql:176-186`).
+
+2. **The null `job_number` on the 1712 row — repair it in this build.** The `jobs` row for 1712
+   carries the number.
+
+3. **`doneJobIds` — the question was based on a wrong premise; there is nothing to do.**
+   `saveCompletedJobs(records, doneJobIds)` at `src/utils/supabase.js:1830` never uses its
+   `doneJobIds` parameter — it is dead. The list is *derived* on load from `completed_jobs.job_id`
+   at `src/utils/supabase.js:1913`. There is no second table to wipe. Verified directly, not taken
+   on the reviewers' word.
+
+4. **NEW — raised by council, decided by Trevor 2026-08-07. Ticking the same job twice with a
+   different amount.** A bare `ON CONFLICT DO NOTHING` would silently keep the first, possibly
+   wrong, amount and drop the correction — a new silent bug on top of the one being fixed.
+
+   **Trevor's ruling: refuse the second write, and say so.** Keep the existing row, do not update
+   the amount, and show a toast naming the amount already recorded and telling him to correct it in
+   the database — e.g. `⚠ 1687 already recorded at $50 — correct it in the database`. This is the
+   faithful reading of his section 3 answer: one and done, corrections happen in the database. The
+   app still never overwrites a money figure. **Silence is the thing being ruled out, not the
+   refusal.**
+
+   The builder must therefore detect the conflict rather than fire-and-forget: check for an existing
+   row for that job id, or use an insert whose result distinguishes "inserted" from "already there".
+
+5. **Both reviewers flagged the same risk in the build itself:** removing `clearCompletedJobs()` is
+   the easy half, and the "surface failures" half (scope item 4) is pure builder discipline —
+   nothing in the code structure forces the new `appendCompletedJob`'s result to be wired to a
+   toast. **Verifier: treat checks 5b and 7 as the ones most likely to be quietly skipped.**
+
+6. **Build 1 alone is safe to ship without Build 2** — confirmed. `WeeklySummaryModal.jsx` takes
+   revenue as a prop computed at `src/App.jsx:492` (`completedJobs.filter(r => r.weekKey ===
+   currentWeekKey)`), and `RevenueBreakdown.jsx` renders whatever it is handed. Both filter
+   correctly however large the table grows. Unbounded growth is a Build 2 performance problem, not
+   a Build 1 correctness break. **Sunday board meeting numbers stay correct under Build 1** —
+   `scripts/board_meeting_export.mjs:93-105` loads the table unbounded but
+   `.claude/workflows/sunday-board-meeting.js:112` filters by `weekKey` afterward. (It does confirm
+   Build 2 is real work: that script will re-download the whole history every Sunday forever.)
+
+7. **`buildManualInvoiceJob` change is safe.** Only two callers — `CloseDayModal.jsx:352` and
+   `CatchUpInterview.jsx:144` — both pass the result straight into `handleMarkDone`. Carrying the
+   job number through fixes the null `job_number` without changing either caller's contract.
 
 ---
 
@@ -188,7 +233,10 @@ the fix itself.** Build 2 does not block Build 1 and should ship second.
    and after).
 4. **Hard-refresh, then immediately mark a job done before the page finishes loading** → the row
    count still goes up by one and nothing is lost. This is the exact reproduction from `pk-md-04`.
-5. Mark the same job done twice → still one row, not two.
+5. Mark the same job done twice, same amount → still one row, not two.
+5b. **Mark the same job done twice with a DIFFERENT amount** → still one row, the amount is
+   **unchanged**, and a toast names the amount already recorded and points at the database. A
+   silent refusal is a FAIL, not a pass. (Council ruling 4.)
 6. Reconfirm a job through `CatchUpInterview` → new row has a non-null `job_number`.
 7. Simulate an insert failure → a warning toast appears; nothing is deleted.
 8. Unit tests in the shape of `src/utils/supabaseParkingLot.test.js`, covering 3–5 above.
