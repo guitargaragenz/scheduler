@@ -359,11 +359,22 @@ export function getJobSplits(job, jobs) {
 export function buildManualInvoiceJob(bullet) {
   const [first, ...rest] = (bullet.text || '').split(' — ');
   return {
-    id: bullet.jobId, job: null, bench: null, hours: null,
+    id: bullet.jobId, job: jobNumberFromId(bullet.jobId), bench: null, hours: null,
     customer: rest.length ? first : '',
     mfr: rest.length ? rest.join(' — ') : first,
     model: '',
   };
+}
+
+// This path used to hard-code `job: null`, and that is why the one surviving
+// revenue row in the live database has a null job_number — nothing could
+// reconcile it back to Multitrack. The number is recoverable: every job id
+// starts with it, whether it's a top-level job ("1712"), a manual split child
+// ("1520_Luthier_0") or a derived bench card ("2000-ST"). Anything that doesn't
+// begin with digits has no number to carry, and still returns null.
+export function jobNumberFromId(jobId) {
+  const match = String(jobId ?? '').match(/^(\d+)/);
+  return match ? match[1] : null;
 }
 
 export const BENCH_COLORS = {

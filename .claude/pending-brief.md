@@ -135,7 +135,8 @@ From the 2026-08-06 interview. A council reviewer **cannot** overrule these.
    so nothing is stable. Use the job id as the key and insert with `ON CONFLICT DO NOTHING`, so
    ticking the same job twice cannot duplicate it. This is safe because of the standing workshop
    rule: *a completed job never comes back — returning work is rebooked under a new job number.*
-   Split pieces confirmed distinct by both council reviewers — see ruling 1. **A conflict must be
+   **The key is the TOP-LEVEL job id** — if the job being ticked has a `parentId`, walk up to the
+   parent and key the row on the parent. See ruling 1 (rewritten 2026-08-07). **A conflict must be
    detected and reported, not swallowed — see ruling 4.**
 4. **Failures are never silent.** A failed append must surface a toast, in the same shape as the
    existing `'⚠ Mark-done did not save — reload and re-check this job'` at `useJobs.js:272`.
@@ -176,11 +177,28 @@ Two independent `ggnz-council` reviewers. **Both returned APPROVE WITH CHANGES.*
 every code claim in this brief against the live code, and both independently reached the same
 answers on questions 1 and 3.
 
-1. **Split jobs — SAFE, keying on job id is correct.** `getJobSplits()` (`src/data/jobs.js:342-350`)
-   filters on `parentId === job.id`; split children are separate `jobs[]` rows with their own
-   distinct `id`. `handleMarkDone` is called per piece with that piece's own id. Two legitimate
-   revenue rows cannot collide. Schema is compatible with no migration —
-   `completed_jobs.id` is already `TEXT PRIMARY KEY` (`docs/supabase-schema.sql:176-186`).
+1. **Split jobs — REWRITTEN 2026-08-07 after Trevor's correction. Key on the TOP-LEVEL job id.**
+
+   Both reviewers originally said "keying on job id is safe because split pieces have distinct ids,
+   so two revenue rows cannot collide." **That reasoning assumed one revenue row per piece, and it
+   is wrong.** Trevor: *"split jobs are invoiced combined at end of job. One invoice only per job
+   completed."*
+
+   The conclusion (key on job id, no migration needed) still holds — `completed_jobs.id` is already
+   `TEXT PRIMARY KEY` (`docs/supabase-schema.sql:176-186`) — but the rule is stricter: **one
+   revenue row per top-level job, never one per piece.**
+
+   The code only half-enforces this today:
+   - `PomoDrawer.jsx:346` gates the mark-done control on `!job.parentId` — a split child cannot be
+     invoiced from the ordinary tick. Correct.
+   - `CloseDayModal.jsx` and `CatchUpInterview.jsx` do **not**. Both resolve a Daily Log bullet to a
+     job by raw id (`CloseDayModal.jsx:234`, `CatchUpInterview.jsx:78`), and `canInvoiceJob()`
+     (`src/data/jobs.js:392-397`) *permits* a child once every piece is `pieceDone`. So two pieces
+     of one job, each with an amount typed, produce **two revenue rows** — which is exactly what
+     Trevor says never happens.
+
+   **Build 1 must therefore resolve `parentId` up to the top-level job before writing the row**, so
+   a second piece hits the same key and is refused under ruling 4 instead of creating a second row.
 
 2. **The null `job_number` on the 1712 row — repair it in this build.** The `jobs` row for 1712
    carries the number.
@@ -237,6 +255,8 @@ answers on questions 1 and 3.
 5b. **Mark the same job done twice with a DIFFERENT amount** → still one row, the amount is
    **unchanged**, and a toast names the amount already recorded and points at the database. A
    silent refusal is a FAIL, not a pass. (Council ruling 4.)
+5c. **Split job:** mark one piece done, then the other → **one** revenue row, keyed on the parent
+   job id, and the second attempt is refused with a toast (ruling 1 + ruling 4). Two rows is a FAIL.
 6. Reconfirm a job through `CatchUpInterview` → new row has a non-null `job_number`.
 7. Simulate an insert failure → a warning toast appears; nothing is deleted.
 8. Unit tests in the shape of `src/utils/supabaseParkingLot.test.js`, covering 3–5 above.

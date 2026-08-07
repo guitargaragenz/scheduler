@@ -4,7 +4,7 @@ import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsBy
 import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
 import { buildJbaImportPlan } from '../data/jbaImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, saveCompletedJobs, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport, loadJobIdentities, writeDepartureBatch, deleteScheduledSlotsForJobs } from '../utils/supabase.js';
+import { isSupabaseConfigured, appendCompletedJob, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport, loadJobIdentities, writeDepartureBatch, deleteScheduledSlotsForJobs } from '../utils/supabase.js';
 import { jobAgeDays } from '../utils/jobAge.js';
 import { getWeekDays, localDateKey } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
@@ -18,6 +18,25 @@ function cleanupGcalEvents(removedChildren) {
     const ids = child.gcalEventIds?.length ? child.gcalEventIds : (child.gcalEventId ? [child.gcalEventId] : []);
     ids.forEach(id => deleteEvent(id));
   });
+}
+
+// Walks parentId up to the job the customer is actually invoiced for.
+//
+// Both kinds of split piece carry parentId — stored manual children
+// (isSubtask, built at handleSaveDrawer) and derived auto-split bench cards
+// (isDerived, built in joinJobs). A piece whose parent isn't on the board (a
+// synthetic manual-invoice job, or a child whose parent hasn't loaded yet)
+// returns itself: guessing at a parent that isn't there would key the money on
+// an id nothing else uses. The depth cap is a cycle guard — a corrupted
+// parentId loop must not hang a mark-done.
+export function topLevelJob(job, jobs) {
+  let current = job;
+  for (let depth = 0; depth < 10 && current?.parentId; depth += 1) {
+    const parent = (jobs || []).find(j => j.id === current.parentId);
+    if (!parent || parent.id === current.id) break;
+    current = parent;
+  }
+  return current;
 }
 
 export function useJobs({
@@ -249,31 +268,66 @@ export function useJobs({
   }
 
   function handleMarkDone(job, amount) {
+    // The revenue row belongs to the TOP-LEVEL job, never to a split piece.
+    // Split work is invoiced combined at the end of the job — one invoice per
+    // job — so both pieces of a two-piece job must resolve to the same key.
+    // Only PomoDrawer gates its tick on !job.parentId; CloseDayModal and
+    // CatchUpInterview resolve a Daily Log bullet to whatever job id it holds,
+    // which can be a child. Without this walk-up those two produce two revenue
+    // rows for one job, which is exactly what never happens in the workshop.
+    const invoiceJob = topLevelJob(job, jobs);
+
     // localDateKey, not toISOString() — the latter converts to UTC first,
     // which rolls Monday-local-midnight back to Sunday for timezones ahead
     // of UTC (NZ, UTC+12/+13), stamping the record into the previous week.
     const weekKey = localDateKey(getWeekDays()[0]);
     const record = {
-      id: String(job.id), job: job.job, mfr: job.mfr, model: job.model,
-      bench: job.bench, hours: job.hours, customer: job.customer || '',
+      id: String(invoiceJob.id), job: invoiceJob.job, mfr: invoiceJob.mfr, model: invoiceJob.model,
+      bench: invoiceJob.bench, hours: invoiceJob.hours, customer: invoiceJob.customer || '',
       invoiceAmount: Number(amount) || 0,
       completedAt: new Date().toISOString(),
       weekKey,
     };
-    const newRecords = [...completedJobs, record];
-    const newDoneIds = [...doneJobIds, String(job.id)];
+    // Keyed on the top-level id, so a second piece replaces rather than
+    // appends and the on-screen total can't double-count what the database
+    // will only ever hold once.
+    const newRecords = [...completedJobs.filter(r => String(r.id) !== record.id), record];
+    const newDoneIds = doneJobIds.includes(record.id) ? doneJobIds : [...doneJobIds, record.id];
     setCompletedJobs(newRecords);
     setDoneJobIds(newDoneIds);
     setJobs(prev => prev.map(j => j.id === job.id ? { ...j, done: true } : j));
     if (isSupabaseConfigured()) {
-      saveCompletedJobs(newRecords, newDoneIds);
+      // One row, appended. Nothing is cleared, nothing is rewritten, and the
+      // result is WIRED to a toast — a revenue write that fails silently is
+      // the whole bug this build exists to end.
+      appendCompletedJob(record).then(res => {
+        if (!res?.ok) {
+          showToast('⚠ Revenue did not save — reload and re-check this job');
+          return;
+        }
+        if (res.duplicate) {
+          // Refused on purpose: the app never overwrites a money figure. Name
+          // the amount that IS stored so the difference is visible, and point
+          // at the database, which is where corrections are made.
+          const label = record.job || record.id;
+          const stored = res.existing?.invoiceAmount;
+          const storedText = stored === undefined || stored === null ? 'an amount' : `$${formatMoney(stored)}`;
+          showToast(`⚠ ${label} already recorded at ${storedText} — correct it in the database`);
+          // Show what the database holds, not the figure that was refused.
+          if (stored !== undefined && stored !== null) {
+            setCompletedJobs(prev => prev.map(r =>
+              String(r.id) === record.id ? { ...r, invoiceAmount: stored } : r
+            ));
+          }
+        }
+      });
       justSavedAt.current = Date.now();
       batchWriteJobsState([{ id: job.id, data: jobsStateFieldsFor({ ...job, done: true }) }])
         .then(res => { if (!res?.ok) showToast('⚠ Mark-done did not save — reload and re-check this job'); });
     }
     setPomoJob(null);
     // Exact amount entered, not rounded — matches the stored invoiceAmount above.
-    showToast(`✓ ${job.mfr} ${job.model} — $${formatMoney(amount)} invoiced`);
+    showToast(`✓ ${invoiceJob.mfr} ${invoiceJob.model} — $${formatMoney(amount)} invoiced`);
   }
 
   // --- Multitrack PDF import (Brief G, Build 1a) ---
