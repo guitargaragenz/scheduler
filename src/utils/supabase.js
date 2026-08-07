@@ -1827,43 +1827,94 @@ export function subscribeToStatusSince(callback) {
 
 // ============ COMPLETED JOBS ============
 
-export async function saveCompletedJobs(records, doneJobIds) {
-  try {
-    // Clear and re-insert completed jobs
-    await clearCompletedJobs();
-    const completedRecords = records.map((record, idx) => ({
-      id: `cj-${Date.now()}-${idx}`,
-      job_id: record.id,
-      job_number: record.job,
-      customer: record.customer,
-      mfr: record.mfr,
-      model: record.model,
-      hours: record.hours,
-      invoice_amount: record.invoiceAmount,
-      week_key: record.weekKey,
-      completed_at: record.completedAt || new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    }));
+// Appends ONE revenue row. It is the only writer this table has, and it has no
+// deleter at all — the clear-and-re-insert that used to live here (DELETE every
+// row, then re-insert whatever the browser tab was holding) is gone, along with
+// the clearCompletedJobs() helper it called. Do not reintroduce either.
+//
+// The job board can be rebuilt from the Multitrack printout. The revenue record
+// cannot — there is no printout for money. So this function may only ever add.
+//
+// Three rules:
+//   - ONE row per TOP-LEVEL job. The caller resolves parentId up to the parent
+//     before calling; split pieces of one job are invoiced combined, so a
+//     second piece must hit the same key rather than write a second row.
+//   - A row is NEVER rewritten. If the key is already taken, the write is
+//     REFUSED and reported back as { duplicate: true } with the amount already
+//     stored, so the caller can say so. Silently keeping the old amount, or
+//     silently overwriting it, are both banned: corrections happen in the
+//     database, by hand, on purpose.
+//   - Failure is never swallowed. Every path returns { ok: false } and the
+//     caller raises a toast. The old version console.error'd and returned
+//     undefined, so a failed save looked exactly like a successful one.
+//
+// Returns { ok, duplicate?, existing?, error? }.
+export async function appendCompletedJob(record) {
+  const key = String(record?.id ?? '');
+  if (!key) {
+    console.error('Supabase append completed job refused: record has no id', record);
+    return { ok: false, error: new Error('completed job record has no id') };
+  }
 
-    const { error } = await getClient()
-      .from('completed_jobs')
-      .insert(completedRecords);
-    if (error) throw error;
+  // Deterministic primary key, so the same job can never occupy two rows.
+  const rowId = `cj-${key}`;
+  const row = {
+    id: rowId,
+    job_id: key,
+    job_number: record.job ?? null,
+    customer: record.customer ?? null,
+    mfr: record.mfr ?? null,
+    model: record.model ?? null,
+    hours: record.hours ?? null,
+    invoice_amount: record.invoiceAmount,
+    week_key: record.weekKey ?? null,
+    completed_at: record.completedAt || new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  };
+
+  try {
+    // Match on job_id, not on the primary key. Rows written before this change
+    // carry the old `cj-<timestamp>-<idx>` ids, so a primary-key check alone
+    // would happily write a second row for a job that already has one.
+    const existing = await findCompletedJobRow(key);
+    if (existing) return { ok: true, duplicate: true, existing };
+
+    const { error } = await getClient().from('completed_jobs').insert([row]);
+    if (error) {
+      // 23505 = unique_violation. Two tabs racing the check above land here;
+      // the database, not this code, is what actually guarantees one row.
+      if (error.code === '23505') {
+        const raced = await findCompletedJobRow(key);
+        return { ok: true, duplicate: true, existing: raced || { jobId: key } };
+      }
+      throw error;
+    }
+    return { ok: true, duplicate: false };
   } catch (e) {
-    console.error('Supabase save completed jobs error:', e);
+    console.error('Supabase append completed job error:', e);
+    return { ok: false, error: e };
   }
 }
 
-async function clearCompletedJobs() {
-  try {
-    const { error } = await getClient()
-      .from('completed_jobs')
-      .delete()
-      .neq('id', '');
-    if (error) throw error;
-  } catch (e) {
-    console.error('Supabase clear completed jobs error:', e);
-  }
+// Returns the stored row for a job id in the camelCase shape the app uses, or
+// null if there isn't one. Throws on a read error — callers must not treat a
+// failed read as "no row exists", because that is how a duplicate gets written.
+async function findCompletedJobRow(jobId) {
+  const { data, error } = await getClient()
+    .from('completed_jobs')
+    .select('id, job_id, job_number, invoice_amount, completed_at')
+    .eq('job_id', jobId)
+    .limit(1);
+  if (error) throw error;
+  const found = (data || [])[0];
+  if (!found) return null;
+  return {
+    rowId: found.id,
+    jobId: found.job_id,
+    job: found.job_number,
+    invoiceAmount: found.invoice_amount,
+    completedAt: found.completed_at,
+  };
 }
 
 export function subscribeToCompletedJobs(callback) {
