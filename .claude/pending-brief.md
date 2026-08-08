@@ -5,7 +5,10 @@ doc_status: live
 # Scope lock — revenue: Build 2 (the readers)
 
 **Approved by Trevor 2026-08-08. Council done. Resumes at protocol step 3 (builder).**
-Full brief, rulings and history: [docs/briefs/revenue-data-loss-fix.md](../docs/briefs/revenue-data-loss-fix.md).
+History, council rulings and the verifier's checklist live in
+[docs/briefs/revenue-data-loss-fix.md](../docs/briefs/revenue-data-loss-fix.md) — **don't open it to
+do the build.** Everything the builder needs is on this page. Open it only to verify (§6) or to
+settle a question this page genuinely doesn't answer.
 Build 1 shipped 2026-08-07 (`c9be008`) — the table is no longer wiped, so it now grows forever.
 
 ## In scope

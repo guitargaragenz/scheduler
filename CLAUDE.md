@@ -253,6 +253,21 @@ Firestore months after everything moved to Supabase.
   document is spent, delete it. Git keeps it permanently (`git log -- docs/briefs/`), so
   deleting loses nothing and stops it being found by search and acted on.
 
+### A scope lock is a page, not a file of record
+
+Added 2026-08-08, after `.claude/pending-brief.md` grew to ~300 lines — a near-copy of the
+revenue brief. Starting a session then loaded the same audit twice, before any work happened.
+Trevor pays for that in context, which is what he has least of.
+
+- `.claude/pending-brief.md` holds **only**: what to build, what is out of scope, and the rules
+  that bind the build. Capped at 50 lines by `.claude/hooks/limit-scope-lock-size.py`, which
+  warns after the write — split the content out, don't shave lines to beat the counter.
+- History, council rulings, audit records and verification checklists live in `docs/briefs/`.
+- **Label the link out, so it doesn't read as the next step**: say plainly that the linked brief
+  is background and should not be opened just to start the build.
+- **Don't follow that link when starting work.** If the scope lock genuinely doesn't answer a
+  question, open the brief and say why you did.
+
 ### Git discipline
 Always `git add <specific file>`, never `git add -A`. Commit messages explain the why. Never `--no-verify` or `--amend` a pushed commit.
 

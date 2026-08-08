@@ -13,9 +13,15 @@ from the repo — because a hardcoded brief name goes stale the day the brief sh
 
 1. **Read [docs/briefs/README.md](../../../docs/briefs/README.md).** Its **Live** table is the
    source of truth for what is current. Ignore the Parked and Closed tables for now.
-2. **Read the brief the Live table points at**, and check its own `doc_status:` line says `live`.
-   If the Live table and the `doc_status:` line disagree, say so and stop — the index is wrong and
-   that is worth one sentence to Trevor before any work happens.
+2. **Read the scope lock the Live table points at** (usually `.claude/pending-brief.md`), and check
+   its own `doc_status:` line says `live`. If the Live table and the `doc_status:` line disagree,
+   say so and stop — the index is wrong and that is worth one sentence to Trevor before any work
+   happens.
+   **Then stop reading.** The scope lock links out to the full brief for history, council rulings
+   and the verifier's checklist. Do **not** follow that link as part of starting — it is background,
+   often several hundred lines, and loading it costs Trevor a chunk of the session before a line of
+   work happens. Open it only if the scope lock genuinely doesn't answer a question you have, and
+   say why when you do.
 3. **Read the standing-order blockquote above the Parked table** in the same README. It fixes the
    order of work. Whatever it says overrides any instinct to start with a small visible change.
 4. **Work out which protocol step the work resumes at**, from the brief's own text — not from
