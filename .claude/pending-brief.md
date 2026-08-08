@@ -2,46 +2,47 @@
 doc_status: live
 ---
 
-# Scope lock — revenue: Build 3 (load what's already saved)
+# Scope lock — revenue Build 3: load what's already saved
 
-**Awaiting Trevor's approval. Then protocol step 2 (council) — this is new scope council has
-never seen.** Builds 1 and 2 are shipped and closed; their record is in
-[docs/briefs/revenue-data-loss-fix.md](../docs/briefs/revenue-data-loss-fix.md) — **background
-only, don't open it to do this build.**
+**Council complete (2026-08-08), both reviewers, changes folded in below. Awaiting Trevor's
+approval, then protocol step 3 (builder).** Council's full reasoning is in
+[docs/briefs/revenue-build-3-council.md](../docs/briefs/revenue-build-3-council.md) —
+**background only, don't open it to start the build.** Builds 1–2 are shipped and closed.
 
-## The problem, verified 2026-08-08
+## The problem, verified against the code
 
-`loadCompletedJobs()` and `subscribeToCompletedJobs()` (`src/utils/supabase.js`) have **zero
-callers in the app**. `src/App.jsx:121` starts `completedJobs` as `[]`, and only
-`handleMarkDone()` in `src/hooks/useJobs.js` ever fills it, in memory. So after any page
-reload the Board's week revenue (`src/App.jsx:492`) reads $0 until jobs are re-ticked.
-
-Second consequence: the in-memory list is also what stops a double-tick
-(`useJobs.js` filters `completedJobs` by id). Empty on reload, so re-ticking a job appends,
-the database correctly refuses it, and Trevor gets a scary "already recorded" toast for a job
-he ticked once.
+`loadCompletedJobs()` and `subscribeToCompletedJobs()` have **zero callers in the app**.
+`completedJobs` starts `[]` in `src/App.jsx:121` and only `handleMarkDone()` ever fills it,
+in memory. So after a reload the Board's week revenue (`src/App.jsx:492`) reads $0, and a job
+ticked before that reload raises a false "already recorded" toast.
 
 ## In scope
 
-- Load the current week's revenue rows on app start, using the bounded reader shipped in
-  Build 2 — `loadCompletedJobs(recentWeekKeys(...))`, never the all-time form.
-- Keep it live across devices via `subscribeToCompletedJobs()`, passing the same week keys.
-- Make the week total on screen match the database after a reload.
+- Load the current week's rows on app start via `loadCompletedJobs(recentWeekKeys(...))` —
+  bounded, never the all-time form — and keep it live with `subscribeToCompletedJobs()` on
+  the same keys, cleaned up on unmount.
+- The load belongs in `src/hooks/useJobs.js`, which already owns this state. Not `App.jsx`.
+- **Carve-out from "don't change Builds 1–2", required:** `loadCompletedJobs()` returns
+  `{records: [], doneJobIds: []}` on *error*, identical to an empty week
+  (`src/utils/supabase.js:1982`). Give it an error signal so the caller skips the update
+  instead of zeroing the total. Without this the last rule below cannot be met.
+- Map `doneJobIds` to `String(d.job_id)` (`:1981`) — `handleMarkDone` compares string ids.
+- Recompute the week keys as the week turns; a tab open past Sunday midnight must not keep
+  reading last week. If that can't be done cleanly, say so — a stated limit, never a silent one.
 
 ## Out of scope
 
-Any all-time or historical revenue view · invoice number capture · the `To Be Inv` nag · any
-edit-a-completed-row UI (ruled out: "one and done, then edit if necessary in DB") ·
-`useFirebase.js` (dead code) · changing anything in Builds 1 or 2.
+Any all-time or historical revenue view · invoice number capture · the `To Be Inv` nag ·
+any edit-a-completed-row UI · `useFirebase.js` (dead code) · anything else in Builds 1–2.
 
-## Rules that still bind
+## Rules that bind
 
-- **The revenue record is never rewritten or deleted by the app.** No `.delete()` against
+- **The revenue record is never rewritten or deleted by the app.** No `.delete()` on
   `completed_jobs`; `clearCompletedJobs()` / `saveCompletedJobs()` stay gone.
-- Week keys come from the same local-Monday logic the writer uses. Never `toISOString()` —
-  that rolled NZ Monday back to Sunday and is what reported $0 on 31 July.
-- A failed read must not look like an empty week. Loading must never overwrite a real
-  in-memory list with `[]` because the read broke.
+- Week keys use the same local-Monday logic as the writer. Never `toISOString()` — that
+  rolled NZ Monday back to Sunday and is what reported $0 on 31 July.
+- **A failed read must never overwrite a real list with `[]`.**
 - Loading must not re-fire `handleMarkDone()` or write any job state.
-- Staging branch → `ggnz-verifier` → browser test (reload the page, total survives) → Trevor
-  approves the merge.
+- Staging branch → `ggnz-verifier` → browser test → Trevor approves the merge. The browser
+  test must also check **CloseDayModal and CatchUpInterview** — a real `completedJobs` list
+  changes what they find, beyond just the total.
