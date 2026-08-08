@@ -41,6 +41,15 @@ function chain(table) {
         calls.push({ table, op: 'select', cols, col, opts });
         return Promise.resolve(nextResult());
       }),
+      // The week-key bound (Build 2). Recorded so a read that silently loses
+      // its bound — and goes back to downloading the whole revenue history —
+      // shows up as a failing assertion.
+      in: vi.fn((col, vals) => ({
+        order: vi.fn((oCol, opts) => {
+          calls.push({ table, op: 'select', cols, col, vals, order: oCol, opts });
+          return Promise.resolve(nextResult());
+        }),
+      })),
     })),
     insert: vi.fn(records => {
       calls.push({ table, op: 'insert', records });
@@ -78,7 +87,8 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 const supabaseModule = await import('./supabase.js');
-const { appendCompletedJob } = supabaseModule;
+const { appendCompletedJob, loadCompletedJobs } = supabaseModule;
+const { recentWeekKeys } = await import('./calendar.js');
 
 const DB_ERROR = { message: 'permission denied for table', code: '42501' };
 const UNIQUE_VIOLATION = { message: 'duplicate key value violates unique constraint', code: '23505' };
@@ -232,6 +242,52 @@ describe('ticking the same job twice (checklist 5, 5b, 5c)', () => {
 
     expect(res).toMatchObject({ ok: true, duplicate: true });
     expect(res.existing.invoiceAmount).toBe(50);
+  });
+});
+
+// Build 2 (2026-08-08). Build 1 stopped the table being wiped, so it now grows
+// forever. Every reader that only wants recent weeks must say so, or the app
+// downloads the entire revenue history on every load and every realtime tick.
+describe('reads are bounded to the weeks asked for', () => {
+  it('a week-bounded load filters on the stored week_key column', async () => {
+    results = [{ data: [], error: null }];
+    await loadCompletedJobs(['2026-08-04']);
+
+    const select = calls.find(c => c.op === 'select');
+    expect(select).toMatchObject({
+      table: 'completed_jobs', col: 'week_key', vals: ['2026-08-04'],
+    });
+  });
+
+  it('no argument still reads all-time, so no existing caller changes meaning', async () => {
+    results = [{ data: [], error: null }];
+    await loadCompletedJobs();
+
+    const select = calls.find(c => c.op === 'select');
+    expect(select.col).toBe('created_at'); // straight to .order(), no .in()
+    expect(select.vals).toBeUndefined();
+  });
+
+  it('maps the bounded rows to the same camelCase shape as before', async () => {
+    results = [{ data: [storedRow({ week_key: '2026-08-04', customer: 'Jules Lovell' })], error: null }];
+    const { records, doneJobIds } = await loadCompletedJobs(['2026-08-04']);
+
+    expect(doneJobIds).toEqual(['1687']);
+    expect(records[0]).toMatchObject({
+      id: '1687', job: '1687', invoiceAmount: 50, weekKey: '2026-08-04',
+    });
+  });
+
+  it('recentWeekKeys returns Monday keys, newest first, one per week back', () => {
+    // Friday 2026-08-07 — its Monday is 2026-08-03.
+    const keys = recentWeekKeys(3, new Date(2026, 7, 7));
+    expect(keys).toEqual(['2026-08-03', '2026-07-27', '2026-07-20']);
+  });
+
+  it('recentWeekKeys keeps Monday LOCAL — the UTC slice would say Sunday in NZ', () => {
+    // Monday 2026-08-03 at 00:00 local is 2026-08-02 in UTC at +12/+13, which
+    // is the $0-revenue bug fixed 2026-07-31. The key must still be the Monday.
+    expect(recentWeekKeys(1, new Date(2026, 7, 3, 0, 0, 0))).toEqual(['2026-08-03']);
   });
 });
 

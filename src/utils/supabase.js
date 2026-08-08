@@ -1917,7 +1917,10 @@ async function findCompletedJobRow(jobId) {
   };
 }
 
-export function subscribeToCompletedJobs(callback) {
+// `weekKeys` is passed straight through to loadCompletedJobs() on every change,
+// so a subscriber that only cares about the current week re-reads one week
+// rather than the whole history each time a job is ticked off.
+export function subscribeToCompletedJobs(callback, weekKeys) {
   try {
     const channel = getClient()
       .channel('public:completed_jobs')
@@ -1925,7 +1928,7 @@ export function subscribeToCompletedJobs(callback) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'completed_jobs' },
         () => {
-          loadCompletedJobs().then(callback);
+          loadCompletedJobs(weekKeys).then(callback);
         }
       )
       .subscribe();
@@ -1943,12 +1946,26 @@ export function subscribeToCompletedJobs(callback) {
 // invoiceAmount/weekKey would have come back as invoice_amount/week_key had
 // anything tried. Exported and remapped to the same camelCase shape
 // handleMarkDone() builds in src/hooks/useJobs.js.
-export async function loadCompletedJobs() {
+//
+// BOUNDED READS (Build 2, 2026-08-08). Build 1 stopped this table ever being
+// wiped, so it grows forever — one row per completed job, permanently. Pass
+// `weekKeys` (from recentWeekKeys() in utils/calendar.js) to fetch only those
+// weeks. week_key is a stored column holding the local Monday, so this is an
+// exact match with no date maths and no UTC/NZ drift.
+//
+// Omitting the argument, or passing an empty array, keeps the original
+// all-time behaviour — deliberately, so no existing caller changes meaning and
+// no total on screen moves. A caller that genuinely needs the whole history
+// (an all-time summary) can still ask for it.
+export async function loadCompletedJobs(weekKeys) {
   try {
-    const { data, error } = await getClient()
+    let query = getClient()
       .from('completed_jobs')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+    if (Array.isArray(weekKeys) && weekKeys.length > 0) {
+      query = query.in('week_key', weekKeys);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
     const records = (data || []).map(row => ({
       id: row.job_id,
