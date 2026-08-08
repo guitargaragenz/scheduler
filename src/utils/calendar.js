@@ -36,6 +36,26 @@ export function getWeekDays(referenceDate = new Date()) {
   return days;
 }
 
+// The week keys for the last `weeks` weeks, newest first, ending with the week
+// that contains `referenceDate`. A week key is the local YYYY-MM-DD of that
+// week's MONDAY — exactly what handleMarkDone() stamps into a revenue record
+// and what completed_jobs.week_key stores, so these can be compared to the
+// stored column directly with no date arithmetic and no UTC drift.
+//
+// This is the shared bound for reads of completed_jobs. That table is never
+// wiped any more (Build 1, 2026-08-07), so it grows forever; every reader that
+// only needs recent weeks passes these keys instead of downloading the lot.
+export function recentWeekKeys(weeks = 1, referenceDate = new Date()) {
+  const n = Math.max(1, Math.floor(Number(weeks) || 1));
+  const keys = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(referenceDate);
+    d.setDate(d.getDate() - i * 7);
+    keys.push(localDateKey(getWeekDays(d)[0]));
+  }
+  return keys;
+}
+
 export function isSaturday(date) { return date.getDay() === 6; }
 export function isSunday(date)   { return date.getDay() === 0; }
 

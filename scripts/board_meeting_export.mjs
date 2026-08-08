@@ -44,6 +44,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { deriveJobStatusFlags } from '../src/data/jobs.js';
+import { recentWeekKeys } from '../src/utils/calendar.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -96,9 +97,34 @@ async function loadAll(table, order) {
   return data || [];
 }
 
+// The revenue table is never wiped (Build 1, 2026-08-07), so it grows forever.
+// The meeting only ever reports the week just worked — .claude/workflows/
+// sunday-board-meeting.js filters to a single week key and throws the rest
+// away — so downloading the whole history here was pure waste that got worse
+// every week.
+//
+// The window is 4 weeks, not 1, on purpose: the workflow works out the reported
+// week itself, and this script can be run on any day (a meeting run late, a
+// catch-up, a manual export). Four weeks always contains the week the meeting
+// wants, whichever way it is invoked, and still leaves the workflow's own
+// filter as the thing that decides. Override with --weeks=N.
+const weeksArg = process.argv.find(a => a.startsWith('--weeks='));
+const WEEKS_OF_REVENUE = Math.max(1, Number(weeksArg?.split('=')[1]) || 4);
+const revenueWeekKeys = recentWeekKeys(WEEKS_OF_REVENUE);
+
+async function loadCompletedForWeeks(weekKeys) {
+  const { data, error } = await supabase
+    .from('completed_jobs')
+    .select('*')
+    .in('week_key', weekKeys)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`Supabase read of "completed_jobs" failed: ${error.message}`);
+  return data || [];
+}
+
 const [jobRows, completedRows, adHocRows, partsRows, parkingLotRows] = await Promise.all([
   loadAll('jobs', 'created_at'),
-  loadAll('completed_jobs', 'created_at'),
+  loadCompletedForWeeks(revenueWeekKeys),
   loadAll('ad_hoc_tasks', 'created_at'),
   loadAll('parts_to_order', 'added_at'),
   loadAll('parking_lot', 'created_at'),
@@ -244,6 +270,10 @@ function shippedNotes() {
 process.stdout.write(JSON.stringify({
   jobs,
   completedJobs,
+  // Which weeks `completedJobs` actually covers. It is NOT the whole revenue
+  // history any more — anything reading this payload must not treat it as an
+  // all-time total.
+  completedJobsWeekKeys: revenueWeekKeys,
   adHocTasks,
   partsToOrder,
   parkingLotItems,
