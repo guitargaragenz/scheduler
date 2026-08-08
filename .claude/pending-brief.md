@@ -1,8 +1,16 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Scope lock — revenue: Build 2 (the readers)
+
+**Shipped 2026-08-08 at `60ff7bf`. Verified by `ggnz-verifier` (6/6 pass, 604 tests green);
+totals unchanged at 20 rows / $3,295.26 ex-GST. Nothing below is work — it is the record.**
+
+**Found during verification, not fixed and not scoped:** the app never wires up
+`loadCompletedJobs()` / `subscribeToCompletedJobs()` at all — `completedJobs` starts `[]` in
+`src/App.jsx` and is only ever filled in-memory by `src/hooks/useJobs.js`. So the Board's week
+revenue reads $0 after a page reload. Pre-existing, outside this build's scope. Needs its own brief.
 
 **Approved by Trevor 2026-08-08. Council done. Resumes at protocol step 3 (builder).**
 History, council rulings and the verifier's checklist live in
