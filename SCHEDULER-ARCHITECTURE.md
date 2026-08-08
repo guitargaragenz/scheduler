@@ -72,7 +72,7 @@ is not a bug**; do not build anything that flags it.
 ### Projects view
 Long-running job timeline page, merged to main 2026-06-14. (Renamed from "Runway" to "Projects" 2026-07-12 — UI label only, no logic change.)
 - Projects button in header toggles the page
-- Jobs flagged with `PJ=Y` in Google Sheet appear here — fully working as of 2026-06-14
+- Jobs flagged with `PJ=Y` in the app appear here — fully working as of 2026-06-14
 - Sections: Needs Input (CI, Parts) / Needs Thinking (INC, RS, RS-C, DG) / Ready to Schedule (GTS)
 - Age colours: green <30 days, amber 30–60, red 60+
 
