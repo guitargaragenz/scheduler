@@ -28,7 +28,10 @@ Don't leave new briefs loose at the repo root; they get lost there.
 
 ### Devices
 - **Micky** — iMac, primary dev machine. Start all local builds and dev server testing here. Has `.env` with Firebase / Google API keys.
-- **Moby** — MacBook
+- **Moby** — MacBook. **Not set up yet** (as of 2026-08-08) — has never cloned the repo, so no
+  session can run there. Setup is: clone → `npm install` → symlink `~/.claude/CLAUDE.md` to
+  `personal-instructions.md` → AirDrop `.env` from Micky (**AirDrop only — never paste keys into
+  a chat, the transcript keeps them**).
 - **iPhone** — on-the-go, Claude Code web sessions only (no local dev server)
 
 ---
