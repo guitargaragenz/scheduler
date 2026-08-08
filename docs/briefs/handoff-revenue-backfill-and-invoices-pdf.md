@@ -71,7 +71,13 @@ what was changed and why, not as maintenance tools.
 - Job 1703 showing three rows is correct — a split job is a parent plus one row
   per bench session. Not a fault.
 
-## The proposal — a third PDF import for Invoices
+## The proposal — a third PDF import for Invoices — **CANCELLED 2026-08-08**
+
+> **Dead. Do not build this.** Trevor dropped it the same week it was proposed: past
+> revenue already lives in Multitrack, which can print any date range on demand, so the
+> import only duplicates it. See
+> [handoff-2026-08-08-invoices-brief-and-revenue-tidy.md](handoff-2026-08-08-invoices-brief-and-revenue-tidy.md).
+> The rest of this section is kept as the record of what was considered, not as work.
 
 Trevor's idea, in his words: download three PDFs since 1 April 2026 — **Jobs,
 JBA, and Invoices** — and import the lot, so the revenue record covers the whole
@@ -110,5 +116,5 @@ protocol run. Do not start it without Trevor's go-ahead.
 
 ## Next action
 
-Trevor downloads the three PDFs. The Invoices import needs a brief before any
-code is written.
+~~Trevor downloads the three PDFs.~~ Cancelled 2026-08-08 — see the note above. The
+revenue table builds forward from job ticks only; history stays in Multitrack.
