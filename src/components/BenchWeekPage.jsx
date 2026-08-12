@@ -261,7 +261,6 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
 
         {/* Day headings */}
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 4 }}>
-          <div style={{ flex: 1, minWidth: 0 }} />
           {(weekDays || []).map((d, i) => (
             <div key={weekKeys[i]} style={{
               width: cellW, textAlign: 'center', fontSize: 11, fontWeight: 700,
@@ -269,6 +268,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
             }}>{d.toLocaleDateString('en-NZ', { weekday: 'short' })[0]}</div>
           ))}
           <div style={{ width: cellW, textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#475569' }}>&gt;</div>
+          <div style={{ flex: 1, minWidth: 0 }} />
         </div>
 
         {groups.length === 0 && (
@@ -283,7 +283,9 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
               fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
               color: benchColors(group.bench).text || '#cbd5e1',
               borderBottom: `1px solid ${benchColors(group.bench).border || '#1e293b'}`,
-              paddingBottom: 3, marginBottom: 4,
+              // Sits in the same column as the job names: past the seven days
+              // plus the trailing column, and the names' own left padding.
+              paddingBottom: 3, marginBottom: 4, paddingLeft: cellW * 8 + 10,
             }}>{group.bench}</div>
 
             {group.rows.map(row => {
@@ -291,13 +293,6 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
               const t = trailing(weekKeys, jobMarks);
               return (
                 <div key={row.id} style={{ display: 'flex', alignItems: 'center', minHeight: 32, position: 'relative' }}>
-                  <div style={{
-                    flex: 1, minWidth: 0, fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 8,
-                    textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
-                    opacity: t.doneIndex !== -1 ? 0.55 : 1,
-                  }}>{row.name}</div>
-
                   {weekKeys.map((k, i) => {
                     const m = cellMark(row, k, jobMarks);
                     // The rule-off runs from the × to the end of the row. It is
@@ -334,6 +329,13 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     width: cellW, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: t.mark === 'cross' ? '#f87171' : '#475569', fontSize: 16,
                   }}>{MARKS[t.mark].symbol}</div>
+
+                  <div style={{
+                    flex: 1, minWidth: 0, fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: 10,
+                    textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
+                    opacity: t.doneIndex !== -1 ? 0.55 : 1,
+                  }}>{row.name}</div>
                 </div>
               );
             })}
