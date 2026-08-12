@@ -393,6 +393,29 @@ CREATE INDEX IF NOT EXISTS idx_pdf_import_log_imported_at ON pdf_import_log(impo
 -- be un-dropped. Do NOT write an ALTER TABLE ... DROP COLUMN days.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS first_seen DATE;
 
+-- 2026-08-13: the bench week page's marks — bench view, Build 1.
+--
+-- One row per job per day: · booked, / worked that day, > not worked so move
+-- on, × done. A day with no mark has NO row, so a blank cell is simply absence.
+--
+-- This table exists so the week page never writes to jobs, scheduled_slots or
+-- jobs.calendar_slot. Those carry live job state, and a mis-tap on a marking
+-- grid must not be able to move a job or lose a booking.
+--
+-- job_id is TEXT and NOT a foreign key to jobs(id) — same reasoning as
+-- job_status_since.job_id above: a CSV import re-creating a job row would
+-- cascade-delete the week's marks for exactly the jobs being re-imported.
+--
+-- The trailing ">" column on the page is deliberately NOT stored. It is derived
+-- from the row (× anywhere in the week means ×, otherwise >), because storing it
+-- would be a second copy of the same fact and free to drift out of step.
+CREATE TABLE IF NOT EXISTS bench_week_marks (
+  job_id   TEXT NOT NULL,
+  date_key TEXT NOT NULL,          -- local YYYY-MM-DD, never a UTC timestamp
+  mark     TEXT NOT NULL,          -- one of: dot, slash, arrow, cross
+  PRIMARY KEY (job_id, date_key)
+);
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
@@ -408,3 +431,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE pending_revenue_review;
 ALTER PUBLICATION supabase_realtime ADD TABLE completed_jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE parts_to_order;
 ALTER PUBLICATION supabase_realtime ADD TABLE job_status_since;
+ALTER PUBLICATION supabase_realtime ADD TABLE bench_week_marks;
