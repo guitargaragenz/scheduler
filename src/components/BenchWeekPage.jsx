@@ -216,6 +216,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   }
 
   const cellW = isMobile ? 34 : 44;
+  // On a computer the job name reads first, down the left, with the days to its
+  // right — same order as the exported file. Fixed width so every day column
+  // still lines up under its heading.
+  const nameW = 220;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0f172a' }}>
@@ -261,6 +265,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
 
         {/* Day headings */}
         <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 4 }}>
+          {!isMobile && <div style={{ width: nameW, flexShrink: 0 }} />}
           {(weekDays || []).map((d, i) => (
             <div key={weekKeys[i]} style={{
               width: cellW, textAlign: 'center', fontSize: 11, fontWeight: 700,
@@ -283,21 +288,21 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
               fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
               color: benchColors(group.bench).text || '#cbd5e1',
               borderBottom: `1px solid ${benchColors(group.bench).border || '#1e293b'}`,
-              // Sits in the same column as the job names: past the seven days
-              // plus the trailing column, and the names' own left padding.
-              // On the phone there is no room to indent, so it sits at the left.
-              paddingBottom: 3, marginBottom: 4, paddingLeft: isMobile ? 0 : cellW * 8 + 10,
+              // Sits at the left, over the job names it heads.
+              paddingBottom: 3, marginBottom: 4, paddingLeft: 0,
             }}>{group.bench}</div>
 
             {group.rows.map(row => {
               const jobMarks = marks[row.id] || {};
               const t = trailing(weekKeys, jobMarks);
-              // The name sits beside the marks on a computer, but above them on
-              // the phone — there isn't the width to put both on one line.
+              // The name comes first: to the left of the marks on a computer,
+              // above them on the phone — there isn't the width to put both on
+              // one line.
               const nameStyle = {
-                flex: isMobile ? 'none' : 1, minWidth: 0, fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
+                flex: 'none', width: isMobile ? 'auto' : nameW, minWidth: 0,
+                fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                paddingLeft: isMobile ? 2 : 10, paddingBottom: isMobile ? 2 : 0,
+                paddingLeft: 2, paddingRight: isMobile ? 0 : 8, paddingBottom: isMobile ? 2 : 0,
                 textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
                 opacity: t.doneIndex !== -1 ? 0.55 : 1,
               };
@@ -307,7 +312,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   alignItems: isMobile ? 'stretch' : 'center',
                   minHeight: 32, marginBottom: isMobile ? 8 : 0, position: 'relative',
                 }}>
-                  {isMobile && <div style={nameStyle}>{row.name}</div>}
+                  <div style={nameStyle}>{row.name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? 'none' : 'initial' }}>
                   {weekKeys.map((k, i) => {
                     const m = cellMark(row, k, jobMarks);
@@ -346,8 +351,6 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     color: t.mark === 'cross' ? '#f87171' : '#475569', fontSize: 16,
                   }}>{MARKS[t.mark].symbol}</div>
                   </div>
-
-                  {!isMobile && <div style={nameStyle}>{row.name}</div>}
                 </div>
               );
             })}
