@@ -4,6 +4,9 @@ doc_status: live
 
 # Scope lock — bench view Build 1: the week page
 
+**Status: council done, Trevor approved 2026-08-13. Start at protocol step 3 — the builder
+on a staging branch. Do not re-run council.**
+
 First of two builds. Build 2 (the day page) is a separate scope lock in a later session — its
 scope is parked in [docs/briefs/bench-view.md](../docs/briefs/bench-view.md), along with the
 background and the council record. **Background only, do not open it to start this build.**
