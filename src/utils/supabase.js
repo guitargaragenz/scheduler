@@ -1825,6 +1825,128 @@ export function subscribeToStatusSince(callback) {
   }
 }
 
+// ============ BENCH WEEK MARKS (the week page — bench view Build 1) ============
+//
+// One row per job per day. The marks are the whole feature: · booked, / worked
+// that day, > not worked so move on, × done.
+//
+// Modelled on job_status_since above, and for the same reason: this is a
+// per-row table, so an upsert touches only the cells that changed and a delete
+// names its keys explicitly. There is no table-wipe function here on purpose,
+// and there must never be one — a bad read must not be able to erase a week.
+//
+// Nothing in this section writes to jobs, scheduled_slots or calendar_slot.
+// That separation is the point of the table, not an implementation detail.
+
+// Returns { [jobId]: { [dateKey]: mark } } on success, or null if the read
+// genuinely failed. The null/{} distinction is load-bearing: {} means "no marks
+// yet", which is true on day one, while null means "we don't know". useWeekMarks
+// refuses to arm any write until it has had a non-null read, so a caller that
+// treats those the same can end up writing over a week it never actually saw.
+export async function loadWeekMarks() {
+  try {
+    const { data, error } = await getClient()
+      .from('bench_week_marks')
+      .select('*');
+    if (error) throw error;
+    const byJobId = {};
+    (data || []).forEach(r => {
+      const jobId = String(r.job_id);
+      if (!byJobId[jobId]) byJobId[jobId] = {};
+      byJobId[jobId][String(r.date_key)] = r.mark;
+    });
+    return byJobId;
+  } catch (e) {
+    console.error('Supabase load bench week marks error:', e);
+    return null;
+  }
+}
+
+// Per-row upsert, keyed on (job_id, date_key). Resolves { ok: boolean } rather
+// than throwing — same convention as upsertStatusSince() above.
+export async function upsertWeekMarks(rows) {
+  if (!Array.isArray(rows)) {
+    console.error('Supabase upsert bench week marks refused: expected an array, got', rows);
+    return { ok: false };
+  }
+  if (rows.length === 0) return { ok: true };
+  try {
+    const records = rows.map(r => ({
+      job_id: String(r.jobId ?? r.job_id),
+      date_key: String(r.dateKey ?? r.date_key),
+      mark: String(r.mark),
+    }));
+    const { error } = await getClient()
+      .from('bench_week_marks')
+      .upsert(records, { onConflict: 'job_id,date_key' });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase upsert bench week marks error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Deletes the named cells and nothing else. Clearing a mark is a delete rather
+// than an empty-string row, so a blank cell is always simply an absent row.
+// The list is required and an empty list is a no-op, never a wipe: a bug that
+// produced an empty array must not be able to clear the table.
+export async function clearWeekMarks(cells) {
+  if (!Array.isArray(cells)) {
+    console.error('Supabase clear bench week marks refused: expected an array, got', cells);
+    return { ok: false };
+  }
+  if (cells.length === 0) return { ok: true };
+  try {
+    // One delete per cell. PostgREST cannot express "delete these composite
+    // keys" in a single .in() without an or-filter string built from user data,
+    // and the mark grid only ever clears a handful of cells at a time.
+    for (const c of cells) {
+      const jobId = String(c.jobId ?? c.job_id);
+      const dateKey = String(c.dateKey ?? c.date_key);
+      if (!jobId || !dateKey) {
+        console.error('Supabase clear bench week marks skipped a cell with no key:', c);
+        continue;
+      }
+      const { error } = await getClient()
+        .from('bench_week_marks')
+        .delete()
+        .eq('job_id', jobId)
+        .eq('date_key', dateKey);
+      if (error) throw error;
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase clear bench week marks error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+export function subscribeToWeekMarks(callback) {
+  try {
+    const channel = getClient()
+      .channel('public:bench_week_marks')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bench_week_marks' },
+        () => {
+          // null means the re-read failed — drop the event rather than hand the
+          // caller an empty picture it might then treat as a cleared week.
+          loadWeekMarks().then(data => {
+            if (data !== null) callback(data);
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  } catch (e) {
+    console.error('Supabase subscribe to bench week marks error:', e);
+    return () => {};
+  }
+}
+
 // ============ COMPLETED JOBS ============
 
 // Appends ONE revenue row. It is the only writer this table has, and it has no

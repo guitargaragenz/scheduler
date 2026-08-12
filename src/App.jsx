@@ -30,6 +30,8 @@ import DailyLogPage from './components/DailyLogPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import JobsSheetPage from './components/JobsSheetPage.jsx';
 import BenchBoardPage from './components/BenchBoardPage.jsx';
+import BenchWeekPage from './components/BenchWeekPage.jsx';
+import { useWeekMarks } from './hooks/useWeekMarks.js';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
@@ -110,6 +112,9 @@ export default function App() {
   // The Bench board. Named "Bench", not "Board" — "Board" is already this app's
   // name for the calendar, and two pages called Board would be unusable.
   const [showBench, setShowBench] = useState(false);
+  // The week page (bench view, Build 1). Its own flag and its own page — the
+  // Bench board is a different screen and the two must not collide.
+  const [showWeekPage, setShowWeekPage] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
@@ -281,6 +286,7 @@ export default function App() {
   const selectPage = useCallback((page) => {
     setShowJobsSheet(page === 'jobsSheet');
     setShowBench(page === 'bench');
+    setShowWeekPage(page === 'weekPage');
     setShowJobs(page === 'jobs');
     setShowProjects(page === 'projects');
     setShowPartsToOrder(page === 'partsToOrder');
@@ -295,6 +301,10 @@ export default function App() {
     setShowParkingLot(false);
     if (window.location.hash === '#parking-lot') window.history.replaceState(null, '', '#');
   }, []);
+
+  // The week page's marks. Its own table, loaded whether or not the page is
+  // open so switching to it doesn't show a blank week for a moment.
+  const weekMarks = useWeekMarks();
 
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList, setFocusList } = useFocusList();
@@ -484,7 +494,8 @@ export default function App() {
   // with the page chain below — a new page needs adding here too, or the Board
   // button will read as lit while that page is open.
   const onBoard = !showParkingLot && !showJobsSheet && !showJobs && !showProjects
-    && !showPartsToOrder && !showParts && !showHelp && !showSettings && !showBench;
+    && !showPartsToOrder && !showParts && !showHelp && !showSettings && !showBench
+    && !showWeekPage;
 
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
@@ -694,6 +705,20 @@ export default function App() {
               Bench
             </button>
 
+            {/* The week page: what actually happened at the bench this week,
+                one line per job. Marking it is a record, not a booking. */}
+            <button
+              onClick={() => selectPage('weekPage')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekPage ? '#0369a1' : '#334155'}`,
+                background: showWeekPage ? '#0c4a6e' : '#1e293b',
+                color: showWeekPage ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showWeekPage ? 700 : 400,
+              }}
+            >
+              Week
+            </button>
+
             <button
               onClick={() => selectPage('projects')}
               style={{
@@ -777,6 +802,17 @@ export default function App() {
             <JobsPage
               jobs={jobs}
               onJobClick={job => { setEditingJob(job); }}
+            />
+          ) : showWeekPage ? (
+            <BenchWeekPage
+              jobs={jobs}
+              weekDays={weekDays}
+              marks={weekMarks.marks}
+              ready={weekMarks.ready}
+              saveError={weekMarks.saveError}
+              setMark={weekMarks.setMark}
+              isMobile={isMobile}
+              showToast={showToast}
             />
           ) : showBench ? (
             <BenchBoardPage jobs={jobs} />

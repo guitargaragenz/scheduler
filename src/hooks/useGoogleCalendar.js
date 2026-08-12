@@ -16,6 +16,15 @@ import { jobsStateFieldsFor } from '../data/joinJobs.js';
 // No import cycle: useScheduler.js does not import this file.
 import { persistMove } from './useScheduler.js';
 
+// The 30-second poll used to move booked jobs out of the way of a Google
+// Calendar appointment, on its own, and write the moves to the database.
+//
+// Parked 2026-08-13 (bench view, Build 1). The app does not decide a schedule
+// any more — Trevor does — so nothing here may move a job by itself. This is a
+// one-line switch on purpose: set it back to true and the old behaviour returns
+// unchanged. The code it guards is still here, untouched.
+export const AUTO_BUMP_ENABLED = false;
+
 export function useGoogleCalendar({
   weekDays,
   jobs,
@@ -99,6 +108,17 @@ export function useGoogleCalendar({
         }
       }
       if (!calendarChanged) return;
+      // PARKED (bench view, Build 1 — 2026-08-13). The app no longer decides a
+      // schedule: Trevor picks the jobs, so nothing may move a booked job on
+      // its own. Everything below this line is the automatic job-moving path —
+      // it frees conflicting slots, finds new ones and writes the moves to the
+      // database. Flipping AUTO_BUMP_ENABLED back to true restores it exactly
+      // as it was; nothing has been deleted.
+      //
+      // Deliberately placed AFTER the fetch and setExternalEvents above, so
+      // appointments from Google Calendar still show on the board. Only the
+      // moving stops.
+      if (!AUTO_BUMP_ENABLED) return;
       // A previous cycle's DB write is still in flight — skip this tick rather
       // than race it on the same slot/job rows.
       if (pollWritingRef.current) return;
