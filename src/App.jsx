@@ -633,6 +633,22 @@ export default function App() {
               {syncLabels[gcal.syncStatus]}
             </button>
 
+            {/* The week page: what actually happened at the bench this week,
+                one line per job. Marking it is a record, not a booking. Sits
+                ahead of the day/week calendar toggle — it's the page Trevor
+                starts from now, so it shouldn't be hunted for further along. */}
+            <button
+              onClick={() => selectPage('weekPage')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekPage ? '#0369a1' : '#334155'}`,
+                background: showWeekPage ? '#0c4a6e' : '#1e293b',
+                color: showWeekPage ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showWeekPage ? 700 : 400,
+              }}
+            >
+              Week
+            </button>
+
             <button
               onClick={() => setShowWeekView(w => !w)}
               style={{
@@ -703,20 +719,6 @@ export default function App() {
               }}
             >
               Bench
-            </button>
-
-            {/* The week page: what actually happened at the bench this week,
-                one line per job. Marking it is a record, not a booking. */}
-            <button
-              onClick={() => selectPage('weekPage')}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekPage ? '#0369a1' : '#334155'}`,
-                background: showWeekPage ? '#0c4a6e' : '#1e293b',
-                color: showWeekPage ? '#7dd3fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showWeekPage ? 700 : 400,
-              }}
-            >
-              Week
             </button>
 
             <button
