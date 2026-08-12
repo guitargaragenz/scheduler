@@ -75,19 +75,27 @@ function chain(table) {
   };
 }
 
+// Every channel handed out, so a test can fire the realtime handler the
+// subscription registered and check what it does with the re-read.
+const channels = [];
+
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: vi.fn(table => chain(table)),
-    channel: vi.fn(() => ({
-      on: vi.fn(function () { return this; }),
-      subscribe: vi.fn(function () { return this; }),
-      unsubscribe: vi.fn(),
-    })),
+    channel: vi.fn(() => {
+      const ch = {
+        on: vi.fn(function (event, filter, handler) { ch.handler = handler; return this; }),
+        subscribe: vi.fn(function () { return this; }),
+        unsubscribe: vi.fn(),
+      };
+      channels.push(ch);
+      return ch;
+    }),
   }),
 }));
 
 const supabaseModule = await import('./supabase.js');
-const { appendCompletedJob, loadCompletedJobs } = supabaseModule;
+const { appendCompletedJob, loadCompletedJobs, subscribeToCompletedJobs } = supabaseModule;
 const { recentWeekKeys } = await import('./calendar.js');
 
 const DB_ERROR = { message: 'permission denied for table', code: '42501' };
@@ -114,6 +122,7 @@ const empty = { data: [], error: null };
 beforeEach(() => {
   results = [empty];
   calls.length = 0;
+  channels.length = 0;
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -312,5 +321,64 @@ describe('failures are reported, never swallowed (checklist 7)', () => {
 
   it('the old signature is gone — saveCompletedJobs cannot be called at all', () => {
     expect(supabaseModule.saveCompletedJobs).toBeUndefined();
+  });
+});
+
+// Build 3 (2026-08-12). The app now reads this table back on start and applies
+// whatever loadCompletedJobs() hands it straight to the on-screen revenue. That
+// makes the difference between "this week is empty" and "the read failed"
+// load-bearing for the first time: the two used to share a return value.
+describe('a failed read is distinguishable from an empty week', () => {
+  it('returns null on a read error, never an empty result the caller would apply', async () => {
+    results = [{ data: null, error: DB_ERROR }];
+    expect(await loadCompletedJobs(['2026-08-04'])).toBeNull();
+  });
+
+  it('an empty week is still a real, applicable result — not null', async () => {
+    results = [{ data: [], error: null }];
+    expect(await loadCompletedJobs(['2026-08-04'])).toEqual({ records: [], doneJobIds: [] });
+  });
+
+  it('doneJobIds come back as strings, because handleMarkDone compares strings', async () => {
+    // A numeric job_id in the database would never match the String(job.id)
+    // handleMarkDone stores, so the job would look untouched after a reload and
+    // could be recorded a second time.
+    results = [{ data: [storedRow({ job_id: 1687, week_key: '2026-08-04' })], error: null }];
+    const { doneJobIds } = await loadCompletedJobs(['2026-08-04']);
+
+    expect(doneJobIds).toEqual(['1687']);
+  });
+
+  it('the subscription drops a failed re-read instead of passing it on', async () => {
+    const callback = vi.fn();
+    subscribeToCompletedJobs(callback, ['2026-08-04']);
+
+    results = [{ data: null, error: DB_ERROR }];
+    channels[0].handler();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it('the subscription re-read stays bounded to the same weeks', async () => {
+    const callback = vi.fn();
+    subscribeToCompletedJobs(callback, ['2026-08-04']);
+
+    results = [{ data: [storedRow({ week_key: '2026-08-04' })], error: null }];
+    channels[0].handler();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(calls.find(c => c.op === 'select')).toMatchObject({
+      table: 'completed_jobs', col: 'week_key', vals: ['2026-08-04'],
+    });
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('subscribing hands back an unsubscribe, so the caller can clean up on unmount', () => {
+    const unsubscribe = subscribeToCompletedJobs(vi.fn(), ['2026-08-04']);
+    expect(typeof unsubscribe).toBe('function');
+
+    unsubscribe();
+    expect(channels[0].unsubscribe).toHaveBeenCalled();
   });
 });

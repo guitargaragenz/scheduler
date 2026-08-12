@@ -1,12 +1,13 @@
+import { useEffect, useState } from 'react';
 import { canInvoiceJob } from '../data/jobs.js';
 import { parseTextItems, loadPdfPages } from '../data/parseMultitrackPdf.js';
 import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsByAgePdf.js';
 import { buildPdfImportPlan, applyPdfFields } from '../data/pdfImportPlan.js';
 import { buildJbaImportPlan } from '../data/jbaImportPlan.js';
 import { pickMasterFields, jobsStateFieldsFor } from '../data/joinJobs.js';
-import { isSupabaseConfigured, appendCompletedJob, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport, loadJobIdentities, writeDepartureBatch, deleteScheduledSlotsForJobs } from '../utils/supabase.js';
+import { isSupabaseConfigured, appendCompletedJob, loadCompletedJobs, subscribeToCompletedJobs, batchWriteJobsState, saveJob, deleteChildJobs, writePdfImportBatch, writeJbaImportBatch, logPdfImport, loadJobIdentities, writeDepartureBatch, deleteScheduledSlotsForJobs } from '../utils/supabase.js';
 import { jobAgeDays } from '../utils/jobAge.js';
-import { getWeekDays, localDateKey } from '../utils/calendar.js';
+import { getWeekDays, localDateKey, recentWeekKeys } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
 import { formatMoney } from '../utils/money.js';
 
@@ -65,6 +66,61 @@ export function useJobs({
   // without this the board would sit wrong until the next manual reload.
   reloadJobs,
 }) {
+  // ---- Revenue already saved: load it back on start, keep it live ----
+  //
+  // completed_jobs is written by handleMarkDone() below and, until now, was
+  // never read back. completedJobs started empty on every reload, so the
+  // Board's week revenue showed $0 until the next job was ticked, and a job
+  // ticked before the reload looked untouched.
+  //
+  // Bounded to the CURRENT WEEK only (recentWeekKeys(1)). The table is
+  // append-only and grows forever, so an unbounded read gets slower every week
+  // for data nothing on screen uses.
+  const [revenueWeekKeys, setRevenueWeekKeys] = useState(() => recentWeekKeys(1));
+
+  // The week turns while the tab is open. Without this, a browser left running
+  // over Sunday midnight would keep reading — and showing — last week's money.
+  // Same identity is kept when the key hasn't changed, so the load/subscribe
+  // effect below does NOT re-run every minute.
+  useEffect(() => {
+    const check = () => {
+      const next = recentWeekKeys(1);
+      setRevenueWeekKeys(prev => (prev[0] === next[0] ? prev : next));
+    };
+    const timer = setInterval(check, 60 * 1000);
+    // The interval can be throttled hard in a background tab, so also check the
+    // moment the tab comes back to the front.
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return undefined;
+    let cancelled = false;
+    // Read-only into revenue state. This never touches jobs[], never writes
+    // anything back, and never calls handleMarkDone() — loading money that is
+    // already recorded must not look like recording it again.
+    const apply = (state) => {
+      // null = the read failed. Skip it: applying an empty result here would
+      // blank a real week's revenue on screen and make already-recorded jobs
+      // look tickable again.
+      if (cancelled || state === null) return;
+      setCompletedJobs(state.records);
+      setDoneJobIds(state.doneJobIds);
+    };
+    loadCompletedJobs(revenueWeekKeys).then(apply);
+    const unsubscribe = subscribeToCompletedJobs(apply, revenueWeekKeys);
+    return () => {
+      cancelled = true;
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [revenueWeekKeys]);
+
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
 

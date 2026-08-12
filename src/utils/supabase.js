@@ -1928,7 +1928,13 @@ export function subscribeToCompletedJobs(callback, weekKeys) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'completed_jobs' },
         () => {
-          loadCompletedJobs(weekKeys).then(callback);
+          // null means the re-read failed — drop the event rather than hand the
+          // caller {records: [], doneJobIds: []}, which it would apply and so
+          // zero a real week's revenue on screen. Same guard as
+          // subscribeToFocusList() and subscribeToStatusSince().
+          loadCompletedJobs(weekKeys).then(state => {
+            if (state !== null) callback(state);
+          });
         }
       )
       .subscribe();
@@ -1957,6 +1963,10 @@ export function subscribeToCompletedJobs(callback, weekKeys) {
 // all-time behaviour — deliberately, so no existing caller changes meaning and
 // no total on screen moves. A caller that genuinely needs the whole history
 // (an all-time summary) can still ask for it.
+//
+// Returns { records, doneJobIds } on success, or null if the read FAILED
+// (Build 3, 2026-08-12). See the catch below for why the two cannot share a
+// return value.
 export async function loadCompletedJobs(weekKeys) {
   try {
     let query = getClient()
@@ -1978,10 +1988,19 @@ export async function loadCompletedJobs(weekKeys) {
       completedAt: row.completed_at,
       weekKey: row.week_key,
     }));
-    return { records, doneJobIds: (data || []).map(d => d.job_id) };
+    // String ids, because handleMarkDone() stores String(invoiceJob.id) and
+    // compares with doneJobIds.includes(). A numeric id read back from the
+    // database would never match, so a job ticked before a reload would look
+    // untouched and could be recorded a second time.
+    return { records, doneJobIds: (data || []).map(d => String(d.job_id)) };
   } catch (e) {
     console.error('Supabase load completed jobs error:', e);
-    return { records: [], doneJobIds: [] };
+    // null, NOT an empty result — an empty week and a failed read are both
+    // legitimate-looking here, and the caller applies what it gets. Returning
+    // {records: [], doneJobIds: []} on a failure would wipe the week's revenue
+    // off the Board and let an already-recorded job be recorded again. Same
+    // contract as loadFocusList() and loadStatusSince().
+    return null;
   }
 }
 
