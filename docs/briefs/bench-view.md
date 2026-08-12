@@ -40,7 +40,48 @@ The jobs list, the benches, job splitting, the done tick and the revenue pipelin
 they are. `BenchBoardPage.jsx` and `JobShelf.jsx` already exist and are the starting point —
 the builder should read them before proposing anything new.
 
-## Open at time of writing
+## Split into two builds (2026-08-13)
 
-Appointments come from Google Calendar, read-only. Whether the app already holds a usable
-read path or needs one is for the builder to establish against the live code.
+Trevor's call, after council: the week page and the day page ship as two builds in two
+sessions. The week page is independently useful and is Build 1.
+
+### Build 2 — the day page (parked, not yet scope-locked)
+
+Tomorrow's page, containing:
+
+- **Appointments**, read-only from Google Calendar.
+- **Tasks** — free text, typed by Trevor.
+- **Jobs** — Trevor types a job number, the app shows that job's existing splits, he picks
+  which ones go on the day. 3–5 typical, no cap enforced. **Splits are marked done here**,
+  never on the week page.
+- Ticking a session done feeds the existing done/revenue path unchanged.
+- Day pages are **kept and saved** — logged once the week is finished, and searchable.
+- Mobile: one page at a time, week and day switched between, not side by side.
+
+The read path exists: `listEvents()` in `src/hooks/useGoogleCalendar.js` is already a pure
+read.
+
+## Council record — 2026-08-13, two independent reviewers
+
+Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and what was done:
+
+1. **The calendar hook is not read-only today.** `useGoogleCalendar.js` runs a 30-second poll
+   that reads the calendar and then *writes* — bumping conflicting jobs to new slots via
+   `persistMove`. It starts as soon as `signedIn` is true. "The app never decides a schedule"
+   breaks on day one unless that poll is disabled. → Now a binding rule in the scope lock.
+2. **Marker state had nowhere to live.** No existing table or column fits. Overloading
+   `jobs[]` or `scheduledSlots` would collide with the parked scheduler and the GCal sync.
+   → Own table, keyed by job and date. Binding rule.
+3. **Marker granularity.** Reviewer 1 argued marks should attach to each bench card, since
+   `joinJobs.js` gives a job several split cards per week. **Trevor overruled this:** the week
+   page is one row per job. Splits are marked on the day page only; the week row shows `/`
+   while parts are worked and `×` on the day the final part lands. Recorded because the
+   council reasoning reads convincingly and should not be re-litigated next session.
+4. **The glue rule is unenforceable.** Nothing in the splits data flags a glue step, so the
+   app cannot police the 12-hour gap. Trevor maintains it himself. → Stated plainly in the
+   scope lock so no builder invents a fake check.
+5. **Day-page picks could balloon into new persisted state.** → Build 2 must say where they
+   live before that build starts.
+6. **Blast radius is low.** `BenchBoardPage.jsx` writes nothing today; mobile single-page is
+   an existing pattern (`MobileJobSheet.jsx`, `JobsPage.jsx`, `DailyLogPage.jsx`), not new
+   architecture. Backing the whole thing out is deleting or hiding a route.
