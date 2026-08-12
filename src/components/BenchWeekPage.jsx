@@ -285,14 +285,30 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
               borderBottom: `1px solid ${benchColors(group.bench).border || '#1e293b'}`,
               // Sits in the same column as the job names: past the seven days
               // plus the trailing column, and the names' own left padding.
-              paddingBottom: 3, marginBottom: 4, paddingLeft: cellW * 8 + 10,
+              // On the phone there is no room to indent, so it sits at the left.
+              paddingBottom: 3, marginBottom: 4, paddingLeft: isMobile ? 0 : cellW * 8 + 10,
             }}>{group.bench}</div>
 
             {group.rows.map(row => {
               const jobMarks = marks[row.id] || {};
               const t = trailing(weekKeys, jobMarks);
+              // The name sits beside the marks on a computer, but above them on
+              // the phone — there isn't the width to put both on one line.
+              const nameStyle = {
+                flex: isMobile ? 'none' : 1, minWidth: 0, fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                paddingLeft: isMobile ? 2 : 10, paddingBottom: isMobile ? 2 : 0,
+                textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
+                opacity: t.doneIndex !== -1 ? 0.55 : 1,
+              };
               return (
-                <div key={row.id} style={{ display: 'flex', alignItems: 'center', minHeight: 32, position: 'relative' }}>
+                <div key={row.id} style={{
+                  display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'stretch' : 'center',
+                  minHeight: 32, marginBottom: isMobile ? 8 : 0, position: 'relative',
+                }}>
+                  {isMobile && <div style={nameStyle}>{row.name}</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? 'none' : 'initial' }}>
                   {weekKeys.map((k, i) => {
                     const m = cellMark(row, k, jobMarks);
                     // The rule-off runs from the × to the end of the row. It is
@@ -329,13 +345,9 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     width: cellW, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: t.mark === 'cross' ? '#f87171' : '#475569', fontSize: 16,
                   }}>{MARKS[t.mark].symbol}</div>
+                  </div>
 
-                  <div style={{
-                    flex: 1, minWidth: 0, fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: 10,
-                    textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
-                    opacity: t.doneIndex !== -1 ? 0.55 : 1,
-                  }}>{row.name}</div>
+                  {!isMobile && <div style={nameStyle}>{row.name}</div>}
                 </div>
               );
             })}
