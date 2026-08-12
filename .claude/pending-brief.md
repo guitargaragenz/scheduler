@@ -2,47 +2,49 @@
 doc_status: live
 ---
 
-# Scope lock — revenue Build 3: load what's already saved
+# Scope lock — bench view: week page + day page
 
-**Council complete (2026-08-08), both reviewers, changes folded in below. Awaiting Trevor's
-approval, then protocol step 3 (builder).** Council's full reasoning is in
-[docs/briefs/revenue-build-3-council.md](../docs/briefs/revenue-build-3-council.md) —
-**background only, don't open it to start the build.** Builds 1–2 are shipped and closed.
+Replaces the scheduler's automatic day-planning as the main way Trevor works. Background and
+the design conversation are in [docs/briefs/bench-view.md](../docs/briefs/bench-view.md) —
+**background only, do not open it to start the build.**
 
-## The problem, verified against the code
-
-`loadCompletedJobs()` and `subscribeToCompletedJobs()` have **zero callers in the app**.
-`completedJobs` starts `[]` in `src/App.jsx:121` and only `handleMarkDone()` ever fills it,
-in memory. So after a reload the Board's week revenue (`src/App.jsx:492`) reads $0, and a job
-ticked before that reload raises a false "already recorded" toast.
+Trevor picks the jobs. The app never decides a schedule.
 
 ## In scope
 
-- Load the current week's rows on app start via `loadCompletedJobs(recentWeekKeys(...))` —
-  bounded, never the all-time form — and keep it live with `subscribeToCompletedJobs()` on
-  the same keys, cleaned up on unmount.
-- The load belongs in `src/hooks/useJobs.js`, which already owns this state. Not `App.jsx`.
-- **Carve-out from "don't change Builds 1–2", required:** `loadCompletedJobs()` returns
-  `{records: [], doneJobIds: []}` on *error*, identical to an empty week
-  (`src/utils/supabase.js:1982`). Give it an error signal so the caller skips the update
-  instead of zeroing the total. Without this the last rule below cannot be met.
-- Map `doneJobIds` to `String(d.job_id)` (`:1981`) — `handleMarkDone` compares string ids.
-- Recompute the week keys as the week turns; a tab open past Sunday midnight must not keep
-  reading last week. If that can't be done cleanly, say so — a stated limit, never a silent one.
+**Week page** — this week's jobs, grouped by bench, showing **just the job name** (eg
+`1714 Fender Strat`). Columns across the top: M T W T F S S, then a final `>` column.
+Each cell holds one bullet-journal marker — `·` booked, `/` worked that day, `>` not worked
+so move to the next available day, `×` done. The trailing `>` column takes `×` (finished this
+week) or `>` (carry to next week).
+
+An `×` in any day column **automatically** puts an `×` in the trailing column too, and draws
+a line joining the two — striking the row through from that day to the end. Trevor never
+marks the last column by hand for a finished job.
+
+**Day page** — tomorrow, containing:
+- **Appointments**, pulled **read-only** from Google Calendar. The app must never create,
+  edit or delete a calendar event.
+- **Tasks** — free text, typed by Trevor.
+- **Jobs** — Trevor types a job number, the app shows that job's existing splits, he picks
+  which ones go on the day. 3–5 typical, no cap enforced.
+
+**Ticking a job session done feeds the existing done/revenue path unchanged.**
+
+Mobile: one page at a time, week and day switched between — not side by side.
 
 ## Out of scope
 
-Any all-time or historical revenue view · invoice number capture · the `To Be Inv` nag ·
-any edit-a-completed-row UI · `useFirebase.js` (dead code) · anything else in Builds 1–2.
+Automatic scheduling or slot-filling of any kind · deleting or ripping out the existing
+scheduling code (it stays in place, switched off) · writing to Google Calendar · new revenue
+logic · invoice capture · any change to how a job's splits are defined.
 
 ## Rules that bind
 
-- **The revenue record is never rewritten or deleted by the app.** No `.delete()` on
-  `completed_jobs`; `clearCompletedJobs()` / `saveCompletedJobs()` stay gone.
-- Week keys use the same local-Monday logic as the writer. Never `toISOString()` — that
-  rolled NZ Monday back to Sunday and is what reported $0 on 31 July.
-- **A failed read must never overwrite a real list with `[]`.**
-- Loading must not re-fire `handleMarkDone()` or write any job state.
-- Staging branch → `ggnz-verifier` → browser test → Trevor approves the merge. The browser
-  test must also check **CloseDayModal and CatchUpInterview** — a real `completedJobs` list
-  changes what they find, beyond just the total.
+- **Nothing is deleted.** The scheduling side is parked and reversible, not removed.
+- Google Calendar access is **read-only**. No writes, ever.
+- A job number reappearing is live work by definition — a completed job never comes back.
+- Glue-ups need 12 hours before dependent work on the same guitar; the day page must not
+  present a glue session and its follow-on for the same day.
+- Full protocol: council → staging branch → `ggnz-verifier` → browser test → Trevor
+  approves the merge.
