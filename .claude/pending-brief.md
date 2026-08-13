@@ -20,9 +20,18 @@ picks one, and it drops in as a row under that bench group. He then marks its da
 he does now.
 
 - The dropdown lists jobs on that bench that are not already a row this week and not `done`.
-- Adding a job writes **only** a mark, into the existing `bench_week_marks` table. That mark is
-  what makes `weekRows()` keep the row (`hasMarkThisWeek`).
-- Removing a job from the week is clearing its marks — no separate delete path.
+  "Already a row" is checked by **job id across the whole week**, not per bench group — a job
+  split across two benches must not still be addable under the other one.
+- **An added job's row is blank.** Trevor decides days later, by tapping cells as he does now.
+  Adding must not write a dot, or any day symbol, anywhere. Settled 2026-08-13 — council found
+  the design as first written had no legal way to do this.
+- To hold a blank row, adding writes one row to the existing `bench_week_marks` table under a
+  **week-scoped key that is not one of the seven day keys** (e.g. `week:<monday>`). `weekRows()`
+  keeps the row on that key as well as on day marks; `cellMark()` and `buildWeekExport()` only
+  ever walk the seven day keys, so it draws and exports as blank. No new marker symbol.
+- Removing a job from the week is **one clearly labelled action on the row** that clears its day
+  marks and that week key together. Not "tap every cell blank until it disappears."
+- Jobs with no bench set get no dropdown and cannot be added this way. Accepted, not a bug.
 
 ## Out of scope
 
