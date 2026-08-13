@@ -1,49 +1,40 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Scope lock — bench view Build 1: the week page
+# Scope lock — bench view Build 1b: add a job to the week
 
-**Shipped at `a83c334` (2026-08-13). Finished history — not a task list.**
+Build 1 (the week page) shipped at `a83c334`, but the page cannot be filled by hand — a job
+only appears if it already had a calendar slot that week (`BenchWeekPage.jsx:93`) or already
+carried a mark. This build closes that. Background is in
+[docs/briefs/bench-view.md](../docs/briefs/bench-view.md) — **background only, do not open it
+to start this build.**
 
-First of two builds. Build 2 (the day page) is a separate scope lock in a later session — its
-scope is parked in [docs/briefs/bench-view.md](../docs/briefs/bench-view.md), along with the
-background and the council record. **Background only, do not open it to start this build.**
-
-Trevor picks the jobs. The app never decides a schedule.
+Trevor plans the week on Sunday, as the week ahead. He picks from that week each night onto
+the day page. So the week page must stand alone: on Sunday there are no day pages yet.
 
 ## In scope
 
-This week's jobs grouped by bench, showing **just the job name** (eg `1714 Fender Strat`).
-**One row per job, never per split.** Columns M T W T F S S, then a trailing `>` column.
+**A per-bench dropdown on the week page.** Trevor opens a bench, sees the jobs sitting on it,
+picks one, and it drops in as a row under that bench group. He then marks its days exactly as
+he does now.
 
-Markers: `·` booked, `/` worked that day, `>` not worked so move on, `×` done.
-
-A row shows `/` on every day any part of the job was worked. `×` goes in only on the day the
-**final** part of the job is finished. That `×` automatically fills the trailing column and
-draws a line joining the two, striking the row through from that day to the end — never
-marked by hand. The trailing column otherwise takes `>` to carry the job to next week.
-
-A week can be **exported as one plain readable file**. No Drive writing, no second copy of
-the data.
-
-Mobile: full-screen single page, matching the existing mobile pages.
+- The dropdown lists jobs on that bench that are not already a row this week and not `done`.
+- Adding a job writes **only** a mark, into the existing `bench_week_marks` table. That mark is
+  what makes `weekRows()` keep the row (`hasMarkThisWeek`).
+- Removing a job from the week is clearing its marks — no separate delete path.
 
 ## Out of scope
 
-The day page, appointments, tasks and split-picking (all Build 2) · automatic scheduling or
-slot-filling · deleting the existing scheduling code (parked, not removed) · writing to
-Google Calendar · new revenue logic · invoice capture · any change to how splits are defined.
+A type-to-search box for job number or manufacturer — deliberately rejected, the bench list is
+enough · any change to the marker symbols or the tap-cycle · the day page · the exported log ·
+automatic scheduling or slot-filling · deleting the parked scheduling code · writing to Google
+Calendar · any change to how splits are defined.
 
 ## Rules that bind
 
-- **Turn off the calendar's automatic job-moving.** `useGoogleCalendar.js` polls every 30s
-  and rewrites job slots today. Parking the scheduler means disabling that poll, not just
-  avoiding it.
-- Week marks live in **their own table**, keyed by job and date. Nothing is written to
-  `jobs[]`, `scheduledSlots` or `calendarSlot`.
-- Nothing is deleted. The scheduling side is parked and reversible.
-- A job number reappearing is live work by definition.
-- **Glue timing is Trevor's call, not the app's** — the data cannot flag glue steps, so the
-  app must not pretend to enforce the 12-hour gap.
+- One row per job, never one per split. That is settled and is not reopened here.
+- Nothing is written to `jobs[]`, `scheduledSlots` or `calendarSlot`. Marks only.
+- The Google Calendar read stays a read.
+- Answer for this build, in writing: **how does a thing get created, changed and removed?**
 - Full protocol: council → staging branch → `ggnz-verifier` → browser test → Trevor merges.

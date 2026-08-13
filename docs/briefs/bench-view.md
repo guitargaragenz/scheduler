@@ -45,21 +45,51 @@ the builder should read them before proposing anything new.
 Trevor's call, after council: the week page and the day page ship as two builds in two
 sessions. The week page is independently useful and is Build 1.
 
-### Build 2 — the day page (parked, not yet scope-locked)
+### Revised order (2026-08-13): 1b, then 2
 
-Tomorrow's page, containing:
+Build 1 shipped a week page that draws correctly but **cannot be filled by hand** — a job only
+appears if it already had a calendar slot that week (`BenchWeekPage.jsx:93`) or already carried
+a mark. Council missed this on Build 1: the brief described the layout and the markers, never
+the act of putting a job on the page, and old scheduler slots made the page look populated.
 
-- **Appointments**, read-only from Google Calendar.
-- **Tasks** — free text, typed by Trevor.
-- **Jobs** — Trevor types a job number, the app shows that job's existing splits, he picks
-  which ones go on the day. 3–5 typical, no cap enforced. **Splits are marked done here**,
-  never on the week page.
-- Ticking a session done feeds the existing done/revenue path unchanged.
-- Day pages are **kept and saved** — logged once the week is finished, and searchable.
-- Mobile: one page at a time, week and day switched between, not side by side.
+Trevor's flow, stated plainly: **the week is planned on Sunday as the week ahead; each night he
+picks from that week onto tomorrow's day page.** So the week page must stand alone — on Sunday
+there are no day pages yet. That makes "add a job to the week" its own small build, **Build 1b**,
+before the day page.
 
-The read path exists: `listEvents()` in `src/hooks/useGoogleCalendar.js` is already a pure
-read.
+Standing council question added because of this miss: *how does a thing get created, changed and
+removed?* — asked of every build.
+
+### Build 1b — add a job to the week (scope-locked)
+
+Per-bench dropdown. Trevor opens a bench, picks a job, it drops in as a row in that bench group
+and he marks the days. Chosen over a type-to-search box (job number / manufacturer) because the
+page is already grouped by bench and that is how he thinks on Sunday. No search field — two ways
+to do one thing, and the list wins once it is in front of him.
+
+### Build 2 — the day page (parked)
+
+Tomorrow's page: appointments read-only from Google Calendar (`listEvents()` is already a pure
+read), free-text tasks, and jobs. After 1b the day page picks from **what is already on the
+week**, not from a fresh job-number hunt. Splits are marked done there and only there; the
+final split opens the existing PomoDrawer invoice prompt. The agreed detail, parked until 1b
+ships:
+
+- **Appointments** read-only via `listEvents()`. **Tasks** free text, no status, no job links.
+  **Jobs** — pick this job's existing splits onto the day. 3–5 typical, no cap.
+- Ticking a split done here is the **only** place a split is marked done. The final split opens
+  the existing PomoDrawer invoice-amount prompt — no second way to capture the amount, and never
+  a silent `done: true` with no figure. The week row's `×` then fills automatically that day.
+- **The week page's `×` becomes read-only.** Its tap-cycle shrinks to `· → / → > → blank`, so a
+  mis-tap can never cycle through `×` and book revenue by accident.
+- **A done split stays done.** The tick stores the split's own text at that moment, never a live
+  pointer to a re-derived card. A finished week is read-only.
+- **The saved log is a file, not an in-app archive.** A finished week exports as one readable
+  document — plain English, paragraphs, no code or jargon; job name, status, work performed. No
+  grid.
+- Day picks and tasks live in their own table keyed by date. No second write path into `jobs[]`,
+  `scheduledSlots` or `calendarSlot` — the existing done/revenue call is the one allowed write.
+- Mobile: one page at a time, week and day switched between, never side by side.
 
 ## Council record — 2026-08-13, two independent reviewers
 
@@ -82,6 +112,35 @@ Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and what w
    scope lock so no builder invents a fake check.
 5. **Day-page picks could balloon into new persisted state.** → Build 2 must say where they
    live before that build starts.
-6. **Blast radius is low.** `BenchBoardPage.jsx` writes nothing today; mobile single-page is
+6. **Blast radius is low.** (Build 1) `BenchBoardPage.jsx` writes nothing today; mobile single-page is
    an existing pattern (`MobileJobSheet.jsx`, `JobsPage.jsx`, `DailyLogPage.jsx`), not new
    architecture. Backing the whole thing out is deleting or hiding a route.
+
+## Council record — Build 2 (the day page), 2026-08-13, two independent reviewers
+
+Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and Trevor's calls:
+
+1. **Marking done is a two-step flow, not a silent write.** `handleMarkDone(job, amount)`
+   (`src/hooks/useJobs.js:311`) is only ever reached via `PomoDrawer`, which asks for the
+   invoice amount (`src/App.jsx:344-346, 366-368`). A builder who missed that would either
+   write `done: true` with no figure — a silent revenue bug the code's own comments warn
+   against — or build a second invoicing UI. → Scope lock now names PomoDrawer explicitly.
+2. **The "nothing is written to `jobs[]`" rule contradicted the feature.** `handleMarkDone`
+   writes `done: true` into `jobs[]` by design. The rule means *no second parallel write
+   path*, not *never touch it*. → Reworded in the scope lock.
+3. **Auto-derived split ids can rot.** Auto-split cards get ids like `1635-S`, regenerated
+   each render from the job's current description text (`src/data/jobs.js:275-277`,
+   `src/data/joinJobs.js:387-393`). A Multitrack reimport that changes the wording can make a
+   saved day page point at a split that no longer exists. Manual (stored) splits are safe.
+   → **Trevor's call:** a done split stays done. The day page stores the split's own text at
+   tick time, never a live pointer. A finished week is read-only.
+4. **"Searchable" was doing quiet work** — it read as an in-app history/search screen nobody
+   had scoped. → **Trevor's call:** it is an exported readable document, not an in-app
+   archive; an in-app log would bog the page down over time. Plain English, proper paragraphs,
+   job name / status / work performed, no grid.
+5. **The calendar is genuinely read-only now.** `AUTO_BUMP_ENABLED = false`
+   (`src/hooks/useGoogleCalendar.js:26`); the 30s poll still runs but only reads.
+6. **`bench_week_marks` is already its own table** (`src/utils/supabase.js:1849` on). A second
+   table keyed by date follows the same pattern and collides with nothing.
+7. **The week page's `×` is still tappable today** (`CYCLE`, `BenchWeekPage.jsx:35`) — so
+   making it read-only is a real needed change, not a stale assumption.
