@@ -115,12 +115,19 @@ export function newTypedRowId(weekKeys, rand = Math.random) {
   return `${TYPED_ID_PREFIX}${monday}:${tail}`;
 }
 
-// bench + name -> the value stored on the week key. Returns null for a name
-// that is blank once trimmed, so an empty box can never create a row.
-export function encodeTypedRow(bench, name) {
+// Typed rows are Trevor's admin to-do list — do the books, order strings,
+// clean the benches — so Admin is the only bench they can ever sit on
+// (corrected 2026-08-13). The bench is not a parameter anywhere: it is
+// written as Admin and read back as Admin, so no caller can place one
+// elsewhere even by mistake.
+export const TYPED_ROW_BENCH = 'Admin';
+
+// name -> the value stored on the week key. Returns null for a name that is
+// blank once trimmed, so an empty box can never create a row.
+export function encodeTypedRow(name) {
   const n = String(name ?? '').trim().slice(0, MAX_TYPED_NAME);
   if (!n) return null;
-  return `${TYPED_ID_PREFIX}${String(bench ?? '').trim()}:${n}`;
+  return `${TYPED_ID_PREFIX}${TYPED_ROW_BENCH}:${n}`;
 }
 
 // The reverse. Returns null for anything that is not a typed row value —
@@ -133,7 +140,11 @@ export function decodeTypedRow(value) {
   if (cut === -1) return null;
   const name = rest.slice(cut + 1).trim();
   if (!name) return null;
-  return { bench: rest.slice(0, cut).trim(), name };
+  // The bench is always Admin, whatever the stored value happens to say. The
+  // field is still parsed past so a name containing a colon survives, but its
+  // content is never trusted — that is what makes a typed row on another bench
+  // impossible rather than merely unlikely.
+  return { bench: TYPED_ROW_BENCH, name };
 }
 
 // The pieces of a job that can carry a bench and a booking: its splits if it has
@@ -425,7 +436,7 @@ function AddJobToBench({ bench, jobs, rows, ready, nameW, isMobile, onAdd }) {
 // Sits under the job dropdown on every bench, and unlike that dropdown it is
 // always there — it has no list that can run out. Its own text state lives here
 // so the page does not track one box per bench.
-function AddTaskToBench({ bench, ready, nameW, isMobile, onAddTask }) {
+function AddTaskToBench({ ready, nameW, isMobile, onAddTask }) {
   const [text, setText] = useState('');
 
   async function submit() {
@@ -434,7 +445,7 @@ function AddTaskToBench({ bench, ready, nameW, isMobile, onAddTask }) {
     // Cleared straight away, so a second task can be typed while the first
     // saves. A failed save says so in a toast rather than holding the box.
     setText('');
-    await onAddTask(bench, name);
+    await onAddTask(name);
   }
 
   return (
@@ -448,7 +459,7 @@ function AddTaskToBench({ bench, ready, nameW, isMobile, onAddTask }) {
         maxLength={MAX_TYPED_NAME}
         disabled={!ready}
         onChange={(e) => setText(e.target.value)}
-        placeholder={`+ Type a job-less task for ${bench}…`}
+        placeholder="+ Type an admin task…"
         style={{
           width: isMobile ? '100%' : nameW, maxWidth: '100%',
           padding: '5px 8px', borderRadius: 5,
@@ -517,13 +528,13 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // Same one write as handleAdd, so it lands just as blank; the difference is
   // that the mark carries the bench and the name, because there is no jobs[]
   // entry to read either from.
-  async function handleAddTask(bench, name) {
+  async function handleAddTask(name) {
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
     }
     if (!rowKey) return;
-    const value = encodeTypedRow(bench, name);
+    const value = encodeTypedRow(name);
     const id = newTypedRowId(weekKeys);
     if (!value || !id) return;
     const res = await setMark(id, rowKey, value);
@@ -727,12 +738,13 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
               />
             )}
 
-            {/* Type a task that has no job number. Rendered separately from the
-                dropdown above, which disappears once a bench has no addable jobs
-                left — this box has no list to run out, so it is always here. */}
-            {group.canAdd && (
+            {/* Type a task that has no job number — the Admin bench only, since
+                this is Trevor's admin to-do list, not something a repair bench
+                keeps. Rendered separately from the dropdown above, which
+                disappears once a bench has no addable jobs left; this box has no
+                list to run out, so it is always here on Admin. */}
+            {group.canAdd && group.bench === TYPED_ROW_BENCH && (
               <AddTaskToBench
-                bench={group.bench}
                 ready={ready}
                 nameW={nameW}
                 isMobile={isMobile}

@@ -199,18 +199,29 @@ describe('typing a task that is not a job', () => {
   const KEY = weekRowKey(WEEK);
   const marksWith = (value, id = 'task:2026-08-10:zz') => ({ [id]: { [KEY]: value } });
 
-  it('carries both the bench and the name in the one mark value', () => {
-    expect(decodeTypedRow(encodeTypedRow('Admin', 'buy strings')))
+  it('carries the name in the one mark value, always on Admin', () => {
+    expect(decodeTypedRow(encodeTypedRow('buy strings')))
       .toEqual({ bench: 'Admin', name: 'buy strings' });
   });
 
   it('keeps a colon typed inside the name', () => {
-    expect(decodeTypedRow(encodeTypedRow('Setup', 'research: 1714 trem')))
-      .toEqual({ bench: 'Setup', name: 'research: 1714 trem' });
+    expect(decodeTypedRow(encodeTypedRow('research: 1714 trem')))
+      .toEqual({ bench: 'Admin', name: 'research: 1714 trem' });
+  });
+
+  it('cannot land on any bench but Admin', () => {
+    // encodeTypedRow takes no bench at all, so nothing can ask for another one.
+    expect(encodeTypedRow.length).toBe(1);
+    // And a value hand-written with a different bench still reads as Admin,
+    // rather than drawing a typed row on a repair bench.
+    expect(decodeTypedRow('task:Setup:sneak onto setup'))
+      .toEqual({ bench: 'Admin', name: 'sneak onto setup' });
+    const rows = weekRows(jobs, WEEK, marksWith('task:Fretwork:sneak in'));
+    expect(rows.filter(r => r.typed).map(r => r.bench)).toEqual(['Admin']);
   });
 
   it('refuses an empty name and anything that is not a typed value', () => {
-    expect(encodeTypedRow('Admin', '   ')).toBeNull();
+    expect(encodeTypedRow('   ')).toBeNull();
     expect(decodeTypedRow('row')).toBeNull();     // Build 1b's job-row marker
     expect(decodeTypedRow('slash')).toBeNull();
     expect(decodeTypedRow(null)).toBeNull();
@@ -224,8 +235,8 @@ describe('typing a task that is not a job', () => {
     for (const jobId of ['1714', '1714-ST', 'a']) expect(isTypedRowId(jobId)).toBe(false);
   });
 
-  it('draws the typed row on its bench, alongside real job rows', () => {
-    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+  it('draws the typed row on Admin, alongside real job rows', () => {
+    const marks = marksWith(encodeTypedRow('buy strings'));
     const rows = weekRows(jobs, WEEK, marks);
     const typed = rows.find(r => r.typed);
     expect(typed.name).toBe('buy strings');
@@ -235,19 +246,19 @@ describe('typing a task that is not a job', () => {
   });
 
   it('starts every day blank', () => {
-    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const marks = marksWith(encodeTypedRow('buy strings'));
     const row = weekRows(jobs, WEEK, marks).find(r => r.typed);
     for (const k of WEEK) expect(cellMark(row, k, {})).toBe('');
   });
 
   it('does not carry into another week', () => {
-    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const marks = marksWith(encodeTypedRow('buy strings'));
     const nextWeek = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'];
     expect(weekRows(jobs, nextWeek, marks).filter(r => r.typed)).toHaveLength(0);
   });
 
   it('exports as a blank line under the typed name, marked with a +', () => {
-    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const marks = marksWith(encodeTypedRow('buy strings'));
     const rows = weekRows(jobs, WEEK, marks);
     expect(rowLabel(rows.find(r => r.typed))).toBe('+ buy strings');
     const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
@@ -257,7 +268,7 @@ describe('typing a task that is not a job', () => {
 
   it('exports a marked typed row the same way a job row does', () => {
     const id = 'task:2026-08-10:zz';
-    const marks = { [id]: { [KEY]: encodeTypedRow('Admin', 'do the books'), '2026-08-12': 'cross' } };
+    const marks = { [id]: { [KEY]: encodeTypedRow('do the books'), '2026-08-12': 'cross' } };
     const rows = weekRows(jobs, WEEK, marks);
     const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
       .split('\n').find(l => l.includes('do the books'));
