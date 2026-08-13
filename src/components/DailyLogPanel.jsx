@@ -146,6 +146,17 @@ export default function DailyLogPanel({
 
   const { events, state: apptState } = useDayAppointments(dateKey);
   const options = useMemo(() => dayJobOptions(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
+  // Each day-log row is a bench split (a "part"), so its second line is the
+  // description Trevor typed on that split ("level crown and polish") — the
+  // split's own `splitDesc`, falling back to the guitar's Multitrack `desc`
+  // when a split carries none. Never the session note: the Daily Log always
+  // reads the split description. Looked up fresh from jobs at render time so it
+  // stays current if the description is edited later.
+  const jobById = useMemo(() => new Map((jobs || []).map(j => [String(j.id), j])), [jobs]);
+  const subTaskDesc = (id) => {
+    const p = jobById.get(id);
+    return p ? (p.splitDesc || p.desc || '') : '';
+  };
 
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
@@ -288,8 +299,18 @@ export default function DailyLogPanel({
               display: 'flex', gap: 8, alignItems: 'center',
               padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
             }}>
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {v.label}
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {v.label}
+                </div>
+                {subTaskDesc(id) && (
+                  <div style={{
+                    fontSize: 11, color: '#94a3b8', overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {subTaskDesc(id)}
+                  </div>
+                )}
               </span>
               <button
                 type="button"
