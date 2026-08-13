@@ -33,6 +33,9 @@ One new page — tomorrow — holding three things:
 - **A marked job stays on the week until it is closed** — never dropped by a source-list or
   filter change.
 - **A done split stays done.** Store the split's own text at tick time, never a live pointer.
+- **On desktop the two logs sit side by side on one page** — W Log left, D Log right, like the
+  journal's two-page spread. Trevor works across both at once; a desktop that shows only one is
+  a fail. On the phone, one at a time.
 - Day picks and tasks live in **their own table keyed by date** (same pattern as
   `bench_week_marks`). No second write path into `jobs[]`, `scheduledSlots` or
   `calendarSlot` — the existing done/revenue call is the one allowed write.

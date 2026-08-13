@@ -96,7 +96,10 @@ ships:
   grid.
 - Day picks and tasks live in their own table keyed by date. No second write path into `jobs[]`,
   `scheduledSlots` or `calendarSlot` — the existing done/revenue call is the one allowed write.
-- Mobile: one page at a time, week and day switched between, never side by side.
+- **Layout (Trevor, 2026-08-13, and it is a make-or-break):** on desktop the Weekly Log and
+  the Daily Log are side by side on one page — W Log left, D Log right, matching the journal's
+  two-page spread. He works across both at the same time, so a desktop that shows one at a time
+  "just won't work". Mobile keeps one page at a time, switched between.
 
 ## Build 2 — verifier checklist (2026-08-13)
 
