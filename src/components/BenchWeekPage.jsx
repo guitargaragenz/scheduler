@@ -19,7 +19,14 @@ import { localDateKey, formatDateRange } from '../utils/calendar.js';
 //     other session, so a rule enforced here would be guessing. Glue timing is
 //     Trevor's call.
 
-const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin'];
+// The five benches Trevor plans the week on. Wiring was dropped 2026-08-13 —
+// it isn't a bench he books a week against, and an always-drawn empty heading
+// is dead space on the page.
+//
+// Dropping it from THIS list does not hide a wiring job: benchSections() draws
+// any bench it finds in the data after these, so a job filed under Wiring still
+// gets its own heading. It just stops appearing when there is nothing on it.
+const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin'];
 
 // Stored as words, drawn as symbols. The database keeps 'slash', not '/', so a
 // change of symbol later is a display change and not a data migration.
