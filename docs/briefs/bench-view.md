@@ -79,9 +79,16 @@ ships:
   **Jobs** — pick this job's existing splits onto the day. 3–5 typical, no cap.
 - **Superseded 2026-08-13 by Trevor:** closing a job is the `×` in the final `>` column and
   nothing else — that is the only invoice-amount prompt, and it needs no day page or split tick.
-  A day-column `×` is a plain "worked and finished that day" mark with no money question, and
-  stays tappable. The earlier plan (close via the last split tick, week `×` read-only) is dead.
-  A marked job also stays on the week until it is closed — never dropped by a filter change.
+  A day-column `×` is a plain "worked and finished that day" mark: no money question, no
+  `done`, no strikethrough. No Cancel button on the amount prompt — closing is now a deliberate
+  manual cross, not an automatic consequence of finishing a split, so the mistap risk that
+  motivated Cancel is gone. The earlier plan (close via the last split tick, week `×` read-only)
+  is dead. A marked job also stays on the week until it is closed — never dropped by a filter
+  change.
+- **The two pages are the Weekly Log and the Daily Log** (Trevor, 2026-08-13). The Daily Log is
+  a full peer, not a read-only view of the week: he marks there as well, and adds free-text
+  extra tasks the same way Admin typed rows work on the week page (Build 1c). On the nav pills
+  they read **"W Log"** and **"D Log"** — the pills are too small for the full words.
 - **A done split stays done.** The tick stores the split's own text at that moment, never a live
   pointer to a re-derived card. A finished week is read-only.
 - **The saved log is a file, not an in-app archive.** A finished week exports as one readable
@@ -102,10 +109,14 @@ list explicitly.
 4. Closing a job happens **only** via the `×` in the final `>` column, and routes through
    PomoDrawer's amount prompt; no path sets `done: true` without an amount. Closing does not
    require the day page or any split tick.
-5. Day-column `×` is a plain mark with no money prompt, and stays tappable. A marked job stays
-   on the week until it is closed — it never drops off because its source list or a filter
-   changed.
+5. Day-column `×` is a plain mark: no money prompt, no `done`, no strikethrough, and it does
+   not fill the final column. A marked job stays on the week until it is closed — it never
+   drops off because its source list or a filter changed.
 6. A ticked split stores its own text; re-render or reimport doesn't unstick it.
+6a. The final `>` column has its own stored value and its own tap handler — it is derived from
+   the day cells today (`trailing()`, `BenchWeekPage.jsx` ~305). Strikethrough follows that
+   stored value, not `doneIndex` over the day cells. `PomoDrawer` is unchanged — no Cancel.
+6b. Headings and titles say "Weekly Log" / "Daily Log"; nav pills say "W Log" / "D Log".
 7. Day picks and tasks live in a new date-keyed table; no writes to `scheduledSlots` or
    `calendarSlot`.
 8. `AUTO_BUMP_ENABLED` still `false`.
@@ -142,7 +153,7 @@ Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and what w
 Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and Trevor's calls:
 
 1. **Marking done is a two-step flow, not a silent write.** `handleMarkDone(job, amount)`
-   (`src/hooks/useJobs.js:311`) is only ever reached via `PomoDrawer`, which asks for the
+   (`src/hooks/useJobs.js:326`) is only ever reached via `PomoDrawer`, which asks for the
    invoice amount (`src/App.jsx:344-346, 366-368`). A builder who missed that would either
    write `done: true` with no figure — a silent revenue bug the code's own comments warn
    against — or build a second invoicing UI. → Scope lock now names PomoDrawer explicitly.
@@ -163,5 +174,14 @@ Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and Trevor
    (`src/hooks/useGoogleCalendar.js:26`); the 30s poll still runs but only reads.
 6. **`bench_week_marks` is already its own table** (`src/utils/supabase.js:1849` on). A second
    table keyed by date follows the same pattern and collides with nothing.
-7. **The week page's `×` is still tappable today** (`CYCLE`, `BenchWeekPage.jsx:35`) — so
-   making it read-only is a real needed change, not a stale assumption.
+7. **The final `>` column is not a control today — it is a mirror of the day cells.** Both
+   reviewers landed on this as the one real blocker. `trailing()` (`BenchWeekPage.jsx` ~305)
+   scans the day cells for a `'cross'`; any day `×` makes the final column show `×` and strikes
+   the whole row (`doneIndex`, ~684-685, 700-736). The trailing div is commented "derived, never
+   tapped" (~729) and has no click handler; day cells cycle through `CYCLE`
+   (`BenchWeekPage.jsx:42`). So Build 2 must pull the two apart: the final column gets its own
+   stored value and a real tap target routing to `PomoDrawer` → `handleMarkDone`, and
+   strikethrough follows that value. This is a change to Build 1's shipped behaviour, not just
+   new Build 2 code.
+8. **Already working, don't rebuild it:** a marked or hand-added row survives source-list and
+   filter changes (`weekRows()` ~233-237); only `job.done` drops a row (~222).
