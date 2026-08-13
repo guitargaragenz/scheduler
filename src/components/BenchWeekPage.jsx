@@ -635,8 +635,14 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
           ))}
         </div>
 
-        {/* Day headings */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 4 }}>
+        {/* Day headings. They stay put at the top while the benches scroll under
+            them — with a long week you lose track of which column is which day.
+            The background is opaque so rows don't show through. */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-end', marginBottom: 4,
+          position: 'sticky', top: 0, zIndex: 3,
+          background: '#0f172a', paddingTop: 6, paddingBottom: 4,
+        }}>
           {!isMobile && <div style={{ width: nameW, flexShrink: 0 }} />}
           {(weekDays || []).map((d, i) => (
             <div key={weekKeys[i]} style={{
