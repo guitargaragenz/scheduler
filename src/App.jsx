@@ -31,7 +31,9 @@ import JobsPage from './components/JobsPage.jsx';
 import JobsSheetPage from './components/JobsSheetPage.jsx';
 import BenchBoardPage from './components/BenchBoardPage.jsx';
 import BenchWeekPage from './components/BenchWeekPage.jsx';
+import DailyLogPanel from './components/DailyLogPanel.jsx';
 import { useWeekMarks } from './hooks/useWeekMarks.js';
+import { useDayMarks } from './hooks/useDayMarks.js';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
@@ -115,6 +117,9 @@ export default function App() {
   // The week page (bench view, Build 1). Its own flag and its own page — the
   // Bench board is a different screen and the two must not collide.
   const [showWeekPage, setShowWeekPage] = useState(false);
+  // The Daily Log. Its own flag because on a phone the two logs are seen one at
+  // a time; on a desktop either flag shows both, side by side.
+  const [showDayPage, setShowDayPage] = useState(false);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
@@ -287,6 +292,7 @@ export default function App() {
     setShowJobsSheet(page === 'jobsSheet');
     setShowBench(page === 'bench');
     setShowWeekPage(page === 'weekPage');
+    setShowDayPage(page === 'dayPage');
     setShowJobs(page === 'jobs');
     setShowProjects(page === 'projects');
     setShowPartsToOrder(page === 'partsToOrder');
@@ -305,6 +311,10 @@ export default function App() {
   // The week page's marks. Its own table, loaded whether or not the page is
   // open so switching to it doesn't show a blank week for a moment.
   const weekMarks = useWeekMarks();
+
+  // The Daily Log's picks. Its own table, loaded the same way and for the same
+  // reason — the day shouldn't flash empty on the way in.
+  const dayMarks = useDayMarks();
 
   const { adHocTasks, scheduleAdHocTask, removeAdHocTask } = useAdHocTasks();
   const { focusList, setFocusList } = useFocusList();
@@ -495,7 +505,7 @@ export default function App() {
   // button will read as lit while that page is open.
   const onBoard = !showParkingLot && !showJobsSheet && !showJobs && !showProjects
     && !showPartsToOrder && !showParts && !showHelp && !showSettings && !showBench
-    && !showWeekPage;
+    && !showWeekPage && !showDayPage;
 
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
@@ -646,7 +656,23 @@ export default function App() {
                 fontSize: 12, cursor: 'pointer', fontWeight: showWeekPage ? 700 : 400,
               }}
             >
-              Week
+              W Log
+            </button>
+
+            {/* The Daily Log. On a desktop this shows the same two-page spread
+                as the pill beside it, opened on the day rather than the week;
+                on a phone it's the day on its own. Short label because the pill
+                row has no room for "Daily Log". */}
+            <button
+              onClick={() => selectPage('dayPage')}
+              style={{
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showDayPage ? '#0369a1' : '#334155'}`,
+                background: showDayPage ? '#0c4a6e' : '#1e293b',
+                color: showDayPage ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: showDayPage ? 700 : 400,
+              }}
+            >
+              D Log
             </button>
 
             <button
@@ -805,18 +831,51 @@ export default function App() {
               jobs={jobs}
               onJobClick={job => { setEditingJob(job); }}
             />
-          ) : showWeekPage ? (
-            <BenchWeekPage
-              jobs={jobs}
-              weekDays={weekDays}
-              marks={weekMarks.marks}
-              ready={weekMarks.ready}
-              saveError={weekMarks.saveError}
-              setMark={weekMarks.setMark}
-              clearJobKeys={weekMarks.clearJobKeys}
-              isMobile={isMobile}
-              showToast={showToast}
-            />
+          ) : (showWeekPage || showDayPage) ? (
+            /* The two logs are one spread, like the paper journal: week on the
+               left, day on the right. On a desktop both are always shown and
+               the pill only decides which one was asked for; on a phone there
+               is no room for two, so the pill picks one. */
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'row',
+              overflow: 'hidden', minHeight: 0,
+            }}>
+              {(!isMobile || showWeekPage) && (
+                <BenchWeekPage
+                  jobs={jobs}
+                  weekDays={weekDays}
+                  marks={weekMarks.marks}
+                  ready={weekMarks.ready}
+                  saveError={weekMarks.saveError}
+                  setMark={weekMarks.setMark}
+                  clearJobKeys={weekMarks.clearJobKeys}
+                  isMobile={isMobile}
+                  showToast={showToast}
+                  /* Closing a job off opens the existing invoice prompt. This
+                     is the only place the Daily/Weekly Log touches job state,
+                     and it goes through the same call the rest of the app
+                     already uses — there is no second way to finish a job. */
+                  onCloseJob={(job) => setPomoJob(job)}
+                />
+              )}
+              {!isMobile && (
+                <div style={{ width: 1, background: '#1e293b', flexShrink: 0 }} />
+              )}
+              {(!isMobile || showDayPage) && (
+                <DailyLogPanel
+                  jobs={jobs}
+                  weekDays={weekDays}
+                  marks={weekMarks.marks}
+                  dayItems={dayMarks.dayItems}
+                  ready={dayMarks.ready}
+                  saveError={dayMarks.saveError}
+                  addItem={dayMarks.addItem}
+                  removeItem={dayMarks.removeItem}
+                  isMobile={isMobile}
+                  showToast={showToast}
+                />
+              )}
+            </div>
           ) : showBench ? (
             <BenchBoardPage jobs={jobs} />
           ) : showProjects ? (

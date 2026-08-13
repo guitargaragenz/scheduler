@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
-  weekRowKey, benchSections, addableJobs,
+  weekRowKey, weekCloseKey, benchSections, addableJobs,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
   compareJobNumber,
 } from './BenchWeekPage.jsx';
@@ -90,10 +90,33 @@ describe('cellMark', () => {
 
 describe('trailing', () => {
   it('carries an unfinished job into next week', () => {
-    expect(trailing(WEEK, { '2026-08-11': 'slash' })).toEqual({ mark: 'arrow', doneIndex: -1 });
+    expect(trailing(WEEK, { '2026-08-11': 'slash' })).toEqual({ mark: 'arrow', closed: false });
   });
-  it('fills the trailing column from a cross, and reports where to rule off', () => {
-    expect(trailing(WEEK, { '2026-08-13': 'cross' })).toEqual({ mark: 'cross', doneIndex: 3 });
+  // The whole point of the close column having its own stored value: a day
+  // cross means "worked on it and finished for the day", which is not the same
+  // as "the job is off the bench". Only the close mark closes a job.
+  it('does not close a job just because a day was crossed off', () => {
+    expect(trailing(WEEK, { '2026-08-13': 'cross' })).toEqual({ mark: 'arrow', closed: false });
+  });
+  it('closes the job when the close column itself is marked', () => {
+    expect(trailing(WEEK, { [weekCloseKey(WEEK)]: 'closed' }))
+      .toEqual({ mark: 'cross', closed: true });
+  });
+});
+
+describe('weekCloseKey', () => {
+  it('keys the close mark to the week, so closing one week leaves others alone', () => {
+    expect(weekCloseKey(WEEK)).toBe('close:2026-08-10');
+    expect(weekCloseKey(['2026-08-17'])).toBe('close:2026-08-17');
+  });
+  it('is null with no week, so nothing can be written under a junk key', () => {
+    expect(weekCloseKey([])).toBe(null);
+    expect(weekCloseKey(undefined)).toBe(null);
+  });
+  // It has to stay outside day space or every day-walking function would read
+  // it as an eighth day.
+  it('is not one of the day keys', () => {
+    expect(WEEK).not.toContain(weekCloseKey(WEEK));
   });
 });
 
@@ -124,7 +147,27 @@ describe('buildWeekExport', () => {
     const line = text.split('\n').find(l => l.includes('1714 Fender Strat'));
     expect(line).toContain('/');
     expect(line).toContain('×');
+    // An unclosed job still carries on, whatever its day marks say.
+    expect(line.trim().endsWith('>')).toBe(true);
+  });
+
+  it('ends a closed job with a cross', () => {
+    const marks = { a: { '2026-08-11': 'slash', [weekCloseKey(WEEK)]: 'closed' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('1714 Fender Strat'));
     expect(line.trim().endsWith('×')).toBe(true);
+  });
+
+  // The old export ruled off every day after a cross. It can't now — a day
+  // cross is just that day's work, and Thursday's work still has to print
+  // after Wednesday was crossed off.
+  it('prints work done after a crossed-off day', () => {
+    const marks = { a: { '2026-08-11': 'cross', '2026-08-13': 'slash' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('1714 Fender Strat'));
+    expect(line).toContain('/');
   });
   it('says so plainly when the week is empty', () => {
     const text = buildWeekExport({ rows: [], weekKeys: WEEK, weekDays: DAYS, marks: {} });
