@@ -123,7 +123,10 @@ list explicitly.
 7. Day picks and tasks live in a new date-keyed table; no writes to `scheduledSlots` or
    `calendarSlot`.
 8. `AUTO_BUMP_ENABLED` still `false`.
-9. Mobile shows one page at a time.
+9. Desktop shows both logs side by side on one page — Weekly Log left, Daily Log right — and
+   the Weekly Log pane keeps its "Save week as a file" button at half width. Mobile shows one
+   log at a time with a toggle. A desktop *window* narrowed below the two panes is explicitly
+   out of scope (Trevor, 2026-08-13) — not a fail.
 10. Full test suite passes; new tests cover items 4, 5 and 6.
 
 ## Council record — 2026-08-13, two independent reviewers
@@ -185,3 +188,27 @@ Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and Trevor
    new Build 2 code.
 8. **Already working, don't rebuild it:** a marked or hand-added row survives source-list and
    filter changes (`weekRows()` ~233-237); only `job.done` drops a row (~222).
+
+## Council record — the side-by-side layout, 2026-08-13, one reviewer
+
+Run on its own because the split-view rule was added *after* the Build 2 council closed, so no
+reviewer had seen it. Returned **GO WITH CHANGES**. Nothing blocking.
+
+1. **No existing precedent for a split view.** `isMobile` (`src/App.jsx:128`) is a one-time
+   device check at load (`matchMedia('(pointer: coarse)') || innerWidth < 768`), used only as a
+   binary component swap (`App.jsx:987-1011`). Side-by-side is new UI, not a pattern to copy.
+2. **`BenchWeekPage.jsx` drops into a half-width pane as-is** — self-contained at `:596` with
+   its own `flex:1` container, own scroll region and own "Save week as a file" header bar.
+   Fixed widths (`nameW = 220`, `cellW = isMobile ? 34 : 44`, `:589,593`) total ≈570-620px, so
+   it fits half an iMac; `overflow:'auto'` (`:630`) means worst case it side-scrolls inside its
+   own pane. **No redesign of the week page is needed** — don't let the builder start one.
+3. **No routing collision.** `selectPage()` (`App.jsx:286-303`) is a clean exclusive-flag
+   pattern. Add one page flag that renders both logs internally — split on desktop, single view
+   plus toggle on phone via `isMobile`.
+4. **No collision with the other binding rules** — close flow, date-keyed table and the parked
+   scheduler are all layout-independent.
+5. **Blast radius nil** — presentational and routing only; touches none of the blast-radius
+   files.
+6. **The one real gap, and Trevor's call:** `isMobile` is a load-time device check, so a desktop
+   window resized narrow gets no fallback — two fixed-width panes just get squeezed. **Trevor
+   (2026-08-13): ignore it for now.** Build for the iMac; revisit when Moby (13") is set up.
