@@ -185,6 +185,16 @@ describe('adding a job to the week', () => {
     expect(addableJobs(jobs, 'Fretwork', []).map(o => o.id)).toEqual([]);
   });
 
+  it('lists the picker oldest first, not alphabetically', () => {
+    // Sorted by name, 875 and 97 landed after 1718 — as text, "8" beats "1".
+    const many = [
+      { id: '1718', job: '1718', mfr: 'Marshall', bench: 'Setup' },
+      { id: '97', job: '97', mfr: 'DB Tech', bench: 'Setup' },
+      { id: '875', job: '875', mfr: 'RCF', bench: 'Setup' },
+    ];
+    expect(addableJobs(many, 'Setup', []).map(o => o.id)).toEqual(['97', '875', '1718']);
+  });
+
   it('stops offering a job once it is a row', () => {
     const rows = weekRows(jobs, WEEK, { a: { [weekRowKey(WEEK)]: 'row' } });
     expect(addableJobs(jobs, 'Setup', rows).map(o => o.id)).toEqual(['b']);

@@ -418,10 +418,12 @@ export function addableJobs(jobs, bench, rows) {
     if (job.done) continue;
     if (taken.has(String(job.id))) continue;
     if (rowBenchOf(job, partsOf(job, all, byId)) !== bench) continue;
-    out.push({ id: String(job.id), name: rowName(job) || String(job.id) });
+    out.push({ id: String(job.id), name: rowName(job) || String(job.id), job: String(job.job ?? job.id) });
   }
 
-  return out.sort((a, b) => a.name.localeCompare(b.name));
+  // Same oldest-first order the rows use. Sorting by name put 875 and 97 after
+  // 1718, because as text "8" comes after "1".
+  return out.sort((a, b) => compareJobNumber(a.job, b.job));
 }
 
 // The per-bench "add a job" picker.
