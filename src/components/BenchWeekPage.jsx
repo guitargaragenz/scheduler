@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { benchColors } from '../data/jobs.js';
 import { localDateKey, formatDateRange } from '../utils/calendar.js';
 
@@ -19,7 +19,14 @@ import { localDateKey, formatDateRange } from '../utils/calendar.js';
 //     other session, so a rule enforced here would be guessing. Glue timing is
 //     Trevor's call.
 
-const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin'];
+// The five benches Trevor plans the week on. Wiring was dropped 2026-08-13 —
+// it isn't a bench he books a week against, and an always-drawn empty heading
+// is dead space on the page.
+//
+// Dropping it from THIS list does not hide a wiring job: benchSections() draws
+// any bench it finds in the data after these, so a job filed under Wiring still
+// gets its own heading. It just stops appearing when there is nothing on it.
+const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin'];
 
 // Stored as words, drawn as symbols. The database keeps 'slash', not '/', so a
 // change of symbol later is a display change and not a data migration.
@@ -68,6 +75,85 @@ export function weekRowKey(weekKeys) {
 // did look it up would find nothing to draw.
 const ROW_MARK = 'row';
 
+// ---------------------------------------------------------------------------
+// Typed rows — hand-written admin work that is not a job (Build 1c)
+// ---------------------------------------------------------------------------
+//
+// Trevor types "buy strings" under a bench and gets a row that behaves exactly
+// like a job row. There is no jobs[] entry behind it, and there must never be
+// one: if it was added by hand, it isn't a job.
+//
+// No schema change. Both of the pieces a typed row needs are carried inside the
+// two free-text columns bench_week_marks already has:
+//
+//   job_id  = "task:<monday>:<random>"
+//             The "task:" prefix is what keeps a typed id out of job space. A
+//             Multitrack job id is digits, optionally with a split suffix
+//             (1714, 1714-ST) — it can never contain a colon, so no typed id
+//             can ever collide with, or be mistaken for, a job id. The Monday
+//             is in there so an id is readable at a glance and belongs visibly
+//             to one week.
+//
+//   mark    = "task:<bench>:<name>"   (stored on the week key, week:<monday>)
+//             The week key is the only place a typed row's name and bench can
+//             live, because rowBenchOf() has no job.bench to read. Bench names
+//             are the shop's own list and contain no colon, so the value is
+//             parsed as: tag, then bench up to the NEXT colon, then everything
+//             remaining is the name. A typed name containing a colon survives
+//             that intact.
+//
+// A job row added by hand still stores plain 'row' on the same key, and 'row'
+// deliberately fails to decode as a typed row — the two cannot be confused.
+export const TYPED_ID_PREFIX = 'task:';
+
+// The longest typed name that still exports as a readable column.
+const MAX_TYPED_NAME = 60;
+
+export function isTypedRowId(id) {
+  return String(id ?? '').startsWith(TYPED_ID_PREFIX);
+}
+
+// A fresh id for one typed row in one week. Random, because two typed rows
+// created in the same second under the same bench must still be two rows.
+export function newTypedRowId(weekKeys, rand = Math.random) {
+  const monday = (weekKeys || [])[0];
+  if (!monday) return null;
+  const tail = rand().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  return `${TYPED_ID_PREFIX}${monday}:${tail}`;
+}
+
+// Typed rows are Trevor's admin to-do list — do the books, order strings,
+// clean the benches — so Admin is the only bench they can ever sit on
+// (corrected 2026-08-13). The bench is not a parameter anywhere: it is
+// written as Admin and read back as Admin, so no caller can place one
+// elsewhere even by mistake.
+export const TYPED_ROW_BENCH = 'Admin';
+
+// name -> the value stored on the week key. Returns null for a name that is
+// blank once trimmed, so an empty box can never create a row.
+export function encodeTypedRow(name) {
+  const n = String(name ?? '').trim().slice(0, MAX_TYPED_NAME);
+  if (!n) return null;
+  return `${TYPED_ID_PREFIX}${TYPED_ROW_BENCH}:${n}`;
+}
+
+// The reverse. Returns null for anything that is not a typed row value —
+// including 'row', the marker a hand-added JOB row stores on the same key.
+export function decodeTypedRow(value) {
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith(TYPED_ID_PREFIX)) return null;
+  const rest = value.slice(TYPED_ID_PREFIX.length);
+  const cut = rest.indexOf(':');
+  if (cut === -1) return null;
+  const name = rest.slice(cut + 1).trim();
+  if (!name) return null;
+  // The bench is always Admin, whatever the stored value happens to say. The
+  // field is still parsed past so a name containing a colon survives, but its
+  // content is never trusted — that is what makes a typed row on another bench
+  // impossible rather than merely unlikely.
+  return { bench: TYPED_ROW_BENCH, name };
+}
+
 // The pieces of a job that can carry a bench and a booking: its splits if it has
 // any, otherwise the job itself. Auto-splits are reached through subtasks[],
 // manual splits through parentId — the same two routes weekRows() has always
@@ -91,6 +177,24 @@ export function rowBenchOf(job, parts) {
 
 export function rowName(job) {
   return [job.job, job.mfr, job.model].filter(Boolean).join(' ').trim();
+}
+
+// Job numbers are issued in order, so sorting them low-to-high is the same as
+// listing the week's jobs oldest first — which is how Trevor reads the page.
+//
+// A number can carry a split suffix (`1714-ST`), so the leading digits are
+// compared as a NUMBER and the rest as text. Comparing the whole thing as text
+// would put 1714 after 171 and after 17140; comparing it as a number alone
+// would make 1714 and 1714-ST tie and reshuffle on reload.
+export function compareJobNumber(a, b) {
+  const parse = id => {
+    const s = String(id ?? '');
+    const m = s.match(/^(\d+)(.*)$/);
+    return m ? [Number(m[1]), m[2]] : [Number.POSITIVE_INFINITY, s];
+  };
+  const [an, ar] = parse(a);
+  const [bn, br] = parse(b);
+  return an - bn || ar.localeCompare(br);
 }
 
 // One row per top-level job that has anything to do with this week.
@@ -143,6 +247,44 @@ export function weekRows(jobs, weekKeys, marks = {}) {
     });
   }
 
+  // Job rows read oldest-first by job number. Done before the typed rows are
+  // added so hand-typed admin rows stay together at the foot of their bench
+  // rather than being interleaved by a number they don't have.
+  rows.sort((a, b) => compareJobNumber(a.job?.job ?? a.id, b.job?.job ?? b.id));
+
+  // Second pass: the rows that have no job behind them at all.
+  //
+  // The loop above can only ever find rows by walking jobs[], so a typed row
+  // would never be drawn by it. These are found from the marks instead: a
+  // typed id whose week key decodes into a bench and a name IS the row. The
+  // week key is the only record of it, which is also why a typed row cannot
+  // survive its own removal — clearing the keys clears the row.
+  //
+  // `job: null` is a stub on purpose. Nothing reads row.job; the row's name and
+  // bench are carried on the row itself, exactly as they are for a job row.
+  if (rowKey) {
+    const typedRows = [];
+    for (const [id, rowMarks] of Object.entries(marks || {})) {
+      if (!isTypedRowId(id)) continue;
+      const typed = decodeTypedRow(rowMarks?.[rowKey]);
+      if (!typed) continue;
+      typedRows.push({
+        id: String(id),
+        job: null,
+        bench: typed.bench,
+        name: typed.name,
+        bookedDays: new Set(),
+        addedByHand: true,
+        typed: true,
+        benches: typed.bench ? [typed.bench] : [],
+      });
+    }
+    // Marks arrive from Supabase in no guaranteed order, so sort them rather
+    // than let the page reshuffle itself on a reload.
+    typedRows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    rows.push(...typedRows);
+  }
+
   return rows;
 }
 
@@ -168,6 +310,15 @@ export function trailing(weekKeys, jobMarks) {
   };
 }
 
+// What a row is called on the page and in the exported file.
+//
+// A job row reads "1714 Fender Strat" — job number first, so it always starts
+// with a digit. A typed row reads "+ buy strings": the plus says the line was
+// written by hand and is not a job, and it cannot be misread as a job number.
+export function rowLabel(row) {
+  return row?.typed ? `+ ${row.name}` : (row?.name || '');
+}
+
 // One plain readable file for the week. Text, built here and downloaded by the
 // browser — nothing is written to Drive and no copy of the week is stored
 // anywhere. Re-exporting always re-reads the live marks.
@@ -180,7 +331,7 @@ export function buildWeekExport({ rows, weekKeys, weekDays, marks }) {
   lines.push('');
 
   const benches = groupByBench(rows);
-  const nameWidth = Math.max(20, ...rows.map(r => r.name.length));
+  const nameWidth = Math.max(20, ...rows.map(r => rowLabel(r).length));
 
   const header = ' '.repeat(nameWidth + 2) + dayLetters.map(d => d.padEnd(4)).join('') + '>';
   lines.push(header);
@@ -197,7 +348,7 @@ export function buildWeekExport({ rows, weekKeys, weekDays, marks }) {
         const m = cellMark(row, k, jobMarks);
         return (m ? MARKS[m].symbol : ' ').padEnd(4);
       });
-      lines.push('  ' + row.name.padEnd(nameWidth) + cells.join('') + MARKS[t.mark].symbol);
+      lines.push('  ' + rowLabel(row).padEnd(nameWidth) + cells.join('') + MARKS[t.mark].symbol);
     }
   }
 
@@ -267,10 +418,12 @@ export function addableJobs(jobs, bench, rows) {
     if (job.done) continue;
     if (taken.has(String(job.id))) continue;
     if (rowBenchOf(job, partsOf(job, all, byId)) !== bench) continue;
-    out.push({ id: String(job.id), name: rowName(job) || String(job.id) });
+    out.push({ id: String(job.id), name: rowName(job) || String(job.id), job: String(job.job ?? job.id) });
   }
 
-  return out.sort((a, b) => a.name.localeCompare(b.name));
+  // Same oldest-first order the rows use. Sorting by name put 875 and 97 after
+  // 1718, because as text "8" comes after "1".
+  return out.sort((a, b) => compareJobNumber(a.job, b.job));
 }
 
 // The per-bench "add a job" picker.
@@ -307,6 +460,56 @@ function AddJobToBench({ bench, jobs, rows, ready, nameW, isMobile, onAdd }) {
         ))}
       </select>
     </div>
+  );
+}
+
+// The per-bench "type something that isn't a job" box.
+//
+// Sits under the job dropdown on every bench, and unlike that dropdown it is
+// always there — it has no list that can run out. Its own text state lives here
+// so the page does not track one box per bench.
+function AddTaskToBench({ ready, nameW, isMobile, onAddTask }) {
+  const [text, setText] = useState('');
+
+  async function submit() {
+    const name = text.trim();
+    if (!name) return;
+    // Cleared straight away, so a second task can be typed while the first
+    // saves. A failed save says so in a toast rather than holding the box.
+    setText('');
+    await onAddTask(name);
+  }
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); submit(); }}
+      style={{ display: 'flex', gap: 6, paddingLeft: 2, paddingTop: 4, paddingBottom: 2 }}
+    >
+      <input
+        type="text"
+        value={text}
+        maxLength={MAX_TYPED_NAME}
+        disabled={!ready}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="+ Type an admin task…"
+        style={{
+          width: isMobile ? '100%' : nameW, maxWidth: '100%',
+          padding: '5px 8px', borderRadius: 5,
+          border: '1px dashed #334155', background: '#0f172a',
+          color: '#cbd5e1', fontSize: 12.5,
+        }}
+      />
+      <button
+        type="submit"
+        disabled={!ready || !text.trim()}
+        style={{
+          padding: '5px 12px', borderRadius: 5,
+          border: '1px solid #334155', background: '#1e293b',
+          color: text.trim() ? '#cbd5e1' : '#475569', fontSize: 12.5,
+          cursor: ready && text.trim() ? 'pointer' : 'default',
+        }}
+      >Add</button>
+    </form>
   );
 }
 
@@ -353,6 +556,23 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     if (!res?.ok) showToast?.('That job did not get added to the week');
   }
 
+  // Put a typed row on the week — admin work with no job behind it.
+  // Same one write as handleAdd, so it lands just as blank; the difference is
+  // that the mark carries the bench and the name, because there is no jobs[]
+  // entry to read either from.
+  async function handleAddTask(name) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (!rowKey) return;
+    const value = encodeTypedRow(name);
+    const id = newTypedRowId(weekKeys);
+    if (!value || !id) return;
+    const res = await setMark(id, rowKey, value);
+    if (!res?.ok) showToast?.('That task did not get added to the week');
+  }
+
   // Take a job off the week: its day marks and the week's row key go together.
   // Asks first, because it throws away marks for days already worked.
   async function handleRemove(row) {
@@ -383,7 +603,8 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
           Week of {formatDateRange(weekDays || [])}
         </span>
         <span style={{ color: '#475569', fontSize: 12 }}>
-          {rows.length} job{rows.length === 1 ? '' : 's'}
+          {/* "rows", not "jobs" — a typed row is counted here and isn't a job. */}
+          {rows.length} row{rows.length === 1 ? '' : 's'}
         </span>
         <button
           type="button"
@@ -463,7 +684,13 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   alignItems: isMobile ? 'stretch' : 'center',
                   minHeight: 32, marginBottom: isMobile ? 8 : 0, position: 'relative',
                 }}>
-                  <div style={nameStyle}>{row.name}</div>
+                  <div style={nameStyle}>
+                    {/* The dim + says this line was typed by hand and has no job
+                        number. Kept out of row.name so the Remove question and
+                        the tooltip still read as plain words. */}
+                    {row.typed && <span style={{ color: '#64748b' }}>+ </span>}
+                    {row.name}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? 'none' : 'initial' }}>
                   {weekKeys.map((k, i) => {
                     const m = cellMark(row, k, jobMarks);
@@ -540,6 +767,20 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                 nameW={nameW}
                 isMobile={isMobile}
                 onAdd={handleAdd}
+              />
+            )}
+
+            {/* Type a task that has no job number — the Admin bench only, since
+                this is Trevor's admin to-do list, not something a repair bench
+                keeps. Rendered separately from the dropdown above, which
+                disappears once a bench has no addable jobs left; this box has no
+                list to run out, so it is always here on Admin. */}
+            {group.canAdd && group.bench === TYPED_ROW_BENCH && (
+              <AddTaskToBench
+                ready={ready}
+                nameW={nameW}
+                isMobile={isMobile}
+                onAddTask={handleAddTask}
               />
             )}
           </section>

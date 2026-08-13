@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
   weekRowKey, benchSections, addableJobs,
+  encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
+  compareJobNumber,
 } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -19,6 +21,24 @@ describe('slotDateKey', () => {
     expect(slotDateKey(null)).toBeNull();
     expect(slotDateKey('')).toBeNull();
     expect(slotDateKey('not-a-slot')).toBeNull();
+  });
+});
+
+describe('job number order', () => {
+  it('reads oldest first, and treats the number as a number', () => {
+    const ids = ['1714', '171', '17140', '980', '1714-ST'];
+    expect([...ids].sort(compareJobNumber)).toEqual(['171', '980', '1714', '1714-ST', '17140']);
+  });
+
+  it('lists the week rows by job number, typed admin rows last', () => {
+    const jobs = [
+      { id: 'c', job: '1802', mfr: 'Fender', bench: 'Setup', calendarSlot: '2026-08-11-9-0' },
+      { id: 'a', job: '1650', mfr: 'Gibson', bench: 'Setup', calendarSlot: '2026-08-12-9-0' },
+      { id: 'b', job: '1714', mfr: 'Martin', bench: 'Setup', calendarSlot: '2026-08-13-9-0' },
+    ];
+    const marks = { [newTypedRowId(WEEK[0])]: { [weekRowKey(WEEK)]: encodeTypedRow('do the books') } };
+    const rows = weekRows(jobs, WEEK, marks);
+    expect(rows.map(r => r.job?.job ?? r.name)).toEqual(['1650', '1714', '1802', 'do the books']);
   });
 });
 
@@ -165,6 +185,16 @@ describe('adding a job to the week', () => {
     expect(addableJobs(jobs, 'Fretwork', []).map(o => o.id)).toEqual([]);
   });
 
+  it('lists the picker oldest first, not alphabetically', () => {
+    // Sorted by name, 875 and 97 landed after 1718 — as text, "8" beats "1".
+    const many = [
+      { id: '1718', job: '1718', mfr: 'Marshall', bench: 'Setup' },
+      { id: '97', job: '97', mfr: 'DB Tech', bench: 'Setup' },
+      { id: '875', job: '875', mfr: 'RCF', bench: 'Setup' },
+    ];
+    expect(addableJobs(many, 'Setup', []).map(o => o.id)).toEqual(['97', '875', '1718']);
+  });
+
   it('stops offering a job once it is a row', () => {
     const rows = weekRows(jobs, WEEK, { a: { [weekRowKey(WEEK)]: 'row' } });
     expect(addableJobs(jobs, 'Setup', rows).map(o => o.id)).toEqual(['b']);
@@ -193,10 +223,92 @@ describe('adding a job to the week', () => {
   });
 });
 
+describe('typing a task that is not a job', () => {
+  const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', calendarSlot: '2026-08-11-9-0' }];
+  const KEY = weekRowKey(WEEK);
+  const marksWith = (value, id = 'task:2026-08-10:zz') => ({ [id]: { [KEY]: value } });
+
+  it('carries the name in the one mark value, always on Admin', () => {
+    expect(decodeTypedRow(encodeTypedRow('buy strings')))
+      .toEqual({ bench: 'Admin', name: 'buy strings' });
+  });
+
+  it('keeps a colon typed inside the name', () => {
+    expect(decodeTypedRow(encodeTypedRow('research: 1714 trem')))
+      .toEqual({ bench: 'Admin', name: 'research: 1714 trem' });
+  });
+
+  it('cannot land on any bench but Admin', () => {
+    // encodeTypedRow takes no bench at all, so nothing can ask for another one.
+    expect(encodeTypedRow.length).toBe(1);
+    // And a value hand-written with a different bench still reads as Admin,
+    // rather than drawing a typed row on a repair bench.
+    expect(decodeTypedRow('task:Setup:sneak onto setup'))
+      .toEqual({ bench: 'Admin', name: 'sneak onto setup' });
+    const rows = weekRows(jobs, WEEK, marksWith('task:Fretwork:sneak in'));
+    expect(rows.filter(r => r.typed).map(r => r.bench)).toEqual(['Admin']);
+  });
+
+  it('refuses an empty name and anything that is not a typed value', () => {
+    expect(encodeTypedRow('   ')).toBeNull();
+    expect(decodeTypedRow('row')).toBeNull();     // Build 1b's job-row marker
+    expect(decodeTypedRow('slash')).toBeNull();
+    expect(decodeTypedRow(null)).toBeNull();
+  });
+
+  it('makes an id no Multitrack job number could ever match', () => {
+    const id = newTypedRowId(WEEK, () => 0.123456789);
+    expect(isTypedRowId(id)).toBe(true);
+    expect(id).toContain('2026-08-10');
+    // Job numbers are digits with optional split suffix — never a colon.
+    for (const jobId of ['1714', '1714-ST', 'a']) expect(isTypedRowId(jobId)).toBe(false);
+  });
+
+  it('draws the typed row on Admin, alongside real job rows', () => {
+    const marks = marksWith(encodeTypedRow('buy strings'));
+    const rows = weekRows(jobs, WEEK, marks);
+    const typed = rows.find(r => r.typed);
+    expect(typed.name).toBe('buy strings');
+    expect(typed.bench).toBe('Admin');
+    expect(typed.addedByHand).toBe(true);
+    expect(rows.find(r => r.id === 'a')).toBeTruthy();
+  });
+
+  it('starts every day blank', () => {
+    const marks = marksWith(encodeTypedRow('buy strings'));
+    const row = weekRows(jobs, WEEK, marks).find(r => r.typed);
+    for (const k of WEEK) expect(cellMark(row, k, {})).toBe('');
+  });
+
+  it('does not carry into another week', () => {
+    const marks = marksWith(encodeTypedRow('buy strings'));
+    const nextWeek = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'];
+    expect(weekRows(jobs, nextWeek, marks).filter(r => r.typed)).toHaveLength(0);
+  });
+
+  it('exports as a blank line under the typed name, marked with a +', () => {
+    const marks = marksWith(encodeTypedRow('buy strings'));
+    const rows = weekRows(jobs, WEEK, marks);
+    expect(rowLabel(rows.find(r => r.typed))).toBe('+ buy strings');
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('buy strings'));
+    expect(line.replace('+ buy strings', '').trim()).toBe('>');
+  });
+
+  it('exports a marked typed row the same way a job row does', () => {
+    const id = 'task:2026-08-10:zz';
+    const marks = { [id]: { [KEY]: encodeTypedRow('do the books'), '2026-08-12': 'cross' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('do the books'));
+    expect(line).toContain('×');
+  });
+});
+
 describe('benchSections', () => {
   it('shows every shop bench even on an empty week, so a blank page can be filled', () => {
     expect(benchSections([]).map(g => g.bench))
-      .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin']);
+      .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin']);
   });
   it('adds an unlisted bench and refuses adding under "No bench set"', () => {
     const groups = benchSections([{ bench: 'Finishing' }, { bench: '' }]);
