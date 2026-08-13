@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
+  weekRowKey, benchSections, addableJobs,
 } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -108,5 +109,98 @@ describe('buildWeekExport', () => {
   it('says so plainly when the week is empty', () => {
     const text = buildWeekExport({ rows: [], weekKeys: WEEK, weekDays: DAYS, marks: {} });
     expect(text).toContain('no jobs on the bench this week');
+  });
+
+  it('exports a hand-added job as a completely blank line', () => {
+    const jobs2 = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup' }];
+    const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
+    const rows = weekRows(jobs2, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('1714 Fender'));
+    // Only the name and the trailing carry-on symbol. No day symbol anywhere.
+    expect(line.replace('1714 Fender', '').trim()).toBe('>');
+  });
+});
+
+describe('weekRowKey', () => {
+  it('is scoped to the week and is never one of the seven day keys', () => {
+    const key = weekRowKey(WEEK);
+    expect(key).toBe('week:2026-08-10');
+    expect(WEEK).not.toContain(key);
+  });
+  it('has no key for a week with no days', () => {
+    expect(weekRowKey([])).toBeNull();
+  });
+});
+
+describe('adding a job to the week', () => {
+  const jobs = [
+    { id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup' },
+    { id: 'b', job: '1720', mfr: 'Gibson', bench: 'Setup' },
+    { id: 'c', job: '1731', mfr: 'Ibanez', bench: 'Fretwork', done: true },
+    { id: 'd', job: '1740', mfr: 'Yamaha' },
+  ];
+
+  it('puts a job on the week with no booking and no mark', () => {
+    const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    expect(rows.map(r => r.id)).toEqual(['a']);
+    expect(rows[0].addedByHand).toBe(true);
+  });
+
+  it('leaves every day of an added row blank', () => {
+    const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
+    const row = weekRows(jobs, WEEK, marks)[0];
+    for (const k of WEEK) expect(cellMark(row, k, marks.a)).toBe('');
+  });
+
+  it('does not carry an added row into another week', () => {
+    const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
+    const nextWeek = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'];
+    expect(weekRows(jobs, nextWeek, marks)).toHaveLength(0);
+  });
+
+  it('offers the bench its own unfinished jobs, and not the done ones', () => {
+    expect(addableJobs(jobs, 'Setup', []).map(o => o.id)).toEqual(['a', 'b']);
+    expect(addableJobs(jobs, 'Fretwork', []).map(o => o.id)).toEqual([]);
+  });
+
+  it('stops offering a job once it is a row', () => {
+    const rows = weekRows(jobs, WEEK, { a: { [weekRowKey(WEEK)]: 'row' } });
+    expect(addableJobs(jobs, 'Setup', rows).map(o => o.id)).toEqual(['b']);
+  });
+
+  it('will not offer a split job under its other bench', () => {
+    // One row per job: this guitar is filed under Luthier, so Fretwork must not
+    // still offer it even though a split of it sits on that bench.
+    const split = [
+      { id: 'p', job: '1714', mfr: 'Fender', isSplit: true, bench: 'Luthier' },
+      { id: 'c1', parentId: 'p', bench: 'Fretwork' },
+    ];
+    const rows = weekRows(split, WEEK, { p: { [weekRowKey(WEEK)]: 'row' } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].bench).toBe('Luthier');
+    expect(addableJobs(split, 'Fretwork', rows)).toEqual([]);
+    expect(addableJobs(split, 'Luthier', rows)).toEqual([]);
+  });
+
+  it('never offers a job that has no bench', () => {
+    const everywhere = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin'];
+    for (const b of everywhere) {
+      expect(addableJobs(jobs, b, []).map(o => o.id)).not.toContain('d');
+    }
+    expect(addableJobs(jobs, '', [])).toEqual([]);
+  });
+});
+
+describe('benchSections', () => {
+  it('shows every shop bench even on an empty week, so a blank page can be filled', () => {
+    expect(benchSections([]).map(g => g.bench))
+      .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin']);
+  });
+  it('adds an unlisted bench and refuses adding under "No bench set"', () => {
+    const groups = benchSections([{ bench: 'Finishing' }, { bench: '' }]);
+    expect(groups.map(g => g.bench)).toContain('Finishing');
+    expect(groups.find(g => g.bench === 'No bench set').canAdd).toBe(false);
   });
 });
