@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
   weekRowKey, benchSections, addableJobs,
+  encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
 } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -190,6 +191,77 @@ describe('adding a job to the week', () => {
       expect(addableJobs(jobs, b, []).map(o => o.id)).not.toContain('d');
     }
     expect(addableJobs(jobs, '', [])).toEqual([]);
+  });
+});
+
+describe('typing a task that is not a job', () => {
+  const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', calendarSlot: '2026-08-11-9-0' }];
+  const KEY = weekRowKey(WEEK);
+  const marksWith = (value, id = 'task:2026-08-10:zz') => ({ [id]: { [KEY]: value } });
+
+  it('carries both the bench and the name in the one mark value', () => {
+    expect(decodeTypedRow(encodeTypedRow('Admin', 'buy strings')))
+      .toEqual({ bench: 'Admin', name: 'buy strings' });
+  });
+
+  it('keeps a colon typed inside the name', () => {
+    expect(decodeTypedRow(encodeTypedRow('Setup', 'research: 1714 trem')))
+      .toEqual({ bench: 'Setup', name: 'research: 1714 trem' });
+  });
+
+  it('refuses an empty name and anything that is not a typed value', () => {
+    expect(encodeTypedRow('Admin', '   ')).toBeNull();
+    expect(decodeTypedRow('row')).toBeNull();     // Build 1b's job-row marker
+    expect(decodeTypedRow('slash')).toBeNull();
+    expect(decodeTypedRow(null)).toBeNull();
+  });
+
+  it('makes an id no Multitrack job number could ever match', () => {
+    const id = newTypedRowId(WEEK, () => 0.123456789);
+    expect(isTypedRowId(id)).toBe(true);
+    expect(id).toContain('2026-08-10');
+    // Job numbers are digits with optional split suffix — never a colon.
+    for (const jobId of ['1714', '1714-ST', 'a']) expect(isTypedRowId(jobId)).toBe(false);
+  });
+
+  it('draws the typed row on its bench, alongside real job rows', () => {
+    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const rows = weekRows(jobs, WEEK, marks);
+    const typed = rows.find(r => r.typed);
+    expect(typed.name).toBe('buy strings');
+    expect(typed.bench).toBe('Admin');
+    expect(typed.addedByHand).toBe(true);
+    expect(rows.find(r => r.id === 'a')).toBeTruthy();
+  });
+
+  it('starts every day blank', () => {
+    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const row = weekRows(jobs, WEEK, marks).find(r => r.typed);
+    for (const k of WEEK) expect(cellMark(row, k, {})).toBe('');
+  });
+
+  it('does not carry into another week', () => {
+    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const nextWeek = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'];
+    expect(weekRows(jobs, nextWeek, marks).filter(r => r.typed)).toHaveLength(0);
+  });
+
+  it('exports as a blank line under the typed name, marked with a +', () => {
+    const marks = marksWith(encodeTypedRow('Admin', 'buy strings'));
+    const rows = weekRows(jobs, WEEK, marks);
+    expect(rowLabel(rows.find(r => r.typed))).toBe('+ buy strings');
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('buy strings'));
+    expect(line.replace('+ buy strings', '').trim()).toBe('>');
+  });
+
+  it('exports a marked typed row the same way a job row does', () => {
+    const id = 'task:2026-08-10:zz';
+    const marks = { [id]: { [KEY]: encodeTypedRow('Admin', 'do the books'), '2026-08-12': 'cross' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('do the books'));
+    expect(line).toContain('×');
   });
 });
 
