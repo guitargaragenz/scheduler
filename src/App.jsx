@@ -813,6 +813,7 @@ export default function App() {
               ready={weekMarks.ready}
               saveError={weekMarks.saveError}
               setMark={weekMarks.setMark}
+              clearJobKeys={weekMarks.clearJobKeys}
               isMobile={isMobile}
               showToast={showToast}
             />

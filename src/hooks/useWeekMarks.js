@@ -118,5 +118,53 @@ export function useWeekMarks() {
     return { ok: true };
   }
 
-  return { marks, ready, saveError, setMark };
+  // Clear SEVERAL keys for one job in a single go — the week page's "take this
+  // job off the week", which has to drop the day marks and the week's row key
+  // together. Doing it one setMark() at a time would leave a job half-removed if
+  // the third call failed, and would flash the row through four redraws.
+  //
+  // Only ever removes. There is no bulk write counterpart on purpose: a bug in
+  // one would scribble over a week, and nothing needs one.
+  async function clearJobKeys(jobId, dateKeys) {
+    if (!readyRef.current) return { ok: false };
+    if (!jobId || !Array.isArray(dateKeys) || dateKeys.length === 0) return { ok: false };
+    if (failedSavesRef.current >= MAX_FAILED_SAVES) return { ok: false };
+
+    const id = String(jobId);
+    const keys = [...new Set(dateKeys.map(String).filter(Boolean))];
+    // Only the keys this job actually has. Deleting a row that was never there
+    // is harmless but pointless, and it makes the request bigger than the change.
+    const present = keys.filter(k => marks[id]?.[k] !== undefined);
+    if (present.length === 0) return { ok: true };
+    const previous = { ...(marks[id] || {}) };
+
+    setMarks(prev => {
+      const forJob = { ...(prev[id] || {}) };
+      present.forEach(k => delete forJob[k]);
+      const next = { ...prev };
+      if (Object.keys(forJob).length === 0) delete next[id];
+      else next[id] = forJob;
+      return next;
+    });
+
+    justSavedAt.current = Date.now();
+    const res = await clearWeekMarks(present.map(k => ({ jobId: id, dateKey: k })));
+
+    if (!res?.ok) {
+      failedSavesRef.current += 1;
+      setSaveError('That did not save.');
+      // Put the whole job's marks back as they were. clearWeekMarks() deletes
+      // cell by cell, so a failure part-way through may have removed some of
+      // them — the next read from Supabase is the truth, and this just stops the
+      // screen claiming a change that did not fully happen.
+      setMarks(prev => ({ ...prev, [id]: previous }));
+      return { ok: false };
+    }
+
+    failedSavesRef.current = 0;
+    setSaveError(null);
+    return { ok: true };
+  }
+
+  return { marks, ready, saveError, setMark, clearJobKeys };
 }

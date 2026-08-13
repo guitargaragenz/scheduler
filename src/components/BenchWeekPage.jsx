@@ -49,12 +49,57 @@ export function slotDateKey(calendarSlot) {
   return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
 }
 
+// The key that holds a hand-added row for a week.
+//
+// It lives in bench_week_marks alongside the day marks, but it is NOT one of the
+// seven day keys, so nothing that draws or exports a day can ever see it:
+// cellMark(), trailing() and buildWeekExport() all walk weekKeys and only
+// weekKeys. That is what lets an added row start blank without inventing a
+// "blank" marker symbol.
+//
+// The week's Monday is weekKeys[0] — getWeekDays() always starts on Monday.
+export function weekRowKey(weekKeys) {
+  const monday = (weekKeys || [])[0];
+  return monday ? `week:${monday}` : null;
+}
+
+// The value stored under that key. Never displayed; the key's existence is the
+// whole message. Deliberately not one of the MARKS names, so a stray read that
+// did look it up would find nothing to draw.
+const ROW_MARK = 'row';
+
+// The pieces of a job that can carry a bench and a booking: its splits if it has
+// any, otherwise the job itself. Auto-splits are reached through subtasks[],
+// manual splits through parentId — the same two routes weekRows() has always
+// used, pulled out so the bench dropdown cannot drift from the row list.
+export function partsOf(job, all, byId) {
+  let kids = [];
+  if (job.hasSubtasks && Array.isArray(job.subtasks)) {
+    kids = job.subtasks.map(id => byId.get(id)).filter(Boolean);
+  } else if (job.isSplit) {
+    kids = all.filter(j => j.parentId === job.id);
+  }
+  return kids.length > 0 ? kids : [job];
+}
+
+// The bench a job's ROW is filed under: the parent's own if it has one,
+// otherwise the first bench any of its pieces sits on. One row, one bench
+// heading, even for a job split across two benches.
+export function rowBenchOf(job, parts) {
+  return job.bench || parts.map(p => p.bench).find(Boolean) || '';
+}
+
+export function rowName(job) {
+  return [job.job, job.mfr, job.model].filter(Boolean).join(' ').trim();
+}
+
 // One row per top-level job that has anything to do with this week.
 //
-// "Anything to do with this week" is either a booking in it, or a mark already
-// made in it. The second half matters: once the calendar's automatic moving is
-// parked, a job marked as worked must not fall off the page just because its
-// booking later changed.
+// "Anything to do with this week" is a booking in it, a mark already made in it,
+// or a hand-added row for it. The second matters because once the calendar's
+// automatic moving is parked, a job marked as worked must not fall off the page
+// just because its booking later changed. The third is how Trevor fills a blank
+// Sunday page, before any booking or mark exists.
 //
 // Splits are reached through their parent and collapsed back into the parent's
 // single row — a job worked on two benches is still one guitar and one line.
@@ -65,20 +110,14 @@ export function weekRows(jobs, weekKeys, marks = {}) {
   const all = jobs || [];
   const inWeek = new Set(weekKeys);
   const byId = new Map(all.map(j => [j.id, j]));
+  const rowKey = weekRowKey(weekKeys);
   const rows = [];
 
   for (const job of all) {
     if (job.parentId || job.isDerived) continue;
     if (job.done) continue;
 
-    let kids = [];
-    if (job.hasSubtasks && Array.isArray(job.subtasks)) {
-      kids = job.subtasks.map(id => byId.get(id)).filter(Boolean);
-    } else if (job.isSplit) {
-      kids = all.filter(j => j.parentId === job.id);
-    }
-
-    const parts = kids.length > 0 ? kids : [job];
+    const parts = partsOf(job, all, byId);
 
     // Every day this week any part of the job is booked on.
     const bookedDays = new Set();
@@ -89,20 +128,17 @@ export function weekRows(jobs, weekKeys, marks = {}) {
 
     const jobMarks = marks[String(job.id)] || {};
     const hasMarkThisWeek = weekKeys.some(k => jobMarks[k]);
+    const addedByHand = Boolean(rowKey && jobMarks[rowKey]);
 
-    if (bookedDays.size === 0 && !hasMarkThisWeek) continue;
-
-    // The row's bench: the parent's own if it has one, otherwise the first
-    // bench any of its pieces sits on. A job split across benches still gets
-    // one row — grouping is a heading, not a second copy of the job.
-    const bench = job.bench || parts.map(p => p.bench).find(Boolean) || '';
+    if (bookedDays.size === 0 && !hasMarkThisWeek && !addedByHand) continue;
 
     rows.push({
       id: String(job.id),
       job,
-      bench,
-      name: [job.job, job.mfr, job.model].filter(Boolean).join(' ').trim(),
+      bench: rowBenchOf(job, parts),
+      name: rowName(job),
       bookedDays,
+      addedByHand,
       benches: [...new Set(parts.map(p => p.bench).filter(Boolean))],
     });
   }
@@ -186,10 +222,99 @@ export function groupByBench(rows) {
   return groups;
 }
 
-export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, isMobile, showToast }) {
+// What the page draws. Same grouping as groupByBench(), except every shop bench
+// is always shown even with no rows on it.
+//
+// That is required, not cosmetic: Trevor plans the week on Sunday, when the page
+// is empty, and a bench with no heading has nowhere to hang its dropdown — the
+// page could never be filled by hand at all. groupByBench() is left alone
+// because buildWeekExport() uses it, and an exported week should still list only
+// the benches that actually have jobs on them.
+//
+// `canAdd` is false for "No bench set": a job with no bench cannot be offered
+// under a bench, so those rows can appear (from a booking or a mark) but nothing
+// can be added there. Accepted, per the brief.
+export function benchSections(rows) {
+  const all = rows || [];
+  const extra = [...new Set(all.map(r => r.bench).filter(b => b && !BENCH_ORDER.includes(b)))].sort();
+  const groups = [...BENCH_ORDER, ...extra].map(bench => ({
+    bench,
+    rows: all.filter(r => r.bench === bench),
+    canAdd: true,
+  }));
+  const none = all.filter(r => !r.bench);
+  if (none.length) groups.push({ bench: 'No bench set', rows: none, canAdd: false });
+  return groups;
+}
+
+// The jobs offerable under one bench: on that bench, not finished, and not
+// already a row anywhere this week.
+//
+// "Already a row" is checked by job id against the WHOLE week's rows, not
+// against this bench's rows. A job split across two benches shows as one row
+// under one of them, and must not still be addable under the other — that would
+// put the same guitar on the page twice, which is the one thing the one-row-per-
+// job rule exists to stop.
+export function addableJobs(jobs, bench, rows) {
+  const all = jobs || [];
+  if (!bench) return [];
+  const byId = new Map(all.map(j => [j.id, j]));
+  const taken = new Set((rows || []).map(r => String(r.id)));
+  const out = [];
+
+  for (const job of all) {
+    if (job.parentId || job.isDerived) continue;
+    if (job.done) continue;
+    if (taken.has(String(job.id))) continue;
+    if (rowBenchOf(job, partsOf(job, all, byId)) !== bench) continue;
+    out.push({ id: String(job.id), name: rowName(job) || String(job.id) });
+  }
+
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// The per-bench "add a job" picker.
+//
+// Kept as its own component so the option list is recomputed per bench only when
+// that bench's inputs change, and so the select's own value can be reset to the
+// placeholder on every pick without the page tracking one piece of state per
+// bench.
+function AddJobToBench({ bench, jobs, rows, ready, nameW, isMobile, onAdd }) {
+  const options = useMemo(() => addableJobs(jobs, bench, rows), [jobs, bench, rows]);
+  if (options.length === 0) return null;
+
+  return (
+    <div style={{ paddingLeft: 2, paddingTop: 4, paddingBottom: 2 }}>
+      <select
+        value=""
+        disabled={!ready}
+        onChange={(e) => {
+          const id = e.target.value;
+          e.target.value = '';
+          if (id) onAdd(id);
+        }}
+        style={{
+          width: isMobile ? '100%' : nameW, maxWidth: '100%',
+          padding: '5px 8px', borderRadius: 5,
+          border: '1px dashed #334155', background: '#0f172a',
+          color: '#94a3b8', fontSize: 12.5,
+          cursor: ready ? 'pointer' : 'default',
+        }}
+      >
+        <option value="">+ Add a job to {bench}…</option>
+        {options.map(o => (
+          <option key={o.id} value={o.id}>{o.name}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
-  const groups = useMemo(() => groupByBench(rows), [rows]);
+  const groups = useMemo(() => benchSections(rows), [rows]);
+  const rowKey = useMemo(() => weekRowKey(weekKeys), [weekKeys]);
 
   function handleExport() {
     const text = buildWeekExport({ rows, weekKeys, weekDays, marks });
@@ -213,6 +338,32 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     const current = cellMark(row, dateKey, marks[row.id] || {});
     const res = await setMark(row.id, dateKey, nextMark(current));
     if (!res?.ok) showToast?.('That mark did not save');
+  }
+
+  // Put a job on the week. Writes the week's row key and NOTHING else — no dot,
+  // no day symbol. The row lands blank and Trevor marks the days himself, the
+  // same way he does on a row that arrived from a booking.
+  async function handleAdd(jobId) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (!jobId || !rowKey) return;
+    const res = await setMark(jobId, rowKey, ROW_MARK);
+    if (!res?.ok) showToast?.('That job did not get added to the week');
+  }
+
+  // Take a job off the week: its day marks and the week's row key go together.
+  // Asks first, because it throws away marks for days already worked.
+  async function handleRemove(row) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    const ok = window.confirm(`Take ${row.name} off this week? Any days already marked on this row are cleared.`);
+    if (!ok) return;
+    const res = await clearJobKeys?.(row.id, rowKey ? [...weekKeys, rowKey] : weekKeys);
+    if (!res?.ok) showToast?.('That job did not come off the week');
   }
 
   const cellW = isMobile ? 34 : 44;
@@ -276,9 +427,9 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
           <div style={{ flex: 1, minWidth: 0 }} />
         </div>
 
-        {groups.length === 0 && (
+        {rows.length === 0 && (
           <div style={{ color: '#475569', fontSize: 13, padding: '16px 2px' }}>
-            Nothing booked on the bench this week.
+            Nothing on the bench this week yet — add jobs to a bench below.
           </div>
         )}
 
@@ -350,10 +501,47 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     width: cellW, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: t.mark === 'cross' ? '#f87171' : '#475569', fontSize: 16,
                   }}>{MARKS[t.mark].symbol}</div>
+
+                  {/* Take the job off the week.
+                      Only on rows with no booking this week — a booked job is on
+                      the page BECAUSE of its booking, and clearing marks would
+                      not remove it. Offering a button that visibly does nothing
+                      is worse than not offering one. */}
+                  {row.bookedDays.size === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(row)}
+                      disabled={!ready}
+                      title={`Take ${row.name} off this week`}
+                      style={{
+                        marginLeft: 8, padding: '3px 9px', borderRadius: 5,
+                        border: '1px solid #334155', background: 'transparent',
+                        color: '#64748b', fontSize: 11.5,
+                        cursor: ready ? 'pointer' : 'default',
+                      }}
+                    >Remove</button>
+                  )}
                   </div>
                 </div>
               );
             })}
+
+            {/* Add a job to this bench for this week.
+                A plain select, so the phone gives its own full-screen picker
+                rather than a cramped custom menu. It never holds a value: it
+                fires on pick and resets, because the list itself changes the
+                moment the job becomes a row. */}
+            {group.canAdd && (
+              <AddJobToBench
+                bench={group.bench}
+                jobs={jobs}
+                rows={rows}
+                ready={ready}
+                nameW={nameW}
+                isMobile={isMobile}
+                onAdd={handleAdd}
+              />
+            )}
           </section>
         ))}
       </div>
