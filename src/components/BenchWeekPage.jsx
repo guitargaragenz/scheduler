@@ -172,6 +172,24 @@ export function rowName(job) {
   return [job.job, job.mfr, job.model].filter(Boolean).join(' ').trim();
 }
 
+// Job numbers are issued in order, so sorting them low-to-high is the same as
+// listing the week's jobs oldest first — which is how Trevor reads the page.
+//
+// A number can carry a split suffix (`1714-ST`), so the leading digits are
+// compared as a NUMBER and the rest as text. Comparing the whole thing as text
+// would put 1714 after 171 and after 17140; comparing it as a number alone
+// would make 1714 and 1714-ST tie and reshuffle on reload.
+export function compareJobNumber(a, b) {
+  const parse = id => {
+    const s = String(id ?? '');
+    const m = s.match(/^(\d+)(.*)$/);
+    return m ? [Number(m[1]), m[2]] : [Number.POSITIVE_INFINITY, s];
+  };
+  const [an, ar] = parse(a);
+  const [bn, br] = parse(b);
+  return an - bn || ar.localeCompare(br);
+}
+
 // One row per top-level job that has anything to do with this week.
 //
 // "Anything to do with this week" is a booking in it, a mark already made in it,
@@ -221,6 +239,11 @@ export function weekRows(jobs, weekKeys, marks = {}) {
       benches: [...new Set(parts.map(p => p.bench).filter(Boolean))],
     });
   }
+
+  // Job rows read oldest-first by job number. Done before the typed rows are
+  // added so hand-typed admin rows stay together at the foot of their bench
+  // rather than being interleaved by a number they don't have.
+  rows.sort((a, b) => compareJobNumber(a.job?.job ?? a.id, b.job?.job ?? b.id));
 
   // Second pass: the rows that have no job behind them at all.
   //

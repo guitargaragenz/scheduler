@@ -3,6 +3,7 @@ import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
   weekRowKey, benchSections, addableJobs,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
+  compareJobNumber,
 } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -20,6 +21,24 @@ describe('slotDateKey', () => {
     expect(slotDateKey(null)).toBeNull();
     expect(slotDateKey('')).toBeNull();
     expect(slotDateKey('not-a-slot')).toBeNull();
+  });
+});
+
+describe('job number order', () => {
+  it('reads oldest first, and treats the number as a number', () => {
+    const ids = ['1714', '171', '17140', '980', '1714-ST'];
+    expect([...ids].sort(compareJobNumber)).toEqual(['171', '980', '1714', '1714-ST', '17140']);
+  });
+
+  it('lists the week rows by job number, typed admin rows last', () => {
+    const jobs = [
+      { id: 'c', job: '1802', mfr: 'Fender', bench: 'Setup', calendarSlot: '2026-08-11-9-0' },
+      { id: 'a', job: '1650', mfr: 'Gibson', bench: 'Setup', calendarSlot: '2026-08-12-9-0' },
+      { id: 'b', job: '1714', mfr: 'Martin', bench: 'Setup', calendarSlot: '2026-08-13-9-0' },
+    ];
+    const marks = { [newTypedRowId(WEEK[0])]: { [weekRowKey(WEEK)]: encodeTypedRow('do the books') } };
+    const rows = weekRows(jobs, WEEK, marks);
+    expect(rows.map(r => r.job?.job ?? r.name)).toEqual(['1650', '1714', '1802', 'do the books']);
   });
 });
 

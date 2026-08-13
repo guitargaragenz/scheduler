@@ -15,8 +15,9 @@ care that the id belongs to a job.
 **A typed row.** Under a bench, alongside the job dropdown, Trevor types a name and gets a
 blank row. From then on it behaves exactly like a job row: tap days to mark, Remove to clear.
 
-- Available under **every** bench, not only Admin. Buying strings is Admin; researching a job
-  is Setup. Trevor puts it where the work happens.
+- **Admin bench only.** Corrected by Trevor 2026-08-13: this is his catch-all admin to-do
+  list (do the books, order strings from Sth Pac, clean the benches). It does not appear
+  under Setup, Repair or any other bench.
 - **No schema change.** `bench_week_marks` is `job_id TEXT`, `date_key TEXT`, `mark TEXT` —
   all free text. The row gets a generated id that cannot collide with a job number. The
   `mark` value on the existing week-scoped key (`week:<monday>`) must carry **both the typed
