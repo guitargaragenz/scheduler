@@ -15,10 +15,6 @@ One new page — tomorrow — holding three things:
 2. **Tasks** — free text. No status, no job links.
 3. **Jobs** — pick a job's existing splits onto the day. 3–5 typical, no cap.
 
-It is the **Daily Log**, a full peer of the Weekly Log — a record of what was done. Trevor
-marks here as well as on the week page, and adds free-text tasks like the Admin typed rows
-(Build 1c). Not a read-only view of the week.
-
 ## Rules that bind the build
 
 - **Name the two pages "Weekly Log" and "Daily Log"** in headings and page titles. On the
@@ -40,7 +36,6 @@ marks here as well as on the week page, and adds free-text tasks like the Admin 
 - Day picks and tasks live in **their own table keyed by date** (same pattern as
   `bench_week_marks`). No second write path into `jobs[]`, `scheduledSlots` or
   `calendarSlot` — the existing done/revenue call is the one allowed write.
-- Mobile: one page at a time, never side by side.
 
 ## Not in scope
 
