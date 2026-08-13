@@ -2,48 +2,44 @@
 doc_status: live
 ---
 
-# Scope lock — bench view Build 1b: add a job to the week
+# Scope lock — bench week Build 1c: admin rows that aren't jobs
 
-Build 1 (the week page) shipped at `a83c334`, but the page cannot be filled by hand — a job
-only appears if it already had a calendar slot that week (`BenchWeekPage.jsx:93`) or already
-carried a mark. This build closes that. Background is in
-[docs/briefs/bench-view.md](../docs/briefs/bench-view.md) — **background only, do not open it
-to start this build.**
-
-Trevor plans the week on Sunday, as the week ahead. He picks from that week each night onto
-the day page. So the week page must stand alone: on Sunday there are no day pages yet.
+Build 1b shipped (`5c6b6ec`, merged `e498496`): a bench dropdown adds a job to the week as a
+blank row. But real admin work — buying strings, researching a job, doing the books — has no
+job number, so there is nothing to pick. Trevor's framing, 2026-08-13: **if it's added by
+hand, it isn't a job.** The week page already stores rows by an id and a label; it does not
+care that the id belongs to a job.
 
 ## In scope
 
-**A per-bench dropdown on the week page.** Trevor opens a bench, sees the jobs sitting on it,
-picks one, and it drops in as a row under that bench group. He then marks its days exactly as
-he does now.
+**A typed row.** Under a bench, alongside the job dropdown, Trevor types a name and gets a
+blank row. From then on it behaves exactly like a job row: tap days to mark, Remove to clear.
 
-- The dropdown lists jobs on that bench that are not already a row this week and not `done`.
-  "Already a row" is checked by **job id across the whole week**, not per bench group — a job
-  split across two benches must not still be addable under the other one.
-- **An added job's row is blank.** Trevor decides days later, by tapping cells as he does now.
-  Adding must not write a dot, or any day symbol, anywhere. Settled 2026-08-13 — council found
-  the design as first written had no legal way to do this.
-- To hold a blank row, adding writes one row to the existing `bench_week_marks` table under a
-  **week-scoped key that is not one of the seven day keys** (e.g. `week:<monday>`). `weekRows()`
-  keeps the row on that key as well as on day marks; `cellMark()` and `buildWeekExport()` only
-  ever walk the seven day keys, so it draws and exports as blank. No new marker symbol.
-- Removing a job from the week is **one clearly labelled action on the row** that clears its day
-  marks and that week key together. Not "tap every cell blank until it disappears."
-- Jobs with no bench set get no dropdown and cannot be added this way. Accepted, not a bug.
+- Available under **every** bench, not only Admin. Buying strings is Admin; researching a job
+  is Setup. Trevor puts it where the work happens.
+- **No schema change.** `bench_week_marks` is `job_id TEXT`, `date_key TEXT`, `mark TEXT` —
+  all free text. The row gets a generated id that cannot collide with a job number, and its
+  label rides in the `mark` value on the existing week-scoped key (`week:<monday>`), which is
+  already written and already ignored by `cellMark()` and `buildWeekExport()`'s day walk.
+  If the builder finds this genuinely won't hold a label, stop and say so — don't invent a
+  table.
+- The row still draws and exports **blank** until Trevor marks days. Build 1b's guarantee is
+  not weakened.
+- The exported week file shows the typed name where a job row shows its job number and
+  make/model. Decide and write down what that line looks like.
+- A typed row belongs to **one week only**. It does not repeat, and it does not appear in
+  the jobs list, the board, the sheet, or revenue.
 
 ## Out of scope
 
-A type-to-search box for job number or manufacturer — deliberately rejected, the bench list is
-enough · any change to the marker symbols or the tap-cycle · the day page · the exported log ·
-automatic scheduling or slot-filling · deleting the parked scheduling code · writing to Google
-Calendar · any change to how splits are defined.
+Recurring or template tasks · editing a typed row's name after it's made (Remove and retype) ·
+the day page · any change to marker symbols or the tap-cycle · anything in `jobs[]`,
+`scheduledSlots` or `calendarSlot` · Google Calendar, which stays a read · Workshop Projects,
+which is a different thing and stays where it is.
 
 ## Rules that bind
 
-- One row per job, never one per split. That is settled and is not reopened here.
-- Nothing is written to `jobs[]`, `scheduledSlots` or `calendarSlot`. Marks only.
-- The Google Calendar read stays a read.
-- Answer for this build, in writing: **how does a thing get created, changed and removed?**
-- Full protocol: council → staging branch → `ggnz-verifier` → browser test → Trevor merges.
+- Marks only. Nothing is written to the job tables.
+- A typed id must never be mistaken for a job id anywhere that looks jobs up by id.
+- Answer in writing: **how does a typed row get created, changed and removed?**
+- Steps: council → staging branch → `ggnz-builder` → `ggnz-verifier` → browser test → Trevor merges.
