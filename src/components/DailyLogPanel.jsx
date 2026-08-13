@@ -147,15 +147,18 @@ export default function DailyLogPanel({
   const { events, state: apptState } = useDayAppointments(dateKey);
   const options = useMemo(() => dayJobOptions(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
   // Each day-log row is a bench split (a "part"), so its second line is the
-  // description Trevor typed on that split ("level crown and polish") — the
-  // split's own `splitDesc`, falling back to the guitar's Multitrack `desc`
-  // when a split carries none. Never the session note: the Daily Log always
-  // reads the split description. Looked up fresh from jobs at render time so it
-  // stays current if the description is edited later.
+  // note Trevor typed under that split ("level crown and polish") — the split's
+  // own `sessionNote`. That IS the "split description" he means: it is the field
+  // the JobDrawer per-split note editor writes to (row.sessions[].note →
+  // sessionNote), the only place that text is stored. NOT `desc` (the parent
+  // guitar's whole Multitrack description) and NOT `splitDesc` (a field nothing
+  // ever writes, so always empty) — showing either of those was the repeated
+  // fault. No fallback: a split with no note shows nothing, never the guitar's
+  // Multitrack text. Looked up fresh from jobs so it stays current if edited.
   const jobById = useMemo(() => new Map((jobs || []).map(j => [String(j.id), j])), [jobs]);
-  const subTaskDesc = (id) => {
+  const subTaskNote = (id) => {
     const p = jobById.get(id);
-    return p ? (p.splitDesc || p.desc || '') : '';
+    return p ? (p.sessionNote || '') : '';
   };
 
   const onDay = dayItems?.[dateKey] || {};
@@ -303,12 +306,12 @@ export default function DailyLogPanel({
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {v.label}
                 </div>
-                {subTaskDesc(id) && (
+                {subTaskNote(id) && (
                   <div style={{
                     fontSize: 11, color: '#94a3b8', overflow: 'hidden',
                     textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {subTaskDesc(id)}
+                    {subTaskNote(id)}
                   </div>
                 )}
               </span>
