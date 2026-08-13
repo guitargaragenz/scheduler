@@ -139,12 +139,9 @@ Both returned **GO WITH CHANGES**. Nothing blocking. What they found, and what w
    page is one row per job. Splits are marked on the day page only; the week row shows `/`
    while parts are worked and `×` on the day the final part lands. Recorded because the
    council reasoning reads convincingly and should not be re-litigated next session.
-4. **The glue rule is unenforceable.** Nothing in the splits data flags a glue step, so the
-   app cannot police the 12-hour gap. Trevor maintains it himself. → Stated plainly in the
-   scope lock so no builder invents a fake check.
-5. **Day-page picks could balloon into new persisted state.** → Build 2 must say where they
+4. **Day-page picks could balloon into new persisted state.** → Build 2 must say where they
    live before that build starts.
-6. **Blast radius is low.** (Build 1) `BenchBoardPage.jsx` writes nothing today; mobile single-page is
+5. **Blast radius is low.** (Build 1) `BenchBoardPage.jsx` writes nothing today; mobile single-page is
    an existing pattern (`MobileJobSheet.jsx`, `JobsPage.jsx`, `DailyLogPage.jsx`), not new
    architecture. Backing the whole thing out is deleting or hiding a route.
 

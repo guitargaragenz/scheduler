@@ -41,7 +41,6 @@ marks here as well as on the week page, and adds free-text tasks like the Admin 
   `bench_week_marks`). No second write path into `jobs[]`, `scheduledSlots` or
   `calendarSlot` — the existing done/revenue call is the one allowed write.
 - Mobile: one page at a time, never side by side.
-- The 12-hour glue rule is **not enforceable** — Trevor maintains it. Don't invent a check.
 
 ## Not in scope
 
