@@ -2328,3 +2328,112 @@ export async function batchWriteJobsState(writes) {
     return { ok: false, error: e };
   }
 }
+
+// ============ BENCH DAY MARKS (the Daily Log — Build 2) ============
+//
+// One row per item put on one day: a job's split, or a typed task. A day with
+// nothing on it has no rows, so taking an item off deletes its row rather than
+// writing a blank one — the same contract as bench_week_marks above, and for
+// the same reason.
+//
+// This is NOT the daily_logs / deferred_items pair further up. Those belong to
+// the older bullet-journal day view and nothing here touches them.
+//
+// As with the week marks: there is no table-wipe function here on purpose, and
+// there must never be one. And nothing in this section writes to jobs,
+// scheduled_slots or calendar_slot. Closing a job stays where it already is —
+// the invoice prompt — and the Daily Log has no second route into job state.
+//
+// Table: bench_day_marks (date_key, item_id, kind, label), PK (date_key, item_id).
+// Migration: docs/supabase-bench-day-marks-migration.sql
+
+// Returns { [dateKey]: { [itemId]: { kind, label } } }, or null if the read
+// failed. null and {} mean different things and the caller relies on that: {}
+// is a genuinely empty table and arms writing, null is "we don't know" and
+// leaves the page read-only.
+export async function loadDayMarks() {
+  try {
+    const { data, error } = await getClient().from('bench_day_marks').select('*');
+    if (error) throw error;
+    const byDate = {};
+    (data || []).forEach(r => {
+      const dateKey = String(r.date_key);
+      if (!byDate[dateKey]) byDate[dateKey] = {};
+      byDate[dateKey][String(r.item_id)] = {
+        kind: String(r.kind || 'job'),
+        label: String(r.label || ''),
+      };
+    });
+    return byDate;
+  } catch (e) {
+    console.error('Supabase load bench day marks error:', e);
+    return null;
+  }
+}
+
+// Per-row upsert on the composite key. Never a clear-and-reinsert: that is what
+// once wiped completed_jobs, and a day's record is just as unrecoverable.
+export async function upsertDayMarks(rows) {
+  if (!Array.isArray(rows)) {
+    console.error('upsertDayMarks expects an array');
+    return { ok: false };
+  }
+  if (rows.length === 0) return { ok: true };
+  try {
+    const records = rows.map(r => ({
+      date_key: String(r.dateKey ?? r.date_key),
+      item_id: String(r.itemId ?? r.item_id),
+      kind: String(r.kind || 'job'),
+      label: String(r.label ?? ''),
+    }));
+    const { error } = await getClient()
+      .from('bench_day_marks')
+      .upsert(records, { onConflict: 'date_key,item_id' });
+    if (error) throw error;
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase upsert bench day marks error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+// Delete named items, one at a time. An empty array is a no-op and never a
+// wipe — a delete with no filter would take the whole table with it.
+export async function clearDayMarks(items) {
+  if (!Array.isArray(items) || items.length === 0) return { ok: true };
+  try {
+    for (const it of items) {
+      const dateKey = String(it.dateKey ?? it.date_key);
+      const itemId = String(it.itemId ?? it.item_id);
+      if (!dateKey || !itemId) continue;
+      const { error } = await getClient()
+        .from('bench_day_marks')
+        .delete()
+        .eq('date_key', dateKey)
+        .eq('item_id', itemId);
+      if (error) throw error;
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('Supabase clear bench day marks error:', e);
+    return { ok: false, error: e };
+  }
+}
+
+export function subscribeToDayMarks(callback) {
+  try {
+    const channel = getClient()
+      .channel('public:bench_day_marks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bench_day_marks' }, async () => {
+        const data = await loadDayMarks();
+        // A failed re-read is dropped rather than handed on. Passing null here
+        // would read to the hook as "the day is empty".
+        if (data !== null) callback(data);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  } catch (e) {
+    console.error('Supabase subscribe to bench day marks error:', e);
+    return () => {};
+  }
+}

@@ -416,6 +416,24 @@ CREATE TABLE IF NOT EXISTS bench_week_marks (
   PRIMARY KEY (job_id, date_key)
 );
 
+-- The Daily Log: one row per thing put on one day. A day with nothing on it has
+-- no rows — absence IS the blank day, same as bench_week_marks.
+--
+-- NOT the same thing as daily_logs / deferred_items above; those belong to the
+-- older bullet-journal day view.
+CREATE TABLE IF NOT EXISTS bench_day_marks (
+  date_key TEXT NOT NULL,          -- local YYYY-MM-DD, never a UTC timestamp
+  item_id  TEXT NOT NULL,          -- job/split id, or "task:<random>" for typed work
+  kind     TEXT NOT NULL,          -- 'job' or 'task'
+  -- Stored, not looked up later: a split's description can change or the split
+  -- can stop existing, and the day's record of the work must not change with it.
+  label    TEXT NOT NULL,
+  PRIMARY KEY (date_key, item_id)
+);
+-- item_id is deliberately NOT a foreign key to jobs: a day can hold a typed
+-- task with no job behind it, and a job dropped from Multitrack must not take
+-- the day's history with it.
+
 -- Enable realtime subscriptions for the app
 ALTER PUBLICATION supabase_realtime ADD TABLE jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE scheduled_slots;
@@ -432,3 +450,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE completed_jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE parts_to_order;
 ALTER PUBLICATION supabase_realtime ADD TABLE job_status_since;
 ALTER PUBLICATION supabase_realtime ADD TABLE bench_week_marks;
+ALTER PUBLICATION supabase_realtime ADD TABLE bench_day_marks;

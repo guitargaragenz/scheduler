@@ -75,6 +75,27 @@ export function weekRowKey(weekKeys) {
 // did look it up would find nothing to draw.
 const ROW_MARK = 'row';
 
+// The key that holds "this job was closed off in this week".
+//
+// Same trick as weekRowKey, and for the same reason: it lives in
+// bench_week_marks beside the day marks but is NOT one of the seven day keys,
+// so cellMark(), the day loop and buildWeekExport() — all of which walk
+// weekKeys and only weekKeys — cannot see it. No schema change.
+//
+// It exists because closing a job is now its own decision with its own tap
+// target. It used to be read off the day cells, which meant a × marking "I
+// finished that piece on Thursday" and a × meaning "this guitar is finished and
+// invoiced" were the same mark. They are different things and now store
+// differently.
+export function weekCloseKey(weekKeys) {
+  const monday = (weekKeys || [])[0];
+  return monday ? `close:${monday}` : null;
+}
+
+// The value stored under the close key. Same reasoning as ROW_MARK: never
+// drawn, and not a MARKS name.
+const CLOSE_MARK = 'closed';
+
 // ---------------------------------------------------------------------------
 // Typed rows — hand-written admin work that is not a job (Build 1c)
 // ---------------------------------------------------------------------------
@@ -215,11 +236,18 @@ export function weekRows(jobs, weekKeys, marks = {}) {
   const inWeek = new Set(weekKeys);
   const byId = new Map(all.map(j => [j.id, j]));
   const rowKey = weekRowKey(weekKeys);
+  const closeKey = weekCloseKey(weekKeys);
   const rows = [];
 
   for (const job of all) {
     if (job.parentId || job.isDerived) continue;
-    if (job.done) continue;
+
+    // A job closed off in THIS week stays on the page, struck through, until
+    // the week rolls over. Dropping it the instant the invoice was entered
+    // would make the row vanish out from under the tap that closed it, and
+    // Trevor would have no record on the week that it finished.
+    const closedThisWeek = Boolean(closeKey && marks[String(job.id)]?.[closeKey]);
+    if (job.done && !closedThisWeek) continue;
 
     const parts = partsOf(job, all, byId);
 
@@ -234,7 +262,7 @@ export function weekRows(jobs, weekKeys, marks = {}) {
     const hasMarkThisWeek = weekKeys.some(k => jobMarks[k]);
     const addedByHand = Boolean(rowKey && jobMarks[rowKey]);
 
-    if (bookedDays.size === 0 && !hasMarkThisWeek && !addedByHand) continue;
+    if (bookedDays.size === 0 && !hasMarkThisWeek && !addedByHand && !closedThisWeek) continue;
 
     rows.push({
       id: String(job.id),
@@ -297,17 +325,16 @@ export function cellMark(row, dateKey, jobMarks) {
   return row.bookedDays.has(dateKey) ? 'dot' : '';
 }
 
-// The trailing column, and the day the row gets struck through from.
+// The trailing column: × once the job has been closed off, > until then.
 //
-// Never marked by hand. A × on a day means the last piece of that job finished
-// there, so the trailing column takes × too and the row is ruled off from that
-// day to the end. Any other week gets > — carry it into next week.
+// Read from its own stored value, NOT from the day cells. A × on a day means
+// "worked and finished that piece that day" and nothing more — no money
+// question, no strikethrough, no closing. Closing the job is the cross in this
+// column and nowhere else, and it is always a deliberate tap.
 export function trailing(weekKeys, jobMarks) {
-  const doneIndex = weekKeys.findIndex(k => jobMarks?.[k] === 'cross');
-  return {
-    mark: doneIndex === -1 ? 'arrow' : 'cross',
-    doneIndex,
-  };
+  const closeKey = weekCloseKey(weekKeys);
+  const closed = Boolean(closeKey && jobMarks?.[closeKey]);
+  return { mark: closed ? 'cross' : 'arrow', closed };
 }
 
 // What a row is called on the page and in the exported file.
@@ -342,9 +369,11 @@ export function buildWeekExport({ rows, weekKeys, weekDays, marks }) {
     for (const row of group.rows) {
       const jobMarks = marks[row.id] || {};
       const t = trailing(weekKeys, jobMarks);
-      const cells = weekKeys.map((k, i) => {
-        // Past the × the row is ruled off, exactly as it reads on screen.
-        if (t.doneIndex !== -1 && i > t.doneIndex) return '-'.padEnd(4, '-');
+      // Every day is printed. There is no rule-off across the days any more:
+      // that used to run from a day × to the end of the row, and a day × no
+      // longer means the job is finished. A closed job says so in the trailing
+      // column instead.
+      const cells = weekKeys.map((k) => {
         const m = cellMark(row, k, jobMarks);
         return (m ? MARKS[m].symbol : ' ').padEnd(4);
       });
@@ -513,11 +542,12 @@ function AddTaskToBench({ ready, nameW, isMobile, onAddTask }) {
   );
 }
 
-export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, isMobile, showToast }) {
+export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
   const groups = useMemo(() => benchSections(rows), [rows]);
   const rowKey = useMemo(() => weekRowKey(weekKeys), [weekKeys]);
+  const closeKey = useMemo(() => weekCloseKey(weekKeys), [weekKeys]);
 
   function handleExport() {
     const text = buildWeekExport({ rows, weekKeys, weekDays, marks });
@@ -541,6 +571,40 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     const current = cellMark(row, dateKey, marks[row.id] || {});
     const res = await setMark(row.id, dateKey, nextMark(current));
     if (!res?.ok) showToast?.('That mark did not save');
+  }
+
+  // Close a job off, or undo a mis-tap.
+  //
+  // This is the ONLY place a job gets finished, and the invoice amount is asked
+  // exactly once, by the existing prompt that onCloseJob opens. Nothing here
+  // writes done: true itself — the close mark is a note on the week, and the
+  // real finishing still goes through the same call it always did.
+  //
+  // Tapping × again clears it back to >, which is how a mis-tap is undone. That
+  // clears the week's note only; it does not un-invoice a job, and it asks no
+  // money question on the way back.
+  async function handleClose(row) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (!closeKey) return;
+    const t = trailing(weekKeys, marks[row.id] || {});
+
+    if (t.closed) {
+      const res = await setMark(row.id, closeKey, '');
+      if (!res?.ok) showToast?.('That did not save');
+      return;
+    }
+
+    const res = await setMark(row.id, closeKey, CLOSE_MARK);
+    if (!res?.ok) {
+      showToast?.('That did not save');
+      return;
+    }
+    // A typed row has no job behind it, so there is nothing to invoice. The
+    // cross just means the admin task is done.
+    if (row.job) onCloseJob?.(row.job);
   }
 
   // Put a job on the week. Writes the week's row key and NOTHING else — no dot,
@@ -582,7 +646,8 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     }
     const ok = window.confirm(`Take ${row.name} off this week? Any days already marked on this row are cleared.`);
     if (!ok) return;
-    const res = await clearJobKeys?.(row.id, rowKey ? [...weekKeys, rowKey] : weekKeys);
+    const extras = [rowKey, closeKey].filter(Boolean);
+    const res = await clearJobKeys?.(row.id, [...weekKeys, ...extras]);
     if (!res?.ok) showToast?.('That job did not come off the week');
   }
 
@@ -593,14 +658,16 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   const nameW = 220;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0f172a' }}>
+    // minWidth: 0 because on desktop this now sits beside the Daily Log. Without
+    // it the grid's natural width wins and pushes the day panel off the screen.
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#0f172a', minWidth: 0 }}>
 
       <div style={{
         flexShrink: 0, padding: '12px 16px', borderBottom: '1px solid #1e293b',
         display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
       }}>
         <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 700 }}>
-          Week of {formatDateRange(weekDays || [])}
+          Weekly Log — {formatDateRange(weekDays || [])}
         </span>
         <span style={{ color: '#475569', fontSize: 12 }}>
           {/* "rows", not "jobs" — a typed row is counted here and isn't a job. */}
@@ -681,8 +748,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                 fontSize: isMobile ? 12.5 : 13, color: '#e2e8f0',
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 paddingLeft: 2, paddingRight: isMobile ? 0 : 8, paddingBottom: isMobile ? 2 : 0,
-                textDecoration: t.doneIndex !== -1 ? 'line-through' : 'none',
-                opacity: t.doneIndex !== -1 ? 0.55 : 1,
+                // Follows the close, not the day marks. A job worked to a finish
+                // on Thursday is not struck through; a job closed off is.
+                textDecoration: t.closed ? 'line-through' : 'none',
+                opacity: t.closed ? 0.55 : 1,
               };
               return (
                 <div key={row.id} style={{
@@ -698,11 +767,12 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     {row.name}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? 'none' : 'initial' }}>
-                  {weekKeys.map((k, i) => {
+                  {/* Every day stays tappable and stays drawn. There is no
+                      rule-off across the days: it used to run from a day × to
+                      the end of the row, and a day × no longer means the job is
+                      finished — only that that piece was worked to a finish. */}
+                  {weekKeys.map((k) => {
                     const m = cellMark(row, k, jobMarks);
-                    // The rule-off runs from the × to the end of the row. It is
-                    // drawn, never stored and never tapped in.
-                    const ruled = t.doneIndex !== -1 && i > t.doneIndex;
                     return (
                       <button
                         key={k}
@@ -712,28 +782,34 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                         style={{
                           width: cellW, height: 30, cursor: ready ? 'pointer' : 'default',
                           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
-                          background: ruled ? '#0b1220' : '#111c2f',
+                          background: '#111c2f',
                           color: m === 'cross' ? '#f87171' : m === 'slash' ? '#34d399' : '#cbd5e1',
                           fontSize: 16, lineHeight: 1, padding: 0,
-                          position: 'relative',
                         }}
                       >
-                        {ruled ? '' : (m ? MARKS[m].symbol : '')}
-                        {ruled && (
-                          <span style={{
-                            position: 'absolute', left: 0, right: 0, top: '50%',
-                            borderTop: '1px solid #f87171', opacity: 0.7,
-                          }} />
-                        )}
+                        {m ? MARKS[m].symbol : ''}
                       </button>
                     );
                   })}
 
-                  {/* Trailing column — derived, never tapped. */}
-                  <div style={{
-                    width: cellW, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: t.mark === 'cross' ? '#f87171' : '#475569', fontSize: 16,
-                  }}>{MARKS[t.mark].symbol}</div>
+                  {/* The closing column. Its own stored value and its own tap
+                      target — this is the one place a job gets finished, and
+                      the one place the invoice is asked for. */}
+                  <button
+                    type="button"
+                    onClick={() => handleClose(row)}
+                    disabled={!ready}
+                    title={t.closed
+                      ? `${row.name} is closed — tap to undo`
+                      : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''}`}
+                    style={{
+                      width: cellW, height: 30, cursor: ready ? 'pointer' : 'default',
+                      border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
+                      background: t.closed ? '#2a0f12' : '#111c2f',
+                      color: t.closed ? '#f87171' : '#475569',
+                      fontSize: 16, lineHeight: 1, padding: 0,
+                    }}
+                  >{MARKS[t.mark].symbol}</button>
 
                   {/* Take the job off the week.
                       Only on rows with no booking this week — a booked job is on
