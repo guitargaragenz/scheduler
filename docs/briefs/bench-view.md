@@ -77,11 +77,11 @@ ships:
 
 - **Appointments** read-only via `listEvents()`. **Tasks** free text, no status, no job links.
   **Jobs** — pick this job's existing splits onto the day. 3–5 typical, no cap.
-- Ticking a split done here is the **only** place a split is marked done. The final split opens
-  the existing PomoDrawer invoice-amount prompt — no second way to capture the amount, and never
-  a silent `done: true` with no figure. The week row's `×` then fills automatically that day.
-- **The week page's `×` becomes read-only.** Its tap-cycle shrinks to `· → / → > → blank`, so a
-  mis-tap can never cycle through `×` and book revenue by accident.
+- **Superseded 2026-08-13 by Trevor:** closing a job is the `×` in the final `>` column and
+  nothing else — that is the only invoice-amount prompt, and it needs no day page or split tick.
+  A day-column `×` is a plain "worked and finished that day" mark with no money question, and
+  stays tappable. The earlier plan (close via the last split tick, week `×` read-only) is dead.
+  A marked job also stays on the week until it is closed — never dropped by a filter change.
 - **A done split stays done.** The tick stores the split's own text at that moment, never a live
   pointer to a re-derived card. A finished week is read-only.
 - **The saved log is a file, not an in-app archive.** A finished week exports as one readable
@@ -90,6 +90,27 @@ ships:
 - Day picks and tasks live in their own table keyed by date. No second write path into `jobs[]`,
   `scheduledSlots` or `calendarSlot` — the existing done/revenue call is the one allowed write.
 - Mobile: one page at a time, week and day switched between, never side by side.
+
+## Build 2 — verifier checklist (2026-08-13)
+
+Lives here, not in the scope lock, to keep that page a lock. The verifier is pointed at this
+list explicitly.
+
+1. Appointments render from `listEvents()`; no calendar write anywhere in the new code.
+2. Free-text tasks save and reload; no status field, no job link.
+3. Job picker offers only jobs already on the current bench week.
+4. Closing a job happens **only** via the `×` in the final `>` column, and routes through
+   PomoDrawer's amount prompt; no path sets `done: true` without an amount. Closing does not
+   require the day page or any split tick.
+5. Day-column `×` is a plain mark with no money prompt, and stays tappable. A marked job stays
+   on the week until it is closed — it never drops off because its source list or a filter
+   changed.
+6. A ticked split stores its own text; re-render or reimport doesn't unstick it.
+7. Day picks and tasks live in a new date-keyed table; no writes to `scheduledSlots` or
+   `calendarSlot`.
+8. `AUTO_BUMP_ENABLED` still `false`.
+9. Mobile shows one page at a time.
+10. Full test suite passes; new tests cover items 4, 5 and 6.
 
 ## Council record — 2026-08-13, two independent reviewers
 
