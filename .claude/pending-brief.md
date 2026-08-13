@@ -4,6 +4,7 @@ doc_status: live
 
 # Scope lock — Build 2: the Daily Log
 
+**Council is done** (two reviewers, GO WITH CHANGES, folded in below). Start at the build.
 Checklist and history: [docs/briefs/bench-view.md](../docs/briefs/bench-view.md) —
 **background; don't open it just to start the build.**
 
@@ -23,11 +24,10 @@ One new page — tomorrow — holding three things:
 - **The Daily Log can only offer jobs already on the current Weekly Log.** No job-number
   search. Not on the week, can't go on a day.
 - **Closing a job is the `×` in the final `>` column, and nothing else.** That is the only
-  place the invoice amount is asked — existing `PomoDrawer` prompt → `handleMarkDone(job,
-  amount)` (`src/hooks/useJobs.js:326`). Never a silent `done: true`, no second invoicing UI.
-  No Cancel button: closing is a deliberate manual cross, not automatic.
-- **The final column becomes a real tap target with its own stored value**, decoupled from the
-  day cells (it is derived from them today). Strikethrough follows it, not the day marks.
+  place the invoice amount is asked — the existing `PomoDrawer` prompt → `handleMarkDone`.
+  Never a silent `done: true`, no second invoicing UI. No Cancel button: closing is a
+  deliberate manual cross, not automatic. That column needs its own stored value and its own
+  tap target — it is derived from the day cells today. Strikethrough follows it, not day marks.
 - **A day-column `×` is a plain mark** — worked and finished that day. No money question, no
   `done`, no strikethrough.
 - **A marked job stays on the week until it is closed** — never dropped by a source-list or
