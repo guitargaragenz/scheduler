@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
-import { weekRows, partsOf, rowName, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
+import { weekRows, partsOf, rowName, cellMark, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
 
 // The Daily Log — one day, three things: what is booked in, what has to be
 // done, and which jobs are being worked on.
@@ -166,6 +166,32 @@ export default function DailyLogPanel({
     return p ? (p.sessionNote || '') : '';
   };
 
+  // Read-only status column. Each placed row is a bench split; its status for
+  // THIS day is the Weekly Log's own cell mark for that job on that date —
+  // exactly the symbol the week page draws (· booked, / worked, > move on,
+  // × done). The DL never writes a mark; it mirrors what the week already holds
+  // in `bench_week_marks`, which is passed in as `marks`.
+  //
+  // Week marks are keyed by the TOP-LEVEL job id (splits collapse to one week
+  // row), so a split's day mark is looked up through its parent row. This map
+  // sends every split id — and the parent id — to that shared week row.
+  const rowByPartId = useMemo(() => {
+    const byId = new Map((jobs || []).map(j => [j.id, j]));
+    const map = new Map();
+    for (const row of weekRows(jobs, weekKeys, marks)) {
+      map.set(String(row.id), row);
+      if (row.job) {
+        for (const part of partsOf(row.job, jobs, byId)) map.set(String(part.id), row);
+      }
+    }
+    return map;
+  }, [jobs, weekKeys, marks]);
+  const statusMark = (id) => {
+    const row = rowByPartId.get(String(id));
+    if (!row) return '';
+    return cellMark(row, dateKey, marks?.[row.id] || {});
+  };
+
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
   const dayJobs = entries.filter(([, v]) => v.kind !== 'task');
@@ -307,6 +333,14 @@ export default function DailyLogPanel({
               display: 'flex', gap: 8, alignItems: 'center',
               padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
             }}>
+              <span
+                title={statusMark(id) ? MARKS[statusMark(id)]?.label : ''}
+                style={{
+                  flex: '0 0 auto', width: 14, textAlign: 'center',
+                  color: '#cbd5e1', fontWeight: 700, fontSize: 13,
+                  alignSelf: 'flex-start', lineHeight: 1.35, userSelect: 'none',
+                }}
+              >{statusMark(id) ? (MARKS[statusMark(id)]?.symbol || '') : ''}</span>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {v.label}
