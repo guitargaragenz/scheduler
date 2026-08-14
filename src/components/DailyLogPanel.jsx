@@ -52,7 +52,12 @@ export function dayJobOptions(jobs, weekKeys, marks) {
     if (!row.job) continue;
     for (const part of partsOf(row.job, all, byId)) {
       const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
-      out.push({ id: String(part.id), label });
+      // `note` is the split's own sessionNote — shown in the dropdown option
+      // text so the picker reads the way the placed row will. It is NOT part of
+      // `label`: `label` is what gets stored, and the placed row already prints
+      // the note on its own second line, so baking it into `label` would double
+      // it up.
+      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
     }
   }
 
@@ -348,7 +353,7 @@ export default function DailyLogPanel({
               >
                 <option value="">+ Put a job on this day…</option>
                 {pickable.map(o => (
-                  <option key={o.id} value={o.id}>{o.label}</option>
+                  <option key={o.id} value={o.id}>{o.note ? `${o.label} — ${o.note}` : o.label}</option>
                 ))}
               </select>
             </div>
