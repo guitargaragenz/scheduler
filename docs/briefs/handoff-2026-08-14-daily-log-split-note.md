@@ -1,8 +1,13 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Handoff — Daily Log split-note fix (2026-08-14)
+
+**Shipped — merged to main at `e99e9fe` (PR #24, 2026-08-14).** Both the placed
+rows and the dropdown now show each split's own `sessionNote`. Trevor checked
+the Vercel preview and merged. The one item left below is a *new* feature (a
+read-only status column), not part of this fix — see the README Live table.
 
 ## Done and committed (not yet pushed)
 
