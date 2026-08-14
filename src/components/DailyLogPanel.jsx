@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
-import { weekRows, partsOf, rowName, cellMark, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
+import { weekRows, partsOf, rowName, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
 
 // The Daily Log — one day, three things: what is booked in, what has to be
 // done, and which jobs are being worked on.
@@ -166,31 +166,11 @@ export default function DailyLogPanel({
     return p ? (p.sessionNote || '') : '';
   };
 
-  // Read-only status column. Each placed row is a bench split; its status for
-  // THIS day is the Weekly Log's own cell mark for that job on that date —
-  // exactly the symbol the week page draws (· booked, / worked, > move on,
-  // × done). The DL never writes a mark; it mirrors what the week already holds
-  // in `bench_week_marks`, which is passed in as `marks`.
-  //
-  // Week marks are keyed by the TOP-LEVEL job id (splits collapse to one week
-  // row), so a split's day mark is looked up through its parent row. This map
-  // sends every split id — and the parent id — to that shared week row.
-  const rowByPartId = useMemo(() => {
-    const byId = new Map((jobs || []).map(j => [j.id, j]));
-    const map = new Map();
-    for (const row of weekRows(jobs, weekKeys, marks)) {
-      map.set(String(row.id), row);
-      if (row.job) {
-        for (const part of partsOf(row.job, jobs, byId)) map.set(String(part.id), row);
-      }
-    }
-    return map;
-  }, [jobs, weekKeys, marks]);
-  const statusMark = (id) => {
-    const row = rowByPartId.get(String(id));
-    if (!row) return '';
-    return cellMark(row, dateKey, marks?.[row.id] || {});
-  };
+  // Read-only status column. At this stage the Daily Log does NOT talk to the
+  // Weekly Log — nothing is read from or written to the WL marks here. Every
+  // placed job simply shows a dot, the same "it's on today" symbol the WL uses
+  // as its default. Nothing on the DL changes it.
+  const statusMark = () => 'dot';
 
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
