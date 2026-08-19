@@ -2,47 +2,48 @@
 doc_status: live
 ---
 
-# Scope lock — Daily Log: booked jobs appear on their day
-
-Approved by Trevor 2026-08-19. Supersedes the Build 2 lock that sat here — that
-build shipped at `7779ee5`.
-
-Code references and reasoning: [docs/briefs/dl-booked-jobs-appear.md](../docs/briefs/dl-booked-jobs-appear.md)
-— **background; don't open it just to start the build.**
+# Scope lock — DL auto-appear + day marks (approved 2026-08-19, revised 2026-08-20)
 
 ## Build
 
-A job booked on a day in the Weekly Log appears on that day in the Daily Log by
-itself, with its bench splits listed to pick from.
+1. **Auto-appear.** A job booked on a day shows on that day by itself, read from
+   each split's `calendarSlot`. Nothing stored to make it appear.
+2. **The parts list shows bench splits.** A job split across benches is one line
+   per split, with that split's own note under it.
+3. **A removed job stays removed.** Remove on an auto row writes a `hidden` row
+   in `bench_day_marks`; deleting the row can't work, because for an auto row an
+   absent row is what makes it appear.
+4. **One mark box down the left.** A single symbol per job row, in a column on
+   the left — not a strip of boxes per row. Picked from a **dropdown**, never
+   tap-cycled: clicking through symbols is tedious.
+5. **`o` = event** joins the shared marks (`·` `/` `>` `×` `o`). It shows in the
+   Weekly Log legend too. It does NOT join the WL tap cycle.
+6. **Editable notes under a job**, like sub-tasks. Stored as extra rows in
+   `bench_day_marks` (`note:<id>:<n>`, text in the existing `label`). No schema
+   change.
 
-1. **Auto-appear.** For the day being shown, list every split whose booked date
-   falls on that day, read from each part's `calendarSlot` — the same field the
-   Weekly Log already reads. No new table, no new field.
-2. **The parts list.** Each booked job shows its bench splits, exactly as the
-   existing "+ Put a job on this day…" dropdown already lists them. Same text,
-   same split-by-split granularity.
-3. **A removed job stays removed.** An auto-appearing job must not come back on
-   the next render or reload, or Remove is a button that does nothing.
+## Out of scope
 
-## Out of scope — do not build
-
-- **No editing of benches, splits or hours here.** That lives in the day view's
-  job drawer and is deliberately not duplicated. Trevor: "it's already there in
-  day view and we don't need duplication".
+- **No editing of benches, splits or hours here** — "it's already there in day
+  view and we don't need duplication".
 - **No time or schedule picker.** The DL has no times and is not getting any.
 - **No writes to `jobs[]`, `scheduledSlots` or `calendarSlot`.** Read only.
-- **Not the interactive status symbols** — separate, undecided, needs its own
-  brief.
+- **No card look.** Rows keep their plain styling — the cards were too big.
 
 ## Rules that bind this build
 
-- **Read-only against job state.** If a change here would write to a
-  blast-radius file, stop — it is out of scope.
-- **Splits are shared, not per-day.** Nothing may make a split look day-local.
-- **Check facts against the code, not this file.**
+- Job state is read-only. The only things written are `week_marks` (the mark) and
+  `bench_day_marks` (day rows and notes).
+- A mark ticked in the DL is the SAME mark the WL shows — tick once, in the shop.
+- Marks are keyed by the top-level job id, the same key the WL writes.
+- Splits are shared, not per-day.
+- Check every fact against the live code before acting on it.
 
-## Protocol step
+## Protocol
 
-Brief approved (step 1). **Not blast-radius** — read-only display — so it runs as
-a supervised direct build, the same call Trevor made for the split-note fix.
-Verify with the test suite plus a Vercel preview click-through.
+Not blast-radius — no writes to job state — so this runs as a supervised direct
+build on branch `dl-auto-appear`. Verify with the test suite plus a Vercel
+preview click-through.
+
+Background only, don't open it to start the build:
+[docs/briefs/dl-booked-jobs-appear.md](../docs/briefs/dl-booked-jobs-appear.md)

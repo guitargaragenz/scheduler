@@ -866,6 +866,7 @@ export default function App() {
                   jobs={jobs}
                   weekDays={weekDays}
                   marks={weekMarks.marks}
+                  setMark={weekMarks.setMark}
                   dayItems={dayMarks.dayItems}
                   ready={dayMarks.ready}
                   saveError={dayMarks.saveError}
