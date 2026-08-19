@@ -2,49 +2,47 @@
 doc_status: live
 ---
 
-# Scope lock — Build 2: the Daily Log
+# Scope lock — Daily Log: booked jobs appear on their day
 
-**Council is done** (two reviewers, GO WITH CHANGES, folded in below). Start at the build.
-Checklist and history: [docs/briefs/bench-view.md](../docs/briefs/bench-view.md) —
-**background; don't open it just to start the build.**
+Approved by Trevor 2026-08-19. Supersedes the Build 2 lock that sat here — that
+build shipped at `7779ee5`.
+
+Code references and reasoning: [docs/briefs/dl-booked-jobs-appear.md](../docs/briefs/dl-booked-jobs-appear.md)
+— **background; don't open it just to start the build.**
 
 ## Build
 
-One new page — tomorrow — holding three things:
+A job booked on a day in the Weekly Log appears on that day in the Daily Log by
+itself, with its bench splits listed to pick from.
 
-1. **Appointments** — read-only from Google Calendar via `listEvents()`. No writes, ever.
-2. **Tasks** — free text. No status, no job links.
-3. **Jobs** — pick a job's existing splits onto the day. 3–5 typical, no cap.
+1. **Auto-appear.** For the day being shown, list every split whose booked date
+   falls on that day, read from each part's `calendarSlot` — the same field the
+   Weekly Log already reads. No new table, no new field.
+2. **The parts list.** Each booked job shows its bench splits, exactly as the
+   existing "+ Put a job on this day…" dropdown already lists them. Same text,
+   same split-by-split granularity.
+3. **A removed job stays removed.** An auto-appearing job must not come back on
+   the next render or reload, or Remove is a button that does nothing.
 
-## Rules that bind the build
+## Out of scope — do not build
 
-- **Name the two pages "Weekly Log" and "Daily Log"** in headings and page titles. On the
-  nav pills they read **"W Log"** and **"D Log"** — the pills are too small for the full
-  words. Filenames can stay as they are.
-- **The Daily Log can only offer jobs already on the current Weekly Log.** No job-number
-  search. Not on the week, can't go on a day.
-- **Closing a job is the `×` in the final `>` column, and nothing else.** That is the only
-  place the invoice amount is asked — the existing `PomoDrawer` prompt → `handleMarkDone`.
-  Never a silent `done: true`, no second invoicing UI. No Cancel button: closing is a
-  deliberate manual cross, not automatic. That column needs its own stored value and its own
-  tap target — it is derived from the day cells today. Strikethrough follows it, not day marks.
-- **A day-column `×` is a plain mark** — worked and finished that day. No money question, no
-  `done`, no strikethrough.
-- **A marked job stays on the week until it is closed** — never dropped by a source-list or
-  filter change.
-- **A done split stays done.** Store the split's own text at tick time, never a live pointer.
-- **On desktop the two logs sit side by side on one page** — W Log left, D Log right, like the
-  journal's two-page spread. Trevor works across both at once; a desktop that shows only one is
-  a fail. On the phone, one at a time.
-- Day picks and tasks live in **their own table keyed by date** (same pattern as
-  `bench_week_marks`). No second write path into `jobs[]`, `scheduledSlots` or
-  `calendarSlot` — the existing done/revenue call is the one allowed write.
+- **No editing of benches, splits or hours here.** That lives in the day view's
+  job drawer and is deliberately not duplicated. Trevor: "it's already there in
+  day view and we don't need duplication".
+- **No time or schedule picker.** The DL has no times and is not getting any.
+- **No writes to `jobs[]`, `scheduledSlots` or `calendarSlot`.** Read only.
+- **Not the interactive status symbols** — separate, undecided, needs its own
+  brief.
 
-## Not in scope
+## Rules that bind this build
 
-- Restarting the parked scheduler. `AUTO_BUMP_ENABLED = false`
-  (`src/hooks/useGoogleCalendar.js:26`) stays false; the 30s poll stays read-only.
-- `DailyLogPage.jsx` — the old scheduler day view, a different page.
-- The exported week log (readable document). Separate build.
-- Any change to existing Supabase tables, `calendarSlot`, or the `jobs[]` shape beyond the one
-  existing `handleMarkDone` write.
+- **Read-only against job state.** If a change here would write to a
+  blast-radius file, stop — it is out of scope.
+- **Splits are shared, not per-day.** Nothing may make a split look day-local.
+- **Check facts against the code, not this file.**
+
+## Protocol step
+
+Brief approved (step 1). **Not blast-radius** — read-only display — so it runs as
+a supervised direct build, the same call Trevor made for the split-note fix.
+Verify with the test suite plus a Vercel preview click-through.
