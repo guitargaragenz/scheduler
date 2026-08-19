@@ -1,8 +1,13 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Brief — Daily Log: booked jobs appear on their day (2026-08-19)
+
+**Shipped and merged to main at `62b760b` (PR #27), 2026-08-19.** Includes the follow-up fix
+in PR #26: the build had dropped `setMark={weekMarks.setMark}` from `<BenchWeekPage>` in
+`App.jsx`, which left the Weekly Log day columns silently dead. A source-level wiring test
+(`src/components/BenchWeekPage.wiring.test.js`) now fails if that prop goes missing again.
 
 Background and code references for the scope lock at `.claude/pending-brief.md`.
 The lock is the thing to build from; this file is the reasoning behind it.
