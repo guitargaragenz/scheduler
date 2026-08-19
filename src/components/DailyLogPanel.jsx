@@ -41,6 +41,22 @@ export function isNoteId(id) {
   return String(id ?? '').startsWith(NOTE_PREFIX);
 }
 
+// A mark is stored the same way a note is: its own row, whose id says which
+// day row it belongs to. Nothing here is written to week_marks.
+const MARK_PREFIX = 'mark:';
+
+export function markIdFor(itemId) {
+  return `${MARK_PREFIX}${itemId}`;
+}
+
+export function isMarkId(id) {
+  return String(id ?? '').startsWith(MARK_PREFIX);
+}
+
+export function markOwner(id) {
+  return isMarkId(id) ? String(id).slice(MARK_PREFIX.length) : '';
+}
+
 export function noteOwner(id) {
   if (!isNoteId(id)) return '';
   const rest = String(id).slice(NOTE_PREFIX.length);
@@ -77,7 +93,7 @@ export function dayJobOptions(jobs, weekKeys, marks) {
       // `label`: `label` is what gets stored, and the placed row already prints
       // the note on its own second line, so baking it into `label` would double
       // it up.
-      out.push({ id: String(part.id), rowId: String(row.id), label, note: part.sessionNote || '' });
+      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
     }
   }
 
@@ -107,9 +123,7 @@ export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
     for (const part of partsOf(row.job, all, byId)) {
       if (slotDateKey(part.calendarSlot) !== dateKey) continue;
       const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
-      // rowId is the TOP-LEVEL job id — the key the Weekly Log's marks are
-      // stored under. A split's own id would write a mark the WL never reads.
-      out.push({ id: String(part.id), rowId: String(row.id), label, note: part.sessionNote || '' });
+      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
     }
   }
 
@@ -178,7 +192,7 @@ const SECTION = {
 };
 
 export default function DailyLogPanel({
-  jobs, weekDays, marks, setMark,
+  jobs, weekDays, marks,
   dayItems, ready, saveError, addItem, removeItem,
   isMobile, showToast,
 }) {
@@ -215,16 +229,6 @@ export default function DailyLogPanel({
     return p ? (p.sessionNote || '') : '';
   };
 
-  // A mark ticked here is the SAME mark the Weekly Log shows — tick once, in
-  // the shop. Week marks are keyed by the TOP-LEVEL job id, so a split's row
-  // has to look its parent up; a split's own id would write a mark the WL
-  // never reads.
-  const rowIdOf = useMemo(() => {
-    const map = new Map();
-    for (const o of options) map.set(o.id, o.rowId);
-    return (id) => map.get(id) || '';
-  }, [options]);
-
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
   const dayTasks = entries.filter(([, v]) => v.kind === 'task');
@@ -245,15 +249,26 @@ export default function DailyLogPanel({
     for (const a of auto) {
       if (hidden.has(a.id)) continue;
       seen.add(a.id);
-      rows.push({ id: a.id, rowId: a.rowId, label: a.label, auto: true });
+      rows.push({ id: a.id, label: a.label, auto: true });
     }
     for (const [id, v] of entries) {
       if (v.kind !== 'job' || seen.has(id)) continue;
       seen.add(id);
-      rows.push({ id, rowId: rowIdOf(id), label: v.label, auto: false });
+      rows.push({ id, label: v.label, auto: false });
     }
     return rows;
-  }, [auto, entries, hidden, rowIdOf]);
+  }, [auto, entries, hidden]);
+
+  // The Daily Log's mark belongs to the ROW, not the job. Nine times in ten a
+  // day row is a split or a task, not the whole job — so ticking one here must
+  // not tick the job off on the Weekly Log. The WL keeps its one master mark.
+  const markOf = useMemo(() => {
+    const map = new Map();
+    for (const [id, v] of entries) {
+      if (isMarkId(id)) map.set(markOwner(id), v.label || '');
+    }
+    return map;
+  }, [entries]);
 
   // Notes filed under the job they belong to.
   const notesFor = useMemo(() => {
@@ -322,10 +337,15 @@ export default function DailyLogPanel({
   }
 
   async function handleSetMark(row, value) {
-    if (!row.rowId) return;
-    // The Weekly Log's own key: tick it here, it shows there.
-    const res = await setMark?.(row.rowId, dateKey, value || null);
-    if (res && !res.ok) showToast?.('That mark did not save');
+    if (!ready) {
+      showToast?.('Not saving yet — the day has not loaded');
+      return;
+    }
+    const id = markIdFor(row.id);
+    const res = value
+      ? await addItem(dateKey, id, 'mark', value)
+      : await removeItem(dateKey, id);
+    if (!res?.ok) showToast?.('That mark did not save');
   }
 
   async function handleAddNote(row) {
@@ -432,8 +452,8 @@ export default function DailyLogPanel({
             }}>
               {/* One mark box down the left — picked, never clicked through. */}
               <select
-                value={marks?.[row.rowId]?.[dateKey] || ''}
-                disabled={!ready || !row.rowId}
+                value={markOf.get(row.id) || ''}
+                disabled={!ready}
                 onChange={(e) => handleSetMark(row, e.target.value)}
                 title="How this job went today"
                 style={{

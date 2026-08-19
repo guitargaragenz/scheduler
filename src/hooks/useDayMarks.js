@@ -87,7 +87,7 @@ export function useDayMarks() {
     // on the next reload. `kind` is free text in bench_day_marks (no CHECK
     // constraint), so this needs no migration.
     const entry = {
-      kind: ['task', 'hidden', 'note'].includes(kind) ? kind : 'job',
+      kind: ['task', 'hidden', 'note', 'mark'].includes(kind) ? kind : 'job',
       label: String(label ?? ''),
     };
 
