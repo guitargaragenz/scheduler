@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Scope lock — DL auto-appear + day marks (approved 2026-08-19, revised 2026-08-20)

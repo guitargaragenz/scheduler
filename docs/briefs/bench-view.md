@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Bench view — background
+
+**Closed 2026-08-19.** Build 1 (week page, `a83c334`), Build 2 (day page, `7779ee5`) and the
+Daily Log auto-appear build (`62b760b`) are all shipped and merged to main.
 
 Written 2026-08-13. The scope lock is `.claude/pending-brief.md`; **that** is what binds the
 build. This page is background: where the design came from, and the marker reference.
