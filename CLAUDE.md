@@ -4,7 +4,7 @@
 
 GGNZ is organized into departments, each with its own `claude.md` + `context/` folder:
 
-- **Apps** (this file, repo root) — Scheduler (the deployed app, can't move — see [SCHEDULER-ARCHITECTURE.md](SCHEDULER-ARCHITECTURE.md) for tech stack, CSV pipeline, file boundaries, and code patterns). No subfolder of its own since Scheduler lives at repo root, unlike the other departments.
+- **Apps** (this file, repo root) — Scheduler — **live app: https://ggnz-scheduler.vercel.app** (the deployed app, can't move — see [SCHEDULER-ARCHITECTURE.md](SCHEDULER-ARCHITECTURE.md) for tech stack, CSV pipeline, file boundaries, and code patterns). No subfolder of its own since Scheduler lives at repo root, unlike the other departments.
   - Job Tracker (legacy standalone tool) decommissioned 2026-07-06 — archived to `archive/job-tracker/`, no longer deployed. Superseded entirely by this app's Jobs page/Sidebar (same bench/status/action filtering, plus real scheduling and sync).
 - **Marketing** — [marketing/claude.md](marketing/claude.md)
 - **Admin** — [admin/claude.md](admin/claude.md) (board meetings, backlog, parts/procurement)

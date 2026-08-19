@@ -80,7 +80,16 @@ export function useDayMarks() {
 
     const day = String(dateKey);
     const id = String(itemId);
-    const entry = { kind: kind === 'task' ? 'task' : 'job', label: String(label ?? '') };
+    // 'hidden' is a real, stored kind — it is how a job that appears on a day
+    // by itself (because it is booked there in the Weekly Log) is taken back
+    // off. Deleting the row cannot do that: for an auto-appearing job, an
+    // absent row is exactly what makes it appear, so Remove would undo itself
+    // on the next reload. `kind` is free text in bench_day_marks (no CHECK
+    // constraint), so this needs no migration.
+    const entry = {
+      kind: ['task', 'hidden', 'note', 'mark'].includes(kind) ? kind : 'job',
+      label: String(label ?? ''),
+    };
 
     // Optimistic: the list has to respond to a tap immediately.
     setDayItems(prev => ({

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
-import { weekRows, partsOf, rowName, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
+import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
 
 // The Daily Log — one day, three things: what is booked in, what has to be
 // done, and which jobs are being worked on.
@@ -28,8 +28,44 @@ export function isDayTaskId(id) {
   return String(id ?? '').startsWith(TYPED_ID_PREFIX);
 }
 
+// A note under a job is just another row in the same table: its id says which
+// job it belongs to and which note it is. Text lives in the existing `label`
+// column, so notes need no schema change.
+const NOTE_PREFIX = 'note:';
+
+export function newNoteId(itemId) {
+  return `${NOTE_PREFIX}${itemId}:${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function isNoteId(id) {
+  return String(id ?? '').startsWith(NOTE_PREFIX);
+}
+
+// A mark is stored the same way a note is: its own row, whose id says which
+// day row it belongs to. Nothing here is written to week_marks.
+const MARK_PREFIX = 'mark:';
+
+export function markIdFor(itemId) {
+  return `${MARK_PREFIX}${itemId}`;
+}
+
+export function isMarkId(id) {
+  return String(id ?? '').startsWith(MARK_PREFIX);
+}
+
+export function markOwner(id) {
+  return isMarkId(id) ? String(id).slice(MARK_PREFIX.length) : '';
+}
+
+export function noteOwner(id) {
+  if (!isNoteId(id)) return '';
+  const rest = String(id).slice(NOTE_PREFIX.length);
+  return rest.slice(0, rest.lastIndexOf(':'));
+}
+
 // The longest typed task that still reads on a phone.
 const MAX_TASK_NAME = 80;
+const MAX_NOTE = 160;
 
 // Every split of every job on the current Weekly Log, as pickable lines.
 //
@@ -64,6 +100,46 @@ export function dayJobOptions(jobs, weekKeys, marks) {
   // Two splits of one job can share a description; the id is what makes them
   // two lines, and it is also the primary key, so a duplicate id would be one
   // row fighting itself.
+  const seen = new Set();
+  return out.filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true)));
+}
+
+// Every split booked ON this day, read from each split's own `calendarSlot` —
+// the same field, read the same way, as the Weekly Log's dot. Nothing is
+// stored: a booked split appears because it is booked, and stops appearing the
+// moment the booking moves. No new table, no new field, and no write anywhere.
+//
+// Parts only, matching dayJobOptions: a job with no splits IS its own single
+// part (partsOf returns [job]), so an unsplit booked job still shows up.
+export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
+  if (!dateKey) return [];
+  const all = jobs || [];
+  const byId = new Map(all.map(j => [j.id, j]));
+  const rows = weekRows(all, weekKeys, marks || {});
+  const out = [];
+
+  for (const row of rows) {
+    if (!row.job) continue;
+
+    let booked = 0;
+    for (const part of partsOf(row.job, all, byId)) {
+      if (slotDateKey(part.calendarSlot) !== dateKey) continue;
+      booked += 1;
+      const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
+      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
+    }
+    if (booked) continue;
+
+    // A job put on the week by hand has no calendarSlot — nothing books it to
+    // a time. What says which day it is, is the day Trevor marked on the
+    // Weekly Log. That mark is the booking, so the row belongs on that day.
+    //
+    // It comes through as ONE line for the whole job, not one per split: a
+    // week mark is on the job's row, so there is no split-level day to read.
+    if (!marks?.[row.id]?.[dateKey]) continue;
+    out.push({ id: String(row.id), label: row.name, note: '' });
+  }
+
   const seen = new Set();
   return out.filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true)));
 }
@@ -168,12 +244,61 @@ export default function DailyLogPanel({
 
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
-  const dayJobs = entries.filter(([, v]) => v.kind !== 'task');
   const dayTasks = entries.filter(([, v]) => v.kind === 'task');
+  const hidden = useMemo(
+    () => new Set(entries.filter(([, v]) => v.kind === 'hidden').map(([id]) => id)),
+    [entries]
+  );
+
+  // Jobs booked on this day appear by themselves. Rows put on by hand come
+  // after them. A hidden id is one Trevor took off an auto row, so it stays off.
+  const auto = useMemo(
+    () => bookedOnDay(jobs, weekKeys, dateKey, marks),
+    [jobs, weekKeys, dateKey, marks]
+  );
+  const dayJobs = useMemo(() => {
+    const rows = [];
+    const seen = new Set();
+    for (const a of auto) {
+      if (hidden.has(a.id)) continue;
+      seen.add(a.id);
+      rows.push({ id: a.id, label: a.label, auto: true });
+    }
+    for (const [id, v] of entries) {
+      if (v.kind !== 'job' || seen.has(id)) continue;
+      seen.add(id);
+      rows.push({ id, label: v.label, auto: false });
+    }
+    return rows;
+  }, [auto, entries, hidden]);
+
+  // The Daily Log's mark belongs to the ROW, not the job. Nine times in ten a
+  // day row is a split or a task, not the whole job — so ticking one here must
+  // not tick the job off on the Weekly Log. The WL keeps its one master mark.
+  const markOf = useMemo(() => {
+    const map = new Map();
+    for (const [id, v] of entries) {
+      if (isMarkId(id)) map.set(markOwner(id), v.label || '');
+    }
+    return map;
+  }, [entries]);
+
+  // Notes filed under the job they belong to.
+  const notesFor = useMemo(() => {
+    const map = new Map();
+    for (const [id, v] of entries) {
+      if (!isNoteId(id)) continue;
+      const owner = noteOwner(id);
+      if (!map.has(owner)) map.set(owner, []);
+      map.get(owner).push({ id, text: v.label || '' });
+    }
+    for (const list of map.values()) list.sort((a, b) => a.id.localeCompare(b.id));
+    return map;
+  }, [entries]);
 
   // Already on the day, so not offered again.
-  const taken = new Set(dayJobs.map(([id]) => id));
-  const pickable = options.filter(o => !taken.has(o.id));
+  const taken = new Set(dayJobs.map(r => r.id));
+  const pickable = options.filter(o => !taken.has(o.id) && !hidden.has(o.id));
 
   const [taskText, setTaskText] = useState('');
 
@@ -211,13 +336,44 @@ export default function DailyLogPanel({
     if (!res?.ok) showToast?.('That task did not save');
   }
 
-  async function handleRemove(id) {
+  async function handleRemove(row) {
     if (!ready) {
       showToast?.('Not saving yet — the day has not loaded');
       return;
     }
-    const res = await removeItem(dateKey, id);
+    // An auto row appears BECAUSE nothing is stored for it, so deleting would
+    // undo itself on the next reload. It gets a 'hidden' row instead.
+    const res = row.auto
+      ? await addItem(dateKey, row.id, 'hidden', row.label)
+      : await removeItem(dateKey, row.id);
     if (!res?.ok) showToast?.('That did not come off the day');
+  }
+
+  async function handleSetMark(row, value) {
+    if (!ready) {
+      showToast?.('Not saving yet — the day has not loaded');
+      return;
+    }
+    const id = markIdFor(row.id);
+    const res = value
+      ? await addItem(dateKey, id, 'mark', value)
+      : await removeItem(dateKey, id);
+    if (!res?.ok) showToast?.('That mark did not save');
+  }
+
+  async function handleAddNote(row) {
+    if (!ready) {
+      showToast?.('Not saving yet — the day has not loaded');
+      return;
+    }
+    const res = await addItem(dateKey, newNoteId(row.id), 'note', '');
+    if (!res?.ok) showToast?.('That note did not save');
+  }
+
+  async function handleSaveNote(noteId, text) {
+    // Same id = overwrite, so saving an edit is just adding it again.
+    const res = await addItem(dateKey, noteId, 'note', text.slice(0, MAX_NOTE));
+    if (!res?.ok) showToast?.('That note did not save');
   }
 
   const dayDate = useMemo(() => {
@@ -302,27 +458,84 @@ export default function DailyLogPanel({
               No jobs on this day yet.
             </div>
           )}
-          {dayJobs.map(([id, v]) => (
-            <div key={id} style={{
-              display: 'flex', gap: 8, alignItems: 'center',
+          {dayJobs.map(row => (
+            <div key={row.id} style={{
+              display: 'flex', gap: 8, alignItems: 'flex-start',
               padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
             }}>
+              {/* One mark box down the left — picked, never clicked through. */}
+              <select
+                value={markOf.get(row.id) || ''}
+                disabled={!ready}
+                onChange={(e) => handleSetMark(row, e.target.value)}
+                title="How this job went today"
+                style={{
+                  flex: '0 0 auto', width: 34, padding: '1px 2px', borderRadius: 4,
+                  border: '1px solid #334155', background: '#0f172a',
+                  color: '#cbd5e1', fontWeight: 700, fontSize: 13, textAlign: 'center',
+                  cursor: ready ? 'pointer' : 'default',
+                }}
+              >
+                <option value="">·</option>
+                {Object.entries(MARKS).map(([key, m]) => (
+                  <option key={key} value={key}>{m.symbol}</option>
+                ))}
+              </select>
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {v.label}
+                  {row.label}
                 </div>
-                {subTaskNote(id) && (
+                {subTaskNote(row.id) && (
                   <div style={{
                     fontSize: 11, color: '#94a3b8', overflow: 'hidden',
                     textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {subTaskNote(id)}
+                    {subTaskNote(row.id)}
                   </div>
                 )}
+                {(notesFor.get(row.id) || []).map(n => (
+                  <div key={n.id} style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 3 }}>
+                    <span style={{ color: '#475569', fontSize: 11 }}>–</span>
+                    <input
+                      defaultValue={n.text}
+                      disabled={!ready}
+                      maxLength={MAX_NOTE}
+                      placeholder="What happened…"
+                      onBlur={(e) => {
+                        if (e.target.value !== n.text) handleSaveNote(n.id, e.target.value);
+                      }}
+                      style={{
+                        flex: 1, minWidth: 0, padding: '2px 5px', borderRadius: 4,
+                        border: '1px solid #1e293b', background: '#0b1220',
+                        color: '#cbd5e1', fontSize: 11.5,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeItem(dateKey, n.id)}
+                      disabled={!ready}
+                      title="Delete this note"
+                      style={{
+                        border: 'none', background: 'transparent', color: '#475569',
+                        fontSize: 12, cursor: ready ? 'pointer' : 'default', padding: '0 3px',
+                      }}
+                    >×</button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleAddNote(row)}
+                  disabled={!ready}
+                  style={{
+                    border: 'none', background: 'transparent', color: '#475569',
+                    fontSize: 11, cursor: ready ? 'pointer' : 'default',
+                    padding: '3px 0 0 0',
+                  }}
+                >+ note</button>
               </span>
               <button
                 type="button"
-                onClick={() => handleRemove(id)}
+                onClick={() => handleRemove(row)}
                 disabled={!ready}
                 title="Take this off the day"
                 style={{

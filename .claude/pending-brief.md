@@ -2,49 +2,50 @@
 doc_status: live
 ---
 
-# Scope lock — Build 2: the Daily Log
-
-**Council is done** (two reviewers, GO WITH CHANGES, folded in below). Start at the build.
-Checklist and history: [docs/briefs/bench-view.md](../docs/briefs/bench-view.md) —
-**background; don't open it just to start the build.**
+# Scope lock — DL auto-appear + day marks (approved 2026-08-19, revised 2026-08-20)
 
 ## Build
 
-One new page — tomorrow — holding three things:
+1. **Auto-appear.** A job booked on a day shows on that day by itself, read from
+   each split's `calendarSlot`. Nothing stored to make it appear.
+2. **The parts list shows bench splits.** A job split across benches is one line
+   per split, with that split's own note under it.
+3. **A removed job stays removed.** Remove on an auto row writes a `hidden` row
+   in `bench_day_marks`; deleting the row can't work, because for an auto row an
+   absent row is what makes it appear.
+4. **One mark box down the left.** A single symbol per job row, in a column on
+   the left — not a strip of boxes per row. Picked from a **dropdown**, never
+   tap-cycled: clicking through symbols is tedious.
+5. **`o` = event** joins the shared marks (`·` `/` `>` `×` `o`). It shows in the
+   Weekly Log legend too. It does NOT join the WL tap cycle.
+6. **Editable notes under a job**, like sub-tasks. Stored as extra rows in
+   `bench_day_marks` (`note:<id>:<n>`, text in the existing `label`). No schema
+   change.
 
-1. **Appointments** — read-only from Google Calendar via `listEvents()`. No writes, ever.
-2. **Tasks** — free text. No status, no job links.
-3. **Jobs** — pick a job's existing splits onto the day. 3–5 typical, no cap.
+## Out of scope
 
-## Rules that bind the build
+- **No editing of benches, splits or hours here** — "it's already there in day
+  view and we don't need duplication".
+- **No time or schedule picker.** The DL has no times and is not getting any.
+- **No writes to `jobs[]`, `scheduledSlots` or `calendarSlot`.** Read only.
+- **No card look.** Rows keep their plain styling — the cards were too big.
 
-- **Name the two pages "Weekly Log" and "Daily Log"** in headings and page titles. On the
-  nav pills they read **"W Log"** and **"D Log"** — the pills are too small for the full
-  words. Filenames can stay as they are.
-- **The Daily Log can only offer jobs already on the current Weekly Log.** No job-number
-  search. Not on the week, can't go on a day.
-- **Closing a job is the `×` in the final `>` column, and nothing else.** That is the only
-  place the invoice amount is asked — the existing `PomoDrawer` prompt → `handleMarkDone`.
-  Never a silent `done: true`, no second invoicing UI. No Cancel button: closing is a
-  deliberate manual cross, not automatic. That column needs its own stored value and its own
-  tap target — it is derived from the day cells today. Strikethrough follows it, not day marks.
-- **A day-column `×` is a plain mark** — worked and finished that day. No money question, no
-  `done`, no strikethrough.
-- **A marked job stays on the week until it is closed** — never dropped by a source-list or
-  filter change.
-- **A done split stays done.** Store the split's own text at tick time, never a live pointer.
-- **On desktop the two logs sit side by side on one page** — W Log left, D Log right, like the
-  journal's two-page spread. Trevor works across both at once; a desktop that shows only one is
-  a fail. On the phone, one at a time.
-- Day picks and tasks live in **their own table keyed by date** (same pattern as
-  `bench_week_marks`). No second write path into `jobs[]`, `scheduledSlots` or
-  `calendarSlot` — the existing done/revenue call is the one allowed write.
+## Rules that bind this build
 
-## Not in scope
+- Job state is read-only. The only things written are `week_marks` (the mark) and
+  `bench_day_marks` (day rows and notes).
+- The DL mark is its OWN mark, not the WL's. A DL row is usually a split or a
+  task, not the whole job, so ticking it must never tick the job off the WL.
+  The WL keeps the one master mark.
+- Marks are keyed by the top-level job id, the same key the WL writes.
+- Splits are shared, not per-day.
+- Check every fact against the live code before acting on it.
 
-- Restarting the parked scheduler. `AUTO_BUMP_ENABLED = false`
-  (`src/hooks/useGoogleCalendar.js:26`) stays false; the 30s poll stays read-only.
-- `DailyLogPage.jsx` — the old scheduler day view, a different page.
-- The exported week log (readable document). Separate build.
-- Any change to existing Supabase tables, `calendarSlot`, or the `jobs[]` shape beyond the one
-  existing `handleMarkDone` write.
+## Protocol
+
+Not blast-radius — no writes to job state — so this runs as a supervised direct
+build on branch `dl-auto-appear`. Verify with the test suite plus a Vercel
+preview click-through.
+
+Background only, don't open it to start the build:
+[docs/briefs/dl-booked-jobs-appear.md](../docs/briefs/dl-booked-jobs-appear.md)

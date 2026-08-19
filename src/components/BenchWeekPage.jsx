@@ -35,6 +35,9 @@ export const MARKS = {
   slash: { symbol: '/', label: 'worked that day' },
   arrow: { symbol: '>', label: 'not worked — move on' },
   cross: { symbol: '×', label: 'done' },
+  // Not in CYCLE on purpose: an event is picked from the Daily Log's dropdown,
+  // and putting it in the tap order would add a fifth tap to every WL cell.
+  event: { symbol: 'o', label: 'event' },
 };
 
 // Tap order. Round-trips back to blank so a mis-tap is always undoable with
