@@ -847,7 +847,8 @@ export default function App() {
                   marks={weekMarks.marks}
                   ready={weekMarks.ready}
                   saveError={weekMarks.saveError}
-                          clearJobKeys={weekMarks.clearJobKeys}
+                  setMark={weekMarks.setMark}
+                  clearJobKeys={weekMarks.clearJobKeys}
                   isMobile={isMobile}
                   showToast={showToast}
                   /* Closing a job off opens the existing invoice prompt. This
@@ -865,7 +866,7 @@ export default function App() {
                   jobs={jobs}
                   weekDays={weekDays}
                   marks={weekMarks.marks}
-                          dayItems={dayMarks.dayItems}
+                  dayItems={dayMarks.dayItems}
                   ready={dayMarks.ready}
                   saveError={dayMarks.saveError}
                   addItem={dayMarks.addItem}
