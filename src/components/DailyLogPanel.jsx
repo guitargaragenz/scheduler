@@ -120,11 +120,24 @@ export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
 
   for (const row of rows) {
     if (!row.job) continue;
+
+    let booked = 0;
     for (const part of partsOf(row.job, all, byId)) {
       if (slotDateKey(part.calendarSlot) !== dateKey) continue;
+      booked += 1;
       const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
       out.push({ id: String(part.id), label, note: part.sessionNote || '' });
     }
+    if (booked) continue;
+
+    // A job put on the week by hand has no calendarSlot — nothing books it to
+    // a time. What says which day it is, is the day Trevor marked on the
+    // Weekly Log. That mark is the booking, so the row belongs on that day.
+    //
+    // It comes through as ONE line for the whole job, not one per split: a
+    // week mark is on the job's row, so there is no split-level day to read.
+    if (!marks?.[row.id]?.[dateKey]) continue;
+    out.push({ id: String(row.id), label: row.name, note: '' });
   }
 
   const seen = new Set();

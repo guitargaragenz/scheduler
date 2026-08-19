@@ -34,7 +34,9 @@ doc_status: live
 
 - Job state is read-only. The only things written are `week_marks` (the mark) and
   `bench_day_marks` (day rows and notes).
-- A mark ticked in the DL is the SAME mark the WL shows — tick once, in the shop.
+- The DL mark is its OWN mark, not the WL's. A DL row is usually a split or a
+  task, not the whole job, so ticking it must never tick the job off the WL.
+  The WL keeps the one master mark.
 - Marks are keyed by the top-level job id, the same key the WL writes.
 - Splits are shared, not per-day.
 - Check every fact against the live code before acting on it.
