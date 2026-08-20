@@ -871,6 +871,18 @@ export default function App() {
                   saveError={dayMarks.saveError}
                   addItem={dayMarks.addItem}
                   removeItem={dayMarks.removeItem}
+                  /* The Weekly Log half of a mark: its own save gate, its own
+                     writer. Kept separate from dayMarks.ready above — they are
+                     two tables with two failure counters, and one flag standing
+                     for both would let a mark save into one log only. */
+                  weekReady={weekMarks.ready}
+                  setWeekMark={weekMarks.setMark}
+                  /* Raw handleMarkPieceDone, NOT the ...WithInvoicing wrapper:
+                     a cross in the Daily Log means "this piece is finished,
+                     waiting on the Weekly Log's closing ×". It must never raise
+                     the invoice prompt. That stays Trevor's tap in the Weekly
+                     Log's last column, and the only thing that invoices. */
+                  onMarkPieceDone={jobOps.handleMarkPieceDone}
                   isMobile={isMobile}
                   showToast={showToast}
                 />

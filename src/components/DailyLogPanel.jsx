@@ -2,15 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
 import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
+import { topLevelJob } from '../hooks/useJobs.js';
 
 // The Daily Log — one day, three things: what is booked in, what has to be
 // done, and which jobs are being worked on.
 //
-// What it writes: bench_day_marks, and nothing else. Not jobs[], not
-// scheduledSlots, not calendarSlot. Putting a job on a day is a note about the
-// day, not a booking — nothing here moves a calendar slot and nothing here
-// finishes a job. Closing a job is still the cross in the Weekly Log's last
-// column, and the invoice is still asked for there.
+// What it writes: bench_day_marks; the one Weekly Log cell that matches the
+// mark just picked; and that split's `pieceDone` when the mark becomes or
+// stops being a cross. Nothing else. Not scheduledSlots, not calendarSlot, and
+// nothing that finishes a whole job. Putting a job on a day is a note about the
+// day, not a booking — nothing here moves a calendar slot. Closing a job is
+// still the cross in the Weekly Log's last column, and the invoice is still
+// asked for there and only there.
 //
 // Appointments are READ-ONLY, always. listEvents() is a read and there is no
 // write counterpart anywhere on this page.
@@ -62,6 +65,32 @@ export function noteOwner(id) {
   const rest = String(id).slice(NOTE_PREFIX.length);
   return rest.slice(0, rest.lastIndexOf(':'));
 }
+
+// Which Weekly Log cell a Daily Log row writes into.
+//
+// The Weekly Log only ever draws ONE row per top-level job (weekRows() skips
+// anything with a parentId), so a split's mark has to land under its parent's
+// id — a split's own id names a row that is never on the page, i.e. a mark
+// that saves and shows nowhere.
+//
+// Returns null for a row that has no job behind it at all: a hand-typed task.
+// Those live in the Daily Log only and add no Weekly Log row.
+export function weekCellJobId(rowId, jobs) {
+  const all = jobs || [];
+  const job = all.find(j => String(j.id) === String(rowId));
+  if (!job) return null;
+  const top = topLevelJob(job, all);
+  return top ? String(top.id) : null;
+}
+
+// The Daily Log drives the Weekly Log. A pick here overwrites whatever the week
+// cell holds, and clearing the row clears it.
+//
+// This used to refuse a cell the row hadn't written itself — Trevor's mark set
+// by hand, or another split of the same job that day. He rejected that on the
+// preview (2026-08-20): "I specifically said that the DL should drive WL — when
+// I select action in DL, WL should reflect that change." Two splits of one job
+// marked the same day share one cell, so the last pick wins.
 
 // The longest typed task that still reads on a phone.
 const MAX_TASK_NAME = 80;
@@ -198,6 +227,36 @@ function eventSortKey(ev) {
   return ev?.start?.dateTime || '';
 }
 
+// The mark box: one down the left of every Daily Log line, job row or typed
+// task alike. Picked, never clicked through — a phone tap has to land on the
+// mark meant, not cycle past it.
+//
+// The VALUE is the mark's key ('slash'/'cross'/'arrow'), never its symbol. The
+// symbol is only what gets drawn; storing it would save a value the Weekly Log
+// cannot draw, so the mark would save and show blank.
+function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
+  return (
+    <select
+      value={value || ''}
+      disabled={disabled}
+      onChange={(e) => onPick(e.target.value)}
+      title={title}
+      aria-label={ariaLabel || title}
+      style={{
+        flex: '0 0 auto', width: 34, padding: '1px 2px', borderRadius: 4,
+        border: '1px solid #334155', background: '#0f172a',
+        color: '#cbd5e1', fontWeight: 700, fontSize: 13, textAlign: 'center',
+        cursor: disabled ? 'default' : 'pointer',
+      }}
+    >
+      <option value="">·</option>
+      {Object.entries(MARKS).map(([key, m]) => (
+        <option key={key} value={key}>{m.symbol}</option>
+      ))}
+    </select>
+  );
+}
+
 const SECTION = {
   fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
   color: '#94a3b8', borderBottom: '1px solid #1e293b',
@@ -207,6 +266,10 @@ const SECTION = {
 export default function DailyLogPanel({
   jobs, weekDays, marks,
   dayItems, ready, saveError, addItem, removeItem,
+  // The Weekly Log half. `ready` above is the DAY's save gate; this is the
+  // week's, a separate gate with its own failure counter, so the two are never
+  // one flag. Both are checked before either half is written.
+  weekReady, setWeekMark, onMarkPieceDone,
   isMobile, showToast,
 }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
@@ -349,16 +412,58 @@ export default function DailyLogPanel({
     if (!res?.ok) showToast?.('That did not come off the day');
   }
 
+  // Picking a mark here is the one pick: it marks the day row AND the same
+  // job's Weekly Log cell for that day, so the mark is only ever chosen once.
+  //
+  // Nothing here books a day. `>` says the work was deferred; which day it
+  // moves to is Trevor's, by hand, and this never asks.
   async function handleSetMark(row, value) {
     if (!ready) {
       showToast?.('Not saving yet — the day has not loaded');
       return;
     }
+
+    // A typed task has no job and so no Weekly Log cell — its mark is a Daily
+    // Log mark only, and the week's gate has no say over it.
+    const weekJobId = weekCellJobId(row.id, jobs);
+
+    // Both gates, before either half is written. Half a mark — the day marked
+    // and the week silently missed — is worse than no mark, because the screen
+    // would look like it worked.
+    if (weekJobId && !weekReady) {
+      showToast?.('Not saving yet — the Weekly Log has not loaded');
+      return;
+    }
+
+    // What this row last wrote, read before the change lands.
+    const previous = markOf.get(row.id) || '';
+
     const id = markIdFor(row.id);
     const res = value
       ? await addItem(dateKey, id, 'mark', value)
       : await removeItem(dateKey, id);
-    if (!res?.ok) showToast?.('That mark did not save');
+    if (!res?.ok) {
+      showToast?.('That mark did not save');
+      return;
+    }
+
+    if (!weekJobId) return;
+
+    // The board's tick, moved ONLY as the cross arrives or leaves. The board
+    // (JobCard, PomoDrawer, CloseDayModal) writes pieceDone too, so clearing it
+    // on any non-cross mark would silently un-tick a piece already ticked done
+    // there — pick `/` because more work happened, and the tick vanishes.
+    // Nothing to do for a row that isn't a split's child: pieceDone is a
+    // child's field.
+    const rowJob = jobById.get(String(row.id));
+    if (rowJob?.parentId && onMarkPieceDone) {
+      const wasCross = previous === 'cross';
+      const isCross = value === 'cross';
+      if (wasCross !== isCross) onMarkPieceDone(rowJob.parentId, rowJob.id, isCross);
+    }
+
+    const weekRes = await setWeekMark?.(weekJobId, dateKey, value || '');
+    if (!weekRes?.ok) showToast?.('The Weekly Log did not take that mark');
   }
 
   async function handleAddNote(row) {
@@ -416,6 +521,13 @@ export default function DailyLogPanel({
           {saveError || 'Loading the day — nothing will save until this finishes.'}
         </div>
       )}
+      {/* The week's own gate, said out loud. A mark picked while this is up
+          reaches neither log — the tap is refused, never silently dropped. */}
+      {ready && !weekReady && (
+        <div style={{ flexShrink: 0, padding: '8px 16px', background: '#451a03', color: '#fcd34d', fontSize: 12 }}>
+          The Weekly Log has not loaded — marks will not save until it does.
+        </div>
+      )}
       {ready && saveError && (
         <div style={{ flexShrink: 0, padding: '8px 16px', background: '#450a0a', color: '#fca5a5', fontSize: 12 }}>
           {saveError}
@@ -463,24 +575,13 @@ export default function DailyLogPanel({
               display: 'flex', gap: 8, alignItems: 'flex-start',
               padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
             }}>
-              {/* One mark box down the left — picked, never clicked through. */}
-              <select
-                value={markOf.get(row.id) || ''}
+              <MarkSelect
+                value={markOf.get(row.id)}
                 disabled={!ready}
-                onChange={(e) => handleSetMark(row, e.target.value)}
+                onPick={(v) => handleSetMark(row, v)}
                 title="How this job went today"
-                style={{
-                  flex: '0 0 auto', width: 34, padding: '1px 2px', borderRadius: 4,
-                  border: '1px solid #334155', background: '#0f172a',
-                  color: '#cbd5e1', fontWeight: 700, fontSize: 13, textAlign: 'center',
-                  cursor: ready ? 'pointer' : 'default',
-                }}
-              >
-                <option value="">·</option>
-                {Object.entries(MARKS).map(([key, m]) => (
-                  <option key={key} value={key}>{m.symbol}</option>
-                ))}
-              </select>
+                ariaLabel={`Mark for ${row.label}`}
+              />
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {row.label}
@@ -586,7 +687,17 @@ export default function DailyLogPanel({
               display: 'flex', gap: 8, alignItems: 'center',
               padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
             }}>
-              <span style={{ color: '#64748b' }}>+</span>
+              {/* A typed task gets the same mark box as a job line — it is
+                  still a thing that was worked on, deferred or finished. It has
+                  no job behind it, so it has no Weekly Log row and the mark
+                  stays here. */}
+              <MarkSelect
+                value={markOf.get(id)}
+                disabled={!ready}
+                onPick={(val) => handleSetMark({ id, label: v.label }, val)}
+                title="How this task went today"
+                ariaLabel={`Mark for ${v.label}`}
+              />
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {v.label}
               </span>
