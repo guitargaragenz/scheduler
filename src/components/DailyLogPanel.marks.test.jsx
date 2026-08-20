@@ -109,28 +109,27 @@ describe('picking a mark in the Daily Log', () => {
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, ''));
   });
 
-  it('refuses a cell this row did not write, and says so', async () => {
-    // Trevor marked the Weekly Log by hand; this row has never written it.
+  it('overwrites a cell Trevor set by hand — the Daily Log drives', async () => {
+    // He rejected refusing this on the preview: picking in the D Log must show
+    // in the W Log, whatever the cell already holds.
     const { setWeekMark, showToast } = setup({ marks: { p: { [DAY]: 'cross' } } });
 
     pick('1714', 'slash');
 
-    await vi.waitFor(() => expect(showToast).toHaveBeenCalled());
-    expect(showToast.mock.calls[0][0]).toMatch(/Weekly Log left alone/i);
-    expect(setWeekMark).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'slash'));
+    expect(showToast).not.toHaveBeenCalled();
   });
 
-  it('refuses the second split of the same job on the same day, and says so', async () => {
-    // The Setup split already put its mark in the one cell the job has.
-    const { setWeekMark, showToast } = setup({
+  it('lets the second split of the same job win the shared cell', async () => {
+    // One cell per job per day, so the last pick is what shows.
+    const { setWeekMark } = setup({
       marks: { p: { [DAY]: 'slash' } },
       dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'slash' } } },
     });
 
     pick('1714 — Electronics', 'cross');
 
-    await vi.waitFor(() => expect(showToast).toHaveBeenCalled());
-    expect(setWeekMark).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'cross'));
   });
 
   it('says so and writes nothing at all when the week has not loaded', async () => {

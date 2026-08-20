@@ -83,27 +83,14 @@ export function weekCellJobId(rowId, jobs) {
   return top ? String(top.id) : null;
 }
 
-// May this row write the Weekly Log cell?
+// The Daily Log drives the Weekly Log. A pick here overwrites whatever the week
+// cell holds, and clearing the row clears it.
 //
-// A cell stores a mark and nothing about who put it there, so "did I write
-// this" is answered by comparing what the cell holds against the mark this row
-// last wrote — its own stored Daily Log mark before this change.
-//
-//   - Nothing stored in the cell: free to write.
-//   - The cell holds what this row last wrote: this row's own mark, so it may
-//     be changed or cleared. Without this, the first pick would lock the cell
-//     and a correction would leave the Weekly Log stuck on the old mark — the
-//     exact thing this feature exists to stop.
-//   - Anything else: Trevor set it by hand, or another split of the same job
-//     did, that day. Left alone, and the caller says so on screen.
-//
-// `stored` must be the STORED mark, never cellMark()'s: cellMark() draws a dot
-// on any booked day without storing one, so testing what is drawn would refuse
-// nearly every job.
-export function mayWriteWeekCell(stored, lastOwnMark) {
-  if (!stored) return true;
-  return String(stored) === String(lastOwnMark || '');
-}
+// This used to refuse a cell the row hadn't written itself — Trevor's mark set
+// by hand, or another split of the same job that day. He rejected that on the
+// preview (2026-08-20): "I specifically said that the DL should drive WL — when
+// I select action in DL, WL should reflect that change." Two splits of one job
+// marked the same day share one cell, so the last pick wins.
 
 // The longest typed task that still reads on a phone.
 const MAX_TASK_NAME = 80;
@@ -473,13 +460,6 @@ export default function DailyLogPanel({
       const wasCross = previous === 'cross';
       const isCross = value === 'cross';
       if (wasCross !== isCross) onMarkPieceDone(rowJob.parentId, rowJob.id, isCross);
-    }
-
-    // The STORED week mark, not what the grid draws.
-    const stored = marks?.[weekJobId]?.[dateKey] || '';
-    if (!mayWriteWeekCell(stored, previous)) {
-      showToast?.('Weekly Log left alone — that day already has a mark this row did not put there');
-      return;
     }
 
     const weekRes = await setWeekMark?.(weekJobId, dateKey, value || '');
