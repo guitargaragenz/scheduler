@@ -33,11 +33,12 @@ const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin'];
 export const MARKS = {
   dot:   { symbol: '·', label: 'booked' },
   slash: { symbol: '/', label: 'worked that day' },
-  arrow: { symbol: '>', label: 'not worked — move on' },
+  arrow: { symbol: '>', label: 'deferred' },
   cross: { symbol: '×', label: 'done' },
-  // Not in CYCLE on purpose: an event is picked from the Daily Log's dropdown,
-  // and putting it in the tap order would add a fifth tap to every WL cell.
-  event: { symbol: 'o', label: 'event' },
+  // No 'event' mark. It was added for the Daily Log's dropdown and removed
+  // again 2026-08-19: these marks sit on a job row, and a job is never an
+  // appointment. Appointments come from Google Calendar and have their own
+  // section — they are never a mark on a job.
 };
 
 // Tap order. Round-trips back to blank so a mis-tap is always undoable with
@@ -338,6 +339,24 @@ export function trailing(weekKeys, jobMarks) {
   const closeKey = weekCloseKey(weekKeys);
   const closed = Boolean(closeKey && jobMarks?.[closeKey]);
   return { mark: closed ? 'cross' : 'arrow', closed };
+}
+
+// Where the rule-off line starts on a closed row.
+//
+// Reads as one gesture in the journal: the day the last piece was finished, the
+// closing × in the trailing column, and a line joining the two. It is drawn
+// ONLY on a closed row — a day × on its own means "that piece was worked to a
+// finish", not that the guitar is done, so it must not draw a line.
+//
+// Returns the index into weekKeys of the LAST day marked ×, or null when the
+// row is not closed or has no day ×.
+export function ruleOff(row, weekKeys, jobMarks) {
+  const closeKey = weekCloseKey(weekKeys);
+  if (!closeKey || !jobMarks?.[closeKey]) return null;
+  for (let i = (weekKeys || []).length - 1; i >= 0; i -= 1) {
+    if (cellMark(row, weekKeys[i], jobMarks) === 'cross') return i;
+  }
+  return null;
 }
 
 // What a row is called on the page and in the exported file.
@@ -743,6 +762,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
             {group.rows.map(row => {
               const jobMarks = marks[row.id] || {};
               const t = trailing(weekKeys, jobMarks);
+              const ruleFrom = ruleOff(row, weekKeys, jobMarks);
               // The name comes first: to the left of the marks on a computer,
               // above them on the phone — there isn't the width to put both on
               // one line.
@@ -769,7 +789,26 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                     {row.typed && <span style={{ color: '#64748b' }}>+ </span>}
                     {row.name}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? 'none' : 'initial' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', position: 'relative',
+                    flex: isMobile ? 'none' : 'initial',
+                  }}>
+                  {/* The rule-off: from the day the last piece finished across
+                      to the closing ×, so the two crosses read as one gesture.
+                      Drawn over the cells and ignoring taps, so every day
+                      underneath it stays tappable and a mis-close is still
+                      undoable. */}
+                  {ruleFrom !== null && (
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute', pointerEvents: 'none',
+                        left: ruleFrom * cellW + cellW / 2,
+                        width: (weekKeys.length - ruleFrom) * cellW,
+                        top: '50%', height: 1, background: '#f87171', opacity: 0.75,
+                      }}
+                    />
+                  )}
                   {/* Every day stays tappable and stays drawn. There is no
                       rule-off across the days: it used to run from a day × to
                       the end of the row, and a day × no longer means the job is

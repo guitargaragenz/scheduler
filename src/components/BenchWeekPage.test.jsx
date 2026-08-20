@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
-  weekRowKey, weekCloseKey, benchSections, addableJobs,
+  weekRowKey, weekCloseKey, benchSections, addableJobs, ruleOff,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
   compareJobNumber,
 } from './BenchWeekPage.jsx';
@@ -357,5 +357,23 @@ describe('benchSections', () => {
     const groups = benchSections([{ bench: 'Finishing' }, { bench: '' }]);
     expect(groups.map(g => g.bench)).toContain('Finishing');
     expect(groups.find(g => g.bench === 'No bench set').canAdd).toBe(false);
+  });
+});
+
+describe('ruleOff', () => {
+  const row = { id: '1714', bookedDays: new Set(['2026-08-11']) };
+  const closeKey = weekCloseKey(WEEK);
+
+  it('is null on a row that is not closed, even with a day cross', () => {
+    expect(ruleOff(row, WEEK, { '2026-08-13': 'cross' })).toBe(null);
+  });
+
+  it('starts at the last day marked cross once the row is closed', () => {
+    const marks = { '2026-08-11': 'cross', '2026-08-13': 'cross', [closeKey]: 'closed' };
+    expect(ruleOff(row, WEEK, marks)).toBe(3);
+  });
+
+  it('is null on a closed row with no day cross', () => {
+    expect(ruleOff(row, WEEK, { [closeKey]: 'closed' })).toBe(null);
   });
 });
