@@ -2,47 +2,47 @@
 doc_status: live
 ---
 
-# Scope lock — one tick, one truth: DL split marks and the board card
+# Scope lock — the Daily Log drives the Weekly Log
 
 **Awaiting council.** Background: [docs/briefs/dl-splits-one-truth.md](../docs/briefs/dl-splits-one-truth.md)
 — **background only; don't open it just to start the build.**
 
+Replaces the earlier "one tick, one truth" scope (2026-08-20, Trevor's call). That
+build tried to keep a D Log tick and a board tick agreeing with each other. This one
+removes the need: the D Log gives the instruction, the W Log carries it out.
+
 ## Build
 
-Ticking a split in the Daily Log and ticking its card on the board become the
-same fact, in both directions.
-
-1. A `×` on a split row in the D Log sets that split's **`pieceDone`**.
-2. Moving that mark to **anything else** — blank, `·`, `/`, `>` — clears `pieceDone`.
-   Only `×` means finished, so the log and the job can never disagree.
-3. The `×` sits on the day it was ticked, and **no other day is rewritten** —
-   every other day that piece is booked on keeps its own mark. Trevor does not
-   book one job on consecutive days, so this is rare in practice; a tick made
-   from the calendar, which names no day, lands on the last booked day.
-4. "The board" means the piece-done tick in a split's drawer on the drag-and-drop
-   calendar. The Weekly Log's closing `×` is a different thing and stays as it is.
-5. Splits sit **under their job** in the D Log, indented, each markable on its own.
-   The job's own line carries its own mark and is never worked out from its splits.
+1. **Action symbols on every D Log row** — job lines, split lines and hand-typed
+   tasks alike. The one that matters: **carry this to the next day.**
+2. Carrying a **job or split** writes that job onto the next day in the **Weekly
+   Log**, the same write tapping that day cell already makes. Nothing else moves.
+3. Carrying a **task** (no job, so no W Log row) puts the same task on the next
+   day's D Log.
+4. `×` on a split row still sets that split's **`pieceDone`**, and moving that mark
+   to anything else — blank, `·`, `/`, `>` — clears it. Only `×` means finished.
+5. Splits sit **under their job**, indented, each markable on its own. The job's
+   own line carries its own mark and is never worked out from its splits.
 
 ## Rules that bind the build
 
+- **The D Log is where he is standing.** An action must be one tap, on the row, at
+  the moment he knows — never a trip to another screen to finish the thought.
 - **`pieceDone` already exists and is already a toggle** (`handleMarkPieceDone`,
   `src/hooks/useJobs.js`). Use it. No new field, no new table, no schema change.
-- **The invoice question stays where it is** — the `×` in the Weekly Log's final
-  column, Trevor's own manual tick. **Council must rule on this:** today, ticking
-  the last piece calls `handleAllPiecesDone`, which opens the invoice prompt. The
-  D Log must not raise that prompt.
-- **The D Log stays the record of when.** A ticked piece keeps its row, its date
-  and its note — it does not vanish from the day it was done on.
-- **Only `×` maps to `pieceDone`.** `·`, `/` and `>` mean nothing to the board.
+- **The D Log must not raise the invoice prompt.** `handleMarkPieceDone` only opens
+  it when handed an `onAllPiecesDone` callback — the D Log omits it. Invoicing stays
+  the W Log's own final-column `×`, by hand.
+- **A carry writes a booking, never a done flag.** Marks and bookings stay separate
+  facts; carrying tomorrow says nothing about today's row, which keeps its mark.
 - **The job line still never ticks the Weekly Log.** One master mark, set by hand.
+- **The other way round is out.** A board tick does not reach back into the D Log.
 
 ## Not in scope
 
 - The whole-job `done` flag and `handleMarkDone` — untouched.
 - Any change to `completed_jobs`, revenue, or the invoice amount.
-- `calendarSlot`, `scheduledSlots`, and the `jobs[]` shape beyond the existing
-  `pieceDone` write.
+- `calendarSlot`, `scheduledSlots`, and the `jobs[]` shape beyond `pieceDone`.
 
 ## Protocol
 
