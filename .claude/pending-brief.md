@@ -1,51 +1,47 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Scope lock — DL auto-appear + day marks (approved 2026-08-19, revised 2026-08-20)
+# Scope lock — one tick, one truth: DL split marks and the board card
+
+**Awaiting council.** Background: [docs/briefs/dl-splits-one-truth.md](../docs/briefs/dl-splits-one-truth.md)
+— **background only; don't open it just to start the build.**
 
 ## Build
 
-1. **Auto-appear.** A job booked on a day shows on that day by itself, read from
-   each split's `calendarSlot`. Nothing stored to make it appear.
-2. **The parts list shows bench splits.** A job split across benches is one line
-   per split, with that split's own note under it.
-3. **A removed job stays removed.** Remove on an auto row writes a `hidden` row
-   in `bench_day_marks`; deleting the row can't work, because for an auto row an
-   absent row is what makes it appear.
-4. **One mark box down the left.** A single symbol per job row, in a column on
-   the left — not a strip of boxes per row. Picked from a **dropdown**, never
-   tap-cycled: clicking through symbols is tedious.
-5. **`o` = event** joins the shared marks (`·` `/` `>` `×` `o`). It shows in the
-   Weekly Log legend too. It does NOT join the WL tap cycle.
-6. **Editable notes under a job**, like sub-tasks. Stored as extra rows in
-   `bench_day_marks` (`note:<id>:<n>`, text in the existing `label`). No schema
-   change.
+Ticking a split in the Daily Log and ticking its card on the board become the
+same fact, in both directions.
 
-## Out of scope
+1. A `×` on a split row in the D Log sets that split's **`pieceDone`**.
+2. Clearing that `×` clears `pieceDone` — a mis-tap is undone by cycling the mark off.
+3. A piece ticked on the board shows as `×` on its D Log row for the day it is booked on.
+4. Splits sit **under their job** in the D Log, indented, each markable on its own.
+   The job's own line carries its own mark and is never worked out from its splits.
 
-- **No editing of benches, splits or hours here** — "it's already there in day
-  view and we don't need duplication".
-- **No time or schedule picker.** The DL has no times and is not getting any.
-- **No writes to `jobs[]`, `scheduledSlots` or `calendarSlot`.** Read only.
-- **No card look.** Rows keep their plain styling — the cards were too big.
+## Rules that bind the build
 
-## Rules that bind this build
+- **`pieceDone` already exists and is already a toggle** (`handleMarkPieceDone`,
+  `src/hooks/useJobs.js`). Use it. No new field, no new table, no schema change.
+- **The invoice question stays where it is** — the `×` in the Weekly Log's final
+  column, Trevor's own manual tick. **Council must rule on this:** today, ticking
+  the last piece calls `handleAllPiecesDone`, which opens the invoice prompt. The
+  D Log must not raise that prompt.
+- **The D Log stays the record of when.** A ticked piece keeps its row, its date
+  and its note — it does not vanish from the day it was done on.
+- **The other marks stay log-only.** Only `×` maps to `pieceDone`. `·`, `/` and
+  `>` mean nothing to the board.
+- **The job line still never ticks the Weekly Log.** One master mark, set by hand.
+- A completed job never comes back, so nothing needs to handle a re-opened job.
 
-- Job state is read-only. The only things written are `week_marks` (the mark) and
-  `bench_day_marks` (day rows and notes).
-- The DL mark is its OWN mark, not the WL's. A DL row is usually a split or a
-  task, not the whole job, so ticking it must never tick the job off the WL.
-  The WL keeps the one master mark.
-- Marks are keyed by the top-level job id, the same key the WL writes.
-- Splits are shared, not per-day.
-- Check every fact against the live code before acting on it.
+## Not in scope
+
+- The whole-job `done` flag and `handleMarkDone` — untouched.
+- Any change to `completed_jobs`, revenue, or the invoice amount.
+- Restarting the parked scheduler. `AUTO_BUMP_ENABLED` stays false.
+- `calendarSlot`, `scheduledSlots`, and the `jobs[]` shape beyond the existing
+  `pieceDone` write.
 
 ## Protocol
 
-Not blast-radius — no writes to job state — so this runs as a supervised direct
-build on branch `dl-auto-appear`. Verify with the test suite plus a Vercel
-preview click-through.
-
-Background only, don't open it to start the build:
-[docs/briefs/dl-booked-jobs-appear.md](../docs/briefs/dl-booked-jobs-appear.md)
+Blast-radius: writes live job state. **Full protocol** — council, then
+`ggnz-builder`, then `ggnz-verifier`, then browser test, then merge.
