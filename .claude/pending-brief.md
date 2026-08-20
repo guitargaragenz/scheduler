@@ -13,8 +13,12 @@ Ticking a split in the Daily Log and ticking its card on the board become the
 same fact, in both directions.
 
 1. A `×` on a split row in the D Log sets that split's **`pieceDone`**.
-2. Clearing that `×` clears `pieceDone` — a mis-tap is undone by cycling the mark off.
-3. A piece ticked on the board shows as `×` on its D Log row for the day it is booked on.
+2. Moving that mark to **anything else** — blank, `·`, `/`, `>` — clears `pieceDone`.
+   Only `×` means finished, so the log and the job can never disagree.
+3. A piece ticked on the board shows as `×` on its D Log row. Booked on more than
+   one day, the `×` lands on the **last** day — that is the day it was finished.
+   "The board" here is the piece-done tick in a split's drawer on the drag-and-drop
+   calendar. The Weekly Log's closing `×` is a different thing and stays as it is.
 4. Splits sit **under their job** in the D Log, indented, each markable on its own.
    The job's own line carries its own mark and is never worked out from its splits.
 
@@ -31,7 +35,6 @@ same fact, in both directions.
 - **The other marks stay log-only.** Only `×` maps to `pieceDone`. `·`, `/` and
   `>` mean nothing to the board.
 - **The job line still never ticks the Weekly Log.** One master mark, set by hand.
-- A completed job never comes back, so nothing needs to handle a re-opened job.
 
 ## Not in scope
 
