@@ -13,10 +13,10 @@ start the build**): [dl-splits-one-truth.md](../docs/briefs/dl-splits-one-truth.
 2. Picking a mark on a job/split row writes **the same mark** to the W Log cell for
    **that job, that day** — under the **top-level job id** (`topLevelJob()`), never
    a split's own id, which `weekRows()` never draws.
-3. **Correcting your own mark follows through.** A row may overwrite or clear the
-   mark it last wrote; refuse **only** a cell it didn't write — hand-set, or another
-   split's that day — and say so. Test the **stored** mark, not `cellMark()`'s
-   drawing.
+3. **The D Log always wins — no refusals.** A pick overwrites whatever the W Log
+   cell holds, hand-set or not; clearing the row clears it. Trevor, 2026-08-20:
+   "when I select action in DL, WL should reflect that change." Two splits of one
+   job marked the same day share one cell — last pick wins.
 4. **The app never books a day.** No next-day write, picker, popup or toast. Trevor
    books by hand; `>` says nothing about which day. A hand-typed **task** has no W Log
    row — its mark stays in the D Log only.
