@@ -10,9 +10,9 @@ start the build**): [dl-splits-one-truth.md](../docs/briefs/dl-splits-one-truth.
    (`DailyLogPanel.jsx:467`); only hand-typed tasks lack it. Marks: `/` worked on
    today · `×` complete, waiting on the W Log's final × · `>` deferred. Store the
    key (`slash`/`cross`/`arrow`), never the symbol.
-2. Picking a mark on a job or split row writes **that same mark** to the W Log cell
-   for **that job, on that day** — under the **top-level job id** (use the existing
-   `topLevelJob()`), never a split's own id, which `weekRows()` never draws.
+2. Picking a mark on a job/split row writes **the same mark** to the W Log cell for
+   **that job, that day** — under the **top-level job id** (`topLevelJob()`), never
+   a split's own id, which `weekRows()` never draws.
 3. **Correcting your own mark follows through.** A row may overwrite or clear the
    mark it last wrote; refuse **only** a cell it didn't write — hand-set, or another
    split's that day — and say so. Test the **stored** mark, not `cellMark()`'s
