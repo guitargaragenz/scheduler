@@ -27,7 +27,11 @@ PREMIUM_MODELS = {"opus", "fable"}
 # The only agents permitted to run on a premium model. Keep this list short.
 # ggnz-builder writes to live job-state code, where a cheap agent's mistake costs
 # more than it saves.
-PREMIUM_ALLOWED_AGENTS = {"ggnz-builder"}
+# ggnz-council added 2026-08-20 at Trevor's instruction: two sonnet council rounds
+# in a row blocked on points he judged not worth blocking on, and a bad council
+# ruling costs a rebuilt brief. Council still must be spawned with model set on
+# purpose — sonnet stays the default for routine second opinions.
+PREMIUM_ALLOWED_AGENTS = {"ggnz-builder", "ggnz-council"}
 
 FRONTMATTER_MODEL = re.compile(r"^model:\s*([A-Za-z0-9._-]+)\s*$", re.MULTILINE)
 
