@@ -15,11 +15,13 @@ same fact, in both directions.
 1. A `×` on a split row in the D Log sets that split's **`pieceDone`**.
 2. Moving that mark to **anything else** — blank, `·`, `/`, `>` — clears `pieceDone`.
    Only `×` means finished, so the log and the job can never disagree.
-3. A piece ticked on the board shows as `×` on its D Log row. Booked on more than
-   one day, the `×` lands on the **last** day — that is the day it was finished.
-   "The board" here is the piece-done tick in a split's drawer on the drag-and-drop
+3. The `×` sits on the day it was ticked, and **no other day is rewritten** —
+   every other day that piece is booked on keeps its own mark. Trevor does not
+   book one job on consecutive days, so this is rare in practice; a tick made
+   from the calendar, which names no day, lands on the last booked day.
+4. "The board" means the piece-done tick in a split's drawer on the drag-and-drop
    calendar. The Weekly Log's closing `×` is a different thing and stays as it is.
-4. Splits sit **under their job** in the D Log, indented, each markable on its own.
+5. Splits sit **under their job** in the D Log, indented, each markable on its own.
    The job's own line carries its own mark and is never worked out from its splits.
 
 ## Rules that bind the build
@@ -32,15 +34,13 @@ same fact, in both directions.
   D Log must not raise that prompt.
 - **The D Log stays the record of when.** A ticked piece keeps its row, its date
   and its note — it does not vanish from the day it was done on.
-- **The other marks stay log-only.** Only `×` maps to `pieceDone`. `·`, `/` and
-  `>` mean nothing to the board.
+- **Only `×` maps to `pieceDone`.** `·`, `/` and `>` mean nothing to the board.
 - **The job line still never ticks the Weekly Log.** One master mark, set by hand.
 
 ## Not in scope
 
 - The whole-job `done` flag and `handleMarkDone` — untouched.
 - Any change to `completed_jobs`, revenue, or the invoice amount.
-- Restarting the parked scheduler. `AUTO_BUMP_ENABLED` stays false.
 - `calendarSlot`, `scheduledSlots`, and the `jobs[]` shape beyond the existing
   `pieceDone` write.
 
