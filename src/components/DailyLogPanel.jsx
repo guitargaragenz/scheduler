@@ -171,6 +171,19 @@ export function groupsOf(options) {
   return out;
 }
 
+// What a typed search matches against: the job number, make and model (all in
+// `group`), the bench (`short`), and the split's own note. Deliberately dumb
+// substring matching, all lower case — no typo or plural tolerance. Every word
+// typed has to appear SOMEWHERE in the option, in any order, so "1632 fret"
+// finds the Hofner's fretwork without caring which came first.
+export function matchesSearch(option, query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return true;
+  const hay = [option.group, option.short, option.label, option.note]
+    .filter(Boolean).join(' ').toLowerCase();
+  return q.split(/\s+/).every(word => hay.includes(word));
+}
+
 // Every split booked ON this day, read from each split's own `calendarSlot` —
 // the same field, read the same way, as the Weekly Log's dot. Nothing is
 // stored: a booked split appears because it is booked, and stops appearing the
@@ -526,6 +539,14 @@ export default function DailyLogPanel({
   const taken = new Set(dayJobs.map(r => r.id));
   const pickable = options.filter(o => !taken.has(o.id) && !hidden.has(o.id));
 
+  // What the picker is showing right now. An empty box is the whole week,
+  // grouped — the search narrows the list, it is not a gate in front of it.
+  const [jobSearch, setJobSearch] = useState('');
+  const searchGroups = useMemo(
+    () => groupsOf(pickable.filter(o => matchesSearch(o, jobSearch))),
+    [pickable, jobSearch],
+  );
+
   const [taskText, setTaskText] = useState('');
 
   const sortedEvents = useMemo(
@@ -787,40 +808,62 @@ export default function DailyLogPanel({
             />
           ))}
 
+          {/* The picker draws its own list rather than using a <select>.
+              A native dropdown is painted by the operating system, which
+              throws away the heading colour — Trevor asked for a heading he
+              could follow down a long list and got grey on both the Mac and
+              the phone, whatever was set. Our own markup is the only way the
+              amber holds.
+
+              The list is always open, and scrolls inside its own box: a week's
+              worth of pieces must not push the Tasks section off the screen. */}
           {pickable.length > 0 && (
-            <div style={{ paddingTop: 6 }}>
-              <select
-                value=""
+            <div style={{ paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <input
+                type="text"
+                value={jobSearch}
                 disabled={!ready}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  e.target.value = '';
-                  if (id) handlePickJob(id);
-                }}
+                onChange={(e) => setJobSearch(e.target.value)}
+                placeholder="+ Put a job on this day…"
+                aria-label="Search the week for a job to put on this day"
                 style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 5,
+                  width: '100%', padding: '6px 9px', borderRadius: 5,
                   border: '1px dashed #334155', background: '#0f172a',
-                  color: '#94a3b8', fontSize: 12.5,
-                  cursor: ready ? 'pointer' : 'default',
+                  color: '#e2e8f0', fontSize: 12.5,
                 }}
-              >
-                <option value="">+ Put a job on this day…</option>
-                {/* The heading carries the job, so it has to be the thing the
-                    eye lands on — the same amber this panel already uses for a
-                    marked-out row, against brighter option text than the
-                    closed control's grey. Trevor, 2026-08-22: the grey heading
-                    "gets harder to follow". iOS draws its own wheel picker and
-                    ignores most of this; the colours land on the iMac. */}
-                {groupsOf(pickable).map(g => (
-                  <optgroup key={g.name} label={g.name} style={{ color: '#fcd34d', fontWeight: 600 }}>
+              />
+              <div style={{ maxHeight: 190, overflowY: 'auto' }}>
+                {searchGroups.map(g => (
+                  <div key={g.name} style={{ paddingBottom: 4 }}>
+                    <div style={{
+                      color: '#fcd34d', fontSize: 11.5, fontWeight: 600,
+                      padding: '3px 2px',
+                    }}>{g.name}</div>
                     {g.items.map(o => (
-                      <option key={o.id} value={o.id} style={{ color: '#e2e8f0', fontWeight: 400 }}>
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => { setJobSearch(''); handlePickJob(o.id); }}
+                        disabled={!ready}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '5px 8px', marginLeft: 9, borderRadius: 4,
+                          border: '1px solid transparent', background: '#1e293b',
+                          color: '#e2e8f0', fontSize: 12.5, marginBottom: 2,
+                          cursor: ready ? 'pointer' : 'default',
+                        }}
+                      >
                         {o.note ? `${o.short} — ${o.note}` : o.short}
-                      </option>
+                      </button>
                     ))}
-                  </optgroup>
+                  </div>
                 ))}
-              </select>
+                {searchGroups.length === 0 && (
+                  <div style={{ color: '#475569', fontSize: 11.5, padding: '3px 2px' }}>
+                    Nothing on the week matches that.
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {options.length === 0 && (

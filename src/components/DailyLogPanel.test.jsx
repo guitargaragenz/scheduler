@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dayJobOptions, groupsOf, newDayTaskId, isDayTaskId } from './DailyLogPanel.jsx';
+import { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId } from './DailyLogPanel.jsx';
 import { weekRowKey } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -59,6 +59,39 @@ describe('dayJobOptions', () => {
     expect(opt.group).toBe('1632 Hofner Verythin');
     expect(opt.short).toBe('Setup');
     expect(opt.label).toContain('1632');
+  });
+});
+
+describe('matchesSearch', () => {
+  const opt = { group: '1632 Hofner Verythin', short: 'Fretwork', label: '1632 Hofner Verythin — Fretwork', note: 'level and crown' };
+
+  // An empty box is the whole week, grouped. The search narrows the list; it is
+  // not a gate you have to type past before anything appears.
+  it('matches everything when nothing is typed', () => {
+    expect(matchesSearch(opt, '')).toBe(true);
+    expect(matchesSearch(opt, '   ')).toBe(true);
+  });
+
+  it('finds by job number, by make, by bench, and by the note', () => {
+    expect(matchesSearch(opt, '1632')).toBe(true);
+    expect(matchesSearch(opt, 'hofner')).toBe(true);
+    expect(matchesSearch(opt, 'fret')).toBe(true);
+    expect(matchesSearch(opt, 'crown')).toBe(true);
+  });
+
+  it('ignores case', () => {
+    expect(matchesSearch(opt, 'HOFNER')).toBe(true);
+  });
+
+  // Typed at the bench, in whatever order it comes out.
+  it('takes several words in any order', () => {
+    expect(matchesSearch(opt, '1632 fret')).toBe(true);
+    expect(matchesSearch(opt, 'fret 1632')).toBe(true);
+  });
+
+  it('says no when one of the words is not there', () => {
+    expect(matchesSearch(opt, '1632 banjo')).toBe(false);
+    expect(matchesSearch(opt, 'gibson')).toBe(false);
   });
 });
 

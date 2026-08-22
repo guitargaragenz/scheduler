@@ -198,28 +198,52 @@ describe('the "+ Put a job on this day…" picker', () => {
     return makeJobs().map(j => (j.parentId ? { ...j, calendarSlot: '2026-08-12-9-0' } : j));
   }
 
+  // The picker draws its own list, so its pieces are buttons, not <option>s —
+  // that is the whole reason it stopped being a <select>.
+  function pieceButtons() {
+    return screen.getAllByRole('button')
+      .filter(b => /^(Setup|Electronics)( —|$)/.test(b.textContent))
+      .map(b => b.textContent);
+  }
+
   it('heads each job once and lists its pieces by bench underneath', () => {
     setup({ jobs: pickableJobs() });
 
-    const picker = screen.getAllByRole('combobox')
-      .find(el => el.querySelector('option')?.textContent.startsWith('+ Put a job'));
-    const groups = picker.querySelectorAll('optgroup');
-
-    expect(Array.from(groups).map(g => g.label)).toEqual(['1714 Fender Strat']);
-    // Both splits under the one heading, named by bench — not two lines that
-    // each repeat "1714 Fender Strat".
-    expect(Array.from(groups[0].querySelectorAll('option')).map(o => o.textContent))
-      .toEqual(['Setup — level and crown', 'Electronics']);
+    // The heading is the job, once — not repeated on every line.
+    expect(screen.getAllByText('1714 Fender Strat')).toHaveLength(1);
+    expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
   });
 
   it('leaves out a piece already ticked off', () => {
     setup({ jobs: pickableJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)) });
 
-    const picker = screen.getAllByRole('combobox')
-      .find(el => el.querySelector('option')?.textContent.startsWith('+ Put a job'));
+    expect(pieceButtons()).toEqual(['Setup — level and crown']);
+  });
 
-    expect(picker.textContent).not.toMatch(/Electronics/);
-    expect(picker.textContent).toMatch(/Setup/);
+  it('places the piece when its line is clicked', async () => {
+    const { addItem } = setup({ jobs: pickableJobs() });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Electronics' }));
+
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c2', 'job', expect.any(String)));
+  });
+
+  it('narrows to what was typed, and keeps the heading above it', () => {
+    setup({ jobs: pickableJobs() });
+
+    fireEvent.change(screen.getByLabelText(/Search the week/i), { target: { value: 'electr' } });
+
+    expect(pieceButtons()).toEqual(['Electronics']);
+    expect(screen.getAllByText('1714 Fender Strat')).toHaveLength(1);
+  });
+
+  it('says so when nothing on the week matches', () => {
+    setup({ jobs: pickableJobs() });
+
+    fireEvent.change(screen.getByLabelText(/Search the week/i), { target: { value: 'banjo' } });
+
+    expect(pieceButtons()).toEqual([]);
+    expect(screen.getByText(/Nothing on the week matches that/i)).toBeTruthy();
   });
 });
 
