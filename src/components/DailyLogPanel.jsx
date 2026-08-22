@@ -650,7 +650,33 @@ export default function DailyLogPanel({
     const res = row.auto
       ? await addItem(dateKey, row.id, 'hidden', row.label)
       : await removeItem(dateKey, row.id);
-    if (!res?.ok) showToast?.('That did not come off the day');
+    if (!res?.ok) {
+      showToast?.('That did not come off the day');
+      return;
+    }
+
+    // Taking the line off the day takes its mark with it, on both logs.
+    // Trevor, 2026-08-22: "if I delete job from DL the mark should clear in
+    // WL". Leaving the week cell behind showed a job worked on a day it was
+    // no longer on.
+    //
+    // The week cell belongs to the whole job, not to one line, so it clears
+    // only when the job's LAST line leaves the day. Removing one bench's piece
+    // off a job still on the day must not wipe the cell the job's own header
+    // line drove — the header carries no Remove button of its own, so its
+    // cell would otherwise be stranded.
+    await removeItem(dateKey, markIdFor(row.id));
+
+    const weekJobId = weekCellJobId(row.id, jobs);
+    if (!weekJobId || !weekReady) return;
+    const stillOnTheDay = dayJobs.some(r => String(r.id) !== String(row.id)
+      && weekCellJobId(r.id, jobs) === weekJobId);
+    if (stillOnTheDay) return;
+
+    // The header line's own mark goes too — nothing is left to show it on.
+    await removeItem(dateKey, markIdFor(weekJobId));
+    const weekRes = await setWeekMark?.(weekJobId, dateKey, '');
+    if (!weekRes?.ok) showToast?.('The Weekly Log did not take that');
   }
 
   // Picking a mark here is the one pick: it marks the day row AND the same

@@ -313,6 +313,45 @@ describe('a hand-typed task', () => {
       expect(removeItem).toHaveBeenCalledWith(DAY, 'task:2026-08-10:zz'));
     expect(showToast).not.toHaveBeenCalled();
   });
+
+  // Trevor, 2026-08-22 on the preview: "if I delete job from DL the mark
+  // should clear in WL". Leaving the week cell behind showed a job worked on a
+  // day it was no longer on.
+  it('clears the week cell when the job comes off the day', async () => {
+    // c2 has no slot on this day, so c1 is the job's only line on it.
+    const { removeItem, setWeekMark } = setup({
+      jobs: makeJobs().map(j => j.id === 'c2' ? { ...j, calendarSlot: null } : j),
+      marks: { p: { [DAY]: 'slash' } },
+      dayItems: { [DAY]: { 'mark:p': { kind: 'mark', label: 'slash' } } },
+    });
+
+    // Removing it takes the whole job off the day.
+    const row = markBox('1714 \u2014 Setup').closest('div');
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    // The line's own mark goes, and the header's with it...
+    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:c1'));
+    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:p'));
+    // ...and so does the week cell the header drove.
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, ''));
+  });
+
+  it('leaves the week cell alone while another piece is still on the day', async () => {
+    // Both pieces on the day. Taking one off leaves the job there, so the
+    // cell the header line drove must survive.
+    const { setWeekMark } = setup({
+      marks: { p: { [DAY]: 'slash' } },
+      dayItems: { [DAY]: {
+        'mark:c1': { kind: 'mark', label: 'slash' },
+        'mark:c2': { kind: 'mark', label: 'slash' },
+      } },
+    });
+
+    const row = markBox('1714 \u2014 Setup').closest('div');
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    await vi.waitFor(() => expect(setWeekMark).not.toHaveBeenCalled());
+  });
 });
 
 // Build A, 2026-08-22. One piece finished is not the guitar finished, so a × on
