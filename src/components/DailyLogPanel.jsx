@@ -805,10 +805,18 @@ export default function DailyLogPanel({
                 }}
               >
                 <option value="">+ Put a job on this day…</option>
+                {/* The heading carries the job, so it has to be the thing the
+                    eye lands on — the same amber this panel already uses for a
+                    marked-out row, against brighter option text than the
+                    closed control's grey. Trevor, 2026-08-22: the grey heading
+                    "gets harder to follow". iOS draws its own wheel picker and
+                    ignores most of this; the colours land on the iMac. */}
                 {groupsOf(pickable).map(g => (
-                  <optgroup key={g.name} label={g.name}>
+                  <optgroup key={g.name} label={g.name} style={{ color: '#fcd34d', fontWeight: 600 }}>
                     {g.items.map(o => (
-                      <option key={o.id} value={o.id}>{o.note ? `${o.short} — ${o.note}` : o.short}</option>
+                      <option key={o.id} value={o.id} style={{ color: '#e2e8f0', fontWeight: 400 }}>
+                        {o.note ? `${o.short} — ${o.note}` : o.short}
+                      </option>
                     ))}
                   </optgroup>
                 ))}
