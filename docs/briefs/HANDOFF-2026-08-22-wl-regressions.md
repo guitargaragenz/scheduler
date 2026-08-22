@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 # Two Weekly Log regressions reported 2026-08-22 — not yet diagnosed
 
@@ -104,26 +104,52 @@ Log draws one row per job and a mark under a split's own id shows nowhere. So a
 1's "last pick wins" rule doing exactly what it was told. `87dad26` and
 `f589506` are both cleared on this count.
 
-### (1) is a second copy of a fact that isn't sticking
+### (1) was the erase option in the new dropdown — CORRECTED
 
-Reproduced with `weekRows()` directly: a `done` job **stays** when
-`close:<monday>` is stored for that week, and **vanishes entirely** when it is
-not. Rendering `BenchWeekPage` and clicking the trailing button confirms the
-close mark is written *before* `onCloseJob` opens the invoice prompt, and that
-`handleClose` bails out on a failed write — so the write is reported as having
-succeeded. Nothing in the app deletes it afterwards: the only `clearWeekMarks`
-callers are the Remove button and clearing a cell by hand.
+**Everything this section originally said about the `close:<monday>` mark was
+wrong**, and the fix scoped off it was dropped. It is rewritten here rather than
+noted, because the wrong version read as fact.
 
-Since a reload does not restore the row, the mark is not surviving in the
-database, and which write kills it could not be established from the code. The
-fix scoped in `.claude/pending-brief.md` therefore **removes the dependency**
-rather than patching the write: `completed_jobs` already records every closed
-job with the week it was completed in (`weekKey`, set in `useJobs.js`
-`handleMarkDone`), so the row can be kept from that and the second copy dropped.
+`87dad26` made the Weekly Log's day cells dropdowns, rendering:
 
-### Noticed, not scoped
+```jsx
+<option value="">·</option>          // erase
+{Object.entries(MARKS).map(...)}     // dot, which also draws `·`
+```
 
-`loadWeekMarks()` does `select('*')` with no explicit limit, so it takes
-PostgREST's default 1000-row cap. `bench_week_marks` grows a row per job per
-marked day and nothing ever prunes old weeks, so this table will silently start
-losing its oldest marks. Needs its own brief before it bites.
+Two adjacent options drawing the identical `·`, erase on top. Picking the wrong
+one wipes the cell. A job with no booking that week is held on the page only by
+its marks (`weekRows()`, the `bookedDays.size === 0 && !hasMarkThisWeek` gate),
+so clearing its last mark drops the row for good — and the mark really is
+deleted, which is why a reload never brought it back. Before that commit the
+cells cycled on tap and blank sat one tap past `×`, so it was never hit by
+accident.
+
+**How the wrong version survived two council reviews:** it was reproduced
+correctly (a `done` job does vanish without a `close:` mark) and the conclusion
+did follow from the code read in isolation. What broke it was Trevor saying the
+page worked fine until the 2026-08-22 merges — `weekRows()` has not changed
+since 2026-08-13, so no theory resting on it could explain a Saturday
+regression. **A reproduction is not a cause.**
+
+The rows that already vanished are gone permanently; the fix stops it recurring.
+
+---
+
+## Shipped 2026-08-22 at `98692b3` (PR #39)
+
+- A split's marks no longer reach the Weekly Log at all — not `·`, `/`, `>` or
+  `×` — except the `×` on the last uncrossed piece of a job, decided on the
+  Daily Log's own marks rather than `pieceDone`. The job's **header line** is
+  now the only Daily Log row that drives the week.
+- The erase option no longer draws `·` and no longer sits first, in both grids.
+  The Daily Log has no erase option at all now, and an unmarked box rests on `·`.
+- Taking a job off a day clears its Weekly Log cell, once its last line leaves
+  that day.
+
+721 tests green, verifier passed 13/13, Trevor clicked through every change on
+the preview.
+
+Follow-on work is in
+[HANDOFF-2026-08-23-dl-remove-and-1679.md](HANDOFF-2026-08-23-dl-remove-and-1679.md).
+
