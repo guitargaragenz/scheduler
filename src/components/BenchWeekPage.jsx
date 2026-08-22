@@ -41,15 +41,6 @@ export const MARKS = {
   // section — they are never a mark on a job.
 };
 
-// Tap order. Round-trips back to blank so a mis-tap is always undoable with
-// more taps and never needs a separate clear button.
-const CYCLE = ['dot', 'slash', 'arrow', 'cross', ''];
-
-export function nextMark(current) {
-  const i = CYCLE.indexOf(current || '');
-  return CYCLE[(i + 1) % CYCLE.length];
-}
-
 // The date part of a calendarSlot ("2026-08-13-10-30" -> "2026-08-13").
 // slotKey() zero-pads month and day, so the first ten characters are always the
 // local date. Deliberately not parsed as a Date — that would reintroduce the
@@ -585,13 +576,16 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     showToast?.('Week saved to your downloads');
   }
 
-  async function handleCell(row, dateKey) {
+  // Pick a day's mark straight off a list, rather than tapping through the
+  // cycle to reach it. Trevor asked for this in an earlier session and again on
+  // 2026-08-22: cycling means up to four taps to set one symbol, and one tap
+  // too many wraps past it and starts again.
+  async function setCell(row, dateKey, value) {
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
     }
-    const current = cellMark(row, dateKey, marks[row.id] || {});
-    const res = await setMark(row.id, dateKey, nextMark(current));
+    const res = await setMark(row.id, dateKey, value);
     if (!res?.ok) showToast?.('That mark did not save');
   }
 
@@ -816,21 +810,30 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   {weekKeys.map((k) => {
                     const m = cellMark(row, k, jobMarks);
                     return (
-                      <button
+                      <select
                         key={k}
-                        type="button"
-                        onClick={() => handleCell(row, k)}
+                        value={m || ''}
+                        disabled={!ready}
+                        onChange={(e) => setCell(row, k, e.target.value)}
                         title={m ? MARKS[m].label : 'blank'}
+                        aria-label={`${rowLabel(row)} — ${k}`}
                         style={{
                           width: cellW, height: 30, cursor: ready ? 'pointer' : 'default',
                           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
                           background: '#111c2f',
                           color: m === 'cross' ? '#f87171' : m === 'slash' ? '#34d399' : '#cbd5e1',
-                          fontSize: 16, lineHeight: 1, padding: 0,
+                          fontSize: 16, lineHeight: 1, padding: 0, textAlign: 'center',
+                          // No browser arrow, and the symbol stays centred
+                          // without it — a 30px cell has no room for both.
+                          appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+                          textAlignLast: 'center',
                         }}
                       >
-                        {m ? MARKS[m].symbol : ''}
-                      </button>
+                        <option value="">·</option>
+                        {Object.entries(MARKS).map(([key, mk]) => (
+                          <option key={key} value={key}>{mk.symbol}</option>
+                        ))}
+                      </select>
                     );
                   })}
 

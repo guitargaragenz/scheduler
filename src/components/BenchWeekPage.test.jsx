@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  weekRows, cellMark, trailing, nextMark, slotDateKey, groupByBench, buildWeekExport,
+  weekRows, cellMark, trailing, slotDateKey, groupByBench, buildWeekExport,
   weekRowKey, weekCloseKey, benchSections, addableJobs, ruleOff,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
   compareJobNumber,
@@ -117,16 +117,6 @@ describe('weekCloseKey', () => {
   // it as an eighth day.
   it('is not one of the day keys', () => {
     expect(WEEK).not.toContain(weekCloseKey(WEEK));
-  });
-});
-
-describe('nextMark', () => {
-  it('cycles round to blank so a mis-tap is always undoable', () => {
-    expect(nextMark('')).toBe('dot');
-    expect(nextMark('dot')).toBe('slash');
-    expect(nextMark('slash')).toBe('arrow');
-    expect(nextMark('arrow')).toBe('cross');
-    expect(nextMark('cross')).toBe('');
   });
 });
 
