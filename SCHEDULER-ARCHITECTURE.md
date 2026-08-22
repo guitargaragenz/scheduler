@@ -11,6 +11,23 @@ that file stays pure session-protocol and this loads only when actually working 
 - Supabase — syncs schedule (jobs + slots) across devices in real time
 - Google Calendar integration, PartsBox integration
 
+## Commands
+
+```bash
+npm install
+npm run dev          # Vite dev server, --host so the iPhone can hit it on the LAN
+npm run build        # production build (what Vercel runs)
+npm run preview      # serve the built bundle locally
+npm test             # vitest run — whole suite, single pass
+npx vitest run src/data/joinJobs.test.js          # one file
+npx vitest run -t "keeps the manual Tag"          # one test by name
+npx vitest                                        # watch mode
+```
+
+There is no lint or typecheck step — plain JS, no ESLint config. `npm test` is the only
+gate before a commit. Tests are colocated (`src/**/*.test.js[x]`), jsdom + Testing Library
+for components, plain vitest for `src/data` and `src/utils`.
+
 ## PDF drop
 - Trevor drops a Multitrack PDF into the app in the browser, sees a preview, presses Import. Jobs
   land straight in Supabase — no Terminal window, no Mac-side watcher.
