@@ -716,12 +716,20 @@ export default function DailyLogPanel({
     // already carries one. Taking that × off again clears the cell it wrote,
     // and nothing else does — a × that wrote nothing has nothing to clear.
     //
-    // This gate is about the × alone. Every other mark on a split (`·`, `/`,
-    // `>`) still writes through as it always has, and the job's own header row
-    // is untouched: last pick wins there.
-    const isPieceCross = Boolean(rowJob?.parentId)
-      && (value === 'cross' || (value === '' && previous === 'cross'));
-    if (isPieceCross && !isLastUncrossedSplit(row.id, jobs, dayItems)) return;
+    // Widened 2026-08-22 on the preview, Trevor's call: the × was held back
+    // but `·`, `/` and `>` on a piece still landed on the whole guitar's row.
+    // Same objection either way — one bench's progress is not the job's. So a
+    // split writes NOTHING to the week; the one exception is the × on the last
+    // uncrossed piece, which is the job finishing.
+    //
+    // The job's own header row is untouched by all of this: it is not a split,
+    // so it falls straight through and last pick still wins. That row is where
+    // the job's `·`, `/` and `>` come from on the week.
+    if (rowJob?.parentId) {
+      const isCross = value === 'cross' || (value === '' && previous === 'cross');
+      if (!isCross) return;
+      if (!isLastUncrossedSplit(row.id, jobs, dayItems)) return;
+    }
 
     const weekRes = await setWeekMark?.(weekJobId, dateKey, value || '');
     if (!weekRes?.ok) showToast?.('The Weekly Log did not take that mark');

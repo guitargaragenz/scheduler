@@ -72,19 +72,28 @@ afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
 
 describe('picking a mark in the Daily Log', () => {
-  it('writes the same mark to the Weekly Log cell, under the top-level job id', async () => {
+  it('writes the header row\u2019s mark to the Weekly Log cell, under the job id', async () => {
     const { addItem, setWeekMark } = setup();
 
-    // Build 2 gives the parent job its own header line ("1714 Fender Strat"),
-    // so a bare '1714' now matches that header first. Pick the split by its
-    // fuller label to land on c1, same as the "second split" test below.
-    pick('1714 — Setup', 'slash');
+    // A bare '1714' matches the parent's own header line, which is not a split
+    // and so is the row that still drives the week.
+    pick('1714', 'slash');
 
     // The day row itself is marked, storing the KEY and not the symbol.
-    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'slash'));
-    // And the week cell — under 'p', the parent. 'c1' is a row the Weekly Log
-    // never draws, so a mark filed there would show nowhere.
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:p', 'mark', 'slash'));
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'slash'));
+  });
+
+  it('keeps a split\u2019s own mark off the week entirely', async () => {
+    // Trevor on the preview, 2026-08-22: the \u00d7 was held back but `/` still
+    // landed on the whole guitar's row. One bench's progress is not the job's.
+    const { addItem, setWeekMark } = setup();
+
+    pick('1714 \u2014 Setup', 'slash');
+
+    // Still recorded on the day \u2014 only the week write is suppressed.
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'slash'));
+    expect(setWeekMark).not.toHaveBeenCalled();
   });
 
   it('lets the same row change its own mark, and the week cell follows', async () => {
@@ -100,15 +109,15 @@ describe('picking a mark in the Daily Log', () => {
     expect(showToast).not.toHaveBeenCalled();
   });
 
-  it('clears the week cell when the row clears its own mark', async () => {
+  it('clears the week cell when the header row clears its own mark', async () => {
     const { setWeekMark, removeItem } = setup({
       marks: { p: { [DAY]: 'slash' } },
-      dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'slash' } } },
+      dayItems: { [DAY]: { 'mark:p': { kind: 'mark', label: 'slash' } } },
     });
 
-    pick('1714 — Setup', '');
+    pick('1714', '');
 
-    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:c1'));
+    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:p'));
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, ''));
   });
 
@@ -123,17 +132,18 @@ describe('picking a mark in the Daily Log', () => {
     expect(showToast).not.toHaveBeenCalled();
   });
 
-  it('lets the second split of the same job win the shared cell', async () => {
-    // One cell per job per day, so the last pick is what shows. Still true for
-    // every mark except the ×, which has its own rule below.
+  it('leaves the cell alone when a second split of the same job is marked', async () => {
+    // The old rule was \"last split to pick wins the shared cell\". Trevor
+    // rejected that on the preview: no split writes to the week at all now, so
+    // a cell he set by hand survives both of them.
     const { setWeekMark } = setup({
       marks: { p: { [DAY]: 'slash' } },
       dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'slash' } } },
     });
 
-    pick('1714 — Electronics', 'arrow');
+    pick('1714 \u2014 Electronics', 'arrow');
 
-    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'arrow'));
+    expect(setWeekMark).not.toHaveBeenCalled();
   });
 
   it('says so and writes nothing at all when the week has not loaded', async () => {
@@ -390,12 +400,14 @@ describe('a × on a split, and what the Weekly Log gets', () => {
     expect(setWeekMark).not.toHaveBeenCalled();
   });
 
-  it('still passes a non-× mark on a split straight through', async () => {
+  it('keeps a non-\u00d7 mark on a split off the week too', async () => {
+    // Widened on the preview, 2026-08-22. The gate used to let `\u00b7`, `/` and
+    // `>` through; Trevor's objection applies to all of them equally.
     const { setWeekMark } = setup();
 
-    pick('1714 — Electronics', 'slash');
+    pick('1714 \u2014 Electronics', 'slash');
 
-    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'slash'));
+    expect(setWeekMark).not.toHaveBeenCalled();
   });
 
   it('leaves the job header row alone — its own × still writes', async () => {
@@ -438,10 +450,12 @@ describe('the mark box on a Daily Log line', () => {
   });
 
   it('still sets the dot mark when the dot is picked', async () => {
-    const { setWeekMark } = setup();
+    // On the header row \u2014 a split's marks no longer reach the week at all.
+    const { addItem, setWeekMark } = setup();
 
-    pick('1714 — Setup', 'dot');
+    pick('1714', 'dot');
 
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:p', 'mark', 'dot'));
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'dot'));
   });
 });
