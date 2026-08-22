@@ -116,13 +116,38 @@ export function dayJobOptions(jobs, weekKeys, marks) {
     // offer. Day tasks are typed on this page instead.
     if (!row.job) continue;
     for (const part of partsOf(row.job, all, byId)) {
+      // Two pieces the picker has no business offering:
+      //
+      // A piece already BOOKED onto the calendar. This is the job card's own
+      // rule — `Sidebar.jsx:20` keeps only unscheduled sub-tasks — and matching
+      // it is what Trevor asked for, 2026-08-22, after 1632 offered 7 where the
+      // card showed 4. A booked piece turns up on its own day by itself
+      // (`bookedOnDay()`), so offering it again is a second way to put it
+      // somewhere it already is.
+      //
+      // A piece already ticked off. Finished work, and picking it by mistake is
+      // how the wrong row lands on a day.
+      //
+      // Only the PICKER filters. `bookedOnDay()` deliberately does not: a split
+      // that is booked is booked whether or not it is done, and hiding a
+      // finished piece there would erase the day's record of the work.
+      if (part.scheduled || part.calendarSlot || part.pieceDone) continue;
+      // The job this piece belongs to, used as the dropdown's group heading so
+      // the picker reads the way the Daily Log itself now does — pieces under
+      // their job, not a flat run of lines that all start with the same number.
+      const group = rowName(row.job) || row.name;
       const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
       // `note` is the split's own sessionNote — shown in the dropdown option
       // text so the picker reads the way the placed row will. It is NOT part of
       // `label`: `label` is what gets stored, and the placed row already prints
       // the note on its own second line, so baking it into `label` would double
       // it up.
-      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
+      // `short` is for the dropdown only. Under a group already headed with the
+      // job, repeating the number on every line is the noise the grouping was
+      // meant to remove — so the option shows just the bench. `label` is what
+      // gets STORED and stays whole: the placed row has no group above it.
+      const short = part.bench || label;
+      out.push({ id: String(part.id), label, group, short, note: part.sessionNote || '' });
     }
   }
 
@@ -131,6 +156,39 @@ export function dayJobOptions(jobs, weekKeys, marks) {
   // row fighting itself.
   const seen = new Set();
   return out.filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true)));
+}
+
+// The picker's options, gathered under one heading per job. Order is kept as
+// `dayJobOptions` built it — the Weekly Log's own oldest-first order — for both
+// the headings and the pieces inside them, so the picker lists jobs in the same
+// order as the page behind it.
+export function groupsOf(options) {
+  const out = [];
+  const byName = new Map();
+  for (const o of options || []) {
+    const name = o.group || '';
+    let g = byName.get(name);
+    if (!g) {
+      g = { name, items: [] };
+      byName.set(name, g);
+      out.push(g);
+    }
+    g.items.push(o);
+  }
+  return out;
+}
+
+// What a typed search matches against: the job number, make and model (all in
+// `group`), the bench (`short`), and the split's own note. Deliberately dumb
+// substring matching, all lower case — no typo or plural tolerance. Every word
+// typed has to appear SOMEWHERE in the option, in any order, so "1632 fret"
+// finds the Hofner's fretwork without caring which came first.
+export function matchesSearch(option, query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return true;
+  const hay = [option.group, option.short, option.label, option.note]
+    .filter(Boolean).join(' ').toLowerCase();
+  return q.split(/\s+/).every(word => hay.includes(word));
 }
 
 // Every split booked ON this day, read from each split's own `calendarSlot` —
@@ -488,6 +546,14 @@ export default function DailyLogPanel({
   const taken = new Set(dayJobs.map(r => r.id));
   const pickable = options.filter(o => !taken.has(o.id) && !hidden.has(o.id));
 
+  // What the picker is showing right now. An empty box is the whole week,
+  // grouped — the search narrows the list, it is not a gate in front of it.
+  const [jobSearch, setJobSearch] = useState('');
+  const searchGroups = useMemo(
+    () => groupsOf(pickable.filter(o => matchesSearch(o, jobSearch))),
+    [pickable, jobSearch],
+  );
+
   const [taskText, setTaskText] = useState('');
 
   const sortedEvents = useMemo(
@@ -749,28 +815,73 @@ export default function DailyLogPanel({
             />
           ))}
 
+          {/* The picker draws its own list rather than using a <select>.
+              A native dropdown is painted by the operating system, which
+              throws away the heading colour — Trevor asked for a heading he
+              could follow down a long list and got grey on both the Mac and
+              the phone, whatever was set. Our own markup is the only way the
+              amber holds.
+
+              The list is always open, and scrolls inside its own box: a week's
+              worth of pieces must not push the Tasks section off the screen. */}
           {pickable.length > 0 && (
-            <div style={{ paddingTop: 6 }}>
-              <select
-                value=""
+            <div style={{ paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <input
+                type="text"
+                value={jobSearch}
                 disabled={!ready}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  e.target.value = '';
-                  if (id) handlePickJob(id);
-                }}
+                onChange={(e) => setJobSearch(e.target.value)}
+                placeholder="+ Put a job on this day…"
+                aria-label="Search the week for a job to put on this day"
                 style={{
-                  width: '100%', padding: '5px 8px', borderRadius: 5,
+                  width: '100%', padding: '6px 9px', borderRadius: 5,
                   border: '1px dashed #334155', background: '#0f172a',
-                  color: '#94a3b8', fontSize: 12.5,
-                  cursor: ready ? 'pointer' : 'default',
+                  color: '#e2e8f0', fontSize: 12.5,
                 }}
-              >
-                <option value="">+ Put a job on this day…</option>
-                {pickable.map(o => (
-                  <option key={o.id} value={o.id}>{o.note ? `${o.label} — ${o.note}` : o.label}</option>
+              />
+              {/* Nothing below the box until something is typed. Trevor asked
+                  for a picker that stays out of the way until he goes looking
+                  for it — an always-open list is the chip row he turned down,
+                  in a different shape. */}
+              <div style={{ maxHeight: 190, overflowY: 'auto' }} hidden={!jobSearch.trim()}>
+                {searchGroups.map(g => (
+                  <div key={g.name} style={{ paddingBottom: 4 }}>
+                    <div style={{
+                      color: '#fcd34d', fontSize: 11.5, fontWeight: 600,
+                      padding: '3px 2px',
+                    }}>{g.name}</div>
+                    {g.items.map(o => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        // The search stays put. A job is nearly always several
+                        // pieces going on one day, so clearing it after each
+                        // pick meant re-typing the same job number for every
+                        // bench — Trevor, 2026-08-22: "way too much typing…
+                        // I can only choose 1 at a time". The piece just picked
+                        // drops out of the list on its own (it is `taken`
+                        // now), so tapping down the list places them all.
+                        onClick={() => handlePickJob(o.id)}
+                        disabled={!ready}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '5px 8px', marginLeft: 9, borderRadius: 4,
+                          border: '1px solid transparent', background: '#1e293b',
+                          color: '#e2e8f0', fontSize: 12.5, marginBottom: 2,
+                          cursor: ready ? 'pointer' : 'default',
+                        }}
+                      >
+                        {o.note ? `${o.short} — ${o.note}` : o.short}
+                      </button>
+                    ))}
+                  </div>
                 ))}
-              </select>
+                {searchGroups.length === 0 && (
+                  <div style={{ color: '#475569', fontSize: 11.5, padding: '3px 2px' }}>
+                    Nothing on the week matches that.
+                  </div>
+                )}
+              </div>
             </div>
           )}
           {options.length === 0 && (

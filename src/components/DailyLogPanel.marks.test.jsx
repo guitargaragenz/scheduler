@@ -188,6 +188,90 @@ describe('the board tick (pieceDone)', () => {
   });
 });
 
+describe('the "+ Put a job on this day…" picker', () => {
+  // A helper returning the right shape proves nothing about what is on screen —
+  // this project has shipped a green build where every tap did nothing. So this
+  // reads the rendered dropdown.
+  // Pieces with NO day yet — which, since 2026-08-22, is what the picker is
+  // for. The parent keeps its booking so the job is still on the week; the
+  // pieces have none, so they are the ones that still need a day.
+  function pickableJobs() {
+    return makeJobs().map(j => (j.parentId ? { ...j, calendarSlot: null } : { ...j, calendarSlot: `${DAY}-9-0` }));
+  }
+
+  // The picker draws its own list, so its pieces are buttons, not <option>s —
+  // that is the whole reason it stopped being a <select>.
+  function pieceButtons() {
+    return screen.getAllByRole('button')
+      .filter(b => /^(Setup|Electronics)( —|$)/.test(b.textContent))
+      .map(b => b.textContent);
+  }
+
+  // Nothing shows until something is typed, so every test here types first.
+  function search(text) {
+    fireEvent.change(screen.getByLabelText(/Search the week/i), { target: { value: text } });
+  }
+
+  it('heads each job once and lists its pieces by bench underneath', () => {
+    setup({ jobs: pickableJobs() });
+    search('1714');
+
+    // The heading is the job, once — not repeated on every line.
+    expect(screen.getAllByText('1714 Fender Strat')).toHaveLength(1);
+    expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
+  });
+
+  it('leaves out a piece already ticked off', () => {
+    setup({ jobs: pickableJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)) });
+    search('1714');
+
+    expect(pieceButtons()).toEqual(['Setup — level and crown']);
+  });
+
+  it('places the piece when its line is clicked', async () => {
+    const { addItem } = setup({ jobs: pickableJobs() });
+    search('electr');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Electronics' }));
+
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c2', 'job', expect.any(String)));
+  });
+
+  // A job going on a day is nearly always several of its pieces, and the whole
+  // point of searching once is to place them all from that one search.
+  it('stays open after a pick so the rest of the job can be tapped too', async () => {
+    const { addItem } = setup({ jobs: pickableJobs() });
+    search('1714');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Setup — level and crown' }));
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c1', 'job', expect.any(String)));
+
+    // No re-typing: the box still holds '1714' and the other piece is still
+    // there to tap.
+    expect(screen.getByLabelText(/Search the week/i).value).toBe('1714');
+    fireEvent.click(screen.getByRole('button', { name: 'Electronics' }));
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c2', 'job', expect.any(String)));
+  });
+
+  it('narrows to what was typed, and keeps the heading above it', () => {
+    setup({ jobs: pickableJobs() });
+
+    search('electr');
+
+    expect(pieceButtons()).toEqual(['Electronics']);
+    expect(screen.getAllByText('1714 Fender Strat')).toHaveLength(1);
+  });
+
+  it('says so when nothing on the week matches', () => {
+    setup({ jobs: pickableJobs() });
+
+    search('banjo');
+
+    expect(pieceButtons()).toEqual([]);
+    expect(screen.getByText(/Nothing on the week matches that/i)).toBeTruthy();
+  });
+});
+
 describe('a hand-typed task', () => {
   it('has a mark box, saves the mark, and adds no Weekly Log row', async () => {
     const { addItem, setWeekMark, showToast } = setup({
