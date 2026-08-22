@@ -829,10 +829,22 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                           textAlignLast: 'center',
                         }}
                       >
-                        <option value="">·</option>
+                        {/* The real marks first, then erase — LAST, and never
+                            drawn as `·`. Both used to draw `·` with erase on
+                            top, so picking the dot one line too high wiped the
+                            cell instead of setting it, and a job held on the
+                            page only by that mark dropped off the week for
+                            good. The erase line is blank text under its own
+                            `clear` heading: an optgroup label shows in the open
+                            list but never in the 30px cell, so a blank cell
+                            still reads as blank. Do not put a symbol back on
+                            it, and do not move it above the marks. */}
                         {Object.entries(MARKS).map(([key, mk]) => (
                           <option key={key} value={key}>{mk.symbol}</option>
                         ))}
+                        <optgroup label="clear">
+                          <option value="">{'\u00a0'}</option>
+                        </optgroup>
                       </select>
                     );
                   })}

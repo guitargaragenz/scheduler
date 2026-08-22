@@ -83,6 +83,46 @@ export function weekCellJobId(rowId, jobs) {
   return top ? String(top.id) : null;
 }
 
+// Every Daily Log mark, one per row, latest day wins.
+//
+// A row can be marked on more than one day (worked Monday, finished Thursday),
+// so the marks are walked in date order and the last one seen for a row is the
+// one that counts. Date keys are `YYYY-MM-DD`, so plain text sorting IS date
+// order. A day whose mark was removed has no row at all, so it simply does not
+// overwrite an earlier one.
+export function latestDayMarks(dayItems) {
+  const out = new Map();
+  for (const day of Object.keys(dayItems || {}).sort()) {
+    for (const [id, v] of Object.entries(dayItems[day] || {})) {
+      if (!isMarkId(id)) continue;
+      out.set(markOwner(id), v?.label || '');
+    }
+  }
+  return out;
+}
+
+// Is this split the LAST piece of its job still without a cross?
+//
+// Read from the Daily Log's own marks and deliberately NOT from `pieceDone`:
+// the board (JobCard, PomoDrawer, CloseDayModal) writes pieceDone too, so a
+// piece ticked there but never marked here would make the Daily Log think the
+// job had finished when Trevor had not said so on this page.
+//
+// A row that is not a split answers false — it has no siblings, and its mark is
+// the job's own mark, which this rule never touches.
+export function isLastUncrossedSplit(rowId, jobs, dayItems) {
+  const all = jobs || [];
+  const rowJob = all.find(j => String(j.id) === String(rowId));
+  if (!rowJob?.parentId) return false;
+  const top = topLevelJob(rowJob, all);
+  if (!top) return false;
+  const byId = new Map(all.map(j => [j.id, j]));
+  const others = partsOf(top, all, byId).filter(p => String(p.id) !== String(rowId));
+  if (others.length === 0) return true;
+  const marks = latestDayMarks(dayItems);
+  return others.every(o => marks.get(String(o.id)) === 'cross');
+}
+
 // The Daily Log drives the Weekly Log. A pick here overwrites whatever the week
 // cell holds, and clearing the row clears it.
 //
@@ -295,7 +335,7 @@ function eventSortKey(ev) {
 function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
   return (
     <select
-      value={value || ''}
+      value={value || 'dot'}
       disabled={disabled}
       onChange={(e) => onPick(e.target.value)}
       title={title}
@@ -312,7 +352,12 @@ function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
         textAlignLast: 'center',
       }}
     >
-      <option value="">·</option>
+      {/* No erase line here, and an unmarked box reads as `·`, not blank.
+          Trevor, 2026-08-22: a Daily Log line only exists because the job is on
+          that day, so `booked` IS its resting state — there is nothing to clear
+          it back to. Clearing a cell is a Weekly Log job, and the Weekly Log
+          keeps its own erase line for exactly that. A line put on the day by
+          mistake comes off with Remove, not by blanking its mark. */}
       {Object.entries(MARKS).map(([key, m]) => (
         <option key={key} value={key}>{m.symbol}</option>
       ))}
@@ -605,7 +650,33 @@ export default function DailyLogPanel({
     const res = row.auto
       ? await addItem(dateKey, row.id, 'hidden', row.label)
       : await removeItem(dateKey, row.id);
-    if (!res?.ok) showToast?.('That did not come off the day');
+    if (!res?.ok) {
+      showToast?.('That did not come off the day');
+      return;
+    }
+
+    // Taking the line off the day takes its mark with it, on both logs.
+    // Trevor, 2026-08-22: "if I delete job from DL the mark should clear in
+    // WL". Leaving the week cell behind showed a job worked on a day it was
+    // no longer on.
+    //
+    // The week cell belongs to the whole job, not to one line, so it clears
+    // only when the job's LAST line leaves the day. Removing one bench's piece
+    // off a job still on the day must not wipe the cell the job's own header
+    // line drove — the header carries no Remove button of its own, so its
+    // cell would otherwise be stranded.
+    await removeItem(dateKey, markIdFor(row.id));
+
+    const weekJobId = weekCellJobId(row.id, jobs);
+    if (!weekJobId || !weekReady) return;
+    const stillOnTheDay = dayJobs.some(r => String(r.id) !== String(row.id)
+      && weekCellJobId(r.id, jobs) === weekJobId);
+    if (stillOnTheDay) return;
+
+    // The header line's own mark goes too — nothing is left to show it on.
+    await removeItem(dateKey, markIdFor(weekJobId));
+    const weekRes = await setWeekMark?.(weekJobId, dateKey, '');
+    if (!weekRes?.ok) showToast?.('The Weekly Log did not take that');
   }
 
   // Picking a mark here is the one pick: it marks the day row AND the same
@@ -656,6 +727,34 @@ export default function DailyLogPanel({
       const wasCross = previous === 'cross';
       const isCross = value === 'cross';
       if (wasCross !== isCross) onMarkPieceDone(rowJob.parentId, rowJob.id, isCross);
+    }
+
+    // WHY the week write is skipped here — do not remove this without asking.
+    //
+    // A × on ONE piece of a job means that piece is finished, not the guitar.
+    // The Weekly Log draws one row per whole job, so passing every piece's ×
+    // straight through was marking the job done the moment its first bench was
+    // finished. Trevor, 2026-08-22: "any subtasks with x shld show nothing on
+    // WL unless it's the last subtask of job in which case it marks an x. The
+    // job is then closed manually by me in WL with second x."
+    //
+    // So a split's × reaches the week ONLY when every other piece of that job
+    // already carries one. Taking that × off again clears the cell it wrote,
+    // and nothing else does — a × that wrote nothing has nothing to clear.
+    //
+    // Widened 2026-08-22 on the preview, Trevor's call: the × was held back
+    // but `·`, `/` and `>` on a piece still landed on the whole guitar's row.
+    // Same objection either way — one bench's progress is not the job's. So a
+    // split writes NOTHING to the week; the one exception is the × on the last
+    // uncrossed piece, which is the job finishing.
+    //
+    // The job's own header row is untouched by all of this: it is not a split,
+    // so it falls straight through and last pick still wins. That row is where
+    // the job's `·`, `/` and `>` come from on the week.
+    if (rowJob?.parentId) {
+      const isCross = value === 'cross' || (value === '' && previous === 'cross');
+      if (!isCross) return;
+      if (!isLastUncrossedSplit(row.id, jobs, dayItems)) return;
     }
 
     const weekRes = await setWeekMark?.(weekJobId, dateKey, value || '');
