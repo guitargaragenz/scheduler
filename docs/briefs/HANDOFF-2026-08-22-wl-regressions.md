@@ -81,3 +81,49 @@ All on `main`. Both regressions appeared after these.
 flight — no open PRs, no unmerged branches, all of today's documents closed.
 Today's other work (Daily Log indented splits, the rebuilt picker, the Remove
 fix) is recorded in `dl-picker-rebuild.md` and `dl-drives-wl-full-record.md`.
+
+---
+
+## Diagnosed 2026-08-22 (later session) — both answered by Trevor
+
+Trevor was asked rather than guessed at, as this file required. His answers:
+
+- (1) means **the whole row** goes off the Weekly Log, on a job he closed with
+  the trailing `×` in the last column, **in that same week**, and a **reload
+  does not bring it back**.
+- (2) means the **Daily Log `×`**, and what he wants instead is: *"any subtasks
+  with x shld show nothing on WL unless it's the last subtask of job in which
+  case it marks an x. The job is then closed manually by me in WL with second
+  x."*
+
+### (2) is design, not a broken commit
+
+`weekCellJobId()` resolves a split to its **top-level** job, because the Weekly
+Log draws one row per job and a mark under a split's own id shows nowhere. So a
+`×` on one piece has nowhere to land but the whole guitar's cell. That is Build
+1's "last pick wins" rule doing exactly what it was told. `87dad26` and
+`f589506` are both cleared on this count.
+
+### (1) is a second copy of a fact that isn't sticking
+
+Reproduced with `weekRows()` directly: a `done` job **stays** when
+`close:<monday>` is stored for that week, and **vanishes entirely** when it is
+not. Rendering `BenchWeekPage` and clicking the trailing button confirms the
+close mark is written *before* `onCloseJob` opens the invoice prompt, and that
+`handleClose` bails out on a failed write — so the write is reported as having
+succeeded. Nothing in the app deletes it afterwards: the only `clearWeekMarks`
+callers are the Remove button and clearing a cell by hand.
+
+Since a reload does not restore the row, the mark is not surviving in the
+database, and which write kills it could not be established from the code. The
+fix scoped in `.claude/pending-brief.md` therefore **removes the dependency**
+rather than patching the write: `completed_jobs` already records every closed
+job with the week it was completed in (`weekKey`, set in `useJobs.js`
+`handleMarkDone`), so the row can be kept from that and the second copy dropped.
+
+### Noticed, not scoped
+
+`loadWeekMarks()` does `select('*')` with no explicit limit, so it takes
+PostgREST's default 1000-row cap. `bench_week_marks` grows a row per job per
+marked day and nothing ever prunes old weeks, so this table will silently start
+losing its oldest marks. Needs its own brief before it bites.
