@@ -257,6 +257,95 @@ function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
   );
 }
 
+// One markable Jobs-section line: mark box, label, sub-note, per-line notes,
+// Remove button. Pulled out so Build 2 can render the same row either flat
+// (an unsplit job, exactly as before) or indented under its parent's header
+// (a split) without duplicating the markup.
+function JobLine({
+  row, indent, markValue, ready, onPick, subNote, notes, onSaveNote, onDeleteNote, onAddNote, onRemove,
+}) {
+  return (
+    <div style={{
+      display: 'flex', gap: 8, alignItems: 'flex-start',
+      padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
+      marginLeft: indent ? 20 : 0,
+      borderLeft: indent ? '1px solid #1e293b' : 'none',
+      paddingLeft: indent ? 8 : 2,
+    }}>
+      <MarkSelect
+        value={markValue}
+        disabled={!ready}
+        onPick={onPick}
+        title="How this job went today"
+        ariaLabel={`Mark for ${row.label}`}
+      />
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.label}
+        </div>
+        {subNote && (
+          <div style={{
+            fontSize: 11, color: '#94a3b8', overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {subNote}
+          </div>
+        )}
+        {notes.map(n => (
+          <div key={n.id} style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 3 }}>
+            <span style={{ color: '#475569', fontSize: 11 }}>–</span>
+            <input
+              defaultValue={n.text}
+              disabled={!ready}
+              maxLength={MAX_NOTE}
+              placeholder="What happened…"
+              onBlur={(e) => {
+                if (e.target.value !== n.text) onSaveNote(n.id, e.target.value);
+              }}
+              style={{
+                flex: 1, minWidth: 0, padding: '2px 5px', borderRadius: 4,
+                border: '1px solid #1e293b', background: '#0b1220',
+                color: '#cbd5e1', fontSize: 11.5,
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onDeleteNote(n.id)}
+              disabled={!ready}
+              title="Delete this note"
+              style={{
+                border: 'none', background: 'transparent', color: '#475569',
+                fontSize: 12, cursor: ready ? 'pointer' : 'default', padding: '0 3px',
+              }}
+            >×</button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={onAddNote}
+          disabled={!ready}
+          style={{
+            border: 'none', background: 'transparent', color: '#475569',
+            fontSize: 11, cursor: ready ? 'pointer' : 'default',
+            padding: '3px 0 0 0',
+          }}
+        >+ note</button>
+      </span>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={!ready}
+        title="Take this off the day"
+        style={{
+          padding: '2px 9px', borderRadius: 5, border: '1px solid #334155',
+          background: 'transparent', color: '#64748b', fontSize: 11.5,
+          cursor: ready ? 'pointer' : 'default',
+        }}
+      >Remove</button>
+    </div>
+  );
+}
+
 const SECTION = {
   fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
   color: '#94a3b8', borderBottom: '1px solid #1e293b',
@@ -358,6 +447,42 @@ export default function DailyLogPanel({
     for (const list of map.values()) list.sort((a, b) => a.id.localeCompare(b.id));
     return map;
   }, [entries]);
+
+  // Splits sit under their parent job, indented, so a job worked on two
+  // benches reads as one job with two markable lines under it instead of two
+  // unrelated rows. A split is any dayJobs row whose job has a `parentId`;
+  // its parent is found once via `topLevelJob` and given its OWN header line
+  // with its OWN mark — never derived from the splits underneath it. There is
+  // no stored row for that header today (Build 1 never wrote one), so it is
+  // built here from `jobById`/`rowName` alone: no note, no remove button,
+  // nothing to take off the day, just a label and a mark box. An unsplit job
+  // (partsOf returned itself) has no parent to nest under, so it renders
+  // exactly as it did before Build 2 — one plain row.
+  //
+  // Order follows first appearance in `dayJobs`: a split's header takes the
+  // position its first split would have had, and later splits of the same
+  // job join that same block rather than opening a second header further
+  // down the list.
+  const dayJobBlocks = useMemo(() => {
+    const blocks = [];
+    const groupAt = new Map(); // top-level job id -> index into blocks
+    for (const row of dayJobs) {
+      const rowJob = jobById.get(row.id);
+      if (rowJob?.parentId) {
+        const top = topLevelJob(rowJob, jobs) || rowJob;
+        const topId = String(top.id);
+        if (groupAt.has(topId)) {
+          blocks[groupAt.get(topId)].rows.push(row);
+        } else {
+          groupAt.set(topId, blocks.length);
+          blocks.push({ kind: 'group', id: topId, label: rowName(top), rows: [row] });
+        }
+      } else {
+        blocks.push({ kind: 'single', row });
+      }
+    }
+    return blocks;
+  }, [dayJobs, jobById, jobs]);
 
   // Already on the day, so not offered again.
   const taken = new Set(dayJobs.map(r => r.id));
@@ -570,82 +695,58 @@ export default function DailyLogPanel({
               No jobs on this day yet.
             </div>
           )}
-          {dayJobs.map(row => (
-            <div key={row.id} style={{
-              display: 'flex', gap: 8, alignItems: 'flex-start',
-              padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
-            }}>
-              <MarkSelect
-                value={markOf.get(row.id)}
-                disabled={!ready}
-                onPick={(v) => handleSetMark(row, v)}
-                title="How this job went today"
-                ariaLabel={`Mark for ${row.label}`}
-              />
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {row.label}
-                </div>
-                {subTaskNote(row.id) && (
-                  <div style={{
-                    fontSize: 11, color: '#94a3b8', overflow: 'hidden',
-                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {subTaskNote(row.id)}
-                  </div>
-                )}
-                {(notesFor.get(row.id) || []).map(n => (
-                  <div key={n.id} style={{ display: 'flex', gap: 6, alignItems: 'center', paddingTop: 3 }}>
-                    <span style={{ color: '#475569', fontSize: 11 }}>–</span>
-                    <input
-                      defaultValue={n.text}
-                      disabled={!ready}
-                      maxLength={MAX_NOTE}
-                      placeholder="What happened…"
-                      onBlur={(e) => {
-                        if (e.target.value !== n.text) handleSaveNote(n.id, e.target.value);
-                      }}
-                      style={{
-                        flex: 1, minWidth: 0, padding: '2px 5px', borderRadius: 4,
-                        border: '1px solid #1e293b', background: '#0b1220',
-                        color: '#cbd5e1', fontSize: 11.5,
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeItem(dateKey, n.id)}
-                      disabled={!ready}
-                      title="Delete this note"
-                      style={{
-                        border: 'none', background: 'transparent', color: '#475569',
-                        fontSize: 12, cursor: ready ? 'pointer' : 'default', padding: '0 3px',
-                      }}
-                    >×</button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleAddNote(row)}
+          {dayJobBlocks.map(block => block.kind === 'group' ? (
+            // The parent line: new, not a stored day-item. Its mark writes to
+            // its OWN Weekly Log cell (its id is already the top-level id, so
+            // weekCellJobId resolves to itself) — it is never set from, or
+            // reset by, the splits indented under it.
+            <div key={`group:${block.id}`}>
+              <div style={{
+                display: 'flex', gap: 8, alignItems: 'center',
+                padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0', fontWeight: 600,
+              }}>
+                <MarkSelect
+                  value={markOf.get(block.id)}
                   disabled={!ready}
-                  style={{
-                    border: 'none', background: 'transparent', color: '#475569',
-                    fontSize: 11, cursor: ready ? 'pointer' : 'default',
-                    padding: '3px 0 0 0',
-                  }}
-                >+ note</button>
-              </span>
-              <button
-                type="button"
-                onClick={() => handleRemove(row)}
-                disabled={!ready}
-                title="Take this off the day"
-                style={{
-                  padding: '2px 9px', borderRadius: 5, border: '1px solid #334155',
-                  background: 'transparent', color: '#64748b', fontSize: 11.5,
-                  cursor: ready ? 'pointer' : 'default',
-                }}
-              >Remove</button>
+                  onPick={(v) => handleSetMark({ id: block.id, label: block.label }, v)}
+                  title="How this job went today"
+                  ariaLabel={`Mark for ${block.label}`}
+                />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {block.label}
+                </span>
+              </div>
+              {block.rows.map(row => (
+                <JobLine
+                  key={row.id}
+                  row={row}
+                  indent
+                  markValue={markOf.get(row.id)}
+                  ready={ready}
+                  onPick={(v) => handleSetMark(row, v)}
+                  subNote={subTaskNote(row.id)}
+                  notes={notesFor.get(row.id) || []}
+                  onSaveNote={handleSaveNote}
+                  onDeleteNote={(id) => removeItem(dateKey, id)}
+                  onAddNote={() => handleAddNote(row)}
+                  onRemove={() => handleRemove(row)}
+                />
+              ))}
             </div>
+          ) : (
+            <JobLine
+              key={block.row.id}
+              row={block.row}
+              markValue={markOf.get(block.row.id)}
+              ready={ready}
+              onPick={(v) => handleSetMark(block.row, v)}
+              subNote={subTaskNote(block.row.id)}
+              notes={notesFor.get(block.row.id) || []}
+              onSaveNote={handleSaveNote}
+              onDeleteNote={(id) => removeItem(dateKey, id)}
+              onAddNote={() => handleAddNote(block.row)}
+              onRemove={() => handleRemove(block.row)}
+            />
           ))}
 
           {pickable.length > 0 && (

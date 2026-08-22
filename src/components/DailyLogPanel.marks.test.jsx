@@ -75,7 +75,10 @@ describe('picking a mark in the Daily Log', () => {
   it('writes the same mark to the Weekly Log cell, under the top-level job id', async () => {
     const { addItem, setWeekMark } = setup();
 
-    pick('1714', 'cross');
+    // Build 2 gives the parent job its own header line ("1714 Fender Strat"),
+    // so a bare '1714' now matches that header first. Pick the split by its
+    // fuller label to land on c1, same as the "second split" test below.
+    pick('1714 — Setup', 'cross');
 
     // The day row itself is marked, storing the KEY and not the symbol.
     await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'cross'));
@@ -103,7 +106,7 @@ describe('picking a mark in the Daily Log', () => {
       dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'slash' } } },
     });
 
-    pick('1714', '');
+    pick('1714 — Setup', '');
 
     await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:c1'));
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, ''));
@@ -155,7 +158,7 @@ describe('the board tick (pieceDone)', () => {
   it('ticks the piece done when the mark becomes a cross', async () => {
     const { onMarkPieceDone } = setup();
 
-    pick('1714', 'cross');
+    pick('1714 — Setup', 'cross');
 
     await vi.waitFor(() => expect(onMarkPieceDone).toHaveBeenCalledWith('p', 'c1', true));
   });
@@ -166,7 +169,7 @@ describe('the board tick (pieceDone)', () => {
       marks: { p: { [DAY]: 'cross' } },
     });
 
-    pick('1714', 'slash');
+    pick('1714 — Setup', 'slash');
 
     await vi.waitFor(() => expect(onMarkPieceDone).toHaveBeenCalledWith('p', 'c1', false));
   });
