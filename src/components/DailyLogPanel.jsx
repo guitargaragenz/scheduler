@@ -335,7 +335,7 @@ function eventSortKey(ev) {
 function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
   return (
     <select
-      value={value || ''}
+      value={value || 'dot'}
       disabled={disabled}
       onChange={(e) => onPick(e.target.value)}
       title={title}
@@ -352,18 +352,15 @@ function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
         textAlignLast: 'center',
       }}
     >
-      {/* Same order as the Weekly Log's cells, for the same reason: erase
-          used to sit first and draw `·`, exactly like the dot mark right below
-          it, so one line's slip wiped the row's mark. Marks first, erase last,
-          blank text under its own `clear` heading — the heading shows in the
-          open list but never in the 34px box, so a blank box still reads as
-          blank. Do not give it a symbol, and do not move it back to the top. */}
+      {/* No erase line here, and an unmarked box reads as `·`, not blank.
+          Trevor, 2026-08-22: a Daily Log line only exists because the job is on
+          that day, so `booked` IS its resting state — there is nothing to clear
+          it back to. Clearing a cell is a Weekly Log job, and the Weekly Log
+          keeps its own erase line for exactly that. A line put on the day by
+          mistake comes off with Remove, not by blanking its mark. */}
       {Object.entries(MARKS).map(([key, m]) => (
         <option key={key} value={key}>{m.symbol}</option>
       ))}
-      <optgroup label="clear">
-        <option value="">{'\u00a0'}</option>
-      </optgroup>
     </select>
   );
 }

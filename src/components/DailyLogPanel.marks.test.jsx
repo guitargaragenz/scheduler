@@ -419,23 +419,22 @@ describe('a × on a split, and what the Weekly Log gets', () => {
 
 // Build B, 2026-08-22. The erase option and the dot mark both drew `·`, erase
 // first, so picking one line too high wiped the row's mark instead of setting
-// it.
-describe('the blank option in the mark box', () => {
-  it('is not drawn as a dot, and is not first in the list', () => {
+// it. Trevor's call the same day: the Daily Log does not get an erase line at
+// all, and an unmarked box rests on `·`. Clearing a cell is a Weekly Log job.
+describe('the mark box on a Daily Log line', () => {
+  it('offers no erase line, and only one `·`', () => {
     setup();
     const box = markBox('1714 — Setup');
     const options = [...box.querySelectorAll('option')];
 
-    const blank = options.find(o => o.value === '');
-    expect(blank).toBeTruthy();
-    // The dot mark is the one that draws `·`. The erase line must not.
-    expect(blank.textContent.trim()).not.toBe('·');
+    expect(options.find(o => o.value === '')).toBeUndefined();
+    expect(box.querySelector('optgroup')).toBeNull();
     expect(options.filter(o => o.textContent.trim() === '·')).toHaveLength(1);
-    // And it is last, not sitting on top of the dot.
-    expect(options[0].value).not.toBe('');
-    expect(options[options.length - 1].value).toBe('');
-    // It is still reachable and still says what it does.
-    expect(box.querySelector('optgroup')?.label).toBe('clear');
+  });
+
+  it('rests on the dot when the line has no mark yet', () => {
+    setup();
+    expect(markBox('1714 — Setup').value).toBe('dot');
   });
 
   it('still sets the dot mark when the dot is picked', async () => {
