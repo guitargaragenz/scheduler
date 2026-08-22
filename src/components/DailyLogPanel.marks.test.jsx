@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import DailyLogPanel from './DailyLogPanel.jsx';
 
 // These tests RENDER the panel and pick a mark on it, rather than calling the
@@ -199,6 +199,23 @@ describe('a hand-typed task', () => {
     await vi.waitFor(() =>
       expect(addItem).toHaveBeenCalledWith(DAY, 'mark:task:2026-08-10:zz', 'mark', 'arrow'));
     expect(setWeekMark).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  // Shipped broken: the Remove button handed `handleRemove` the bare id, but it
+  // reads `row.id`, so the delete went out with no id, failed, and only raised a
+  // toast — the task stayed on the day. Every helper passed; nothing rendered
+  // the button and clicked it. So this test clicks it.
+  it('comes off the day when Remove is clicked', async () => {
+    const { removeItem, showToast } = setup({
+      dayItems: { [DAY]: { 'task:2026-08-10:zz': { kind: 'task', label: 'order strings' } } },
+    });
+
+    const row = screen.getByText('order strings').closest('div');
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+    await vi.waitFor(() =>
+      expect(removeItem).toHaveBeenCalledWith(DAY, 'task:2026-08-10:zz'));
     expect(showToast).not.toHaveBeenCalled();
   });
 });

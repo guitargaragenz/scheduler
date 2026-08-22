@@ -804,7 +804,9 @@ export default function DailyLogPanel({
               </span>
               <button
                 type="button"
-                onClick={() => handleRemove(id)}
+                // handleRemove reads `row.id` and `row.auto`, so it needs the
+                // row — passing the bare id deleted nothing and only toasted.
+                onClick={() => handleRemove({ id, label: v.label })}
                 disabled={!ready}
                 title="Take this off the day"
                 style={{
