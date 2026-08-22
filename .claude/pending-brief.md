@@ -15,19 +15,27 @@ Why each is happening, and how it was pinned down, is in
 - Trevor's words: *"any subtasks with x shld show nothing on WL unless it's the
   last subtask of job in which case it marks an x. The job is then closed
   manually by me in WL with second x."*
-- The job header row's own mark is unchanged.
+- The job header row's own mark is unchanged: last pick wins, as now.
+- "Last split" is decided by the Daily Log's own marks, NOT by `pieceDone`.
+- Comment why the write is suppressed, so a later session doesn't undo it.
 - `pieceDone` keeps its existing rule exactly: it moves only as a `×` arrives or
   leaves, and only for a split's child.
 - Clearing a `×` off the last split clears the cell it wrote.
 
-## Build B — a closed job stops disappearing off the week
+## Build B — picking `·` stops wiping the cell
 
-- A done job stays on the week it was completed, read from its `completed_jobs`
-  record. The `close:<monday>` mark stops being what keeps it there.
-- No second copy of "this job finished this week" anywhere.
-- The trailing column keeps its current behaviour and stays the only place a job
-  is closed and an invoice asked for.
-- A done job with no completion record still drops off, as it does now.
+Root cause found 2026-08-22 in `87dad26`, the commit Trevor pointed at.
+
+- Both mark dropdowns render `<option value="">·</option>` and then every
+  `MARKS` entry — so the **erase** option and the **dot** option both draw `·`,
+  erase first. Picking the wrong one clears the cell instead of setting it.
+- A job with no booking that week is held on the page only by its marks
+  (`weekRows()` line ~260), so clearing its last mark drops the row for good.
+- **The rule applies to both grids, same fix in both:**
+  `BenchWeekPage.jsx:832` and `DailyLogPanel.jsx:315`. Blank must not read as
+  `·`, and must not sit first in the list.
+- `weekRows()`, `trailing()`, `ruleOff()` and the close mark are NOT touched —
+  the earlier Build B chased the wrong cause and is dropped.
 
 ## Out of scope
 
