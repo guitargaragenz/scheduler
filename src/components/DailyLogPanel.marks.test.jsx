@@ -237,6 +237,22 @@ describe('the "+ Put a job on this day…" picker', () => {
     await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c2', 'job', expect.any(String)));
   });
 
+  // A job going on a day is nearly always several of its pieces, and the whole
+  // point of searching once is to place them all from that one search.
+  it('stays open after a pick so the rest of the job can be tapped too', async () => {
+    const { addItem } = setup({ jobs: pickableJobs() });
+    search('1714');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Setup — level and crown' }));
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c1', 'job', expect.any(String)));
+
+    // No re-typing: the box still holds '1714' and the other piece is still
+    // there to tap.
+    expect(screen.getByLabelText(/Search the week/i).value).toBe('1714');
+    fireEvent.click(screen.getByRole('button', { name: 'Electronics' }));
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'c2', 'job', expect.any(String)));
+  });
+
   it('narrows to what was typed, and keeps the heading above it', () => {
     setup({ jobs: pickableJobs() });
 

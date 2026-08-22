@@ -854,7 +854,14 @@ export default function DailyLogPanel({
                       <button
                         key={o.id}
                         type="button"
-                        onClick={() => { setJobSearch(''); handlePickJob(o.id); }}
+                        // The search stays put. A job is nearly always several
+                        // pieces going on one day, so clearing it after each
+                        // pick meant re-typing the same job number for every
+                        // bench — Trevor, 2026-08-22: "way too much typing…
+                        // I can only choose 1 at a time". The piece just picked
+                        // drops out of the list on its own (it is `taken`
+                        // now), so tapping down the list places them all.
+                        onClick={() => handlePickJob(o.id)}
                         disabled={!ready}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
