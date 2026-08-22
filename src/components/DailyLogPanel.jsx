@@ -832,7 +832,11 @@ export default function DailyLogPanel({
                   color: '#e2e8f0', fontSize: 12.5,
                 }}
               />
-              <div style={{ maxHeight: 190, overflowY: 'auto' }}>
+              {/* Nothing below the box until something is typed. Trevor asked
+                  for a picker that stays out of the way until he goes looking
+                  for it — an always-open list is the chip row he turned down,
+                  in a different shape. */}
+              <div style={{ maxHeight: 190, overflowY: 'auto' }} hidden={!jobSearch.trim()}>
                 {searchGroups.map(g => (
                   <div key={g.name} style={{ paddingBottom: 4 }}>
                     <div style={{
