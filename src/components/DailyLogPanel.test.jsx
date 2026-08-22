@@ -6,9 +6,15 @@ const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-1
 
 describe('dayJobOptions', () => {
   // The rule the whole page hangs off: not on the week, can't go on a day.
-  it('offers a job that is booked on the week', () => {
+  //
+  // A piece that is BOOKED, though, is not offered — changed 2026-08-22 on
+  // Trevor's call so the picker matches the job card, which keeps only
+  // unscheduled sub-tasks (`Sidebar.jsx:20`). A booked piece already turns up
+  // on its own day through `bookedOnDay()`, so the picker's job is the pieces
+  // that have no day yet.
+  it('does not offer a piece already booked on a day', () => {
     const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', model: 'Strat', bench: 'Setup', calendarSlot: '2026-08-11-9-0' }];
-    expect(dayJobOptions(jobs, WEEK, {}).map(o => o.id)).toEqual(['a']);
+    expect(dayJobOptions(jobs, WEEK, {})).toEqual([]);
   });
 
   it('does not offer a job that is not on the week at all', () => {

@@ -192,10 +192,11 @@ describe('the "+ Put a job on this day…" picker', () => {
   // A helper returning the right shape proves nothing about what is on screen —
   // this project has shipped a green build where every tap did nothing. So this
   // reads the rendered dropdown.
-  // Both splits booked LATER in the week: on the week, so pickable, but not
-  // already placed on this day — which is when the picker is on screen at all.
+  // Pieces with NO day yet — which, since 2026-08-22, is what the picker is
+  // for. The parent keeps its booking so the job is still on the week; the
+  // pieces have none, so they are the ones that still need a day.
   function pickableJobs() {
-    return makeJobs().map(j => (j.parentId ? { ...j, calendarSlot: '2026-08-12-9-0' } : j));
+    return makeJobs().map(j => (j.parentId ? { ...j, calendarSlot: null } : { ...j, calendarSlot: `${DAY}-9-0` }));
   }
 
   // The picker draws its own list, so its pieces are buttons, not <option>s —

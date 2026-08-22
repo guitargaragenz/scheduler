@@ -116,15 +116,22 @@ export function dayJobOptions(jobs, weekKeys, marks) {
     // offer. Day tasks are typed on this page instead.
     if (!row.job) continue;
     for (const part of partsOf(row.job, all, byId)) {
-      // A piece already ticked off is finished work. Offering it is noise, and
-      // it is how the wrong row gets picked onto a day — Trevor, 2026-08-22,
-      // seeing 1632 offer 7 pieces where the job card showed the 4 still to do.
-      // The card has always hidden them; this now matches it.
+      // Two pieces the picker has no business offering:
+      //
+      // A piece already BOOKED onto the calendar. This is the job card's own
+      // rule — `Sidebar.jsx:20` keeps only unscheduled sub-tasks — and matching
+      // it is what Trevor asked for, 2026-08-22, after 1632 offered 7 where the
+      // card showed 4. A booked piece turns up on its own day by itself
+      // (`bookedOnDay()`), so offering it again is a second way to put it
+      // somewhere it already is.
+      //
+      // A piece already ticked off. Finished work, and picking it by mistake is
+      // how the wrong row lands on a day.
       //
       // Only the PICKER filters. `bookedOnDay()` deliberately does not: a split
       // that is booked is booked whether or not it is done, and hiding a
       // finished piece there would erase the day's record of the work.
-      if (part.pieceDone) continue;
+      if (part.scheduled || part.calendarSlot || part.pieceDone) continue;
       // The job this piece belongs to, used as the dropdown's group heading so
       // the picker reads the way the Daily Log itself now does — pieces under
       // their job, not a flat run of lines that all start with the same number.
