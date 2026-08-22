@@ -78,13 +78,13 @@ describe('picking a mark in the Daily Log', () => {
     // Build 2 gives the parent job its own header line ("1714 Fender Strat"),
     // so a bare '1714' now matches that header first. Pick the split by its
     // fuller label to land on c1, same as the "second split" test below.
-    pick('1714 — Setup', 'cross');
+    pick('1714 — Setup', 'slash');
 
     // The day row itself is marked, storing the KEY and not the symbol.
-    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'cross'));
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'slash'));
     // And the week cell — under 'p', the parent. 'c1' is a row the Weekly Log
     // never draws, so a mark filed there would show nowhere.
-    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'cross'));
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'slash'));
   });
 
   it('lets the same row change its own mark, and the week cell follows', async () => {
@@ -124,15 +124,16 @@ describe('picking a mark in the Daily Log', () => {
   });
 
   it('lets the second split of the same job win the shared cell', async () => {
-    // One cell per job per day, so the last pick is what shows.
+    // One cell per job per day, so the last pick is what shows. Still true for
+    // every mark except the ×, which has its own rule below.
     const { setWeekMark } = setup({
       marks: { p: { [DAY]: 'slash' } },
       dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'slash' } } },
     });
 
-    pick('1714 — Electronics', 'cross');
+    pick('1714 — Electronics', 'arrow');
 
-    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'cross'));
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'arrow'));
   });
 
   it('says so and writes nothing at all when the week has not loaded', async () => {
@@ -301,5 +302,147 @@ describe('a hand-typed task', () => {
     await vi.waitFor(() =>
       expect(removeItem).toHaveBeenCalledWith(DAY, 'task:2026-08-10:zz'));
     expect(showToast).not.toHaveBeenCalled();
+  });
+});
+
+// Build A, 2026-08-22. One piece finished is not the guitar finished, so a × on
+// a split stays in the Daily Log until it is the LAST piece without one.
+// Every test here renders the panel and changes a real mark box.
+describe('a × on a split, and what the Weekly Log gets', () => {
+  it('writes nothing to the week while another piece is still unfinished', async () => {
+    const { addItem, setWeekMark, showToast } = setup();
+
+    pick('1714 — Setup', 'cross');
+
+    // The Daily Log still records it — this is a suppressed WEEK write, not a
+    // refused mark.
+    await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:c1', 'mark', 'cross'));
+    expect(setWeekMark).not.toHaveBeenCalled();
+    // Silently doing less is this project's own past failure, so check no
+    // apology was raised either — nothing went wrong.
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('writes the × when it is the last piece without one', async () => {
+    // The other piece was crossed off on an earlier day of the same week.
+    const { setWeekMark } = setup({
+      dayItems: { '2026-08-11': { 'mark:c2': { kind: 'mark', label: 'cross' } } },
+    });
+
+    pick('1714 — Setup', 'cross');
+
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'cross'));
+  });
+
+  it('decides that on the Daily Log marks, not on the board tick', async () => {
+    // c2 is ticked done on the board but was never marked here. The board is
+    // not Trevor saying so on this page, so the × still writes nothing.
+    const { setWeekMark } = setup({
+      jobs: makeJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)),
+    });
+
+    pick('1714 — Setup', 'cross');
+
+    await vi.waitFor(() => expect(setWeekMark).not.toHaveBeenCalled());
+  });
+
+  it('counts the latest day for a piece marked on more than one day', async () => {
+    // c2 was crossed on the Monday and then re-opened with a `/` on the
+    // Tuesday, so it is NOT finished and this × writes nothing.
+    const { setWeekMark } = setup({
+      dayItems: {
+        '2026-08-10': { 'mark:c2': { kind: 'mark', label: 'cross' } },
+        '2026-08-11': { 'mark:c2': { kind: 'mark', label: 'slash' } },
+      },
+    });
+
+    pick('1714 — Setup', 'cross');
+
+    await vi.waitFor(() => expect(setWeekMark).not.toHaveBeenCalled());
+  });
+
+  it('clears the cell when the × comes off the last piece', async () => {
+    const { removeItem, setWeekMark } = setup({
+      marks: { p: { [DAY]: 'cross' } },
+      dayItems: {
+        [DAY]: { 'mark:c1': { kind: 'mark', label: 'cross' } },
+        '2026-08-11': { 'mark:c2': { kind: 'mark', label: 'cross' } },
+      },
+    });
+
+    pick('1714 — Setup', '');
+
+    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:c1'));
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, ''));
+  });
+
+  it('leaves the cell alone when a × that wrote nothing is taken off', async () => {
+    // c1's × never reached the week (c2 was unfinished), so removing it must
+    // not wipe whatever the week cell holds.
+    const { removeItem, setWeekMark } = setup({
+      marks: { p: { [DAY]: 'slash' } },
+      dayItems: { [DAY]: { 'mark:c1': { kind: 'mark', label: 'cross' } } },
+    });
+
+    pick('1714 — Setup', '');
+
+    await vi.waitFor(() => expect(removeItem).toHaveBeenCalledWith(DAY, 'mark:c1'));
+    expect(setWeekMark).not.toHaveBeenCalled();
+  });
+
+  it('still passes a non-× mark on a split straight through', async () => {
+    const { setWeekMark } = setup();
+
+    pick('1714 — Electronics', 'slash');
+
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'slash'));
+  });
+
+  it('leaves the job header row alone — its own × still writes', async () => {
+    // The header is the whole job, not a piece, so nothing here gates it.
+    const { setWeekMark } = setup();
+
+    pick('1714 Fender Strat', 'cross');
+
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'cross'));
+  });
+
+  it('still moves the board tick for a piece whose × the week never sees', async () => {
+    const { onMarkPieceDone, setWeekMark } = setup();
+
+    pick('1714 — Setup', 'cross');
+
+    await vi.waitFor(() => expect(onMarkPieceDone).toHaveBeenCalledWith('p', 'c1', true));
+    expect(setWeekMark).not.toHaveBeenCalled();
+  });
+});
+
+// Build B, 2026-08-22. The erase option and the dot mark both drew `·`, erase
+// first, so picking one line too high wiped the row's mark instead of setting
+// it.
+describe('the blank option in the mark box', () => {
+  it('is not drawn as a dot, and is not first in the list', () => {
+    setup();
+    const box = markBox('1714 — Setup');
+    const options = [...box.querySelectorAll('option')];
+
+    const blank = options.find(o => o.value === '');
+    expect(blank).toBeTruthy();
+    // The dot mark is the one that draws `·`. The erase line must not.
+    expect(blank.textContent.trim()).not.toBe('·');
+    expect(options.filter(o => o.textContent.trim() === '·')).toHaveLength(1);
+    // And it is last, not sitting on top of the dot.
+    expect(options[0].value).not.toBe('');
+    expect(options[options.length - 1].value).toBe('');
+    // It is still reachable and still says what it does.
+    expect(box.querySelector('optgroup')?.label).toBe('clear');
+  });
+
+  it('still sets the dot mark when the dot is picked', async () => {
+    const { setWeekMark } = setup();
+
+    pick('1714 — Setup', 'dot');
+
+    await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'dot'));
   });
 });

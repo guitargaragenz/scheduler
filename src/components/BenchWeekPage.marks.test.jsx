@@ -84,3 +84,40 @@ describe('marking a day on the Weekly Log', () => {
     await vi.waitFor(() => expect(showToast).toHaveBeenCalled());
   });
 });
+
+// Build B, 2026-08-22. The erase option and the dot mark both drew `·`, with
+// erase on top — so picking the dot one line too high cleared the cell, and a
+// job held on the week only by that mark dropped off the page for good.
+describe('the blank option in a day cell', () => {
+  it('is not drawn as a dot, and is not first in the list', () => {
+    setup();
+    const options = [...cell(MONDAY).querySelectorAll('option')];
+
+    const blank = options.find(o => o.value === '');
+    expect(blank).toBeTruthy();
+    expect(blank.textContent.trim()).not.toBe('·');
+    // Exactly one line in the list draws `·`, and it is the dot MARK.
+    expect(options.filter(o => o.textContent.trim() === '·')).toHaveLength(1);
+    expect(options[0].value).not.toBe('');
+    expect(options[options.length - 1].value).toBe('');
+    expect(cell(MONDAY).querySelector('optgroup')?.label).toBe('clear');
+  });
+
+  it('sets the dot mark when the dot is picked, rather than wiping the cell', async () => {
+    const { setMark } = setup({ marks: { p: { [MONDAY]: 'slash' } } });
+
+    const dot = [...cell(MONDAY).querySelectorAll('option')]
+      .find(o => o.textContent.trim() === '·');
+    fireEvent.change(cell(MONDAY), { target: { value: dot.value } });
+
+    await vi.waitFor(() => expect(setMark).toHaveBeenCalledWith('p', MONDAY, 'dot'));
+  });
+
+  it('keeps the cell 30px and centred, arrow still stripped', () => {
+    setup();
+    const style = cell(MONDAY).style;
+    expect(style.height).toBe('30px');
+    expect(style.appearance).toBe('none');
+    expect(style.textAlignLast).toBe('center');
+  });
+});
