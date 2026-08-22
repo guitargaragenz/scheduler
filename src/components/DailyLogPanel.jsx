@@ -305,6 +305,11 @@ function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
         border: '1px solid #334155', background: '#0f172a',
         color: '#cbd5e1', fontWeight: 700, fontSize: 13, textAlign: 'center',
         cursor: disabled ? 'default' : 'pointer',
+        // No browser arrow. Trevor, 2026-08-22: strip it everywhere except the
+        // Weekly Log's "add a job" box, where it is the thing that says the box
+        // opens. On a 34px mark box the arrow was most of the width.
+        appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+        textAlignLast: 'center',
       }}
     >
       <option value="">·</option>
@@ -696,6 +701,7 @@ export default function DailyLogPanel({
             marginLeft: 'auto', padding: '5px 8px', borderRadius: 5,
             border: '1px solid #334155', background: '#1e293b',
             color: '#cbd5e1', fontSize: 12.5, cursor: 'pointer',
+            appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
           }}
         >
           {(weekDays || []).map((d, i) => (
