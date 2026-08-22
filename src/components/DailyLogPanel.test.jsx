@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dayJobOptions, newDayTaskId, isDayTaskId } from './DailyLogPanel.jsx';
+import { dayJobOptions, groupsOf, newDayTaskId, isDayTaskId } from './DailyLogPanel.jsx';
 import { weekRowKey } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -27,6 +27,60 @@ describe('dayJobOptions', () => {
   it('skips typed week rows', () => {
     const marks = { 'task:2026-08-10:zz': { [weekRowKey(WEEK)]: 'typed:do the books' } };
     expect(dayJobOptions([], WEEK, marks)).toEqual([]);
+  });
+
+  // Trevor, 2026-08-22: 1632 offered 7 pieces where the job card showed the 4
+  // still to do. The card has always hidden finished pieces; the picker did not.
+  it('does not offer a piece that is already ticked off', () => {
+    const jobs = [
+      { id: 'p', job: '1632', mfr: 'Hofner', model: 'Verythin', isSplit: true, calendarSlot: '2026-08-11-9-0' },
+      { id: 'c1', job: '1632', parentId: 'p', bench: 'Setup' },
+      { id: 'c2', job: '1632', parentId: 'p', bench: 'Fretwork', pieceDone: true },
+    ];
+    expect(dayJobOptions(jobs, WEEK, {}).map(o => o.id)).toEqual(['c1']);
+  });
+
+  // An unsplit job IS its own single piece, so the same rule has to reach it.
+  it('does not offer an unsplit job that is ticked off', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', pieceDone: true, calendarSlot: '2026-08-11-9-0' }];
+    expect(dayJobOptions(jobs, WEEK, {})).toEqual([]);
+  });
+
+  // The group heading is the job; the option under it is just the bench, since
+  // repeating the number on every line is what the grouping removes. `label`
+  // stays whole because it is what gets STORED on the placed row, which has no
+  // heading above it.
+  it('tags each option with its job for the heading, and keeps the stored label whole', () => {
+    const jobs = [
+      { id: 'p', job: '1632', mfr: 'Hofner', model: 'Verythin', isSplit: true, calendarSlot: '2026-08-11-9-0' },
+      { id: 'c1', job: '1632', parentId: 'p', bench: 'Setup' },
+    ];
+    const [opt] = dayJobOptions(jobs, WEEK, {});
+    expect(opt.group).toBe('1632 Hofner Verythin');
+    expect(opt.short).toBe('Setup');
+    expect(opt.label).toContain('1632');
+  });
+});
+
+describe('groupsOf', () => {
+  it('puts every piece of one job under a single heading', () => {
+    const groups = groupsOf([
+      { id: 'c1', group: '1632 Hofner' },
+      { id: 'c2', group: '1632 Hofner' },
+      { id: 'd1', group: '1714 Fender' },
+    ]);
+    expect(groups.map(g => g.name)).toEqual(['1632 Hofner', '1714 Fender']);
+    expect(groups[0].items.map(o => o.id)).toEqual(['c1', 'c2']);
+  });
+
+  // The Weekly Log lists jobs oldest first. The picker has to agree with the
+  // page behind it, so grouping must not re-sort anything.
+  it('keeps the order it was given', () => {
+    const groups = groupsOf([
+      { id: 'a', group: '875 Maton' },
+      { id: 'b', group: '1714 Fender' },
+    ]);
+    expect(groups.map(g => g.name)).toEqual(['875 Maton', '1714 Fender']);
   });
 
   it('never offers the same thing twice', () => {

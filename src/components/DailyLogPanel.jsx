@@ -116,13 +116,31 @@ export function dayJobOptions(jobs, weekKeys, marks) {
     // offer. Day tasks are typed on this page instead.
     if (!row.job) continue;
     for (const part of partsOf(row.job, all, byId)) {
+      // A piece already ticked off is finished work. Offering it is noise, and
+      // it is how the wrong row gets picked onto a day — Trevor, 2026-08-22,
+      // seeing 1632 offer 7 pieces where the job card showed the 4 still to do.
+      // The card has always hidden them; this now matches it.
+      //
+      // Only the PICKER filters. `bookedOnDay()` deliberately does not: a split
+      // that is booked is booked whether or not it is done, and hiding a
+      // finished piece there would erase the day's record of the work.
+      if (part.pieceDone) continue;
+      // The job this piece belongs to, used as the dropdown's group heading so
+      // the picker reads the way the Daily Log itself now does — pieces under
+      // their job, not a flat run of lines that all start with the same number.
+      const group = rowName(row.job) || row.name;
       const label = [rowName(part) || row.name, part.bench].filter(Boolean).join(' — ');
       // `note` is the split's own sessionNote — shown in the dropdown option
       // text so the picker reads the way the placed row will. It is NOT part of
       // `label`: `label` is what gets stored, and the placed row already prints
       // the note on its own second line, so baking it into `label` would double
       // it up.
-      out.push({ id: String(part.id), label, note: part.sessionNote || '' });
+      // `short` is for the dropdown only. Under a group already headed with the
+      // job, repeating the number on every line is the noise the grouping was
+      // meant to remove — so the option shows just the bench. `label` is what
+      // gets STORED and stays whole: the placed row has no group above it.
+      const short = part.bench || label;
+      out.push({ id: String(part.id), label, group, short, note: part.sessionNote || '' });
     }
   }
 
@@ -131,6 +149,26 @@ export function dayJobOptions(jobs, weekKeys, marks) {
   // row fighting itself.
   const seen = new Set();
   return out.filter(o => (seen.has(o.id) ? false : (seen.add(o.id), true)));
+}
+
+// The picker's options, gathered under one heading per job. Order is kept as
+// `dayJobOptions` built it — the Weekly Log's own oldest-first order — for both
+// the headings and the pieces inside them, so the picker lists jobs in the same
+// order as the page behind it.
+export function groupsOf(options) {
+  const out = [];
+  const byName = new Map();
+  for (const o of options || []) {
+    const name = o.group || '';
+    let g = byName.get(name);
+    if (!g) {
+      g = { name, items: [] };
+      byName.set(name, g);
+      out.push(g);
+    }
+    g.items.push(o);
+  }
+  return out;
 }
 
 // Every split booked ON this day, read from each split's own `calendarSlot` —
@@ -767,8 +805,12 @@ export default function DailyLogPanel({
                 }}
               >
                 <option value="">+ Put a job on this day…</option>
-                {pickable.map(o => (
-                  <option key={o.id} value={o.id}>{o.note ? `${o.label} — ${o.note}` : o.label}</option>
+                {groupsOf(pickable).map(g => (
+                  <optgroup key={g.name} label={g.name}>
+                    {g.items.map(o => (
+                      <option key={o.id} value={o.id}>{o.note ? `${o.short} — ${o.note}` : o.short}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>

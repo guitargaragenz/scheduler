@@ -188,6 +188,41 @@ describe('the board tick (pieceDone)', () => {
   });
 });
 
+describe('the "+ Put a job on this day…" picker', () => {
+  // A helper returning the right shape proves nothing about what is on screen —
+  // this project has shipped a green build where every tap did nothing. So this
+  // reads the rendered dropdown.
+  // Both splits booked LATER in the week: on the week, so pickable, but not
+  // already placed on this day — which is when the picker is on screen at all.
+  function pickableJobs() {
+    return makeJobs().map(j => (j.parentId ? { ...j, calendarSlot: '2026-08-12-9-0' } : j));
+  }
+
+  it('heads each job once and lists its pieces by bench underneath', () => {
+    setup({ jobs: pickableJobs() });
+
+    const picker = screen.getAllByRole('combobox')
+      .find(el => el.querySelector('option')?.textContent.startsWith('+ Put a job'));
+    const groups = picker.querySelectorAll('optgroup');
+
+    expect(Array.from(groups).map(g => g.label)).toEqual(['1714 Fender Strat']);
+    // Both splits under the one heading, named by bench — not two lines that
+    // each repeat "1714 Fender Strat".
+    expect(Array.from(groups[0].querySelectorAll('option')).map(o => o.textContent))
+      .toEqual(['Setup — level and crown', 'Electronics']);
+  });
+
+  it('leaves out a piece already ticked off', () => {
+    setup({ jobs: pickableJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)) });
+
+    const picker = screen.getAllByRole('combobox')
+      .find(el => el.querySelector('option')?.textContent.startsWith('+ Put a job'));
+
+    expect(picker.textContent).not.toMatch(/Electronics/);
+    expect(picker.textContent).toMatch(/Setup/);
+  });
+});
+
 describe('a hand-typed task', () => {
   it('has a mark box, saves the mark, and adds no Weekly Log row', async () => {
     const { addItem, setWeekMark, showToast } = setup({
