@@ -8,30 +8,28 @@ fine** (Trevor, 2026-08-23). It came right on its own; nothing was changed for
 it. The diagnosis notes for it have been deleted rather than left to be acted
 on. What stays open is the underlying rule it made us look at.
 
-## The rule the code doesn't follow
+## The rule the code doesn't follow — narrower than first written
 
 > "if I take job off via DL or WL I should be able to put it straight back on
 > with no recourse"  — Trevor
 
-Taking a job off a day means "not today", never "never again". Putting it back
-should be nothing more than booking it again.
+**Corrected 2026-08-24 against the code.** The "keep this off" note the delete
+leaves behind is stored **against that one date**, not against the job. So it
+only ever affects the day you removed it on. The next day is clean, and the job
+appears there normally.
 
-**What actually happens.** When a job appears on the day by itself, deleting it
-can't just remove it — it would come back on the next reload, because the day
-builds that line from the booking rather than storing it. So the delete leaves a
-permanent "keep this off" note against that job and that date. Nothing ever
-clears that note. Booking the job onto the day again does not clear it.
+So the bug is: *take a job off today, and you cannot put it back on today.*
+Not "gone forever". Everything below that read as permanent was wrong.
 
-Since 1679 has resolved, nobody has actually hit this in anger — so it is a bug
-on the stated rule, not a live complaint. Worth fixing, not urgent.
+That is a small, one-day annoyance rather than data loss, and it explains why
+nobody has been bitten by it.
 
-**Likely fix, not agreed:** clear the note whenever the job is booked onto that
-day again, so a removal can't outlive the booking that caused it. Alternatives
-to put to Trevor: have the removal expire at end of day, or give it a visible
-undo.
+**Likely fix, not agreed:** clear that day's note when the job is booked onto
+the same day again. Alternatives to put to Trevor: let it expire at end of day
+(it effectively already does), or give the removal a visible undo.
 
-Code: `DailyLogPanel.jsx` — `handleRemove` (~line 649) writes it, `dayJobs`
-(~line 519) obeys it.
+Code: `DailyLogPanel.jsx` — `handleRemove` (~line 649) writes it keyed by
+`dateKey`, `hidden` (~line 508) reads only that day's items.
 
 ## Facts worth keeping
 
