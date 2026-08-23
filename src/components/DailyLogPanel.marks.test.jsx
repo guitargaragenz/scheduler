@@ -499,7 +499,7 @@ describe('the mark box on a Daily Log line', () => {
   });
 });
 
-// Build 2, 2026-08-24. Trevor: "Book in WL adds to DL. Book in DL adds to WL".
+// Build 2, 2026-08-23. Trevor: "Book in WL adds to DL. Book in DL adds to WL".
 // Putting a job on the day used to write nothing to the week, so the two logs
 // disagreed until a mark was picked by hand.
 describe('putting a job on the day', () => {

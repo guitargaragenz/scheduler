@@ -628,7 +628,7 @@ export default function DailyLogPanel({
     }
 
     // Putting a job on the day puts a dot in its week cell, so the two logs
-    // agree the moment the job lands. Trevor, 2026-08-24: "Book in WL adds to
+    // agree the moment the job lands. Trevor, 2026-08-23: "Book in WL adds to
     // DL. Book in DL adds to WL". The dot is what the day's mark box already
     // shows for an unmarked row, so nothing new appears on screen here.
     //

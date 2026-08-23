@@ -124,7 +124,7 @@ describe('the blank option in a day cell', () => {
   });
 });
 
-// Build 1, 2026-08-24. Trevor: "if I take job off via DL or WL I should be able
+// Build 1, 2026-08-23. Trevor: "if I take job off via DL or WL I should be able
 // to put it straight back on with no recourse". Taking a job off the Daily Log
 // leaves a note against that DATE, and booking the job back onto the same day
 // used to leave the note behind — so the job stayed off for the rest of the day.

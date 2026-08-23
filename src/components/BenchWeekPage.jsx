@@ -591,7 +591,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
       return;
     }
     // Booking a job onto a day undoes an earlier removal from that same day.
-    // Trevor, 2026-08-24: "if I take job off via DL or WL I should be able to
+    // Trevor, 2026-08-23: "if I take job off via DL or WL I should be able to
     // put it straight back on with no recourse". Taking a job off a day means
     // "not today", so the moment it is booked back on, that day's note has to
     // go — otherwise the job stays off for the rest of the day.

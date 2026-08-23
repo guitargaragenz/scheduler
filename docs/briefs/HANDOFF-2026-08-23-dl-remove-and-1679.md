@@ -1,35 +1,35 @@
 ---
-doc_status: live
+doc_status: closed
 ---
-# Taking a job off a day is permanent — and it shouldn't be
+# Taking a job off a day is permanent — FIXED
 
-Job 1679 not showing on the Daily Log **was the original report and is now
-fine** (Trevor, 2026-08-23). It came right on its own; nothing was changed for
-it. The diagnosis notes for it have been deleted rather than left to be acted
-on. What stays open is the underlying rule it made us look at.
+Shipped 2026-08-23 on PR #42. Trevor tested all three cases on the preview and
+confirmed they work. This document is history now; nothing in it is a task.
 
-## The rule the code doesn't follow — narrower than first written
+Job 1679 not showing on the Daily Log was the original report and came right on
+its own, with no change made for it.
+
+## What was wrong, and what fixed it
 
 > "if I take job off via DL or WL I should be able to put it straight back on
 > with no recourse"  — Trevor
 
-**Corrected 2026-08-24 against the code.** The "keep this off" note the delete
-leaves behind is stored **against that one date**, not against the job. So it
-only ever affects the day you removed it on. The next day is clean, and the job
-appears there normally.
+Removing a job from the Daily Log left a "keep it off" note against that date,
+and booking the job back onto the same day did not clear it. Scope was narrower
+than first written: the note is keyed to the DATE, not the job, so it only ever
+affected the day it was made on — the next day was always clean.
 
-So the bug is: *take a job off today, and you cannot put it back on today.*
-Not "gone forever". Everything below that read as permanent was wrong.
+Fixed both directions:
 
-That is a small, one-day annoyance rather than data loss, and it explains why
-nobody has been bitten by it.
+- Booking a job onto a day now clears that day's note, so a removal cannot
+  outlive the booking that follows it. Only `hidden` items are cleared; a job
+  put on the day by hand is left alone.
+- Putting a job on the Daily Log now writes a dot to its Weekly Log cell, so
+  the two logs agree whichever one the job is booked on. Splits still write
+  nothing to the week, and a cell that already holds a mark is left as it is.
 
-**Likely fix, not agreed:** clear that day's note when the job is booked onto
-the same day again. Alternatives to put to Trevor: let it expire at end of day
-(it effectively already does), or give the removal a visible undo.
-
-Code: `DailyLogPanel.jsx` — `handleRemove` (~line 649) writes it keyed by
-`dateKey`, `hidden` (~line 508) reads only that day's items.
+Code: `BenchWeekPage.setCell` → `onBookedOnDay`, wired in `App.jsx`; and
+`handlePickJob` in `DailyLogPanel.jsx`.
 
 ## Facts worth keeping
 
