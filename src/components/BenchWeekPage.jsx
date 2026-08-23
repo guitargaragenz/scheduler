@@ -555,7 +555,7 @@ function AddTaskToBench({ ready, nameW, isMobile, onAddTask }) {
   );
 }
 
-export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, isMobile, showToast }) {
+export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
   const groups = useMemo(() => benchSections(rows), [rows]);
@@ -586,7 +586,16 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
       return;
     }
     const res = await setMark(row.id, dateKey, value);
-    if (!res?.ok) showToast?.('That mark did not save');
+    if (!res?.ok) {
+      showToast?.('That mark did not save');
+      return;
+    }
+    // Booking a job onto a day undoes an earlier removal from that same day.
+    // Trevor, 2026-08-24: "if I take job off via DL or WL I should be able to
+    // put it straight back on with no recourse". Taking a job off a day means
+    // "not today", so the moment it is booked back on, that day's note has to
+    // go — otherwise the job stays off for the rest of the day.
+    if (value) onBookedOnDay?.(row.id, dateKey);
   }
 
   // Close a job off, or undo a mis-tap.

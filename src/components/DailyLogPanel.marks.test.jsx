@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react';
 import DailyLogPanel from './DailyLogPanel.jsx';
 
 // These tests RENDER the panel and pick a mark on it, rather than calling the
@@ -496,5 +496,55 @@ describe('the mark box on a Daily Log line', () => {
 
     await vi.waitFor(() => expect(addItem).toHaveBeenCalledWith(DAY, 'mark:p', 'mark', 'dot'));
     await vi.waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('p', DAY, 'dot'));
+  });
+});
+
+// Build 2, 2026-08-24. Trevor: "Book in WL adds to DL. Book in DL adds to WL".
+// Putting a job on the day used to write nothing to the week, so the two logs
+// disagreed until a mark was picked by hand.
+describe('putting a job on the day', () => {
+  // A whole job of its own, held on the week by a mark on the TUESDAY. That is
+  // what makes it pickable: the picker never offers a piece that already has a
+  // calendar booking, and a job with no mark and no booking is not on the week
+  // at all. So a Tuesday mark is the one shape that puts a job on the week and
+  // still leaves Monday free.
+  const TUE = '2026-08-11';
+  const LOOSE = { id: 'solo', job: '1720', mfr: 'Gibson', model: 'LP', bench: 'Setup' };
+  const looseProps = { jobs: [...makeJobs(), LOOSE], marks: { solo: { [TUE]: 'dot' } } };
+
+  function pickFromSearch(text, label) {
+    fireEvent.change(
+      screen.getByLabelText('Search the week for a job to put on this day'),
+      { target: { value: text } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(label) }));
+  }
+
+  it("puts a dot in that job's week cell", async () => {
+    const { setWeekMark } = setup(looseProps);
+    pickFromSearch('1720', 'Setup');
+    // The week write happens after the day write resolves, so it needs a tick.
+    await waitFor(() => expect(setWeekMark).toHaveBeenCalledWith('solo', DAY, 'dot'));
+  });
+
+  it('writes nothing to the week before the week has loaded', async () => {
+    const { setWeekMark } = setup({ ...looseProps, weekReady: false });
+    pickFromSearch('1720', 'Setup');
+    expect(setWeekMark).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing to the week for a split', async () => {
+    // A piece of job 1714, which the Weekly Log draws as one row. No split mark
+    // reaches the week; only a job's own line drives it.
+    const jobs = makeJobs().map(j => (j.id === 'c2' ? { ...j, calendarSlot: null } : j));
+    const { setWeekMark } = setup({ jobs });
+    pickFromSearch('1714', 'Electronics');
+    expect(setWeekMark).not.toHaveBeenCalled();
+  });
+
+  it('still puts the job on the day itself', async () => {
+    const { addItem } = setup(looseProps);
+    pickFromSearch('1720', 'Setup');
+    expect(addItem).toHaveBeenCalledWith(DAY, 'solo', 'job', expect.any(String));
   });
 });

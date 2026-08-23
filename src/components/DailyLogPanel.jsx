@@ -622,7 +622,30 @@ export default function DailyLogPanel({
     // the split can stop existing; what the day says was worked on must not
     // change underneath it.
     const res = await addItem(dateKey, opt.id, 'job', opt.label);
-    if (!res?.ok) showToast?.('That job did not go on the day');
+    if (!res?.ok) {
+      showToast?.('That job did not go on the day');
+      return;
+    }
+
+    // Putting a job on the day puts a dot in its week cell, so the two logs
+    // agree the moment the job lands. Trevor, 2026-08-24: "Book in WL adds to
+    // DL. Book in DL adds to WL". The dot is what the day's mark box already
+    // shows for an unmarked row, so nothing new appears on screen here.
+    //
+    // Three things it must not do:
+    //  - write through a split. No split mark reaches the Weekly Log; only a
+    //    job's own line drives the week.
+    //  - overwrite a cell that already holds a mark. The day is being added,
+    //    not marked, so a `/` or `>` already there is the better record.
+    //  - write before the week is ready, which would save over a week we have
+    //    not actually read.
+    const optJob = jobs?.find(j => String(j.id) === String(opt.id));
+    if (optJob?.parentId) return;
+    const weekJobId = weekCellJobId(opt.id, jobs);
+    if (!weekJobId || !weekReady) return;
+    if (marks?.[weekJobId]?.[dateKey]) return;
+    const weekRes = await setWeekMark?.(weekJobId, dateKey, 'dot');
+    if (weekRes && !weekRes.ok) showToast?.('That did not reach the Weekly Log');
   }
 
   async function handleAddTask(e) {

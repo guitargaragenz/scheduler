@@ -31,4 +31,12 @@ describe('App wires the Weekly Log up', () => {
       expect(tag).toContain(`${prop}={weekMarks.${prop}}`);
     });
   }
+
+  // Build 1, 2026-08-24. The week has to be able to tell the day to drop its
+  // "keep it off" note, or a job taken off a day can never be booked back onto
+  // it. Losing this prop looks exactly like the failure above: the page renders,
+  // and the job silently stays off.
+  it('passes onBookedOnDay, so a removal cannot outlive a rebooking', () => {
+    expect(tag).toContain('onBookedOnDay=');
+  });
 });

@@ -31,7 +31,7 @@ import JobsPage from './components/JobsPage.jsx';
 import JobsSheetPage from './components/JobsSheetPage.jsx';
 import BenchBoardPage from './components/BenchBoardPage.jsx';
 import BenchWeekPage from './components/BenchWeekPage.jsx';
-import DailyLogPanel from './components/DailyLogPanel.jsx';
+import DailyLogPanel, { weekCellJobId } from './components/DailyLogPanel.jsx';
 import { useWeekMarks } from './hooks/useWeekMarks.js';
 import { useDayMarks } from './hooks/useDayMarks.js';
 import CloseDayModal from './components/CloseDayModal.jsx';
@@ -856,6 +856,18 @@ export default function App() {
                      and it goes through the same call the rest of the app
                      already uses — there is no second way to finish a job. */
                   onCloseJob={(job) => setPomoJob(job)}
+                  /* Booking a job onto a day clears any "keep it off this day"
+                     note the Daily Log left there, so a removal can never
+                     outlive the booking that follows it. Only 'hidden' items
+                     go — a job put on the day by hand is left alone. */
+                  onBookedOnDay={(jobId, dateKey) => {
+                    const onDay = dayMarks.dayItems?.[dateKey] || {};
+                    Object.entries(onDay).forEach(([itemId, v]) => {
+                      if (v?.kind !== 'hidden') return;
+                      if (weekCellJobId(itemId, jobs) !== String(jobId)) return;
+                      dayMarks.removeItem(dateKey, itemId);
+                    });
+                  }}
                 />
               )}
               {!isMobile && (
