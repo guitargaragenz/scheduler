@@ -19,6 +19,7 @@ const MONDAY = '2026-08-10';
 function setup(overrides = {}) {
   const setMark = vi.fn(async () => ({ ok: true }));
   const showToast = vi.fn();
+  const onBookedOnDay = vi.fn();
 
   render(
     <BenchWeekPage
@@ -30,12 +31,13 @@ function setup(overrides = {}) {
       setMark={setMark}
       clearJobKeys={vi.fn()}
       onCloseJob={vi.fn()}
+      onBookedOnDay={onBookedOnDay}
       isMobile={false}
       showToast={showToast}
       {...overrides}
     />,
   );
-  return { setMark, showToast };
+  return { setMark, showToast, onBookedOnDay };
 }
 
 // The cell for one job on one day, found by the label the page gives it.
@@ -119,5 +121,37 @@ describe('the blank option in a day cell', () => {
     expect(style.height).toBe('30px');
     expect(style.appearance).toBe('none');
     expect(style.textAlignLast).toBe('center');
+  });
+});
+
+// Build 1, 2026-08-23. Trevor: "if I take job off via DL or WL I should be able
+// to put it straight back on with no recourse". Taking a job off the Daily Log
+// leaves a note against that DATE, and booking the job back onto the same day
+// used to leave the note behind — so the job stayed off for the rest of the day.
+describe('booking a job onto a day it was taken off', () => {
+  it('tells the day to drop its "keep it off" note', async () => {
+    const { onBookedOnDay } = setup();
+
+    fireEvent.change(cell(MONDAY), { target: { value: 'dot' } });
+
+    await vi.waitFor(() => expect(onBookedOnDay).toHaveBeenCalledWith('p', MONDAY));
+  });
+
+  it('does not, when the cell is being cleared instead', async () => {
+    const { onBookedOnDay } = setup({ marks: { p: { [MONDAY]: 'dot' } } });
+
+    fireEvent.change(cell(MONDAY), { target: { value: '' } });
+
+    await vi.waitFor(() => expect(onBookedOnDay).not.toHaveBeenCalled());
+  });
+
+  it('does not, when the mark failed to save', async () => {
+    const setMark = vi.fn(async () => ({ ok: false }));
+    const { onBookedOnDay } = setup({ setMark });
+
+    fireEvent.change(cell(MONDAY), { target: { value: 'dot' } });
+
+    await vi.waitFor(() => expect(setMark).toHaveBeenCalled());
+    expect(onBookedOnDay).not.toHaveBeenCalled();
   });
 });
