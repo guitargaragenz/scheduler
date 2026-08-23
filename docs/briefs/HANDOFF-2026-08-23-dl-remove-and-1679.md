@@ -72,8 +72,14 @@ At `98692b3` (PR #39):
 
 ## Facts worth keeping
 
-- **The rows that already vanished are gone.** Those marks were really deleted
-  from `bench_week_marks`. The fix stops it recurring; it cannot restore them.
+- **The vanished rows are partly recoverable — corrected 2026-08-23.** The
+  deletion hit `bench_week_marks` only. Two other tables were never touched and
+  still hold the same days: `bench_day_marks` keeps every Daily Log mark, symbol
+  and all, and `completed_jobs` keeps a `completed_at` timestamp for every job
+  that was closed and invoiced. Between them a week's cells can largely be
+  rebuilt. What is genuinely gone is a mark made only on the Weekly Log, by
+  hand, on a job with no Daily Log entry and no invoice. Nobody has queried the
+  live tables yet, so the size of that slice is unknown.
 - **`Sidebar.jsx:20` hides sub-tasks that are `scheduled`, NOT `pieceDone`.**
   Assuming the opposite has now cost two build rounds.
 - **The Daily Log's job header line has no Remove button** — only the piece lines
