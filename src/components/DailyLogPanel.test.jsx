@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob, markIdFor } from './DailyLogPanel.jsx';
+import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob, markIdFor, pieceLabel } from './DailyLogPanel.jsx';
 import { weekRowKey, weekCloseKey, weekRows } from './BenchWeekPage.jsx';
 
 // The Daily Log reads Google Calendar for the day's appointments. Nothing here
@@ -401,5 +401,23 @@ describe('the Task picker on a job line', () => {
     fireEvent.click(taskButton('1714 Fender Strat'));
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
     expect(addItem).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('pieceLabel', () => {
+  it('drops the job name a piece repeats from the line above', () => {
+    expect(pieceLabel('1722 PRS SE Custom — Fretwork', '1722 PRS SE Custom'))
+      .toBe('Fretwork');
+  });
+
+  it('leaves a label alone when it is not the job name in front', () => {
+    expect(pieceLabel('1632 Hofner 455/S — Setup', '1722 PRS SE Custom'))
+      .toBe('1632 Hofner 455/S — Setup');
+  });
+
+  it('keeps the whole label rather than showing nothing', () => {
+    expect(pieceLabel('1722 PRS SE Custom — ', '1722 PRS SE Custom'))
+      .toBe('1722 PRS SE Custom — ');
   });
 });
