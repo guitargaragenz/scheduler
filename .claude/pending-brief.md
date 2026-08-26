@@ -1,28 +1,44 @@
-# Record — day columns line up at any width (SHIPPED, not pending)
+# Scope lock — a job taken off a day can go straight back on
 
-doc_status: closed
+doc_status: live
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
-`509507e` (PR #53). Do not build from this file.
+Built and tested, awaiting Trevor's "yp" to merge. One file, one filter.
 
-The full record — the false alarm it came out of, the cause in both grids, and
-the two things found but not fixed — is in
-`docs/briefs/2026-08-26-day-columns-line-up.md`, `doc_status: closed`.
+## The problem
 
-## What shipped
+Taking a job off a day does not delete anything. An auto row appears BECAUSE
+nothing is stored for it, so Remove stores a `hidden` "keep it off this day"
+note instead. Nothing in the Daily Log has ever cleared that note — the only
+clearing path is the Weekly Log (`App.jsx:867` -> `onBookedOnDay`). The picker
+then filtered hidden ids out of what it offered, so the job could not be picked
+to clear it either.
 
-`flexShrink: 0` on every fixed-width Weekly Log column; `minWidth: 0` on every
-proportional calendar column and its heading. Display only. 764 tests green.
+A job taken off a day was stuck off it from the DL's side, permanently. Against
+Trevor's rule, 2026-08-23: *"if I take job off via DL or WL I should be able to
+put it straight back on with no recourse"*.
 
-## Worth carrying forward
+## The fix
 
-- **Column alignment is a data correctness property, not a cosmetic one.** A
-  heading drifting off its column made Trevor book job 1730 onto Wednesday
-  believing it was Thursday. The app did what he asked; the screen lied about
-  what he was asking, and the result looked fine afterwards. It then presented
-  as a phantom Daily Log bug and cost most of a session.
-- **Day view and Week view are ONE component.** `CalendarGrid.jsx` fed `weekDays`
-  — one day or seven (`App.jsx:952`). A fix to one is a fix to both.
-- A heading and its cell are separate flex items in separate rows. They stay
-  lined up only while they shrink at the same rate — never give one a shrink
-  floor the other lacks.
+Stop filtering on `hidden` in the picker. That is the whole change.
+
+Nothing has to delete the note: it is stored at `(date_key, item_id)` and
+`addItem()` upserts on exactly that key, so picking the job REPLACES the note
+with a real row. No second write, no window where both exist.
+
+The filter is now `pickableOnDay(options, dayJobs)` — extracted so it can be
+tested, and because a comment at `DailyLogPanel.jsx:323` already referred to a
+`pickableOnDay()` that had stopped existing.
+
+`hidden` is still used where it belongs: suppressing the auto row.
+
+## Out of scope
+
+No renaming (next job). No change to Remove, to `bookedOnDay()`, or to the
+Weekly Log clearing path. Nothing written to `jobs[]`, `scheduledSlots`,
+`calendarSlot` or `useSupabase.js`.
+
+## Protocol
+
+No blast-radius file touched — one component, display/selection only. Council
+not run. 770 tests green, build clean; the regression test was confirmed to
+fail on the old behaviour.

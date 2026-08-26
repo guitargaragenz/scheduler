@@ -289,6 +289,35 @@ export function matchesSearch(option, query) {
 //
 // Parts only, matching dayJobOptions: a job with no splits IS its own single
 // part (partsOf returns [job]), so an unsplit booked job still shows up.
+// What the picker offers for a day.
+//
+// A row already on the day is not offered again — putting it on twice is not a
+// thing Trevor can want, and the second pick would silently overwrite the
+// first row's stored label.
+//
+// A HIDDEN row is deliberately still offered. `hidden` is the "keep it off this
+// day" note left when an auto row is removed, and it used to be filtered out
+// here too. That was the bug (found 2026-08-26): the note is the only thing
+// keeping the job off the day, nothing in the Daily Log ever clears it, and the
+// filter meant the job could never be picked to clear it either. So a job taken
+// off a day could only be put back from the Weekly Log — against Trevor's rule,
+// 2026-08-23: "if I take job off via DL or WL I should be able to put it
+// straight back on with no recourse".
+//
+// Offering it is the whole fix. Picking it calls addItem(), which upserts on
+// (date_key, item_id) — the same key the note is stored under — so the pick
+// REPLACES the note with a real row. Nothing has to delete the note separately,
+// and there is no window where both exist.
+//
+// So `hidden` is not a parameter here, and must not become one: a hidden row is
+// never in dayJobs (the auto loop skips it and the entries loop only takes
+// kind 'job'), so "not already on the day" ALREADY offers it. Filtering on
+// hidden again is what caused the bug.
+export function pickableOnDay(options, dayJobs) {
+  const taken = new Set((dayJobs || []).map(r => String(r.id)));
+  return (options || []).filter(o => !taken.has(String(o.id)));
+}
+
 export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
   if (!dateKey) return [];
   const all = jobs || [];
@@ -680,9 +709,7 @@ export default function DailyLogPanel({
     return blocks;
   }, [dayJobs, jobById, jobs]);
 
-  // Already on the day, so not offered again.
-  const taken = new Set(dayJobs.map(r => r.id));
-  const pickable = options.filter(o => !taken.has(o.id) && !hidden.has(o.id));
+  const pickable = pickableOnDay(options, dayJobs);
 
   // What the picker is showing right now. An empty box is the whole week,
   // grouped — the search narrows the list, it is not a gate in front of it.
