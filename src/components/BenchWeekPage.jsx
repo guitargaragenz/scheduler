@@ -226,7 +226,15 @@ export function compareJobNumber(a, b) {
 // `!parentId && !isDerived` is how a top-level job is found; `!hasSubtasks` is
 // NOT, because auto-split children inherit hasSubtasks from the parent they
 // were spread from.
-export function weekRows(jobs, weekKeys, marks = {}) {
+// `keepDone` is for the Daily Log only. A week page is a "what is on this week"
+// page, so a finished job drops off it; a DAY is a record of what happened, and
+// nothing that was ever on a day may leave it. The Daily Log used to inherit the
+// drop below through bookedOnDay() and lose the day's lines the moment the job
+// was ticked off — worst on a past day, whose line went for good because the
+// close mark belongs to the week the job was CLOSED in, not the week it was
+// worked. Trevor, 2026-08-26. Only bookedOnDay() passes this; the picker
+// deliberately does not, since a finished job is not on offer.
+export function weekRows(jobs, weekKeys, marks = {}, { keepDone = false } = {}) {
   const all = jobs || [];
   const inWeek = new Set(weekKeys);
   const byId = new Map(all.map(j => [j.id, j]));
@@ -242,7 +250,7 @@ export function weekRows(jobs, weekKeys, marks = {}) {
     // would make the row vanish out from under the tap that closed it, and
     // Trevor would have no record on the week that it finished.
     const closedThisWeek = Boolean(closeKey && marks[String(job.id)]?.[closeKey]);
-    if (job.done && !closedThisWeek) continue;
+    if (job.done && !closedThisWeek && !keepDone) continue;
 
     const parts = partsOf(job, all, byId);
 

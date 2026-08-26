@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId } from './DailyLogPanel.jsx';
-import { weekRowKey } from './BenchWeekPage.jsx';
+import { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay } from './DailyLogPanel.jsx';
+import { weekRowKey, weekCloseKey, weekRows } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
 
@@ -155,5 +155,53 @@ describe('newDayTaskId', () => {
   it('refuses to make an id with no day', () => {
     expect(newDayTaskId('')).toBe(null);
     expect(newDayTaskId(undefined)).toBe(null);
+  });
+});
+
+// A day is a record of what happened, so nothing that was ever on it may leave.
+// Before 2026-08-26 the Daily Log took its rows from weekRows(), which drops
+// finished jobs, and a job ticked off wiped its own lines off the day.
+describe('bookedOnDay keeps a finished job on the day', () => {
+  const DAY = '2026-08-11';
+
+  it('keeps a booked job on its day after it is finished', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', model: 'Strat', bench: 'Setup', calendarSlot: `${DAY}-9-0`, done: true }];
+    expect(bookedOnDay(jobs, WEEK, DAY, {}).map(o => o.id)).toEqual(['a']);
+  });
+
+  // The one that used to go for good: worked this week, closed in a later one,
+  // so this week carries no close mark to save it.
+  it('keeps a past day when the job was closed in a later week', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', calendarSlot: `${DAY}-9-0`, done: true }];
+    const laterWeek = ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'];
+    const marks = { a: { [weekCloseKey(laterWeek)]: 'x' } };
+    expect(bookedOnDay(jobs, WEEK, DAY, marks).map(o => o.id)).toEqual(['a']);
+  });
+
+  it('keeps a finished job put on the day by a week mark', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', done: true }];
+    const marks = { a: { [DAY]: 'dot' } };
+    expect(bookedOnDay(jobs, WEEK, DAY, marks).map(o => o.id)).toEqual(['a']);
+  });
+
+  it('keeps a finished job that has splits, one line per booked piece', () => {
+    const jobs = [
+      { id: 'p', job: '1714', mfr: 'Fender', bench: 'Setup', done: true, isSplit: true },
+      { id: 'c1', parentId: 'p', job: '1714', bench: 'Fretwork', calendarSlot: `${DAY}-9-0`, pieceDone: true },
+    ];
+    expect(bookedOnDay(jobs, WEEK, DAY, {}).map(o => o.id)).toEqual(['c1']);
+  });
+
+  // The Weekly Log must not change: a finished job still drops off the week.
+  it('does not put a finished job back on the Weekly Log', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', calendarSlot: `${DAY}-9-0`, done: true }];
+    expect(weekRows(jobs, WEEK, {})).toHaveLength(0);
+  });
+
+  // And the picker still does not offer finished work.
+  it('does not offer a finished job in the picker', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', done: true }];
+    const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
+    expect(dayJobOptions(jobs, WEEK, marks)).toEqual([]);
   });
 });
