@@ -233,7 +233,13 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
             const isToday = d.toDateString() === todayStr;
             return (
               <div key={i} style={{
-                flex: 1, padding: '10px 6px', textAlign: 'center',
+                // minWidth: 0 so a heading shrinks at exactly the same rate as
+                // the slot cells under it. Without it the heading keeps a floor
+                // of its own text width ("27 Aug") while the cells below, which
+                // DO set minWidth: 0, keep shrinking — so the columns drift and
+                // a heading ends up sitting over the wrong day. Booking the day
+                // you read rather than the day you meant is the cost of that.
+                flex: 1, minWidth: 0, padding: '10px 6px', textAlign: 'center',
                 borderLeft: '1px solid #4e6e8a', borderBottom: `2px solid ${isToday ? '#3b82f6' : '#4e6e8a'}`,
                 background: isToday ? '#1e3a5f' : isWeekend ? '#334e68' : '#2c4460',
               }}>
@@ -291,7 +297,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                   const hatched = hour >= 21 && hour < 24;
                   return (
                     <div key={dayIdx} style={{
-                      flex: 1, height: SLOT_HEIGHT,
+                      flex: 1, minWidth: 0, height: SLOT_HEIGHT,
                       borderLeft: '1px solid #4e6e8a', borderBottom: '1px solid #4e6e8a',
                       background: hatched
                         ? 'repeating-linear-gradient(135deg, #2c4460 0px, #2c4460 4px, transparent 4px, transparent 10px)'
@@ -303,7 +309,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                 // Lunch (weekdays only)
                 if (!sat && !sun && isLunchSlot(hour)) {
                   return (
-                    <div key={dayIdx} style={{ flex: 1, borderLeft: '1px solid #4e6e8a' }}>
+                    <div key={dayIdx} style={{ flex: 1, minWidth: 0, borderLeft: '1px solid #4e6e8a' }}>
                       <LunchSlot dayIdx={dayIdx} minute={minute} />
                     </div>
                   );
