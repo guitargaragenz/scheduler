@@ -218,6 +218,23 @@ export function groupsOf(options) {
   return out;
 }
 
+// The pieces one job's own Task picker offers.
+//
+// Bound by TOP-LEVEL JOB ID, never by the `group` display string. Two jobs on
+// the week can read exactly the same ("1714 Fender Strat" twice is an ordinary
+// week), so matching on the text would hang one job's pieces off the other
+// job's line. `weekCellJobId` already answers for a split and for an unsplit
+// job alike — it resolves a split to its parent and a parent to itself.
+//
+// Takes the picker list the search box is already given, so a piece that is
+// booked, ticked off, or on the day already is out before this is called: the
+// Task picker and the search offer exactly the same set, by construction.
+export function piecesForJob(pickable, topJobId, jobs) {
+  if (!topJobId) return [];
+  const want = String(topJobId);
+  return (pickable || []).filter(o => weekCellJobId(o.id, jobs) === want);
+}
+
 // What a typed search matches against: the job number, make and model (all in
 // `group`), the bench (`short`), and the split's own note. Deliberately dumb
 // substring matching, all lower case — no typo or plural tolerance. Every word
@@ -375,6 +392,10 @@ function MarkSelect({ value, disabled, onPick, title, ariaLabel }) {
 // (a split) without duplicating the markup.
 function JobLine({
   row, indent, markValue, ready, onPick, subNote, notes, onSaveNote, onDeleteNote, onAddNote, onRemove,
+  // The job's own `Task ▾` control, passed in already built. Only a job line
+  // ever gets one — an indented split row is a piece, and a piece has no
+  // pieces of its own to offer.
+  taskControl,
 }) {
   return (
     <div style={{
@@ -443,6 +464,7 @@ function JobLine({
           }}
         >+ note</button>
       </span>
+      {taskControl}
       <button
         type="button"
         onClick={onRemove}
@@ -608,6 +630,36 @@ export default function DailyLogPanel({
     [pickable, jobSearch],
   );
 
+  // Which job's Task list is open, held as that job's TOP-LEVEL id — one at a
+  // time, so a phone never carries two open lists and the day's rows stay
+  // readable between them. Opening another job's list closes this one simply
+  // by replacing the id.
+  const [taskPickerFor, setTaskPickerFor] = useState(null);
+  // Ticks are held here, not written anywhere, until Confirm. Nothing reaches
+  // the day until Trevor says so, so tapping the wrong piece costs a second tap
+  // and not a row he then has to Remove.
+  const [tickedPieces, setTickedPieces] = useState(() => new Set());
+
+  // Changing day throws the picker away. The ticks are pieces meant for the day
+  // that was on screen; carrying them over would place them on the new one.
+  useEffect(() => {
+    setTaskPickerFor(null);
+    setTickedPieces(new Set());
+  }, [dateKey]);
+
+  function toggleTaskPicker(topId) {
+    setTickedPieces(new Set());
+    setTaskPickerFor(cur => (cur === topId ? null : topId));
+  }
+
+  function toggleTick(id) {
+    setTickedPieces(cur => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   const [taskText, setTaskText] = useState('');
 
   const sortedEvents = useMemo(
@@ -650,6 +702,28 @@ export default function DailyLogPanel({
     if (marks?.[weekJobId]?.[dateKey]) return;
     const weekRes = await setWeekMark?.(weekJobId, dateKey, 'dot');
     if (weekRes && !weekRes.ok) showToast?.('That did not reach the Weekly Log');
+  }
+
+  // Confirming the Task list places every ticked piece.
+  //
+  // Each one goes through handlePickJob UNCHANGED — the same call the search
+  // box makes. That is the whole point of the control: it is a shorter way to
+  // reach the pieces, not a second way to place them. In particular it keeps
+  // handlePickJob's own guard that stops a split before the Weekly Log write,
+  // so a Task pick never touches the week.
+  //
+  // Placed one at a time, in the order they are listed: every placement is its
+  // own save, and firing them together would have them racing each other into
+  // the same day.
+  async function handleConfirmPieces(topId) {
+    const ticked = piecesForJob(pickable, topId, jobs)
+      .map(o => o.id)
+      .filter(id => tickedPieces.has(id));
+    // Closed before the placing, not after: the pieces drop out of `pickable`
+    // as they land, so a list left open would empty itself line by line.
+    setTaskPickerFor(null);
+    setTickedPieces(new Set());
+    for (const id of ticked) await handlePickJob(id);
   }
 
   async function handleAddTask(e) {
@@ -803,6 +877,90 @@ export default function DailyLogPanel({
     if (!res?.ok) showToast?.('That note did not save');
   }
 
+  // The `Task ▾` control for one job's line, and the tick list it opens.
+  //
+  // Both are plain functions returning markup rather than components declared
+  // in here: a component defined inside a render is a new type every pass, so
+  // React would throw the open list away and rebuild it on every keystroke,
+  // losing the ticks with it.
+  //
+  // The control is shown only while the job still has a piece to offer. A job
+  // whose pieces are all on the day, booked or ticked off has nothing to open,
+  // and a control that opens an empty list reads as broken.
+  function taskControlFor(topId, label) {
+    if (!topId) return null;
+    if (piecesForJob(pickable, topId, jobs).length === 0) return null;
+    const open = taskPickerFor === topId;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleTaskPicker(topId)}
+        disabled={!ready}
+        title="Put one of this job's tasks on the day"
+        aria-label={`Tasks for ${label}`}
+        aria-expanded={open}
+        style={{
+          flex: '0 0 auto',
+          padding: '2px 9px', borderRadius: 5, border: '1px solid #334155',
+          background: open ? '#1e293b' : 'transparent',
+          color: open ? '#fcd34d' : '#94a3b8', fontSize: 11.5,
+          cursor: ready ? 'pointer' : 'default',
+        }}
+      >Task ▾</button>
+    );
+  }
+
+  function taskListFor(topId) {
+    if (!topId || taskPickerFor !== topId) return null;
+    const pieces = piecesForJob(pickable, topId, jobs);
+    if (pieces.length === 0) return null;
+    const count = pieces.filter(o => tickedPieces.has(o.id)).length;
+    return (
+      <div style={{
+        marginLeft: 20, marginBottom: 4, padding: '5px 7px',
+        borderLeft: '1px solid #334155', borderRadius: 4, background: '#0b1220',
+      }}>
+        {/* Same capped, self-scrolling box as the search results below. A job
+            with a week's worth of pieces must not push the Tasks section off
+            the bottom of a phone. */}
+        <div style={{ maxHeight: 190, overflowY: 'auto' }}>
+          {pieces.map(o => (
+            <label
+              key={o.id}
+              style={{
+                display: 'flex', gap: 7, alignItems: 'center',
+                padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
+                cursor: ready ? 'pointer' : 'default',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={tickedPieces.has(o.id)}
+                disabled={!ready}
+                onChange={() => toggleTick(o.id)}
+                aria-label={o.label}
+              />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {o.note ? `${o.short} — ${o.note}` : o.short}
+              </span>
+            </label>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => handleConfirmPieces(topId)}
+          disabled={!ready || count === 0}
+          style={{
+            marginTop: 5, padding: '4px 11px', borderRadius: 5,
+            border: '1px solid #334155', background: '#1e293b',
+            color: count ? '#cbd5e1' : '#475569', fontSize: 12,
+            cursor: ready && count ? 'pointer' : 'default',
+          }}
+        >{count ? `Add ${count} to this day` : 'Add to this day'}</button>
+      </div>
+    );
+  }
+
   const dayDate = useMemo(() => {
     const [y, m, d] = String(dateKey).split('-').map(Number);
     return (y && m && d) ? new Date(y, m - 1, d) : null;
@@ -913,7 +1071,13 @@ export default function DailyLogPanel({
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {block.label}
                 </span>
+                {/* The job's own line is where its tasks are reached. The
+                    indented rows under it are pieces already on the day, and a
+                    piece has no pieces of its own. `block.id` is already the
+                    top-level id. */}
+                {taskControlFor(block.id, block.label)}
               </div>
+              {taskListFor(block.id)}
               {block.rows.map(row => (
                 <JobLine
                   key={row.id}
@@ -932,19 +1096,25 @@ export default function DailyLogPanel({
               ))}
             </div>
           ) : (
-            <JobLine
-              key={block.row.id}
-              row={block.row}
-              markValue={markOf.get(block.row.id)}
-              ready={ready}
-              onPick={(v) => handleSetMark(block.row, v)}
-              subNote={subTaskNote(block.row.id)}
-              notes={notesFor.get(block.row.id) || []}
-              onSaveNote={handleSaveNote}
-              onDeleteNote={(id) => removeItem(dateKey, id)}
-              onAddNote={() => handleAddNote(block.row)}
-              onRemove={() => handleRemove(block.row)}
-            />
+            // A plain job row. weekCellJobId answers with the row's own id for
+            // an unsplit job, and null for a row with no job left behind it —
+            // which is what keeps the control off a row it cannot serve.
+            <div key={block.row.id}>
+              <JobLine
+                row={block.row}
+                markValue={markOf.get(block.row.id)}
+                ready={ready}
+                onPick={(v) => handleSetMark(block.row, v)}
+                subNote={subTaskNote(block.row.id)}
+                notes={notesFor.get(block.row.id) || []}
+                onSaveNote={handleSaveNote}
+                onDeleteNote={(id) => removeItem(dateKey, id)}
+                onAddNote={() => handleAddNote(block.row)}
+                onRemove={() => handleRemove(block.row)}
+                taskControl={taskControlFor(weekCellJobId(block.row.id, jobs), block.row.label)}
+              />
+              {taskListFor(weekCellJobId(block.row.id, jobs))}
+            </div>
           ))}
 
           {/* The picker draws its own list rather than using a <select>.

@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay } from './DailyLogPanel.jsx';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob } from './DailyLogPanel.jsx';
 import { weekRowKey, weekCloseKey, weekRows } from './BenchWeekPage.jsx';
+
+// The Daily Log reads Google Calendar for the day's appointments. Nothing here
+// is about appointments, and a real read would go to the network.
+vi.mock('../utils/googleCalendar.js', () => ({
+  isSignedIn: () => false,
+  listEvents: async () => [],
+}));
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
 
@@ -203,5 +212,142 @@ describe('bookedOnDay keeps a finished job on the day', () => {
     const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', done: true }];
     const marks = { a: { [weekRowKey(WEEK)]: 'row' } };
     expect(dayJobOptions(jobs, WEEK, marks)).toEqual([]);
+  });
+});
+
+// The Task picker on a job's own line: a shorter way to reach that job's
+// remaining pieces than typing its number into the search box.
+describe('piecesForJob', () => {
+  // The reason this takes an id and not the heading text. Two jobs on one week
+  // reading the same is ordinary — same make, same model, two customers — and
+  // matching on the words would hang one job's pieces off the other's line.
+  it('binds pieces to the job by id, not by how the job reads', () => {
+    const jobs = [
+      { id: 'p1', job: '1714', mfr: 'Fender', model: 'Strat', isSplit: true },
+      { id: 'a1', job: '1714', parentId: 'p1', bench: 'Setup' },
+      { id: 'p2', job: '1715', mfr: 'Fender', model: 'Strat', isSplit: true },
+      { id: 'b1', job: '1715', parentId: 'p2', bench: 'Setup' },
+    ];
+    const pickable = [
+      { id: 'a1', group: '1714 Fender Strat', short: 'Setup' },
+      { id: 'b1', group: '1715 Fender Strat', short: 'Setup' },
+    ];
+    expect(piecesForJob(pickable, 'p1', jobs).map(o => o.id)).toEqual(['a1']);
+    expect(piecesForJob(pickable, 'p2', jobs).map(o => o.id)).toEqual(['b1']);
+  });
+
+  it('answers for an unsplit job with its own line', () => {
+    const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup' }];
+    const pickable = [{ id: 'a', group: '1714 Fender', short: 'Setup' }];
+    expect(piecesForJob(pickable, 'a', jobs).map(o => o.id)).toEqual(['a']);
+  });
+
+  it('offers nothing when there is no job to hang pieces off', () => {
+    expect(piecesForJob([{ id: 'a' }], null, [])).toEqual([]);
+  });
+});
+
+// These tests RENDER the panel and tap the control, rather than calling the
+// helper underneath: this project has shipped a build where every helper passed
+// and nothing on screen did anything, because nothing was wired to the control.
+describe('the Task picker on a job line', () => {
+  const DAY = '2026-08-10';
+  const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => new Date(2026, 7, 10 + i));
+
+  // 1714: one piece already booked on the day (so the job has a line to hang
+  // the control off), two still to place, one booked elsewhere and one ticked
+  // off — the two that must never be offered.
+  // 1715: a second job, to prove one list closes when the other opens.
+  function makeJobs() {
+    return [
+      { id: 'p', job: '1714', mfr: 'Fender', model: 'Strat', isSplit: true },
+      { id: 'c1', job: '1714', parentId: 'p', bench: 'Setup', calendarSlot: `${DAY}-9-0` },
+      { id: 'c2', job: '1714', parentId: 'p', bench: 'Fretwork' },
+      { id: 'c3', job: '1714', parentId: 'p', bench: 'Wiring' },
+      { id: 'c4', job: '1714', parentId: 'p', bench: 'Electronics', calendarSlot: '2026-08-12-9-0' },
+      { id: 'c5', job: '1714', parentId: 'p', bench: 'Admin', pieceDone: true },
+      { id: 'q', job: '1715', mfr: 'Gibson', model: 'SG', isSplit: true },
+      { id: 'd1', job: '1715', parentId: 'q', bench: 'Setup', calendarSlot: `${DAY}-13-0` },
+      { id: 'd2', job: '1715', parentId: 'q', bench: 'Luthier' },
+    ];
+  }
+
+  function setup(overrides = {}) {
+    const addItem = vi.fn(async () => ({ ok: true }));
+    const removeItem = vi.fn(async () => ({ ok: true }));
+    const setWeekMark = vi.fn(async () => ({ ok: true }));
+    render(<DailyLogPanel
+      jobs={makeJobs()}
+      weekDays={WEEK_DAYS}
+      marks={{}}
+      dayItems={{}}
+      ready
+      saveError={null}
+      addItem={addItem}
+      removeItem={removeItem}
+      weekReady
+      setWeekMark={setWeekMark}
+      onMarkPieceDone={vi.fn()}
+      isMobile={false}
+      showToast={vi.fn()}
+      {...overrides}
+    />);
+    return { addItem, setWeekMark };
+  }
+
+  const taskButton = (label) => screen.getByRole('button', { name: `Tasks for ${label}` });
+  const ticks = () => screen.getAllByRole('checkbox');
+
+  afterEach(cleanup);
+  beforeEach(() => vi.clearAllMocks());
+
+  it('shows the job its own remaining pieces, and never a booked or finished one', () => {
+    setup();
+    fireEvent.click(taskButton('1714 Fender Strat'));
+    const offered = ticks().map(el => el.getAttribute('aria-label'));
+    // Fretwork and Wiring only: Setup is on this day already, Electronics is
+    // booked to the Wednesday, and Admin is ticked off.
+    expect(offered.some(l => l.includes('Fretwork'))).toBe(true);
+    expect(offered.some(l => l.includes('Wiring'))).toBe(true);
+    expect(offered.some(l => l.includes('Setup'))).toBe(false);
+    expect(offered.some(l => l.includes('Electronics'))).toBe(false);
+    expect(offered.some(l => l.includes('Admin'))).toBe(false);
+    // And nothing from the other job on the day.
+    expect(offered.some(l => l.includes('Luthier'))).toBe(false);
+  });
+
+  it('places every ticked piece on one confirm', async () => {
+    const { addItem, setWeekMark } = setup();
+    fireEvent.click(taskButton('1714 Fender Strat'));
+    ticks().forEach(el => fireEvent.click(el));
+    fireEvent.click(screen.getByRole('button', { name: /Add 2 to this day/ }));
+
+    await waitFor(() => expect(addItem).toHaveBeenCalledTimes(2));
+    const placed = addItem.mock.calls.map(c => c[1]);
+    expect(new Set(placed)).toEqual(new Set(['c2', 'c3']));
+    expect(addItem.mock.calls.every(c => c[0] === '2026-08-10' && c[2] === 'job')).toBe(true);
+    // Placing pieces is not a week write: handlePickJob stops a split before
+    // the Weekly Log, and this control only ever places pieces.
+    expect(setWeekMark).not.toHaveBeenCalled();
+  });
+
+  it('closes one job’s list when another job’s is opened', () => {
+    setup();
+    fireEvent.click(taskButton('1714 Fender Strat'));
+    expect(ticks().map(el => el.getAttribute('aria-label')).some(l => l.includes('Fretwork'))).toBe(true);
+
+    fireEvent.click(taskButton('1715 Gibson SG'));
+    const offered = ticks().map(el => el.getAttribute('aria-label'));
+    expect(offered.some(l => l.includes('Luthier'))).toBe(true);
+    expect(offered.some(l => l.includes('Fretwork'))).toBe(false);
+  });
+
+  it('closes again on a second tap, placing nothing', () => {
+    const { addItem } = setup();
+    fireEvent.click(taskButton('1714 Fender Strat'));
+    fireEvent.click(ticks()[0]);
+    fireEvent.click(taskButton('1714 Fender Strat'));
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(addItem).not.toHaveBeenCalled();
   });
 });
