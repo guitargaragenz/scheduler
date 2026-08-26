@@ -382,3 +382,110 @@ describe('applyPdfFields', () => {
     expect(planning.schedulable).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// A job closed on the week page this week survives the week
+// ---------------------------------------------------------------------------
+//
+// Multitrack drops a job off its printout the moment it is invoiced. Trevor
+// closes that same job on the week page. Without the hold-back, the very next
+// import departs it and the week page loses the row he just closed — the week's
+// own record of what got finished disappears halfway through the week.
+//
+// The mark lives in bench_week_marks under the job id as the single key
+// `close:<that week's Monday>`, beside the seven day keys. These tests pin that
+// format, because the plan builder writes the key out inline rather than
+// importing weekCloseKey() from the week page component.
+describe('buildPdfImportPlan — a job closed this week is held back', () => {
+  const MONDAY = '2026-08-24';
+  const LAST_MONDAY = '2026-08-17';
+  // The printout no longer lists 1700, so 1700 would normally depart.
+  const parsed = [parsedJob('1601')];
+  const jobs = [boardJob('1601'), boardJob('1700')];
+  const knownIds = known('1601', '1700');
+
+  const planWith = (weekMarks, weekMonday = MONDAY) => buildPdfImportPlan({
+    parsed, statedCount: 1, jobs, knownJobIds: knownIds, weekMarks, weekMonday,
+  });
+
+  it('holds back a job carrying this week\'s close mark', () => {
+    const plan = planWith({ '1700': { [`close:${MONDAY}`]: 'closed' } });
+    // Council amendment 5: it leaves BOTH lists. missing[] is what Trevor sees
+    // on the preview and departures[] is what the writer acts on, so a job in
+    // one and not the other would either depart invisibly or be listed as
+    // leaving and then not leave.
+    expect(plan.departures).toEqual([]);
+    expect(plan.missing).toEqual([]);
+    // And nothing else about the plan changes — the hold-back only ever removes
+    // a job from the departure lists.
+    expect(plan.canDepart).toBe(true);
+    expect(plan.existingCount).toBe(1);
+  });
+
+  it('departs a job whose close mark is from a previous week', () => {
+    // This is the whole point of keying on the Monday: the hold-back expires by
+    // itself when the week rolls over. Nothing has to clear the old mark.
+    const plan = planWith({ '1700': { [`close:${LAST_MONDAY}`]: 'closed' } });
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+    expect(plan.missing.map(m => m.id)).toEqual(['1700']);
+  });
+
+  it('does not let a mark under a different job id hold back this one', () => {
+    // 1601 is on the printout and closed this week; 1700 is not marked at all.
+    // A lookup that checked "is there any close mark this week" rather than
+    // "does THIS job have one" would hold back the wrong job.
+    const plan = planWith({ '1601': { [`close:${MONDAY}`]: 'closed' } });
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+    expect(plan.missing.map(m => m.id)).toEqual(['1700']);
+  });
+
+  it('leaves a marked job that is still on the printout completely alone', () => {
+    // 1601 is closed this week AND still listed. It was never departing, so the
+    // hold-back has nothing to do — it must still be a normal update.
+    const plan = planWith({ '1601': { [`close:${MONDAY}`]: 'closed' } });
+    expect(plan.existingCount).toBe(1);
+    expect(plan.updates.map(u => String(u.current.id))).toEqual(['1601']);
+    expect(plan.writes.some(w => w.id === '1601' && w.isNew === false)).toBe(true);
+  });
+
+  it('ignores day marks, which are not close marks', () => {
+    // The seven day keys sit under the same job id. A × meaning "I worked on
+    // this on Wednesday" is not a × meaning "this guitar is finished".
+    const plan = planWith({ '1700': { '2026-08-26': 'x', '2026-08-25': 'x' } });
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+  });
+
+  // Council amendment 4. Deliberately NOT the knownJobIds rule, where a failed
+  // read blocks every departure: a missing marks table must not freeze the
+  // board, it just means nothing is held back.
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['an empty object', {}],
+  ])('departs normally when the marks are %s', (_label, weekMarks) => {
+    const plan = planWith(weekMarks);
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+    expect(plan.missing.map(m => m.id)).toEqual(['1700']);
+  });
+
+  it('departs normally when no Monday was supplied', () => {
+    // No Monday means no close key can be built, so there is nothing to match
+    // against and the import behaves exactly as it did before this build.
+    const plan = planWith({ '1700': { [`close:${MONDAY}`]: 'closed' } }, null);
+    expect(plan.departures.map(d => d.id)).toEqual(['1700']);
+  });
+
+  it('still departs nothing at all when canDepart is false, marks or no marks', () => {
+    // The knownJobIds gate is upstream of the hold-back and stays absolute: a
+    // failed unfiltered read departs nothing, whatever the marks say. Proven
+    // both with a mark and without, so neither path can leak a departure.
+    for (const weekMarks of [null, { '1700': { [`close:${MONDAY}`]: 'closed' } }]) {
+      const plan = buildPdfImportPlan({
+        parsed, statedCount: 1, jobs, knownJobIds: null, weekMarks, weekMonday: MONDAY,
+      });
+      expect(plan.canDepart).toBe(false);
+      expect(plan.departures).toEqual([]);
+      expect(plan.missing).toEqual([]);
+    }
+  });
+});
