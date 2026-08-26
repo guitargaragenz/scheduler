@@ -145,10 +145,11 @@ const MAX_NOTE = 160;
 // Splits are offered individually — a job worked on two benches is two things
 // that can happen on two different days, even though the week shows it as one
 // row.
-export function dayJobOptions(jobs, weekKeys, marks) {
+export function dayJobOptions(jobs, weekKeys, marks, dayItems) {
   const all = jobs || [];
   const byId = new Map(all.map(j => [j.id, j]));
   const rows = weekRows(all, weekKeys, marks || {});
+  const dayMarks = latestDayMarks(dayItems);
   const out = [];
 
   for (const row of rows) {
@@ -172,6 +173,23 @@ export function dayJobOptions(jobs, weekKeys, marks) {
       // that is booked is booked whether or not it is done, and hiding a
       // finished piece there would erase the day's record of the work.
       if (part.scheduled || part.calendarSlot || part.pieceDone) continue;
+      // A piece crossed off on the Daily Log. `pieceDone` alone was not enough:
+      // it is only ever written for a SPLIT (`handleSetMark` guards on
+      // `rowJob?.parentId`), and `partsOf()` offers an unsplit job as its own
+      // single pickable line. So crossing an unsplit job off wrote nothing this
+      // filter could read, and the job came back in the picker forever —
+      // Trevor, 2026-08-26, on the Hofner, then the Aria, then "it's happening
+      // to all Jobs".
+      //
+      // The × is the record, so the × is what this reads. Kept ALONGSIDE
+      // `pieceDone` rather than replacing it: a piece ticked off on the board
+      // (JobCard, PomoDrawer, CloseDayModal) was never crossed here, and must
+      // still drop out.
+      //
+      // Only the cross. `/` (part done) and `>` (deferred) are both live work
+      // and stay on offer. Taking the × off puts the row back with no reload,
+      // because this map is read fresh on every render — that is the undo.
+      if (dayMarks.get(String(part.id)) === 'cross') continue;
       // The job this piece belongs to, used as the dropdown's group heading so
       // the picker reads the way the Daily Log itself now does — pieces under
       // their job, not a flat run of lines that all start with the same number.
@@ -512,7 +530,10 @@ export default function DailyLogPanel({
   }, [weekKeys, dateKey, todayKey]);
 
   const { events, state: apptState } = useDayAppointments(dateKey);
-  const options = useMemo(() => dayJobOptions(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
+  const options = useMemo(
+    () => dayJobOptions(jobs, weekKeys, marks, dayItems),
+    [jobs, weekKeys, marks, dayItems]
+  );
   // Each day-log row is a bench split (a "part"), so its second line is the
   // note Trevor typed under that split ("level crown and polish") — the split's
   // own `sessionNote`. That IS the "split description" he means: it is the field
