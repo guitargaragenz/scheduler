@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob } from './DailyLogPanel.jsx';
+import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob, markIdFor } from './DailyLogPanel.jsx';
 import { weekRowKey, weekCloseKey, weekRows } from './BenchWeekPage.jsx';
 
 // The Daily Log reads Google Calendar for the day's appointments. Nothing here
@@ -74,6 +74,58 @@ describe('dayJobOptions', () => {
     expect(opt.group).toBe('1632 Hofner Verythin');
     expect(opt.short).toBe('Setup');
     expect(opt.label).toContain('1632');
+  });
+
+  // The bug this filter exists for. `pieceDone` is only ever written for a
+  // SPLIT, so crossing an UNSPLIT job off the Daily Log wrote nothing the
+  // picker read, and the job came back in the list forever. Trevor,
+  // 2026-08-26: "it's happening to all Jobs."
+  describe('a row crossed off on the Daily Log', () => {
+    const unsplit = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup' }];
+    const onWeek = { a: { [weekRowKey(WEEK)]: 'row' } };
+    const crossedOn = (day, id = 'a') => ({ [day]: { [markIdFor(id)]: { label: 'cross' } } });
+
+    it('is not offered again, even when it is an unsplit job', () => {
+      expect(dayJobOptions(unsplit, WEEK, onWeek, crossedOn('2026-08-10'))).toEqual([]);
+    });
+
+    it('comes back the moment the cross is taken off', () => {
+      expect(dayJobOptions(unsplit, WEEK, onWeek, {}).map(o => o.id)).toEqual(['a']);
+    });
+
+    // Marks are walked in date order, last one wins: crossed Monday, then
+    // reopened with a `/` on Wednesday, is live work again.
+    it('is offered again if a later day gives it a different mark', () => {
+      const items = {
+        ...crossedOn('2026-08-10'),
+        '2026-08-12': { [markIdFor('a')]: { label: 'slash' } },
+      };
+      expect(dayJobOptions(unsplit, WEEK, onWeek, items).map(o => o.id)).toEqual(['a']);
+    });
+
+    it('still offers a row marked part-done or deferred', () => {
+      for (const mark of ['slash', 'arrow']) {
+        const items = { '2026-08-10': { [markIdFor('a')]: { label: mark } } };
+        expect(dayJobOptions(unsplit, WEEK, onWeek, items).map(o => o.id)).toEqual(['a']);
+      }
+    });
+
+    it('hides a crossed split without hiding its siblings', () => {
+      const jobs = [
+        { id: 'p', job: '1632', mfr: 'Hofner', model: 'Verythin', isSplit: true, calendarSlot: '2026-08-11-9-0' },
+        { id: 'c1', job: '1632', parentId: 'p', bench: 'Setup' },
+        { id: 'c2', job: '1632', parentId: 'p', bench: 'Fretwork' },
+      ];
+      const ids = dayJobOptions(jobs, WEEK, {}, crossedOn('2026-08-10', 'c2')).map(o => o.id);
+      expect(ids).toEqual(['c1']);
+    });
+
+    // The board's tick is a separate signal and still counts on its own — a
+    // piece closed off on the calendar was never crossed here.
+    it('still hides a piece ticked off on the board but never crossed here', () => {
+      const jobs = [{ id: 'a', job: '1714', mfr: 'Fender', bench: 'Setup', pieceDone: true, calendarSlot: '2026-08-11-9-0' }];
+      expect(dayJobOptions(jobs, WEEK, {}, {})).toEqual([]);
+    });
   });
 });
 
