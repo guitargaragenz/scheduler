@@ -14,9 +14,10 @@ longer the way to add that job's pieces.
   by matching the `group` display string. Two jobs can read the same.
 - Tapping it opens a tick list in place: that job's remaining pieces, one per
   line, from the same `dayJobOptions()` set the search box uses.
-- Tick any number, confirm once. Placements run one at a time, each awaited,
-  through the existing `handlePickJob()` — so the Weekly Log dot is written
-  exactly as it is today and two writes never race the same cell.
+- Tick any number, confirm once. Each placement goes through the existing
+  `handlePickJob()`, unchanged. It stops a piece before the Weekly Log write
+  (`if (optJob?.parentId) return`), so placing pieces never touches the week.
+  Only a job's own line does that, and this picker does not place jobs.
 - Only one job's list is open at a time; opening another closes it.
 - Tapping `Task ▾` again closes it without placing anything.
 - The search box stays, unchanged, for reaching a job not already on the day.
