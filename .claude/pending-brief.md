@@ -1,29 +1,39 @@
-# Record — a crossed-off row stops being offered (SHIPPED, not pending)
+# Scope lock — day columns line up at any width
 
-doc_status: closed
+doc_status: live
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
-`dd64990` (PR #49). Do not build from this file.
+Built and tested, awaiting Trevor's "yp" to commit. Display only.
 
-The full record — the diagnosis, the line numbers and the checklist — is in
-`docs/briefs/2026-08-26-a-crossed-row-stays-crossed.md`, `doc_status: closed`.
+Background only — do NOT open this to start work:
+`docs/briefs/2026-08-26-day-columns-line-up.md`.
 
-## What shipped
+## Why this is not cosmetic
 
-`dayJobOptions()` also reads the Daily Log's own marks and drops any part whose
-latest mark is a cross. `latestDayMarks()` already built that map. Kept
-alongside `pieceDone`, not instead of it. 758 tests green.
+Trevor booked job 1730 onto Wednesday believing it was Thursday, because at
+half-screen the day headings had drifted off the columns under them. A misread
+column writes a mark to the wrong day, and nothing about the result looks wrong
+afterwards. It cost a session chasing a phantom bug in the Daily Log.
 
-Same session, also shipped: the `Task ▾` picker on the job line
-(`3126b7c`, PR #47).
+## What changed
 
-## Worth carrying forward
+A heading and the cell under it stay lined up only while they shrink at the same
+rate. Each grid gave one of them a shrink floor the other did not have.
 
-- `pieceDone` is only ever written for a SPLIT. Anything that treats it as "this
-  work is finished" for a job in general is wrong — an unsplit job has no
-  parent, so nothing writes it.
-- The bug predated the `Task ▾` picker by months; the search box had always done
-  it. Putting the same stale list on the job's own line is what made it visible.
-- A day's typed notes are stored on the day, not read from the job card. Editing
-  a job's splits does not rewrite a note already typed under a placed row.
-  Trevor hit this on 1621 and it looked like stale split data.
+- `BenchWeekPage.jsx` (Weekly Log, fixed-width columns) — `flexShrink: 0` on
+  every `cellW`-wide element, so the container scrolls instead of compressing.
+- `CalendarGrid.jsx` (Day view AND Week view — one component) — `minWidth: 0` on
+  every `flex: 1` column and on the day heading, so the floors match.
+
+No logic, no state, no data. `src/components/dayColumnAlignment.test.js` pins
+both rules at source level and was confirmed to fail on the unfixed code.
+764 tests green, build clean.
+
+## Out of scope
+
+No renaming, though the names do collide (Day view / Week view / Weekly Log /
+Daily Log) — raised in the brief, not scoped. No Daily Log changes. Nothing
+written to `jobs[]`, `scheduledSlots`, `calendarSlot` or `useSupabase.js`.
+
+## Protocol
+
+No blast-radius file touched — display only, two components. Council not run.

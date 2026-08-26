@@ -746,11 +746,12 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
           {!isMobile && <div style={{ width: nameW, flexShrink: 0 }} />}
           {(weekDays || []).map((d, i) => (
             <div key={weekKeys[i]} style={{
-              width: cellW, textAlign: 'center', fontSize: 11, fontWeight: 700,
+              width: cellW, flexShrink: 0,
+              textAlign: 'center', fontSize: 11, fontWeight: 700,
               color: '#94a3b8', textTransform: 'uppercase',
             }}>{d.toLocaleDateString('en-NZ', { weekday: 'short' })[0]}</div>
           ))}
-          <div style={{ width: cellW, textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#475569' }}>&gt;</div>
+          <div style={{ width: cellW, flexShrink: 0, textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#475569' }}>&gt;</div>
           <div style={{ flex: 1, minWidth: 0 }} />
         </div>
 
@@ -835,7 +836,8 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                         title={m ? MARKS[m].label : 'blank'}
                         aria-label={`${rowLabel(row)} — ${k}`}
                         style={{
-                          width: cellW, height: 30, cursor: ready ? 'pointer' : 'default',
+                          width: cellW, flexShrink: 0,
+                          height: 30, cursor: ready ? 'pointer' : 'default',
                           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
                           background: '#111c2f',
                           color: m === 'cross' ? '#f87171' : m === 'slash' ? '#34d399' : '#cbd5e1',
@@ -877,7 +879,8 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                       ? `${row.name} is closed — tap to undo`
                       : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''}`}
                     style={{
-                      width: cellW, height: 30, cursor: ready ? 'pointer' : 'default',
+                      width: cellW, flexShrink: 0,
+                      height: 30, cursor: ready ? 'pointer' : 'default',
                       border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
                       background: t.closed ? '#2a0f12' : '#111c2f',
                       color: t.closed ? '#f87171' : '#475569',
