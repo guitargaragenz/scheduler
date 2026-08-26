@@ -434,9 +434,12 @@ function JobLine({
   // The label itself still drives marks and aria, so nothing that reads a row
   // by name is affected.
   display,
-  // A piece's line is its bench name, so it is painted the bench's own colour —
-  // the same one the chips use everywhere else. Nothing else on the line moves.
-  labelColor,
+  // A piece's line is its bench name, so it is drawn the way the job card
+  // draws a bench: the bench's background, its border and its text, all three
+  // together. Bare coloured text washed out on this page's near-black — the
+  // tints are made to sit ON the card's background, not instead of it.
+  // Trevor, 2026-08-26. Every bench gets the same treatment.
+  benchStyle,
 }) {
   return (
     <div style={{
@@ -460,11 +463,16 @@ function JobLine({
         ariaLabel={`Mark for ${row.label}`}
       />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          color: labelColor || undefined,
-        }}>
-          {display || row.label}
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {benchStyle ? (
+            <span style={{
+              display: 'inline-block', padding: '1px 7px', borderRadius: 4,
+              background: benchStyle.bg, border: `1px solid ${benchStyle.border}`,
+              color: benchStyle.text, fontWeight: 600, fontSize: 11.5,
+            }}>
+              {display || row.label}
+            </span>
+          ) : (display || row.label)}
         </div>
         {subNote && (
           <div style={{
@@ -1141,7 +1149,7 @@ export default function DailyLogPanel({
                   row={row}
                   indent
                   display={pieceLabel(row.label, block.label)}
-                  labelColor={benchColors(jobById.get(row.id)?.bench).text}
+                  benchStyle={benchColors(jobById.get(row.id)?.bench)}
                   markValue={markOf.get(row.id)}
                   ready={ready}
                   onPick={(v) => handleSetMark(row, v)}
