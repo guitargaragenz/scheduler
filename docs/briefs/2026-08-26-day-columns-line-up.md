@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Day columns line up at any width
+
+**Shipped 2026-08-26 at `509507e` (PR #53). Closed — this is a record, not a
+task list.**
 
 Reported by Trevor 2026-08-26, as the tail of a false alarm worth keeping.
 
