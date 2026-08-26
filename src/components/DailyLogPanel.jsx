@@ -3,6 +3,7 @@ import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
 import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
 import { topLevelJob } from '../hooks/useJobs.js';
+import { benchColors } from '../data/jobs.js';
 
 // The Daily Log — one day, three things: what is booked in, what has to be
 // done, and which jobs are being worked on.
@@ -131,6 +132,21 @@ export function isLastUncrossedSplit(rowId, jobs, dayItems) {
 // preview (2026-08-20): "I specifically said that the DL should drive WL — when
 // I select action in DL, WL should reflect that change." Two splits of one job
 // marked the same day share one cell, so the last pick wins.
+
+// What a piece's line says under its job's own line.
+//
+// The stored label is "1722 PRS SE Custom — Fretwork", because a piece has to
+// name itself wherever it turns up alone (the picker, the search box, a booked
+// row). Under a group header the guitar has already been named on the line
+// above, so repeating it is noise — Trevor, 2026-08-26: "it's just unnecessary
+// duplication". Only the job's own name is stripped, and only when it is
+// actually the prefix; anything else is left exactly as it is.
+export function pieceLabel(label, jobName) {
+  const full = String(label ?? '');
+  const head = `${String(jobName ?? '')} — `;
+  if (!jobName || !full.startsWith(head)) return full;
+  return full.slice(head.length) || full;
+}
 
 // The longest typed task that still reads on a phone.
 const MAX_TASK_NAME = 80;
@@ -414,16 +430,24 @@ function JobLine({
   // ever gets one — an indented split row is a piece, and a piece has no
   // pieces of its own to offer.
   taskControl,
+  // What to SHOW on the line, when that differs from the row's stored label.
+  // The label itself still drives marks and aria, so nothing that reads a row
+  // by name is affected.
+  display,
+  // A piece's line is its bench name, so it is painted the bench's own colour —
+  // the same one the chips use everywhere else. Nothing else on the line moves.
+  labelColor,
 }) {
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-start',
-      // The indent is what says job or piece, so it decides how the line
-      // reads: white and bold for the guitar, gold for the work on it, same
-      // as the Day view. An unsplit job comes through here rather than as a
-      // group header, and has to read the same as one.
+      // Same scheme as the Day view card: the guitar white and bold, the
+      // work on it gold (that is `subNote` below), and the "1722 PRS SE
+      // Custom — Fretwork" line grey, because it only repeats the job name
+      // and names the bench. An unsplit job comes through here rather than
+      // as a group header, and has to read as a job, not a piece.
       padding: '4px 2px', fontSize: 12.5,
-      color: indent ? '#fcd34d' : '#f8fafc', fontWeight: indent ? 400 : 600,
+      color: indent ? '#94a3b8' : '#f8fafc', fontWeight: indent ? 400 : 600,
       marginLeft: indent ? 20 : 0,
       borderLeft: indent ? '1px solid #1e293b' : 'none',
       paddingLeft: indent ? 8 : 2,
@@ -436,12 +460,16 @@ function JobLine({
         ariaLabel={`Mark for ${row.label}`}
       />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {row.label}
+        <div style={{
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          color: labelColor || undefined,
+        }}>
+          {display || row.label}
         </div>
         {subNote && (
           <div style={{
-            fontSize: 11, color: '#94a3b8', overflow: 'hidden',
+            fontSize: 12, color: '#fcd34d', fontStyle: 'italic',
+            overflow: 'hidden',
             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {subNote}
@@ -1112,6 +1140,8 @@ export default function DailyLogPanel({
                   key={row.id}
                   row={row}
                   indent
+                  display={pieceLabel(row.label, block.label)}
+                  labelColor={benchColors(jobById.get(row.id)?.bench).text}
                   markValue={markOf.get(row.id)}
                   ready={ready}
                   onPick={(v) => handleSetMark(row, v)}
