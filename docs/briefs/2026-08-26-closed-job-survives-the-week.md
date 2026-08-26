@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # A job closed this week must survive the week
+
+**Shipped 2026-08-26 at `5310f8e` (PR #46).** Record of what happened — not a task
+list. The checklist below was run and passed 12/12; do not re-run it as work.
 
 Found 2026-08-26, chasing job 1679: closed on Monday 24/8, then gone from the
 Weekly Log by Wednesday, and showing on the Daily Log as a bare header with no
@@ -83,3 +86,111 @@ is smaller, reversible, and matches what the close mark already means.
 6. A returning job number still clears `departed_at` and `done`, unchanged.
 7. Count refusal and duplicate refusal unchanged.
 8. Full suite green.
+
+---
+
+## Council round — 2026-08-26
+
+Two independent `ggnz-council` reviewers. Both returned **build**, one with
+amendments. Verified against the live code before folding in.
+
+**Reviewer 2 (product call) — build as written.** Holding back the departure is
+the root-cause fix, not a patch: the close mark and `departed_at` record two
+different facts, so respecting one before acting on the other is correct. A
+held-back job costs Trevor nothing — it is already `done` and every working
+screen filters `!j.done` (`JobsPage.jsx:17`, `Sidebar.jsx:69`,
+`JobShelf.jsx:104`, `BenchBoardPage.jsx:30`), so it stays visible only in the
+Weekly Log, which is the point. Absent-from-the-list is the right UX; a
+"held back until Monday" badge would be new UI for a case Trevor caused himself
+by tapping close.
+
+**Reviewer 1 (mechanics) — build with amendments.** The brief undersells the
+plumbing: it reads as a one-file pure-function change, but the marks and the
+Monday are not reachable inside `pdfImportPlan.js`. `useWeekMarks()` is held at
+`App.jsx:313` and `useJobs()` is constructed at `App.jsx:358` without it, so
+`App.jsx` and `useJobs.js` both need editing to thread two values through.
+`useJobs.js` is a named blast-radius file — which is why this is running the
+full protocol.
+
+### Amendments folded into the scope lock
+
+1. **Thread, don't re-read.** Reviewer 2 suggested calling `loadWeekMarks()`
+   inside the import path; reviewer 1 suggested threading `weekMarks.marks`
+   from `App.jsx`. **Ruled: thread it.** The marks are already live in memory
+   with a realtime subscription behind them; a second read at import time is a
+   redundant network call that can fail on its own, and it would stop
+   `buildPdfImportPlan()` being pure. `App.jsx` → `useJobs()` →
+   `buildPdfImportPlan()`.
+2. **Inline the key format.** Do not import `weekCloseKey` from
+   `BenchWeekPage.jsx:85` into the data layer — data importing from a page
+   component is backwards. Inline `` `close:${monday}` `` in
+   `pdfImportPlan.js`.
+3. **Compute the Monday fresh.** `getWeekDays()` (`src/utils/calendar.js:24`)
+   with **no argument**. Never reuse `weekDays` / `schedulerWeekDays`
+   (`App.jsx:334`) — that is the Scheduler calendar's *navigated* week, so it
+   silently yields the wrong Monday whenever Trevor has paged the calendar.
+4. **A marks failure must not freeze the import.** Confirmed at
+   `useWeekMarks.js:50-59`: on a failed read the hook leaves `marks` at `{}` and
+   only drops `ready`, so callers never see `null` anyway. Treat `null`,
+   `undefined` and `{}` identically — no close mark found, depart normally.
+   Do **not** copy the `knownJobIds` pattern where `null` blocks every
+   departure; blocking the whole board on a marks hiccup is a worse regression
+   than the bug being fixed.
+5. **Hold the job out of both lists.** Only `plan.departures` is read in
+   production today (`useJobs.js:545,563`; `PdfImportPreviewModal.jsx:104,117`)
+   — `plan.missing` is read only by tests. Remove the held-back job from
+   `missing` too, so the day something starts rendering `missing` it does not
+   reintroduce this exact bug.
+
+### Checklist items added by the council
+
+9. A close mark stored under a **different job id** does not hold back this job.
+10. A job carrying a close mark that **is** still on the printout is unaffected
+    — it never reaches the departing set at all.
+11. `marks` of `null`, `undefined` and `{}` all behave identically: depart
+    normally.
+12. The Monday is computed from `getWeekDays()` with no argument, not from the
+    Scheduler's navigated week.
+
+---
+
+## Shipped
+
+Merged to main 2026-08-26 as `5310f8e` (PR #46, squashed from `1992a2c`).
+
+**Tests:** 735 -> 745, all passing across 38 files. The ten new tests were checked
+against a deliberately broken build — removing the hold-back line drops the suite
+to 744 passed / 1 failed — so they are not passing vacuously.
+
+**Verification:** independent `ggnz-verifier` pass, 12/12 checklist items and 5/5
+council amendments PASS with file:line evidence, on a self-run suite.
+
+### Decisions the scope lock did not cover
+
+1. **Where the Monday is computed.** The lock required `getWeekDays()` with no
+   argument but not where it is called. It lives in `useJobs.js`, recomputed
+   inside the import handler on every import rather than held in state — a
+   stored value would still hold jobs back against last week's Monday if the app
+   were left open across Sunday midnight.
+2. **What counts as "marked".** Any non-empty value under the `close:` key is
+   treated as closed, rather than requiring the exact string `'closed'`. Verified
+   safe: `handleClose()` (`BenchWeekPage.jsx:619`) writes `CLOSE_MARK` to close
+   and `''` to undo, and no other code path writes under that key.
+3. **No Monday supplied** behaves exactly as before the change — nothing held
+   back.
+
+### Checklist items that could not be met as written
+
+None failed. Items 2 and 3's *visible* effect on the import preview screen were
+reported CAN'T-VERIFY by the verifier (browser needed) and were then deliberately
+NOT click-tested: the Vercel preview points at the live database, and tapping the
+close × also fires the invoice prompt, so a browser test would have finished a
+real job. Merged on the test evidence instead, with Trevor's agreement. The data
+path from the filtered list to the preview modal was verified by code inspection
+(`useJobs.js:545,563`; `PdfImportPreviewModal.jsx:104,117`).
+
+### Noticed in passing, not fixed
+
+The plan object does not report *which* jobs were held back, so nothing on the
+preview screen shows that anything was held. That is what was agreed — but if a
+job seems to be sticking around after invoicing, a current-week close mark is why.

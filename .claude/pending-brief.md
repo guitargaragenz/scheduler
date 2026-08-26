@@ -1,45 +1,37 @@
-# Scope lock — pick a job's task from the job line on the Daily Log
+# Record — a job closed this week survives the week (SHIPPED, not pending)
 
-Status: approved by Trevor 2026-08-26. Council passed, two reviewers.
+doc_status: closed
 
-## Build
+**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
+`5310f8e` (PR #46). Do not build from this file.
 
-On the Daily Log, a job line gets its own task picker, so the search box is no
-longer the way to add that job's pieces.
+The full record — diagnosis, council rulings, the 12-item checklist and its
+results, and the decisions the lock did not cover — is in
+`docs/briefs/2026-08-26-closed-job-survives-the-week.md`, `doc_status: closed`.
 
-- A `Task ▾` control on the job's own line — the group header where a job has
-  splits, never on the indented split rows. Shown only while that job still
-  has pickable pieces.
-- Its pieces are found by top-level job id (`weekCellJobId(o.id, jobs)`), NOT
-  by matching the `group` display string. Two jobs can read the same.
-- Tapping it opens a tick list in place: that job's remaining pieces, one per
-  line, from the same `dayJobOptions()` set the search box uses.
-- Tick any number, confirm once. Each placement goes through the existing
-  `handlePickJob()`, unchanged. It stops a piece before the Weekly Log write
-  (`if (optJob?.parentId) return`), so placing pieces never touches the week.
-  Only a job's own line does that, and this picker does not place jobs.
-- Only one job's list is open at a time; opening another closes it.
-- Tapping `Task ▾` again closes it without placing anything.
-- The search box stays, unchanged, for reaching a job not already on the day.
+## What shipped
 
-## Out of scope
+`buildPdfImportPlan()` no longer departs a job carrying a `close:<this week's
+Monday>` mark. It departs on a later import, once the week has rolled over.
+The week marks and the Monday are threaded `App.jsx` -> `useJobs()` ->
+`buildPdfImportPlan()`, which stays pure. Tests 735 -> 745, all green.
+Verifier: 12/12 checklist items, 5/5 council amendments.
 
-- `dayJobOptions()`, `bookedOnDay()`, `weekRows()`, `matchesSearch()` — what
-  counts as a pickable piece does not change.
-- The Weekly Log, `scheduledSlots`, `calendarSlot`, the `jobs[]` shape.
-- Typed day tasks, notes, the mark boxes, Remove.
-- Auto-placing pieces when a job lands (rejected).
+## Worth carrying forward
 
-## Rules that bind it
+- The council caught that the approved brief described a one-file, pure-function
+  change when the build actually had to touch `useJobs.js` — a blast-radius file.
+  Check what a change reaches before calling it small.
+- The browser test was skipped deliberately: the Vercel preview points at the
+  LIVE database, and tapping the close x fires the invoice prompt, so clicking
+  through would have finished a real job. Merged on test evidence instead, with
+  Trevor's agreement. There is no safe way to click-test anything that writes
+  job state.
+- Still open, out of scope then and now: the import plan does not report WHICH
+  jobs it held back, so nothing on the preview screen shows that anything was
+  held.
 
-- A booked, or ticked-off, piece is never offered. Same filter as now.
-- Placing a piece must not overwrite a mark already in the week cell.
-- No write reaches the Weekly Log through a split.
-- Nothing saves before the day and the week are `ready`.
-- Phone first: the tick list scrolls in its own capped box and must not push
-  the Tasks section off screen.
+## Next build
 
-## Background only — do NOT open this to start the build
-
-Council notes and the three mockups Trevor chose from are in the session
-record. Everything needed to build is above.
+None yet. The next brief replaces this file entirely; this record is safe in git
+history (`git log -- .claude/pending-brief.md`).

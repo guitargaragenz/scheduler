@@ -157,8 +157,26 @@ export function applyPdfFields(job, parsedJob) {
  * Passing `null` (no database configured, or the read failed) is honoured
  * rather than guessed at: the plan comes back with canDepart false and departs
  * nothing. Departing on a failed read would empty the board.
+ *
+ * `weekMarks` and `weekMonday` are the week page's marks and the local
+ * YYYY-MM-DD of the CURRENT week's Monday. They exist for one reason: a job
+ * Trevor closed on the week page this week must stay visible on the board for
+ * the rest of that week. Multitrack drops a job off its printout the moment it
+ * is invoiced, so without this the next import takes the job off the board
+ * mid-week and the week page loses the row Trevor just closed — the week's own
+ * record of what got finished goes with it.
+ *
+ * They are arguments, not a lookup, so this function stays pure and testable:
+ * it never reads the database and never asks what today is. The caller
+ * (useJobs' preparePdfImport) hands in the marks it already has in memory and
+ * the Monday of the real current week.
+ *
+ * This only ever DELAYS a departure. The job still departs on the first import
+ * after the week rolls over, because the close key carries that week's Monday
+ * and next week's key will not match it. Nothing here un-departs anything, and
+ * nothing here departs a job that would not otherwise have departed.
  */
-export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = '', benchKeywords = {}, knownJobIds = null }) {
+export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = '', benchKeywords = {}, knownJobIds = null, weekMarks = null, weekMonday = null }) {
   // Refusal 1 — the count sanity check. The printout ends with Multitrack's
   // own tally ("46 Jobs found"). If we read a different number of rows than
   // the PDF says it printed, we have misread the document, and importing part
@@ -221,14 +239,37 @@ export function buildPdfImportPlan({ parsed, statedCount, jobs = [], filename = 
     }
   }
 
-  // Jobs on the board that this printout no longer lists. Multitrack has
+  // Jobs on the board that this printout no longer lists, minus any held back
+  // by a close mark from this week (see below). Multitrack has
   // finished or invoiced them, so they come off the board — the row stays, with
   // every app-owned field intact, and comes back whole if the number ever
   // reappears. This is the list Trevor sees, by number, before he presses
   // Import: it is the last line of defence against a wrong-population PDF,
   // which the count refusal above cannot catch.
   const inPdf = new Set(parsed.map(p => String(p.ref)));
-  const departingJobs = canDepart ? topLevel.filter(j => !inPdf.has(String(j.id))) : [];
+
+  // Held back: closed on the week page THIS week.
+  //
+  // The close mark lives in bench_week_marks under the job id, beside the seven
+  // day keys, as the single key `close:<that week's Monday>`. The key is built
+  // inline here rather than imported from the week page: this is the data
+  // layer, and it must not depend on a page component (council amendment 2).
+  // The format is the one weekCloseKey() writes, and the tests below pin it.
+  //
+  // Missing marks are simply no marks. `null` (never loaded, or the read
+  // failed), `undefined` and `{}` all mean "nothing is held back" and the
+  // import departs exactly as it did before. That is deliberately NOT the
+  // `knownJobIds` rule above, where a failed read blocks every departure —
+  // there, a bad read would depart the whole workshop, so refusing is the safe
+  // side. Here a bad read at worst departs a job a week earlier than Trevor
+  // would like, and its row keeps everything on it. Blocking every departure
+  // because the marks table hiccupped would be the bigger harm.
+  const closeKey = weekMonday ? `close:${weekMonday}` : null;
+  const closedThisWeek = (id) => Boolean(closeKey && weekMarks && weekMarks[id]?.[closeKey]);
+
+  const departingJobs = canDepart
+    ? topLevel.filter(j => !inPdf.has(String(j.id)) && !closedThisWeek(String(j.id)))
+    : [];
   const missing = departingJobs.map(j => ({ id: String(j.id), label: jobLabel(j) }));
   const departures = departingJobs.map(j => ({
     id: String(j.id),

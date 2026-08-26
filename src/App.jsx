@@ -361,6 +361,10 @@ export default function App() {
     benchKeywords, benchHours, justSavedAt,
     setPomoJob, setHighlightedJobId, setSidebarOpen,
     showToast, addChangelog,
+    // For the PDF import only: a job closed on the week page this week is held
+    // back from departing until the week rolls over. useWeekMarks() already has
+    // these loaded and live, so they are passed down rather than re-read.
+    weekMarks: weekMarks.marks,
     reloadJobs: supabaseOps.loadJobs,
   });
 
