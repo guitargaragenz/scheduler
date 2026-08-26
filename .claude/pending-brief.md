@@ -11,11 +11,10 @@ automatic rows from the Weekly Log's `weekRows()`, which drops finished jobs
 record of what happened.
 
 Stop the Daily Log inheriting that filter. Nothing that was ever on a day leaves
-it. Two shapes for council to pick between — derive the day without `weekRows()`,
-or store automatic rows in `bench_day_marks` — the brief sets both out.
+it. A finished job's line stays on the day, struck through.
 
-No data has been lost: marks, notes and hand-added rows are all still in
-`bench_day_marks`.
+`bookedOnDay()` must find its rows without the `job.done` drop — its own row
+walk, or a flag through `weekRows()` for this caller only. Council picks which.
 
 ## Rules that bind it
 
@@ -27,6 +26,10 @@ No data has been lost: marks, notes and hand-added rows are all still in
 
 ## Out of scope
 
+- Storing the day's automatic rows in `bench_day_marks`. Trevor's call
+  2026-08-26: fix the disappearing, nothing else. The table stays as thin as it
+  is (a mark row is `mark:1714-ST` and an `x` — no record of what the work was).
+  Real gap, still open, not this build.
 - The Weekly Log 1000-row cap (parked).
 - Any change to how or where a job is marked done.
 - Pruning old day marks.

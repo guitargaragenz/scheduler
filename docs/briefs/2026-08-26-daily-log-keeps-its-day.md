@@ -46,19 +46,28 @@ redraw if the row came back.
 
 So this is a display bug with a full record still underneath it.
 
-## The fix, in principle
+## The fix
 
 A day is a record of what happened. Nothing that was ever on a day should leave
 it. Stop the Daily Log inheriting the Weekly Log's done-filter.
 
-Two shapes to weigh at council — this brief does not pick one:
+`bookedOnDay()` must find its rows without being subject to `weekRows()`'s
+`job.done` drop — either its own row walk, or a flag through `weekRows()` that
+keeps done jobs for this caller only. Council picks which; both are the same
+change in effect and neither alters what the Weekly Log draws.
 
-- **A** — give `bookedOnDay()` its own row walk that does not call `weekRows()`,
-  or pass a flag that keeps done jobs. Cheapest; leaves the day still derived,
-  so it stays exposed to the next change in `weekRows()`.
-- **B** — write automatic rows into `bench_day_marks` as they appear, so the day
-  becomes stored rather than derived. Matches the table that already exists and
-  makes the record real, but it writes on read, which needs care.
+A finished job's line stays on the day, struck through, exactly as a job closed
+in the Weekly Log already stays on that week.
+
+### Deliberately NOT part of this build
+
+Trevor's call, 2026-08-26: fix the disappearing, nothing else.
+
+Storing automatic rows in `bench_day_marks` was the other candidate. It would
+make the day a real stored record, which matters because the table today holds
+almost nothing readable — a mark row is `mark:1714-ST` with an `x`, so it says
+that something was ticked but not what the work was. That is a real gap and it
+stays open. It is not this build.
 
 ## Rules that bind this build
 
@@ -74,6 +83,8 @@ Two shapes to weigh at council — this brief does not pick one:
 
 ## Out of scope
 
+- Storing the day's automatic rows (see above) — the record stays as thin as it
+  is today.
 - The Weekly Log's 1000-row cap (parked, `PARKED-2026-08-23-week-marks-row-cap.md`).
 - Any change to how or where a job is marked done.
 - Pruning old day marks.
