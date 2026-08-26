@@ -57,6 +57,17 @@ export function useJobs({
   setSidebarOpen,
   showToast,
   addChangelog,
+  // The week page's marks, exactly as useWeekMarks() holds them in memory
+  // ({ [jobId]: { [dateKey]: mark } }). Passed straight through to
+  // buildPdfImportPlan(), which uses them to hold back a job Trevor closed on
+  // the week page this week — see the doc comment there.
+  //
+  // Threaded down from App.jsx rather than re-read here (council amendment 1).
+  // The hook has already loaded them, keeps them live over the realtime
+  // subscription, and knows the difference between a failed read and an empty
+  // table. A second loadWeekMarks() at import time would be a second read that
+  // could disagree with what the week page is showing.
+  weekMarks = null,
   // useSupabase's loadJobs — a full unfiltered re-read, re-normalized. Called
   // after an import that departed or returned jobs, because neither can be
   // applied to the on-screen board by hand: a departed job has to leave with
@@ -430,9 +441,23 @@ export function useJobs({
         }
       }
 
+      // The CURRENT week's Monday, from getWeekDays() with no argument
+      // (council amendment 3). Deliberately NOT the calendar's navigated week
+      // — App.jsx's weekDays follows whatever week Trevor has paged to, and a
+      // browse back to April must not change which jobs an import departs.
+      //
+      // Computed here, at the moment of the import, not held in state: a tab
+      // left open across Sunday midnight would otherwise still be holding back
+      // jobs against last week's Monday.
+      //
+      // localDateKey, not toISOString() — the latter is UTC and rolls
+      // Monday-local-midnight back to Sunday in NZ, which would build a close
+      // key for the wrong week and hold back nothing.
+      const weekMonday = localDateKey(getWeekDays()[0]);
+
       const plan = isJba
         ? buildJbaImportPlan({ parsed, statedCount, jobs, filename: file.name })
-        : buildPdfImportPlan({ parsed, statedCount, jobs, filename: file.name, benchKeywords, knownJobIds });
+        : buildPdfImportPlan({ parsed, statedCount, jobs, filename: file.name, benchKeywords, knownJobIds, weekMarks, weekMonday });
 
       if (!plan.ok) {
         showToast(`⚠ ${plan.error}`);
