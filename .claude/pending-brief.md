@@ -1,41 +1,35 @@
----
-doc_status: live
----
-# Scope lock — the Daily Log must keep its own day
+# Scope lock — a job closed this week must survive the week
+
+Status: awaiting Trevor's approval.
 
 ## Build
 
-Finishing a job wipes its lines off the Daily Log. The Daily Log gets its
-automatic rows from the Weekly Log's `weekRows()`, which drops finished jobs
-(`BenchWeekPage.jsx:245`) — correct for the week, wrong for a day, which is a
-record of what happened.
+`buildPdfImportPlan()` (`src/data/pdfImportPlan.js`) must not depart a job that
+carries a `close:<thisMonday>` mark in `bench_week_marks`. It departs on a later
+import, once the week has rolled over.
 
-Stop the Daily Log inheriting that filter. Nothing that was ever on a day leaves
-it. A finished job's line stays on the day, struck through.
-
-`bookedOnDay()` must find its rows without the `job.done` drop — its own row
-walk, or a flag through `weekRows()` for this caller only. Council picks which.
-
-## Rules that bind it
-
-- The Weekly Log's behaviour must not change. A finished job still drops off the
-  week. `weekRows()` is shared.
-- Never delete from `bench_day_marks`. No clear-and-reinsert, no wipe.
-- No writes to `jobs`, `scheduled_slots` or `calendarSlot`. Closing a job stays
-  at the invoice prompt.
+The week marks and the current week's Monday come in as arguments. The function
+stays pure.
 
 ## Out of scope
 
-- Storing the day's automatic rows in `bench_day_marks`. Trevor's call
-  2026-08-26: fix the disappearing, nothing else. The table stays as thin as it
-  is (a mark row is `mark:1714-ST` and an `x` — no record of what the work was).
-  Real gap, still open, not this build.
-- The Weekly Log 1000-row cap (parked).
-- Any change to how or where a job is marked done.
-- Pruning old day marks.
+- Changing what `departed_at` means, or un-departing existing rows. 1679 stays
+  departed.
+- `weekRows()`, `bookedOnDay()`, the Daily Log, the Weekly Log.
+- Storing the day's automatic rows in `bench_day_marks` (known gap, separate).
+- The Weekly Log 1000-row read cap (parked).
 
----
+## Rules that bind it
 
-Background only, do not open to start the build:
-`docs/briefs/2026-08-26-daily-log-keeps-its-day.md` carries the diagnosis, the
-two build shapes and the verification checklist.
+- A completed job never comes back — the returning-job path is untouched.
+- Count refusal, duplicate refusal and the `canDepart` gate all stay as they
+  are. A failed `knownJobIds` read still departs nothing.
+- Departures still only ever come from the Multitrack printout.
+- No writes to `jobs`, `scheduled_slots` or `calendarSlot` beyond what the
+  import already does.
+- A held-back job is simply absent from the preview's departing list.
+
+## Background only — do NOT open this to start the build
+
+`docs/briefs/2026-08-26-closed-job-survives-the-week.md` holds the diagnosis and
+the verification checklist. Everything needed to build is above.
