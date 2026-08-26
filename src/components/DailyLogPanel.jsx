@@ -418,7 +418,11 @@ function JobLine({
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-start',
-      padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0',
+      // The indent is what says job or piece, so it decides the colour too:
+      // gold for a job's own line, plain for the work under it. An unsplit job
+      // comes through here rather than as a group header, and has to read the
+      // same as one.
+      padding: '4px 2px', fontSize: 12.5, color: indent ? '#e2e8f0' : '#fcd34d',
       marginLeft: indent ? 20 : 0,
       borderLeft: indent ? '1px solid #1e293b' : 'none',
       paddingLeft: indent ? 8 : 2,
@@ -1080,7 +1084,11 @@ export default function DailyLogPanel({
             <div key={`group:${block.id}`}>
               <div style={{
                 display: 'flex', gap: 8, alignItems: 'center',
-                padding: '4px 2px', fontSize: 12.5, color: '#e2e8f0', fontWeight: 600,
+                // Gold, where the pieces under it stay plain — the guitar and
+                // the work on it read as two different things at a glance.
+                // Trevor, 2026-08-26: "I just want to see contrast between
+                // that and tasks."
+                padding: '4px 2px', fontSize: 12.5, color: '#fcd34d', fontWeight: 600,
               }}>
                 <MarkSelect
                   value={markOf.get(block.id)}
