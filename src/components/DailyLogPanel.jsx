@@ -242,7 +242,11 @@ export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
   if (!dateKey) return [];
   const all = jobs || [];
   const byId = new Map(all.map(j => [j.id, j]));
-  const rows = weekRows(all, weekKeys, marks || {});
+  // `keepDone` — a day is a record of what happened, so a finished job keeps
+  // its lines. Without it weekRows() drops the job and the day's lines go with
+  // it, which is the erasure the comment in pickableOnDay() already warns
+  // against. The Weekly Log itself is untouched: it does not pass this.
+  const rows = weekRows(all, weekKeys, marks || {}, { keepDone: true });
   const out = [];
 
   for (const row of rows) {
