@@ -1,7 +1,9 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 # The Daily Log must keep its own day
+
+**Closed 2026-08-26 — shipped at `e749456` (PR #45).**
 
 Written 2026-08-26, after Trevor reported that finishing a job makes its lines
 disappear off the Daily Log.
