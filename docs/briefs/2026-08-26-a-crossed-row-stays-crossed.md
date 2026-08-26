@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # A row crossed off on the Daily Log must stop being offered
+
+**Shipped 2026-08-26 at `dd64990` (PR #49). 758 tests green.** Browser-tested
+on the preview by Trevor. This is a record, not a task list.
 
 Found 2026-08-26, browser-testing the `Task ▾` picker. Trevor crossed the
 Hofner's level/crown/polish off on Monday 24/8. It was still being offered on
