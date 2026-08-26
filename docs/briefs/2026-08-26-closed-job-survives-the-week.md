@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # A job closed this week must survive the week
+
+**Shipped 2026-08-26 at `5310f8e` (PR #46).** Record of what happened — not a task
+list. The checklist below was run and passed 12/12; do not re-run it as work.
 
 Found 2026-08-26, chasing job 1679: closed on Monday 24/8, then gone from the
 Weekly Log by Wednesday, and showing on the Daily Log as a bare header with no
@@ -148,3 +151,46 @@ full protocol.
     normally.
 12. The Monday is computed from `getWeekDays()` with no argument, not from the
     Scheduler's navigated week.
+
+---
+
+## Shipped
+
+Merged to main 2026-08-26 as `5310f8e` (PR #46, squashed from `1992a2c`).
+
+**Tests:** 735 -> 745, all passing across 38 files. The ten new tests were checked
+against a deliberately broken build — removing the hold-back line drops the suite
+to 744 passed / 1 failed — so they are not passing vacuously.
+
+**Verification:** independent `ggnz-verifier` pass, 12/12 checklist items and 5/5
+council amendments PASS with file:line evidence, on a self-run suite.
+
+### Decisions the scope lock did not cover
+
+1. **Where the Monday is computed.** The lock required `getWeekDays()` with no
+   argument but not where it is called. It lives in `useJobs.js`, recomputed
+   inside the import handler on every import rather than held in state — a
+   stored value would still hold jobs back against last week's Monday if the app
+   were left open across Sunday midnight.
+2. **What counts as "marked".** Any non-empty value under the `close:` key is
+   treated as closed, rather than requiring the exact string `'closed'`. Verified
+   safe: `handleClose()` (`BenchWeekPage.jsx:619`) writes `CLOSE_MARK` to close
+   and `''` to undo, and no other code path writes under that key.
+3. **No Monday supplied** behaves exactly as before the change — nothing held
+   back.
+
+### Checklist items that could not be met as written
+
+None failed. Items 2 and 3's *visible* effect on the import preview screen were
+reported CAN'T-VERIFY by the verifier (browser needed) and were then deliberately
+NOT click-tested: the Vercel preview points at the live database, and tapping the
+close × also fires the invoice prompt, so a browser test would have finished a
+real job. Merged on the test evidence instead, with Trevor's agreement. The data
+path from the filtered list to the preview modal was verified by code inspection
+(`useJobs.js:545,563`; `PdfImportPreviewModal.jsx:104,117`).
+
+### Noticed in passing, not fixed
+
+The plan object does not report *which* jobs were held back, so nothing on the
+preview screen shows that anything was held. That is what was agreed — but if a
+job seems to be sticking around after invoicing, a current-week close mark is why.
