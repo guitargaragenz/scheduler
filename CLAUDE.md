@@ -271,6 +271,33 @@ Trevor pays for that in context, which is what he has least of.
 ### Git discipline
 Always `git add <specific file>`, never `git add -A`. Commit messages explain the why. Never `--no-verify` or `--amend` a pushed commit.
 
+**One git command at a time. Check the result before running the next one.**
+
+Added 2026-08-26, after a chained command force-pushed Trevor's working branch to
+the wrong commit. It read roughly:
+
+```
+git checkout -B <branch> origin/main && git cherry-pick <sha> -q && git push --force-with-lease
+```
+
+The cherry-pick failed instantly (`-q` is not one of its flags). `&&` should have
+stopped there — but the push was on its own line in the same block, so it ran
+anyway and pushed the branch *without* the commit it was supposed to carry. The
+commit was recoverable from the reflog and nothing was lost, but only because it
+was noticed straight away.
+
+- **Never chain a destructive git command.** A force-push, a branch delete, a
+  hard reset or a `checkout -B` goes in its own call, and its output gets read
+  before anything else runs. Chaining these is how a failure halfway through
+  still lands the dangerous half.
+- **`&&` is not a safety net** when the commands are split across lines of one
+  block. Read the output; do not assume an earlier step succeeded.
+- Applies in every permission mode. Auto mode makes it more tempting, because
+  everything goes through the terminal — that is when to be most careful, not
+  least.
+- Recovery, when it does go wrong: `git reflog` still has the commit. Find it,
+  cherry-pick it onto the correct branch, and say plainly what happened.
+
 ---
 
 ## Scheduler Technical Reference
