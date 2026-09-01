@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, blockedReason, benchColors, inferBench, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, inferBench, quotedKeyword, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -271,7 +271,7 @@ describe('inferBench — Wiring is a bench you can land on', () => {
     // earlier in inferBench, these are the jobs that come off their bench.
     expect(inferBench('full setup, new pickups', 'Active', 'GTS', '', 'Nobody')).toBe('Setup');
     expect(inferBench('scratchy pot', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
-    expect(inferBench('output jack replacement', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
+    expect(inferBench('no output at all', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
     // Electronics, not Setup — it owns 'wiring', and there is no 'setup' word
     // here to take priority. Pre-existing behaviour, asserted so that adding
     // the Wiring bench is visibly not what decides it.
@@ -287,6 +287,64 @@ describe('inferBench — Wiring is a bench you can land on', () => {
 
   it('still lets a blocked wiring job be Admin', () => {
     expect(inferBench('rewire the harness', 'On Hold', '', '', 'Nobody')).toBe('Admin');
+  });
+});
+
+describe('inferBench — a quoted keyword beats every unquoted one', () => {
+  const live = (desc, kws) => inferBench(desc, 'Active', 'GTS', '', 'Nobody', kws);
+
+  it('sends "output jack" to Wiring even though Electronics owns output and jack', () => {
+    expect(live('output jack replacement')).toBe('Wiring');
+    expect(live('input jack crackling')).toBe('Wiring');
+  });
+
+  it('leaves the bare words on Electronics', () => {
+    expect(live('no output at all')).toBe('Electronics');
+    expect(live('jack is loose')).toBe('Electronics');
+  });
+
+  it('does nothing at all unless the keyword is quoted', () => {
+    // The safety of the whole rule: no existing keyword is quoted, so nothing
+    // moves bench until Trevor deliberately quotes something.
+    expect(live('scratchy pot')).toBe('Electronics');
+    expect(live('scratchy pot', { Wiring: ['scratchy pot'] })).toBe('Electronics');
+    expect(live('scratchy pot', { Wiring: ['"scratchy pot"'] })).toBe('Wiring');
+  });
+
+  it('accepts the curly quotes a phone keyboard produces', () => {
+    expect(live('scratchy pot', { Wiring: ['“scratchy pot”'] })).toBe('Wiring');
+  });
+
+  it('takes the longest match when two quoted keywords hit', () => {
+    expect(live('output jack socket loose', { Setup: ['"output jack socket"'] })).toBe('Setup');
+  });
+
+  it('does not let a quoted keyword drag unrelated work off its bench', () => {
+    // 'crack' is Luthier's and stays Luthier — quoting a Finishing phrase does
+    // not touch a job that never matched that phrase.
+    expect(live('crack repair', { Finishing: ['"touch up"'] })).toBe('Luthier');
+  });
+
+  it('never lets a bench whose keywords are ALL quoted match everything', () => {
+    // The empty-pattern trap: filtering quoted keywords out of the ordinary
+    // regex must not leave `new RegExp('')`, which matches every string.
+    expect(live('refret', { Wiring: ['"output jack"'] })).toBe('Fretwork');
+    expect(live('zzz unclassifiable', { Wiring: ['"output jack"'] })).toBeNull();
+  });
+});
+
+describe('quotedKeyword', () => {
+  it('reads the text out of a quoted keyword', () => {
+    expect(quotedKeyword('"output jack"')).toBe('output jack');
+    expect(quotedKeyword('  " output jack "  ')).toBe('output jack');
+    expect(quotedKeyword('“output jack”')).toBe('output jack');
+  });
+
+  it('returns null for an ordinary keyword', () => {
+    expect(quotedKeyword('output')).toBeNull();
+    expect(quotedKeyword('')).toBeNull();
+    expect(quotedKeyword('""')).toBeNull();
+    expect(quotedKeyword(undefined)).toBeNull();
   });
 });
 

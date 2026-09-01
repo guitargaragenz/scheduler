@@ -272,6 +272,9 @@ export default function SettingsModal({
             <div>
               <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
                 Keywords in job descriptions that determine bench assignment. Edit to add your own terms. Changes re-classify all jobs immediately.
+                <br /><br />
+                <strong style={{ color: '#94a3b8' }}>Put a keyword in quotes to make it win.</strong>{' '}
+                Benches are checked in a fixed order, so a general word on an earlier bench normally beats a more specific one later — <em>jack</em> on Electronics beats <em>output jack</em> on Wiring. A keyword in quotes, like <code style={{ color: '#94a3b8' }}>"output jack"</code>, jumps that order and wins over every unquoted keyword on every bench. Unquoted keywords keep working exactly as they always have.
               </p>
               {BENCHES.map(bench => (
                 <KeywordEditor

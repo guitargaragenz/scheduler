@@ -18,8 +18,33 @@ export const DEFAULT_BENCH_KEYWORDS = {
   // 'pups', 'wiring', 'switch', 'pot', 'jack' and 'scratchy' all belong to
   // those two and stay there. Every one of those jobs is on a bench today and
   // must not move. These are the words that currently match nothing at all.
-  Wiring:      ['rewire', 'solder', 'resolder', 'harness', 'wiring loom', '\\bloom\\b', 'shielding', 'earth wire', 'ground wire'],
+  // '"output jack"' and '"input jack"' are QUOTED, and that is what makes them
+  // work: Electronics owns the bare words 'output', 'input' and 'jack' and is
+  // tested first, so unquoted they would never win. Quoted, they beat it — so
+  // jack work lands on Wiring while "no output" and "input gain" stay on
+  // Electronics. The case Trevor asked for on 2026-09-01.
+  Wiring:      ['rewire', 'solder', 'resolder', 'harness', 'wiring loom', '\\bloom\\b', 'shielding', 'earth wire', 'ground wire', '"output jack"', '"input jack"'],
 };
+
+// The order the keyword benches are tested in, and the tie-break for the
+// phrase pass in inferBench. Matches the order of the `if` chain below it —
+// keep the two in step, or a tie will break one way and the single-word tests
+// the other.
+const BENCH_MATCH_ORDER = ['Fretwork', 'Luthier', 'Finishing', 'Electronics', 'Setup', 'Wiring'];
+
+// A keyword wrapped in double quotes in Settings — "output jack" — is a
+// priority keyword: it beats every unquoted keyword on every bench. Returns the
+// text inside the quotes, or null when the keyword is an ordinary one.
+//
+// Curly quotes count. A phone keyboard turns " into “ ” without asking, and a
+// keyword that silently stopped being a priority because iOS was helpful is
+// exactly the kind of invisible failure this app keeps getting bitten by.
+// Whitespace inside is trimmed, so `" output jack "` behaves as typed.
+export function quotedKeyword(word) {
+  const m = String(word ?? '').trim().match(/^["“”''](.+)["“”'']$/);
+  const inner = m?.[1]?.trim();
+  return inner ? inner : null;
+}
 
 // `backlog` is the 7th positional parameter and `vb` the 8th. Both are raw
 // booleans, not 'Y'/'N'. They exist so this function can ask blockedPile the
@@ -66,7 +91,50 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   for (const [bench, list] of Object.entries(keywords || {})) {
     if (Array.isArray(list) && list.length > 0) kw[bench] = list;
   }
-  const rx = bench => new RegExp(kw[bench].join('|'));
+  // The ordinary, unquoted keywords for a bench. Quoted ones are deliberately
+  // left out: they are handled by the priority pass below and must never be
+  // joined into this regex, or the literal quote characters would go into the
+  // pattern and match nothing.
+  //
+  // `NEVER` when a bench has no unquoted keywords left. It CANNOT be an empty
+  // pattern: `[].join('|')` is `''`, and `new RegExp('')` matches every string,
+  // which sends every job on the board to that one bench. That is the same
+  // failure the empty-list guard above exists to stop, and quoting a bench's
+  // last keyword is a new way to reach it.
+  const NEVER = /(?!)/;
+  const rx = bench => {
+    const plain = (kw[bench] || []).filter(w => !quotedKeyword(w));
+    return plain.length > 0 ? new RegExp(plain.join('|')) : NEVER;
+  };
+
+  // ── Quoted keywords win ────────────────────────────────────────────────────
+  // A keyword typed in Settings wrapped in double quotes — "output jack" — beats
+  // every unquoted keyword, whatever bench each one is on.
+  //
+  // Why (Trevor, 2026-09-01): the chain below is first-bench-wins, so a specific
+  // phrase could lose to a vaguer single word purely because that word's bench
+  // is tested earlier. He wanted "output jack" on Wiring; Electronics owns the
+  // bare words 'output' and 'jack' and is tested first, so the phrase he typed
+  // did nothing. A typed phrase never winning is a problem with every keyword
+  // box in Settings, not just Wiring's.
+  //
+  // Quotes rather than the app guessing which keywords are "specific", because
+  // Trevor marks them himself as he goes. That makes the rule explicit and makes
+  // it safe by construction: no existing keyword is quoted, so nothing on the
+  // board moves bench until he deliberately quotes something.
+  //
+  // Longest match wins between two quoted hits, so "output jack socket" beats
+  // "output jack". On a tie the earlier bench in BENCH_MATCH_ORDER keeps it.
+  let quoted = null;
+  for (const bench of BENCH_MATCH_ORDER) {
+    for (const word of kw[bench] || []) {
+      const inner = quotedKeyword(word);
+      if (!inner) continue;
+      const m = d.match(new RegExp(inner));
+      if (m && m[0] && (!quoted || m[0].length > quoted.len)) quoted = { bench, len: m[0].length };
+    }
+  }
+  if (quoted) return quoted.bench;
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (rx('Luthier').test(d)) return 'Luthier';

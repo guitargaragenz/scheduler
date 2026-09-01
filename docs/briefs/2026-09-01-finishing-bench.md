@@ -48,6 +48,34 @@ mistake my slip"). Not fixed, and deliberately so.
 
 768 tests green, production build clean.
 
+## Quoted keywords (added same session)
+
+Trevor asked whether he could just type `output jack` as a Wiring keyword. He
+could type it; it did nothing. Electronics owns the bare words `output` and
+`jack` and is tested first, so the phrase never got reached. That is not a
+Wiring problem — the bench order meant a specific phrase could never beat a
+vaguer word on an earlier bench, in any keyword box in Settings.
+
+The first attempt inferred which keywords were "specific" (a phrase beats a word
+it spells out). It worked, but Trevor's counter-proposal is better and is what
+shipped: **a keyword wrapped in double quotes wins outright**, and he marks them
+himself as he goes.
+
+- Explicit beats inferred — he decides, the app doesn't guess.
+- **Safe by construction.** No existing keyword is quoted, so no job can change
+  bench until he deliberately quotes something. The inferred version could not
+  make that promise.
+- Curly quotes count too (`“…”`). A phone keyboard substitutes them without
+  asking, and a keyword that silently stopped being a priority because iOS was
+  being helpful is exactly this app's recurring kind of invisible failure.
+- `"output jack"` and `"input jack"` ship as Wiring defaults, quoted. "no
+  output" and "input gain" stay on Electronics.
+- **The trap this opened:** quoted keywords are filtered out of the bench's
+  ordinary regex, so quoting a bench's *last* keyword leaves `[].join('|')` —
+  `new RegExp('')` — which matches every string and sends the whole board to
+  that bench. Same failure mode as the empty-keyword-list bug already guarded
+  above; a `NEVER` pattern handles it, with a test.
+
 ## Worth carrying forward
 
 - **A bench is five things, not one.** Colour, keywords, an `inferBench` test, a
