@@ -6,8 +6,7 @@ Written 2026-09-01 at end of session. Start here.
 
 ## Where it stands
 
-Two builds are done, verified and pushed to `claude/next-steps-d0zrqr` (PR #58,
-draft, green). Nothing is merged. Nothing is uncommitted.
+Two builds are done, verified and **merged to main** (PR #58).
 
 - `21ed13a` — warning dialog. A keyword change now shows which jobs would move
   (`#1635 — Setup → Wiring`) and waits. Cancel writes nothing at all.
@@ -43,5 +42,5 @@ understood — it may be patching a symptom.
 
 ## Do not
 
-- Merge PR #58 without Trevor clicking through the Vercel preview himself.
-- Rebuild either of the two builds. They are verified and working as specified.
+- Rebuild either of the two builds. They are shipped and working as specified.
+- Patch the 10-job problem before its cause is known.

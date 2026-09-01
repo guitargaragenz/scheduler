@@ -28,10 +28,11 @@ the status line.
 
 ## Live — work that hasn't finished
 
-**Nothing is live right now.** Everything scoped has shipped or is parked below.
+| Brief | Date | State |
+|-------|------|-------|
+| [2026-09-01-handoff-keyword-work.md](2026-09-01-handoff-keyword-work.md) | 2026-09-01 | Keyword warning dialog + "and" box, both shipped. **Open item:** a keyword edit lists 10 jobs that have nothing to do with the edit. Cause NOT established — the handoff says what is known and what is not. Do not guess at it and do not patch around it. |
 
-Start a session with `next`. If it lands here and finds this line, say so — the
-next piece of work is chosen from Parked, with Trevor, not picked off this page.
+Start a session with `next`. Read the live row above before anything else.
 
 ## Noticed, not scoped
 
