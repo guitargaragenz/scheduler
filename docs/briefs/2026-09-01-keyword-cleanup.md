@@ -1,4 +1,8 @@
-doc_status: live
+doc_status: closed
+
+Superseded 2026-09-02 by `2026-09-02-keyword-box-plain-words.md`. Trevor chose
+to fix the box rather than the list. The measurement below is still accurate and
+is why that scope exists; the "likely fix" section is not the plan any more.
 
 # Next: the saved keyword lists need a clean-up before Settings is safe to open
 
