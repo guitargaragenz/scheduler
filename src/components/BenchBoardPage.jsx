@@ -16,7 +16,7 @@ import { blockedPile, blockedReason, benchColors } from '../data/jobs.js';
 // so a Fretwork session buried inside a Luthier job is invisible — that gap is
 // what this closes.
 
-const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Admin'];
+const BENCH_ORDER = ['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Wiring', 'Finishing', 'Admin'];
 
 // Expand jobs into bench cards.
 //

@@ -341,7 +341,7 @@ describe('typing a task that is not a job', () => {
 describe('benchSections', () => {
   it('shows every shop bench even on an empty week, so a blank page can be filled', () => {
     expect(benchSections([]).map(g => g.bench))
-      .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin']);
+      .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Finishing', 'Admin']);
   });
   it('adds an unlisted bench and refuses adding under "No bench set"', () => {
     const groups = benchSections([{ bench: 'Finishing' }, { bench: '' }]);

@@ -1,28 +1,29 @@
-# Record — day columns line up at any width (SHIPPED, not pending)
+# Record — Finishing becomes a bench you can land on (SHIPPED, not pending)
 
 doc_status: closed
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
-`509507e` (PR #53). Do not build from this file.
+**Nothing is pending. This is a record, not a task list.** Shipped 2026-09-01,
+PR #55. Do not build from this file.
 
-The full record — the false alarm it came out of, the cause in both grids, and
-the two things found but not fixed — is in
-`docs/briefs/2026-08-26-day-columns-line-up.md`, `doc_status: closed`.
+The full record — why "Finish Work" became "make Finishing work", what job 1728
+actually was, and the two things found but not fixed — is in
+`docs/briefs/2026-09-01-finishing-bench.md`, `doc_status: closed`. Background
+only; do not open it to start work.
 
 ## What shipped
 
-`flexShrink: 0` on every fixed-width Weekly Log column; `minWidth: 0` on every
-proportional calendar column and its heading. Display only. 764 tests green.
+`Finishing` keywords in `DEFAULT_BENCH_KEYWORDS`; an `inferBench` test for them
+placed after Luthier so refinish jobs keep their split; a Settings → Keywords
+row; a job-drawer option on desktop and mobile; and Finishing added to the
+`BENCH_ORDER` list on all four pages that filter strictly against it. 768 tests
+green.
 
 ## Worth carrying forward
 
-- **Column alignment is a data correctness property, not a cosmetic one.** A
-  heading drifting off its column made Trevor book job 1730 onto Wednesday
-  believing it was Thursday. The app did what he asked; the screen lied about
-  what he was asking, and the result looked fine afterwards. It then presented
-  as a phantom Daily Log bug and cost most of a session.
-- **Day view and Week view are ONE component.** `CalendarGrid.jsx` fed `weekDays`
-  — one day or seven (`App.jsx:952`). A fix to one is a fix to both.
-- A heading and its cell are separate flex items in separate rows. They stay
-  lined up only while they shrink at the same rate — never give one a shrink
-  floor the other lacks.
+- **A bench is six things, not one** — colour, keywords, an `inferBench` test, a
+  Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
+  Finishing had the colour and nothing else, which reads to Trevor as a bug.
+- **`Wiring` had the same bug; fixed in the same PR.** Its keyword test goes
+  LAST, so it cannot pull jobs off Setup or Electronics. Do not move it earlier.
+- **Bench names are duplicated across eight files** in eight different orders.
+  Miss one and jobs on that bench go invisible there, silently.

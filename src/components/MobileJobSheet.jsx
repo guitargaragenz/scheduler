@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
