@@ -2,8 +2,8 @@
 
 doc_status: live
 
-Scoped 2026-09-02. **Awaiting Trevor's approval and three answers.** No commits
-until then.
+Scoped 2026-09-02, and Trevor answered the three open questions the same day —
+see **Answered** below. Still to do: council (step 2), then build.
 
 ## Build
 
@@ -27,13 +27,13 @@ until then.
   input.
 - What a quoted keyword does.
 
-## Answer before building — do not guess
+## Answered by Trevor, 2026-09-02
 
-1. Plurals: auto-match a trailing `s`, or keep both words in the list?
-2. Is `-bridge pickup` the right shape for an exclusion, or a separate "never"
-   box per bench in the UI?
-3. The 16 pending job moves — eight are corrections, eight are damage. Does the
-   preview let him tick which to apply, or all-or-nothing?
+1. **Plurals: no auto-`s` rule.** Both words stay in the list as separate
+   keywords. In his words: *"string and strings are the same all setup bench"*
+   — same meaning, both on Setup, both listed. Do not add plural matching.
+2. **Exclusions: the leading minus is fine.** `-bridge pickup`.
+3. **The preview is all-or-nothing.** No per-job ticking.
 
 ## Rules
 

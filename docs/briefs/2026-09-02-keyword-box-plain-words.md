@@ -63,16 +63,22 @@ change and is not optional.
   not user input, and are not what this fixes. Leave them.
 - Any change to what a quoted keyword does.
 
-## Open questions for Trevor — do not guess
+## Answered by Trevor, 2026-09-02 — build to these
 
-1. **Plurals.** `string` fenced does not match "strings". The current list works
-   around it by holding both. Auto-match a trailing `s`, or keep both words in
-   the list?
-2. **The exclusion syntax.** Is `-bridge pickup` the right shape, or would he
-   rather it lived somewhere visible in the UI (a separate "never" box per
-   bench)?
-3. **The 16 pending moves.** Eight are corrections, eight are damage. Does the
-   preview screen let him tick which to apply, or is it all-or-nothing?
+1. **Plurals: no auto-`s` rule.** `string` fenced does not match "strings", and
+   that is fine — both words stay in the list as separate keywords, which is
+   what the Setup list already does. In his words: *"string and strings are the
+   same all setup bench"*. Do not add plural matching; it would widen every
+   keyword on the board for one convenience.
+2. **Exclusions: the leading minus.** `-bridge pickup`. No separate UI box.
+3. **The preview is all-or-nothing.** One confirm for the whole set of moves,
+   no per-job ticking.
+
+## Still to do before the build
+
+Council (protocol step 2). Not waived — Trevor waived it for PR #55 on the
+grounds that it was UI only; this one changes how matching works and writes
+`bench` on live jobs.
 
 ## Rules that bind this
 
