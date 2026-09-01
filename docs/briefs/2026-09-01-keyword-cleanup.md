@@ -95,6 +95,40 @@ The 12 remaining moves are **not** being applied by hand. Trevor's call: they
 go through Part B's confirm screen, so the first use of that screen is a real
 one.
 
+## Part B — council said nay twice, and the design changed
+
+Both `ggnz-council` reviewers rejected the first shape (a confirm screen gating
+each keyword edit). Trevor chose **decouple** 2026-09-01 after seeing a mockup
+of both. Scope lock: `.claude/pending-brief.md`.
+
+**What council found, all four verified against the code before acting:**
+
+1. **The brief's own premise was wrong.** It said keyword edits fire "on each
+   keystroke". They don't — `AddRow` (`SettingsModal.jsx:43`) holds its own
+   input state and only calls `onAdd` on Enter or the Add button, so the write
+   is one per chip added or removed. The confirm-per-edit design was justified
+   by a trigger that doesn't exist.
+2. **`saveJob` swallows every error** (`supabase.js:48` — logs and returns
+   `null`), and the handler fires the writes unawaited in a `forEach`
+   (`App.jsx:273`). So 3 of 12 writes failing shows all 12 moved on a board the
+   database disagrees with. **This is live today**, independent of Part B, and
+   a screen that announces success on top of it makes it worse.
+3. **The re-infer computes and commits in the same pass** (`App.jsx:265-270`).
+   There is no existing step that produces "what would move" without moving it,
+   so a naive build would move the jobs and un-move them on cancel — a window
+   where memory and database disagree.
+4. **Apply must use the list already shown**, not recompute on click; a device
+   syncing between preview and press could otherwise apply a different move
+   than the one approved.
+
+**Why decouple won.** The confirm-on-edit shape left editing a word and
+reshuffling the board as one act with a speed bump in front, and cleaning up
+four words meant four interruptions. Decoupling makes them two acts and leaves
+exactly one place in the app that moves jobs between benches.
+
+Mockup of both shapes, shown to Trevor on mobile: `decouple-mockup.html` in
+this folder.
+
 ## Answers from Trevor, 2026-09-01
 
 1. **Apply all of them** — but see above; the list he approved as "all 16" is
