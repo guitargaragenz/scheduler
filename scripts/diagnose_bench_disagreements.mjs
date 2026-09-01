@@ -4,24 +4,29 @@
 //
 // The question it answers, from the 2026-09-01 keyword handoff: when Trevor
 // edits ANY keyword box in Settings, the confirmation dialog lists ~10 jobs
-// that have nothing to do with what he typed. The dialog is not wrong. Saving
-// keywords re-runs bench matching over every job (App.jsx, applyBenchKeywords-
-// Change), so the list is dominated by jobs whose STORED bench already
-// disagrees with what the keywords produce — a disagreement that was sitting
-// there before the edit and has nothing to do with it.
+// that have nothing to do with what he typed. The dialog is not lying. Saving
+// keywords re-runs bench matching over every job (App.jsx,
+// applyBenchKeywordsChange), so the list is dominated by jobs whose STORED
+// bench already disagrees with what the keywords produce — a disagreement that
+// was sitting there before the edit.
 //
-// What was never established is WHY those jobs disagree. This prints exactly
-// that, off the live data:
+// Every one of the ten Trevor read off the board on 2026-09-01 was Admin in one
+// direction or the other, and Admin is not a keyword bench: inferBench() hands
+// it out when blockedPile() says the job is blocked. So the ten are a
+// blocked-state disagreement, not a keyword one.
 //
-//   - runs the app's own preview (previewBenchChanges) with the SAVED keyword
-//     list, unchanged. No edit at all. Every job it returns is a pre-existing
-//     disagreement, i.e. one of the jobs that turns up in the dialog no matter
-//     what Trevor types.
-//   - for each one, prints stored bench -> what the keywords say, and then the
-//     actual keywords on the target bench that match the job's text.
+// Three of them (1727, 1448, 1604) sit ON Admin and the app wants to move them
+// OFF it — meaning blockedPile() does not think they are blocked. Trevor says
+// they are on hold or in transit, and that the Multitrack printout spells those
+// exactly 'On Hold' and 'In Transit', which is exactly what blockedPile()
+// matches on. So the stored string is not what it appears to be.
 //
-// It uses the app's own inferBench/previewBenchChanges rather than a second
-// copy of the rules, so it cannot disagree with what the dialog shows.
+// That is what this prints, and why it prints the status inside <angle
+// brackets> with its character codes: a double space, a non-breaking space or a
+// trailing space is invisible on screen — the browser collapses it — while
+// `status === 'On Hold'` sees a completely different string. An invisible
+// mismatch is exactly the shape of failure this app keeps getting bitten by, so
+// the fix must not be guessed at from a rendered page.
 //
 // Needs .env with the Supabase keys, so it runs on Micky, not in a web session.
 //
@@ -32,7 +37,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
-import { DEFAULT_BENCH_KEYWORDS, quotedKeyword, andKeywordWords } from '../src/data/jobs.js';
+import { blockedPile } from '../src/data/jobs.js';
 import { previewBenchChanges } from '../src/data/benchKeywordPreview.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -56,9 +61,9 @@ if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
 
 const sb = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
-// The saved keyword list, exactly as the app reads it. Copied inline rather
-// than imported from useAppSettings.js, which is a React hook file — this is
-// the whole of sanitizeBenchKeywords() and it is six lines.
+// The saved keyword list, exactly as the app reads it. The sanitize step is
+// copied inline rather than imported from useAppSettings.js, which is a React
+// hook file — this is the whole of sanitizeBenchKeywords() and it is six lines.
 const { data: settingRows, error: settingErr } = await sb
   .from('app_settings').select('key, value').eq('key', 'benchKeywords');
 if (settingErr) throw settingErr;
@@ -95,54 +100,48 @@ const jobs = rows
     vb: r.vb === 'Y' || r.vb === true,
   }));
 
-// No edit. The saved list, run against itself.
+// A string with nothing hidden in it. Every character that is not a plain
+// printable one is named, so a double space, a non-breaking space or a trailing
+// space cannot slip past the way it does on a rendered page.
+function reveal(s) {
+  const shown = String(s).replace(/[^\x20-\x7E]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  const odd = [];
+  if (/ {2,}/.test(s)) odd.push('DOUBLE SPACE');
+  if (s !== s.trim()) odd.push('LEADING/TRAILING SPACE');
+  if (/[^\x20-\x7E]/.test(s)) odd.push('NON-ASCII CHARACTER');
+  return `<${shown}>${odd.length ? '   ← ' + odd.join(', ') : ''}`;
+}
+
+// No edit at all — the saved keyword list, run against itself. Everything this
+// returns was already disagreeing before Trevor typed anything.
 const moves = previewBenchChanges(jobs, saved);
 const byId = new Map(jobs.map(j => [j.id, j]));
 
-// Which of a bench's keywords actually hit this job's text, so the cause is
-// named rather than guessed at. Same text inferBench builds.
-function matchingKeywords(job, bench) {
-  if (!bench) return [];
-  const list = (saved[bench]?.length ? saved[bench] : DEFAULT_BENCH_KEYWORDS[bench]) || [];
-  const text = (job.desc + ' ' + job.model).toLowerCase();
-  const hits = [];
-  for (const word of list) {
-    const inner = quotedKeyword(word);
-    const pattern = inner ?? word;
-    let rx;
-    try { rx = new RegExp(pattern); } catch { hits.push(`${word}  (INVALID PATTERN)`); continue; }
-    const m = text.match(rx);
-    if (!m) continue;
-    const pair = andKeywordWords(word);
-    const label = pair ? `${pair[0]} + ${pair[1]}` : word;
-    hits.push(`${label}${inner ? ' [quoted]' : ''} → matched "${m[0]}"`);
-  }
-  return hits;
-}
-
-const benches = Object.keys({ ...DEFAULT_BENCH_KEYWORDS, ...saved });
-console.log('Saved keyword lists in app_settings:');
-for (const b of benches) {
-  const isSaved = Boolean(saved[b]?.length);
-  console.log(`  ${b.padEnd(12)} ${isSaved ? 'saved  ' : 'DEFAULT'}  ${JSON.stringify(saved[b] ?? DEFAULT_BENCH_KEYWORDS[b])}`);
-}
-
-console.log(`\n${jobs.length} live job(s) read. ${moves.length} already disagree with the saved keywords,`);
-console.log('before any edit. These are the jobs that show up in the dialog whatever Trevor types.\n');
+console.log(`${jobs.length} live job(s) read.`);
+console.log(`${moves.length} already disagree with the SAVED keywords, before any edit.`);
+console.log('These are the jobs that appear in the dialog whatever Trevor types.\n');
 
 for (const mv of moves) {
   const j = byId.get(mv.id);
+  const pile = blockedPile({ status: j.status, action: j.action, backlog: j.backlog, vb: j.vb });
   console.log(`#${mv.job}  ${mv.from || '(none)'} → ${mv.to || '(none)'}`);
-  console.log(`    status: ${j.status || '—'} / ${j.action || '—'}${j.backlog ? ' / BL' : ''}${j.vb ? ' / VB' : ''}`);
-  console.log(`    desc:   ${j.desc}`);
-  if (mv.to === 'Admin') {
-    console.log('    cause:  blocked (blockedPile) — no keyword involved.');
-  } else {
-    const hits = matchingKeywords(j, mv.to);
-    console.log(`    matched on ${mv.to}: ${hits.length ? '' : '(none — check bench order)'}`);
-    hits.forEach(h => console.log(`      - ${h}`));
-  }
+  console.log(`    status stored as: ${reveal(j.status)}`);
+  console.log(`    action stored as: ${reveal(j.action)}`);
+  console.log(`    BL: ${j.backlog ? 'Y' : 'n'}   VB: ${j.vb ? 'Y' : 'n'}`);
+  console.log(`    app thinks it is: ${pile ? `BLOCKED (${pile})` : 'workable'}`);
+  console.log(`    desc: ${j.desc}`);
   console.log('');
 }
 
-console.log('Nothing was written.');
+// Every distinct status string in the whole database, so a variant that is
+// nearly-but-not-quite one of the three blockedPile() matches on is visible
+// even if it is not currently causing a disagreement.
+const counts = new Map();
+for (const j of jobs) counts.set(j.status, (counts.get(j.status) || 0) + 1);
+console.log('Every status string in the database, exactly as stored:');
+for (const [s, n] of [...counts].sort((a, b) => b[1] - a[1])) {
+  const known = ['On Hold', 'In Transit', 'Waiting'].includes(s);
+  console.log(`  ${String(n).padStart(4)}x  ${reveal(s)}${known ? '   [matches blockedPile]' : ''}`);
+}
+
+console.log('\nNothing was written.');
