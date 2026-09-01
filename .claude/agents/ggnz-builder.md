@@ -16,6 +16,14 @@ write to code that holds live job data. Earn it: be careful, not fast.
    **No brief entry, no commit.** If there is none, stop and report that.
 2. Confirm you are on a staging branch, not `main`. If not, stop and report.
 3. Read `CLAUDE.md` and `SCHEDULER-ARCHITECTURE.md`.
+4. **Check the brief's facts against the code before you build on them.** Line numbers move,
+   status strings change, functions get renamed. A brief is a snapshot of the day it was
+   written, and briefs E, F and G each lost a build round to a fact that was true then and
+   wrong by the time it was read.
+
+   If a claim turns out to be wrong, **stop and report it — do not quietly build around it**.
+   A wrong fact in the brief usually means the build is aimed slightly wrong, and that is
+   Trevor's call to make, not yours to paper over.
 
 ## Scope
 

@@ -62,7 +62,14 @@ Give each one a different emphasis so you get two reviews rather than the same r
 one on the mechanics (does the build hold together, what will bite), one on the product call
 (is this the right thing to build at all).
 
-Tell both to verify the brief's claims against the live code rather than trusting them.
+Both are required to hand back a claims table before their verdict — every fact in the brief
+marked confirmed, wrong, or can't-verify-from-code. That requirement lives in the agent file,
+so you do not need to repeat it, but you do need to read the table rather than skipping to the
+verdict.
+
+**A "not yet" verdict stops the build.** If either reviewer marks a load-bearing claim wrong or
+unverifiable, the answer goes back to Trevor before step 3 — the fact gets settled first, and
+the brief gets corrected. Do not proceed on the grounds that the fix looks right anyway.
 
 When they report: fold their rulings into the brief text itself, and add a short section at
 the end recording what changed and why. **Do not leave the corrections only in chat** — the

@@ -9,9 +9,19 @@ the open questions below have to be answered by him first.
 
 Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
 and writes the result to the database (`App.jsx:265`). The saved keyword list
-has drifted, so the first keystroke in that tab moves **16 live jobs** — three
-of them amp jobs landing on the Luthier bench, because the saved Luthier list
-contains bare `broken` with no word boundary.
+has drifted, so the first committed edit in that tab moves **16 live jobs** —
+three of them amp jobs landing on the Luthier bench, because the saved Luthier
+list contains bare `broken` with no word boundary.
+
+Corrected 2026-09-01: this said "the first keystroke". It is not typing —
+`SettingsModal.jsx` only fires the change on adding a whole keyword, removing a
+chip, or "reset to defaults". Same blast radius, higher bar to set it off.
+
+**Unverified from code:** the bare `broken` in the saved Luthier list, and the
+16-job count. Both live in the Supabase settings row and the live board, not the
+repo — the code defaults at `src/data/jobs.js:3` are already tightened to
+`broken neck` / `broken headstock` / `broken brace`. Re-check against the live
+board before building.
 
 **Trevor is deliberately staying out of Settings → Keywords until this is
 fixed.** That is the live constraint.
