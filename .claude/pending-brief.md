@@ -1,29 +1,36 @@
-# Record — Finishing becomes a bench you can land on (SHIPPED, not pending)
+# Pending — the saved keyword lists need a clean-up
 
-doc_status: closed
+doc_status: live
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-09-01,
-PR #55. Do not build from this file.
+Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
+the open questions below have to be answered by him first.
 
-The full record — why "Finish Work" became "make Finishing work", what job 1728
-actually was, and the two things found but not fixed — is in
-`docs/briefs/2026-09-01-finishing-bench.md`, `doc_status: closed`. Background
-only; do not open it to start work.
+## The problem
 
-## What shipped
+Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
+and writes the result to the database (`App.jsx:265`). The saved keyword list
+has drifted, so the first keystroke in that tab moves **16 live jobs** — three
+of them amp jobs landing on the Luthier bench, because the saved Luthier list
+contains bare `broken` with no word boundary.
 
-`Finishing` keywords in `DEFAULT_BENCH_KEYWORDS`; an `inferBench` test for them
-placed after Luthier so refinish jobs keep their split; a Settings → Keywords
-row; a job-drawer option on desktop and mobile; and Finishing added to the
-`BENCH_ORDER` list on all four pages that filter strictly against it. 768 tests
-green.
+**Trevor is deliberately staying out of Settings → Keywords until this is
+fixed.** That is the live constraint.
 
-## Worth carrying forward
+## Not caused by PR #55
 
-- **A bench is six things, not one** — colour, keywords, an `inferBench` test, a
-  Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
-  Finishing had the colour and nothing else, which reads to Trevor as a bug.
-- **`Wiring` had the same bug; fixed in the same PR.** Its keyword test goes
-  LAST, so it cannot pull jobs off Setup or Electronics. Do not move it earlier.
-- **Bench names are duplicated across eight files** in eight different orders.
-  Miss one and jobs on that bench go invisible there, silently.
+Verified against the live board before merge: none of the 121 jobs changes
+bench because of that PR. The drift predates it. Quoting does not fix it
+either — quotes make a keyword win, they do not stop a vague word matching.
+
+## Before building, ask Trevor
+
+1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
+2. Does the keyword fix need to happen WITHOUT firing the re-infer over
+   everything, or is one big correction acceptable?
+3. `finish` in his Luthier list is load-bearing for the refinish split — check
+   before touching.
+
+## Background, do NOT open to start work
+
+Full measurement, the job-by-job table and the likely fix are in
+`docs/briefs/2026-09-01-keyword-cleanup.md`.
