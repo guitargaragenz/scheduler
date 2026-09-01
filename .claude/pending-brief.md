@@ -1,46 +1,28 @@
-# Pending — Finishing becomes a real bench
+# Record — Finishing becomes a bench you can land on (SHIPPED, not pending)
 
-doc_status: live
+doc_status: closed
 
-Approved by Trevor 2026-09-01 ("just leave it as finishing and add keywords to
-action bench"). Background only, do NOT open to start this build:
-`docs/briefs/README.md`.
+**Nothing is pending. This is a record, not a task list.** Shipped 2026-09-01,
+PR #55. Do not build from this file.
 
-## The problem
+The full record — why "Finish Work" became "make Finishing work", what job 1728
+actually was, and the two things found but not fixed — is in
+`docs/briefs/2026-09-01-finishing-bench.md`, `doc_status: closed`. Background
+only; do not open it to start work.
 
-`Finishing` exists as a bench colour and as an auto-split card, but it is not a
-bench you can steer. It has no entry in `DEFAULT_BENCH_KEYWORDS`, no row in
-Settings → Keywords, and `inferBench` never tests for it. A job that is purely
-finish work (lacquer, buff, touch up) has no way to land on it.
+## What shipped
 
-## Build
+`Finishing` keywords in `DEFAULT_BENCH_KEYWORDS`; an `inferBench` test for them
+placed after Luthier so refinish jobs keep their split; a Settings → Keywords
+row; a job-drawer option on desktop and mobile; and Finishing added to the
+`BENCH_ORDER` list on all four pages that filter strictly against it. 768 tests
+green.
 
-1. `src/data/jobs.js` — add a `Finishing` list to `DEFAULT_BENCH_KEYWORDS`.
-2. `src/data/jobs.js` — `inferBench` tests Finishing **after Luthier, before
-   Setup**. Order is load-bearing: `refinish` / `\bfinish\b` stay Luthier
-   keywords so a Luthier job still splits into Luthier + Finishing cards
-   (`createSubtasks`, jobs.js:264). Only a job with no Luthier keyword falls
-   through to Finishing.
-3. `src/components/SettingsModal.jsx` — add `'Finishing'` to `BENCHES` so the
-   keyword list is editable.
-4. `src/components/JobDrawer.jsx` and `MobileJobSheet.jsx` — add `'Finishing'`
-   to `ALL_BENCHES` so it is pickable by hand. Never first in the array
-   (the NEEDS_BENCH sentinel rule, JobDrawer.jsx:8).
-5. Tests for the new inference path, both directions: a finish-only job lands
-   on Finishing; a `refinish` Luthier job still splits and does NOT change.
+## Worth carrying forward
 
-## Out of scope
-
-- Renaming Finishing to "Finish Work". Trevor's call: keep the name.
-- Job 1728 / the Weekly Log Remove button being hidden on booked rows. Trevor
-  stood this down 2026-09-01 as a one-off.
-- The `Wiring` keyword box in Settings, which nothing reads. Same shape of bug,
-  separate job — note it, don't fix it here.
-
-## Rules that bind this build
-
-- `git add <file>`, never `-A`. No `--no-verify`.
-- An empty keyword list must keep falling back to defaults (jobs.js:49) — do
-  not weaken that guard.
-- Blocked work stays Admin. `blockedPile` runs before any keyword test and must
-  stay first.
+- **A bench is six things, not one** — colour, keywords, an `inferBench` test, a
+  Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
+  Finishing had the colour and nothing else, which reads to Trevor as a bug.
+- **`Wiring` still has this bug.** Its Settings keyword box is read by nothing.
+- **Bench names are duplicated across eight files** in eight different orders.
+  Miss one and jobs on that bench go invisible there, silently.

@@ -3,6 +3,13 @@ export const DEFAULT_BENCH_KEYWORDS = {
   Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
   Electronics: ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', '\\bkeys?\\b', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring', 'scratchy'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
+  // Finish-only work. Deliberately does NOT contain 'refinish' or a bare
+  // 'finish' — those stay Luthier keywords so a Luthier job still splits into
+  // a Luthier card plus a Finishing card (createSubtasks below). This list is
+  // for the job that is nothing but finish work, which had no way to land on
+  // this bench before: it had a colour and a split card, but no keywords, no
+  // Settings row and no test in inferBench.
+  Finishing:   ['lacquer', 'nitro', 'respray', 'clear coat', 'french polish', 'buff', 'polish out', 'touch up', 'touch-up', 'sand back', 'finish repair'],
 };
 
 // `backlog` is the 7th positional parameter and `vb` the 8th. Both are raw
@@ -54,6 +61,12 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (rx('Luthier').test(d)) return 'Luthier';
+  // After Luthier, and the order is load-bearing. A job that says "refinish"
+  // matches Luthier first and keeps its Luthier + Finishing split; only a job
+  // with no Luthier work in it at all falls through to here. Testing Finishing
+  // first would pull every refinish job off the Luthier bench and lose the
+  // split, which is a change to jobs already on the board — not the intent.
+  if (rx('Finishing').test(d)) return 'Finishing';
   // "setup", "stp", or "restring" take priority over Electronics keywords like "pot" —
   // the Setup split logic in createSubtasks will then separate the wiring component out
   if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return 'Setup';

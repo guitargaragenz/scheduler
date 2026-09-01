@@ -1,0 +1,65 @@
+doc_status: closed
+
+# Finishing becomes a bench you can land on
+
+Shipped 2026-09-01. PR: guitargaragenz/scheduler#55.
+
+## Where it started
+
+Trevor asked for "a bench named Finish Work", and separately said job 1728 was
+stuck on Setup and should be Luthier. Both turned out to be different things
+than they looked.
+
+**Finish Work.** A bench called `Finishing` already existed — it had a colour
+in `BENCH_COLORS` and it appeared as an auto-split card when a Luthier job's
+description mentioned `refinish` / `finish` (`createSubtasks`, jobs.js). What it
+did not have was any way to steer it: no entry in `DEFAULT_BENCH_KEYWORDS`, no
+row in Settings → Keywords, no test in `inferBench`, and no place in the job
+drawer's bench picker. So a job that was purely finish work could not land on
+it, and Trevor had no way to see it as a bench. His ruling: keep the name
+Finishing, don't rename it — "it's already in the app it just needs to appear
+basically a UI change no need for council". Council step waived by him.
+
+**Job 1728.** Not a bench problem. The Weekly Log hides its Remove button on any
+row booked on a day this week (`BenchWeekPage.jsx`, ~line 894) — the comment
+there explains why: removing clears marks, but the booking puts the row straight
+back, so a button that visibly does nothing was judged worse than no button.
+Trevor stood this down as a one-off ("never mind it's a one off really. My
+mistake my slip"). Not fixed, and deliberately so.
+
+## What shipped
+
+- `Finishing` keyword list in `DEFAULT_BENCH_KEYWORDS` — lacquer, nitro,
+  respray, clear coat, french polish, buff, polish out, touch up, sand back,
+  finish repair.
+- `inferBench` tests Finishing **after Luthier, before Setup**. Order is
+  load-bearing: `refinish` and bare `finish` stay Luthier keywords, so a Luthier
+  job keeps its Luthier + Finishing split and nothing already on the board
+  moves. Only a job with no Luthier work falls through to Finishing.
+- Settings → Keywords now lists Finishing, with its amber accent.
+- `JobDrawer` and `MobileJobSheet` can pick it by hand. Added late in the array,
+  never first — the `NEEDS_BENCH` sentinel rule (a `<select>` with an unmatched
+  value shows its first option, which silently mis-filed jobs as Luthier in
+  August).
+- Added to the hard-coded `BENCH_ORDER` in `JobsPage`, `BenchWeekPage`,
+  `BenchBoardPage` and `WeeklySummaryModal`. This is the "it just needs to
+  appear" half: those four filter strictly against that list, so a job on
+  Finishing would have been invisible on each of them. `JobShelf` already had it.
+
+768 tests green, production build clean.
+
+## Worth carrying forward
+
+- **A bench is five things, not one.** Colour, keywords, an `inferBench` test, a
+  Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
+  Finishing had one of them and looked like a bench from the outside. Half a
+  bench presents to Trevor as a bug, not as a missing feature.
+- **`Wiring` has the same bug, unfixed.** It has a keyword box in Settings that
+  nothing reads — `inferBench` never tests it. Typing Wiring keywords there does
+  nothing today. Flagged, not fixed; it was out of scope here.
+- **Bench lists are duplicated across seven files.** `BENCH_ORDER` /
+  `ALL_BENCHES` / `BENCHES` are declared separately in `JobsPage`,
+  `BenchWeekPage`, `BenchBoardPage`, `WeeklySummaryModal`, `JobShelf`,
+  `JobDrawer`, `MobileJobSheet` and `SettingsModal`, each in its own order.
+  Adding a bench means touching all of them, and missing one hides jobs
+  silently. A single exported source of bench names would be the real fix.

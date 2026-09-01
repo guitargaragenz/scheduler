@@ -1,12 +1,13 @@
 import { useState } from 'react';
 
-const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup', 'Wiring'];
+const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup', 'Wiring', 'Finishing'];
 
 const BENCH_ACCENT = {
   Fretwork:    '#a78bfa',
   Luthier:     '#34d399',
   Electronics: '#60a5fa',
   Setup:       '#fbbf24',
+  Finishing:   '#d97706',
 };
 
 // The chip itself, lifted out of KeywordEditor unchanged so the Suppliers list

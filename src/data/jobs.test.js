@@ -236,6 +236,29 @@ describe('inferBench — blocked work gets Admin', () => {
   });
 });
 
+describe('inferBench — Finishing is a bench you can land on', () => {
+  it('sends finish-only work to Finishing', () => {
+    expect(inferBench('lacquer touch up on the back', 'Active', 'GTS', '', 'Nobody')).toBe('Finishing');
+    expect(inferBench('buff and polish out swirls', 'Active', 'GTS', '', 'Nobody')).toBe('Finishing');
+    expect(inferBench('nitro respray', 'Active', 'GTS', '', 'Nobody')).toBe('Finishing');
+  });
+
+  it('does NOT take a refinish job off the Luthier bench', () => {
+    // The split (Luthier card + Finishing card) depends on the job staying on
+    // Luthier. Testing Finishing before Luthier would break every one of these.
+    expect(inferBench('refinish top', 'Active', 'GTS', '', 'Nobody')).toBe('Luthier');
+    expect(inferBench('crack repair and lacquer touch up', 'Active', 'GTS', '', 'Nobody')).toBe('Luthier');
+  });
+
+  it('still lets a blocked finish job be Admin', () => {
+    expect(inferBench('nitro respray', 'On Hold', '', '', 'Nobody')).toBe('Admin');
+  });
+
+  it('falls back to the default list when Settings holds an empty one', () => {
+    expect(inferBench('nitro respray', 'Active', 'GTS', '', 'Nobody', { Finishing: [] })).toBe('Finishing');
+  });
+});
+
 describe('inferBench with broken keyword settings', () => {
   const setupJob = ['full setup and restring', 'Booked In', '', '', 'Fender'];
 
