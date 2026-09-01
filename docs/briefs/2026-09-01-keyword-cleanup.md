@@ -61,7 +61,50 @@ Replace bare `broken` in the saved Luthier list with the specific phrases
 shipped defaults already read this way). Then look at `top`, `crack`, `reset`
 and `split` for the same unbounded-word problem.
 
-**Open questions for Trevor, do not guess:**
+## Part A — DONE 2026-09-01. The saved keywords are corrected.
+
+Written straight to `app_settings.benchKeywords` over the REST API, no Settings
+edit, so no job moved. Verified live afterwards: **22 pending moves became 12,
+and all 12 are correct.**
+
+The old value, for the record — note the bare, unbounded words:
+
+```
+Luthier: bridge, crack, brace, reset, top, lower bout, inlay, binding,
+         restoration, split, lifting, lifted,
+         "broken neck|broken headstock|broken brace", upper bout, broken
+```
+
+The new value is `DEFAULT_BENCH_KEYWORDS` plus Trevor's own additions
+(`upper bout`, `restoration`, `binding`, `inlay`, `lifting`, `lifted`), with
+`refinish` and bare `finish` deliberately left out — he removed those himself
+this session.
+
+**Two findings the original brief did not have:**
+
+1. **The count was 22, not 16.** Trevor's `finish` removal changed the picture
+   before any of this was built. The 16 was measured earlier the same day. A
+   number in a brief is a measurement, not a fact.
+2. **The saved lists were missing words too, not just carrying bad ones.**
+   `\bstring\b`, `input`, `output` and `\bkeys?\b` are in the shipped defaults
+   and were absent from the saved lists, which is why five jobs (1684, 1688,
+   1609, 1719, 1690) would have been left with no bench at all. Fixing only the
+   over-matching words would have stranded them. Drift goes both ways.
+
+The 12 remaining moves are **not** being applied by hand. Trevor's call: they
+go through Part B's confirm screen, so the first use of that screen is a real
+one.
+
+## Answers from Trevor, 2026-09-01
+
+1. **Apply all of them** — but see above; the list he approved as "all 16" is
+   now 12 after Part A, and the seven wrong Luthier moves are gone rather than
+   applied. He was shown the corrected list before Part A was written.
+2. **`finish` is gone** — he removed it himself. Do not re-add it, and do not
+   re-add `refinish` with the defaults.
+3. **Discussed, and it is Part B** — see `.claude/pending-brief.md`.
+
+**The original open questions, kept as the record:**
 1. The 16 moves are not all bad — eight are corrections. Does he want all 16
    applied once the keywords are right, or only some?
 2. `finish` is in his Luthier list. That is what keeps a refinish job on

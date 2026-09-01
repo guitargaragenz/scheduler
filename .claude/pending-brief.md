@@ -1,36 +1,43 @@
-# Pending — the saved keyword lists need a clean-up
+# Pending — keyword edits must ask before they move jobs
 
 doc_status: live
 
-Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
-the open questions below have to be answered by him first.
+Scoped and approved by Trevor 2026-09-01 ("c", then "let B's confirm screen
+apply them"). Part A (correcting the saved keywords) is already done.
 
-## The problem
+## Build it
 
-Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
-and writes the result to the database (`App.jsx:265`). The saved keyword list
-has drifted, so the first keystroke in that tab moves **16 live jobs** — three
-of them amp jobs landing on the Luthier bench, because the saved Luthier list
-contains bare `broken` with no word boundary.
+Editing a Settings keyword box must no longer move jobs by itself. Today
+`handleBenchKeywordsChange` (`App.jsx:249`) re-infers every job and writes the
+result on each keystroke, with nothing shown first. Instead:
 
-**Trevor is deliberately staying out of Settings → Keywords until this is
-fixed.** That is the live constraint.
+- A confirm step listing every job that would change bench — number, from, to,
+  description. Today that list is **12 jobs**, all correct.
+- Trevor applies or cancels. Cancel writes nothing to `jobs[]`.
+- The keyword list saves either way — correcting a word must never be blocked
+  by declining the moves.
+- Applying writes bench exactly as the handler does now: same
+  `pickMasterFields` / `saveJob` path, same split-child, split-parent and
+  subtask skips.
 
-## Not caused by PR #55
+The 12 pending moves are applied through this screen, deliberately. Nothing
+applies them before it ships.
 
-Verified against the live board before merge: none of the 121 jobs changes
-bench because of that PR. The drift predates it. Quoting does not fix it
-either — quotes make a keyword win, they do not stop a vague word matching.
+## Out of scope
 
-## Before building, ask Trevor
+- Changing `inferBench` or `DEFAULT_BENCH_KEYWORDS`.
+- Touching the saved `benchKeywords` again — Part A settled that.
+- Per-job bench overrides, an undo, or a moves history.
+- The `Wiring` Settings box being read by nothing (real, separate).
 
-1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
-2. Does the keyword fix need to happen WITHOUT firing the re-infer over
-   everything, or is one big correction acceptable?
-3. `finish` in his Luthier list is load-bearing for the refinish split — check
-   before touching.
+## Rules that bind this
 
-## Background, do NOT open to start work
+- **Blast-radius** — writes `bench` on live jobs. Full protocol: council
+  (step 2) before any build, then `ggnz-builder`, then `ggnz-verifier`.
+- Cancel means zero writes to `jobs[]`. A verifier item, not a nicety.
+- No browser test that applies moves — the Vercel preview talks to the LIVE
+  database.
+- Git discipline per CLAUDE.md.
 
-Full measurement, the job-by-job table and the likely fix are in
-`docs/briefs/2026-09-01-keyword-cleanup.md`.
+Background, do **not** open to start the build:
+[docs/briefs/2026-09-01-keyword-cleanup.md](../docs/briefs/2026-09-01-keyword-cleanup.md)
