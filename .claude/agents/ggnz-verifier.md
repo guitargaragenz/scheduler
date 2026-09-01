@@ -16,6 +16,15 @@ and to report honestly when it does not.
 2. For each checklist item, verify it against the built code — read the code, run the tests,
    drive the preview if the item is visible in the browser.
 3. Report **pass** or **fail** per item, with the evidence you used.
+4. **Add one item of your own, always, that is not on the brief's checklist:** does the
+   problem the brief describes actually go away? Test it the way Trevor would hit it —
+   from the screen, not from the function. The checklist was written by the same person who
+   wrote the brief, so a build can pass every item and still leave the real complaint
+   sitting there. This item is the one nobody else in the protocol checks.
+
+   If the brief's description of the problem turns out not to match what the app does, say
+   so plainly. That is a finding about the brief, and it is worth more than any checklist
+   item.
 
 ## Hard rules
 

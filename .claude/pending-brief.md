@@ -1,36 +1,20 @@
-# Pending — the saved keyword lists need a clean-up
+# Pending — keyword work is built and waiting on a browser test
 
 doc_status: live
 
-Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
-the open questions below have to be answered by him first.
+**Read `docs/briefs/2026-09-01-handoff-keyword-work.md` first.** It is the live
+state, not background.
 
-## The problem
+Short version, 2026-09-01:
 
-Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
-and writes the result to the database (`App.jsx:265`). The saved keyword list
-has drifted, so the first keystroke in that tab moves **16 live jobs** — three
-of them amp jobs landing on the Luthier bench, because the saved Luthier list
-contains bare `broken` with no word boundary.
+- Two builds are done, verified and merged to main (PR #58). Do not rebuild.
+  - warning dialog: a keyword change lists which jobs would move and waits;
+    cancel writes nothing.
+  - "and" box: two word inputs joined by "and", saved as a chip `install + pickup`.
+- **Unresolved:** his live test showed the dialog listing 10 jobs that have
+  nothing to do with the edit he made. The cause is NOT established. Do not
+  guess at it and do not patch around it — the handoff says what is known and
+  what is not.
 
-**Trevor is deliberately staying out of Settings → Keywords until this is
-fixed.** That is the live constraint.
-
-## Not caused by PR #55
-
-Verified against the live board before merge: none of the 121 jobs changes
-bench because of that PR. The drift predates it. Quoting does not fix it
-either — quotes make a keyword win, they do not stop a vague word matching.
-
-## Before building, ask Trevor
-
-1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
-2. Does the keyword fix need to happen WITHOUT firing the re-infer over
-   everything, or is one big correction acceptable?
-3. `finish` in his Luthier list is load-bearing for the refinish split — check
-   before touching.
-
-## Background, do NOT open to start work
-
-Full measurement, the job-by-job table and the likely fix are in
-`docs/briefs/2026-09-01-keyword-cleanup.md`.
+This supersedes the earlier "the saved keyword lists need a clean-up" scope
+lock, which described work that is no longer what is being built.
