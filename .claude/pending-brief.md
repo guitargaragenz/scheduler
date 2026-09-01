@@ -1,46 +1,50 @@
-# Pending — the saved keyword lists need a clean-up
+# Pending — warn before a keyword edit moves jobs
 
 doc_status: live
 
-Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
-the open questions below have to be answered by him first.
+Rewritten 2026-09-01, superseding the "clean up the saved keyword lists" scope.
 
 ## The problem
 
-Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
-and writes the result to the database (`App.jsx:265`). The saved keyword list
-has drifted, so the first committed edit in that tab moves **16 live jobs** —
-three of them amp jobs landing on the Luthier bench, because the saved Luthier
-list contains bare `broken` with no word boundary.
+Changing anything in Settings → Keywords immediately re-runs bench matching over
+every live job and saves the ones that changed (`App.jsx:265`). Nothing shows
+Trevor what will move before it moves. He is deliberately staying out of that tab
+because of it. **That is the live constraint, and it is what this build lifts.**
 
-Corrected 2026-09-01: this said "the first keystroke". It is not typing —
-`SettingsModal.jsx` only fires the change on adding a whole keyword, removing a
-chip, or "reset to defaults". Same blast radius, higher bar to set it off.
+Fires on: adding a whole keyword, removing a chip, or "reset to defaults"
+(`SettingsModal.jsx`). Not on typing.
 
-**Unverified from code:** the bare `broken` in the saved Luthier list, and the
-16-job count. Both live in the Supabase settings row and the live board, not the
-repo — the code defaults at `src/data/jobs.js:3` are already tightened to
-`broken neck` / `broken headstock` / `broken brace`. Re-check against the live
-board before building.
+## Build this
 
-**Trevor is deliberately staying out of Settings → Keywords until this is
-fixed.** That is the live constraint.
+A confirmation step between the edit and the save. It must:
 
-## Not caused by PR #55
+1. Compute the new benches without writing anything.
+2. Show which jobs would move, each as `job number — from bench → to bench`.
+3. Offer go ahead / cancel. Cancel leaves both the jobs and the keyword list
+   exactly as they were.
+4. Say plainly when nothing would move, and not block that case.
 
-Verified against the live board before merge: none of the 121 jobs changes
-bench because of that PR. The drift predates it. Quoting does not fix it
-either — quotes make a keyword win, they do not stop a vague word matching.
+## Not in scope
 
-## Before building, ask Trevor
+- Editing the saved keyword lists themselves. That is Trevor's to do by hand
+  once this ships, and it is the first real test of it.
+- The freeze behaviour: editing a bench that is still on defaults copies the
+  whole default list into storage, so that bench never receives a later default
+  again. Real, and the reason `broken` is still in the saved Luthier list — the
+  defaults were tightened after the copy was taken (`src/data/jobs.js:395`).
+  Noted, not fixed here.
+- Any change to `inferBench` itself, or to how keywords are matched.
 
-1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
-2. Does the keyword fix need to happen WITHOUT firing the re-infer over
-   everything, or is one big correction acceptable?
-3. `finish` in his Luthier list is load-bearing for the refinish split — check
-   before touching.
+## Rules that bind this
+
+- `jobs[]` is blast-radius. Full protocol, no shortcuts.
+- The preview must not write. If it writes and then asks, it has failed.
+- Bench writes go to the jobsMaster record, which is Sheet-owned. Check a later
+  CSV import does not silently undo an accepted change, and report what you find.
+- Plain English in the dialog. Job numbers and bench names, no code terms.
 
 ## Background, do NOT open to start work
 
-Full measurement, the job-by-job table and the likely fix are in
-`docs/briefs/2026-09-01-keyword-cleanup.md`.
+`docs/briefs/2026-09-01-keyword-cleanup.md` — the original measurement and the
+job-by-job table. Its 16-job count and its `broken` claim are unverified from
+code; both live in Supabase. Background only.
