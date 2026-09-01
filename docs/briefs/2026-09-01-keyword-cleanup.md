@@ -61,7 +61,84 @@ Replace bare `broken` in the saved Luthier list with the specific phrases
 shipped defaults already read this way). Then look at `top`, `crack`, `reset`
 and `split` for the same unbounded-word problem.
 
-**Open questions for Trevor, do not guess:**
+## Part A — DONE 2026-09-01. The saved keywords are corrected.
+
+Written straight to `app_settings.benchKeywords` over the REST API, no Settings
+edit, so no job moved. Verified live afterwards: **22 pending moves became 12,
+and all 12 are correct.**
+
+The old value, for the record — note the bare, unbounded words:
+
+```
+Luthier: bridge, crack, brace, reset, top, lower bout, inlay, binding,
+         restoration, split, lifting, lifted,
+         "broken neck|broken headstock|broken brace", upper bout, broken
+```
+
+The new value is `DEFAULT_BENCH_KEYWORDS` plus Trevor's own additions
+(`upper bout`, `restoration`, `binding`, `inlay`, `lifting`, `lifted`), with
+`refinish` and bare `finish` deliberately left out — he removed those himself
+this session.
+
+**Two findings the original brief did not have:**
+
+1. **The count was 22, not 16.** Trevor's `finish` removal changed the picture
+   before any of this was built. The 16 was measured earlier the same day. A
+   number in a brief is a measurement, not a fact.
+2. **The saved lists were missing words too, not just carrying bad ones.**
+   `\bstring\b`, `input`, `output` and `\bkeys?\b` are in the shipped defaults
+   and were absent from the saved lists, which is why five jobs (1684, 1688,
+   1609, 1719, 1690) would have been left with no bench at all. Fixing only the
+   over-matching words would have stranded them. Drift goes both ways.
+
+The 12 remaining moves are **not** being applied by hand. Trevor's call: they
+go through Part B's confirm screen, so the first use of that screen is a real
+one.
+
+## Part B — council said nay twice, and the design changed
+
+Both `ggnz-council` reviewers rejected the first shape (a confirm screen gating
+each keyword edit). Trevor chose **decouple** 2026-09-01 after seeing a mockup
+of both. Scope lock: `.claude/pending-brief.md`.
+
+**What council found, all four verified against the code before acting:**
+
+1. **The brief's own premise was wrong.** It said keyword edits fire "on each
+   keystroke". They don't — `AddRow` (`SettingsModal.jsx:43`) holds its own
+   input state and only calls `onAdd` on Enter or the Add button, so the write
+   is one per chip added or removed. The confirm-per-edit design was justified
+   by a trigger that doesn't exist.
+2. **`saveJob` swallows every error** (`supabase.js:48` — logs and returns
+   `null`), and the handler fires the writes unawaited in a `forEach`
+   (`App.jsx:273`). So 3 of 12 writes failing shows all 12 moved on a board the
+   database disagrees with. **This is live today**, independent of Part B, and
+   a screen that announces success on top of it makes it worse.
+3. **The re-infer computes and commits in the same pass** (`App.jsx:265-270`).
+   There is no existing step that produces "what would move" without moving it,
+   so a naive build would move the jobs and un-move them on cancel — a window
+   where memory and database disagree.
+4. **Apply must use the list already shown**, not recompute on click; a device
+   syncing between preview and press could otherwise apply a different move
+   than the one approved.
+
+**Why decouple won.** The confirm-on-edit shape left editing a word and
+reshuffling the board as one act with a speed bump in front, and cleaning up
+four words meant four interruptions. Decoupling makes them two acts and leaves
+exactly one place in the app that moves jobs between benches.
+
+Mockup of both shapes, shown to Trevor on mobile: `decouple-mockup.html` in
+this folder.
+
+## Answers from Trevor, 2026-09-01
+
+1. **Apply all of them** — but see above; the list he approved as "all 16" is
+   now 12 after Part A, and the seven wrong Luthier moves are gone rather than
+   applied. He was shown the corrected list before Part A was written.
+2. **`finish` is gone** — he removed it himself. Do not re-add it, and do not
+   re-add `refinish` with the defaults.
+3. **Discussed, and it is Part B** — see `.claude/pending-brief.md`.
+
+**The original open questions, kept as the record:**
 1. The 16 moves are not all bad — eight are corrections. Does he want all 16
    applied once the keywords are right, or only some?
 2. `finish` is in his Luthier list. That is what keeps a refinish job on

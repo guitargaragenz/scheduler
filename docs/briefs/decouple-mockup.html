@@ -1,0 +1,301 @@
+<title>Keywords vs Benches</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #eef0ee;
+    --surface: #ffffff;
+    --sunken: #e3e6e3;
+    --ink: #161a18;
+    --ink-soft: #545c57;
+    --ink-faint: #838b86;
+    --line: #d2d7d3;
+    --brass: #9a6f16;
+    --brass-soft: #f4ead3;
+    --danger: #a8352a;
+    --danger-soft: #f8e5e2;
+    --safe: #2b6349;
+    --safe-soft: #dfeee7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #141816;
+      --surface: #1d2320;
+      --sunken: #262d29;
+      --ink: #e8ece9;
+      --ink-soft: #a3aca7;
+      --ink-faint: #78827c;
+      --line: #333b36;
+      --brass: #d9ac4e;
+      --brass-soft: #35291180;
+      --danger: #e08376;
+      --danger-soft: #3a201c80;
+      --safe: #7fc3a3;
+      --safe-soft: #1c332880;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #141816;
+    --surface: #1d2320;
+    --sunken: #262d29;
+    --ink: #e8ece9;
+    --ink-soft: #a3aca7;
+    --ink-faint: #78827c;
+    --line: #333b36;
+    --brass: #d9ac4e;
+    --brass-soft: #35291180;
+    --danger: #e08376;
+    --danger-soft: #3a201c80;
+    --safe: #7fc3a3;
+    --safe-soft: #1c332880;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 28px 18px 64px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 34px; }
+
+  header { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--brass); font-weight: 600;
+  }
+  h1 {
+    font-family: Newsreader, Georgia, serif;
+    font-weight: 600; font-size: 30px; line-height: 1.15;
+    margin: 0; text-wrap: balance; letter-spacing: -.01em;
+  }
+  .standfirst { margin: 0; color: var(--ink-soft); max-width: 60ch; }
+
+  .flow {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .flow-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .flow-head h2 {
+    font-family: Newsreader, Georgia, serif;
+    font-size: 20px; font-weight: 600; margin: 0;
+  }
+  .tag {
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    font-weight: 600; padding: 3px 8px; border-radius: 3px;
+  }
+  .tag.now { background: var(--danger-soft); color: var(--danger); }
+  .tag.new { background: var(--safe-soft); color: var(--safe); }
+  .flow-body { padding: 16px; display: flex; flex-direction: column; gap: 0; }
+
+  /* a step in the sequence */
+  .step { display: flex; flex-direction: column; gap: 8px; }
+  .step-label {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600;
+  }
+  .arrow {
+    align-self: center; color: var(--ink-faint);
+    font-size: 18px; line-height: 1; padding: 10px 0;
+  }
+  .arrow.bad { color: var(--danger); }
+
+  /* fake phone screens */
+  .screen {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--sunken); padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .screen-title { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 3px; padding: 3px 7px;
+  }
+  .chip.gone { color: var(--danger); text-decoration: line-through; border-style: dashed; }
+  .chip.add { color: var(--safe); border-color: var(--safe); }
+
+  .btn {
+    display: inline-block; align-self: flex-start;
+    font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 5px; border: 1px solid var(--brass);
+    background: var(--brass-soft); color: var(--brass);
+  }
+  .btn.plain { border-color: var(--line); background: var(--surface); color: var(--ink-soft); }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .moves { display: flex; flex-direction: column; gap: 4px; }
+  .move {
+    display: grid; grid-template-columns: 46px 1fr; gap: 8px; align-items: baseline;
+    font-size: 13px; padding: 5px 0; border-bottom: 1px dashed var(--line);
+  }
+  .move:last-child { border-bottom: 0; }
+  .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-soft);
+  }
+  .to { color: var(--ink); }
+  .from { color: var(--ink-faint); }
+  .more { font-size: 12px; color: var(--ink-faint); padding-top: 4px; }
+
+  .verdict {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 14px; padding: 12px 16px;
+    border-top: 1px solid var(--line);
+    background: var(--sunken);
+    color: var(--ink-soft);
+  }
+  .verdict b { color: var(--ink); font-weight: 600; }
+  .mark { font-size: 15px; line-height: 1.4; }
+  .mark.bad { color: var(--danger); }
+  .mark.good { color: var(--safe); }
+
+  .note {
+    font-size: 14px; color: var(--ink-soft);
+    border-left: 2px solid var(--brass); padding: 2px 0 2px 14px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Settings → Keywords</div>
+    <h1>Two ways to stop the board moving behind your back</h1>
+    <p class="standfirst">Same problem, two shapes. The difference is whether editing a word and moving jobs stay the same act.</p>
+  </header>
+
+  <section class="flow">
+    <div class="flow-head">
+      <h2>Keep</h2>
+      <span class="tag now">Confirm on edit</span>
+    </div>
+    <div class="flow-body">
+
+      <div class="step">
+        <div class="step-label">You remove a word</div>
+        <div class="screen">
+          <div class="screen-title">Luthier keywords</div>
+          <div class="chips">
+            <span class="chip">broken neck</span>
+            <span class="chip">brace</span>
+            <span class="chip gone">top</span>
+            <span class="chip">inlay</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow bad">↓ every single time</div>
+
+      <div class="step">
+        <div class="step-label">A screen interrupts</div>
+        <div class="screen">
+          <div class="screen-title">12 jobs would move</div>
+          <div class="moves">
+            <div class="move"><span class="num">1676</span><span><span class="from">Electronics →</span> <span class="to">Admin</span></span></div>
+            <div class="move"><span class="num">1448</span><span><span class="from">Admin →</span> <span class="to">Luthier</span></span></div>
+          </div>
+          <div class="more">…and 10 more</div>
+          <div class="btnrow">
+            <span class="btn">Apply</span>
+            <span class="btn plain">Cancel</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow bad">↓ then again for the next word</div>
+
+      <div class="step">
+        <div class="step-label">And again</div>
+        <div class="screen">
+          <div class="screen-title">11 jobs would move</div>
+          <div class="btnrow">
+            <span class="btn">Apply</span>
+            <span class="btn plain">Cancel</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="verdict">
+      <span class="mark bad">✕</span>
+      <span>Tidying up four words means <b>four interruptions</b>. Editing a word and reshuffling the board are still one act — just with a speed bump in front.</span>
+    </div>
+  </section>
+
+  <section class="flow">
+    <div class="flow-head">
+      <h2>Decouple</h2>
+      <span class="tag new">Recommended</span>
+    </div>
+    <div class="flow-body">
+
+      <div class="step">
+        <div class="step-label">You edit as much as you like</div>
+        <div class="screen">
+          <div class="screen-title">Luthier keywords</div>
+          <div class="chips">
+            <span class="chip">broken neck</span>
+            <span class="chip">brace</span>
+            <span class="chip gone">top</span>
+            <span class="chip add">upper bout</span>
+          </div>
+          <div class="screen-title" style="padding-top:4px">Electronics keywords</div>
+          <div class="chips">
+            <span class="chip">preamp</span>
+            <span class="chip add">input</span>
+            <span class="chip gone">desk</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">↓ nothing has moved</div>
+
+      <div class="step">
+        <div class="step-label">When you're ready, you press it</div>
+        <div class="screen">
+          <div class="screen-title">Benches</div>
+          <span class="btn">Re-match benches</span>
+          <div class="more">12 jobs are on a different bench to what the keywords say.</div>
+        </div>
+      </div>
+
+      <div class="arrow">↓ once</div>
+
+      <div class="step">
+        <div class="step-label">You see the list, then decide</div>
+        <div class="screen">
+          <div class="screen-title">12 jobs would move</div>
+          <div class="moves">
+            <div class="move"><span class="num">1676</span><span><span class="from">Electronics →</span> <span class="to">Admin</span></span></div>
+            <div class="move"><span class="num">1729</span><span><span class="from">Setup →</span> <span class="to">Admin</span></span></div>
+            <div class="move"><span class="num">1604</span><span><span class="from">Admin →</span> <span class="to">Electronics</span></span></div>
+            <div class="move"><span class="num">1448</span><span><span class="from">Admin →</span> <span class="to">Luthier</span></span></div>
+            <div class="move"><span class="num">1727</span><span><span class="from">Admin →</span> <span class="to">Setup</span></span></div>
+          </div>
+          <div class="more">…and 7 more</div>
+          <div class="btnrow">
+            <span class="btn">Move them</span>
+            <span class="btn plain">Leave them</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="verdict">
+      <span class="mark good">✓</span>
+      <span>Fixing a word and moving jobs become <b>two separate things</b>. One button moves jobs, so there's one place to get right — and it always shows you the list first.</span>
+    </div>
+  </section>
+
+  <p class="note">Either way, your 12 pending moves get applied the first time you use the confirm screen. Nothing moves before then.</p>
+
+</div>
