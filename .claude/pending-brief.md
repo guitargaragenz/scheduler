@@ -1,4 +1,4 @@
-# Pending — keyword work is built and waiting on a browser test
+# Pending — keyword work shipped, one open item
 
 doc_status: live
 
