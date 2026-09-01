@@ -23,6 +23,7 @@ green.
 - **A bench is six things, not one** — colour, keywords, an `inferBench` test, a
   Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
   Finishing had the colour and nothing else, which reads to Trevor as a bug.
-- **`Wiring` still has this bug.** Its Settings keyword box is read by nothing.
+- **`Wiring` had the same bug; fixed in the same PR.** Its keyword test goes
+  LAST, so it cannot pull jobs off Setup or Electronics. Do not move it earlier.
 - **Bench names are duplicated across eight files** in eight different orders.
   Miss one and jobs on that bench go invisible there, silently.

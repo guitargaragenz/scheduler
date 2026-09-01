@@ -54,9 +54,19 @@ mistake my slip"). Not fixed, and deliberately so.
   Settings row, a drawer option, and a place in every page's `BENCH_ORDER`.
   Finishing had one of them and looked like a bench from the outside. Half a
   bench presents to Trevor as a bug, not as a missing feature.
-- **`Wiring` has the same bug, unfixed.** It has a keyword box in Settings that
-  nothing reads — `inferBench` never tests it. Typing Wiring keywords there does
-  nothing today. Flagged, not fixed; it was out of scope here.
+- **`Wiring` had the same bug — fixed in the same PR.** Trevor approved it on
+  sight ("yp to wiring bench"). Its Settings keyword box was read by nothing.
+  It now has a keyword list and an `inferBench` test placed **last of the five
+  keyword benches**, and that placement is the whole safety of it: Setup and
+  Electronics already own `pickup`, `pups`, `wiring`, `switch`, `pot`, `jack`
+  and `scratchy`, and every job carrying one of those is on a bench today.
+  Testing Wiring any earlier pulls them off it. The keyword list deliberately
+  repeats none of those words — `rewire`, `solder`, `harness`, `loom`,
+  `shielding`, `earth wire`, `ground wire` matched nothing at all before.
+  One job type does move: a `rewire` job from a Setup-list manufacturer
+  (Fender and friends) now reads Wiring instead of falling through to the maker
+  fallback. That is how every other bench already behaves — what the work says
+  beats who made the guitar — so it is the fix, not a side effect.
 - **Bench lists are duplicated across seven files.** `BENCH_ORDER` /
   `ALL_BENCHES` / `BENCHES` are declared separately in `JobsPage`,
   `BenchWeekPage`, `BenchBoardPage`, `WeeklySummaryModal`, `JobShelf`,

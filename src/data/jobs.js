@@ -10,6 +10,15 @@ export const DEFAULT_BENCH_KEYWORDS = {
   // this bench before: it had a colour and a split card, but no keywords, no
   // Settings row and no test in inferBench.
   Finishing:   ['lacquer', 'nitro', 'respray', 'clear coat', 'french polish', 'buff', 'polish out', 'touch up', 'touch-up', 'sand back', 'finish repair'],
+  // Wiring-only work. Same bug Finishing had: this bench has a colour, a
+  // Settings keyword box and a split card, but inferBench never tested it, so
+  // the box was read by nothing and a wiring-only job landed nowhere.
+  //
+  // Deliberately does NOT repeat Setup's or Electronics' terms — 'pickup',
+  // 'pups', 'wiring', 'switch', 'pot', 'jack' and 'scratchy' all belong to
+  // those two and stay there. Every one of those jobs is on a bench today and
+  // must not move. These are the words that currently match nothing at all.
+  Wiring:      ['rewire', 'solder', 'resolder', 'harness', 'wiring loom', '\\bloom\\b', 'shielding', 'earth wire', 'ground wire'],
 };
 
 // `backlog` is the 7th positional parameter and `vb` the 8th. Both are raw
@@ -72,6 +81,13 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return 'Setup';
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
+  // Wiring goes LAST of the keyword benches, and that is the whole safety of
+  // it. Setup and Electronics both own wiring-ish words ('pickup', 'pot',
+  // 'jack', 'wiring'), and every job carrying one of those is on a bench
+  // today. Testing Wiring earlier would pull them off it. Placed here, it can
+  // only catch a job the other four benches all declined — which before this
+  // returned null and sat with no bench at all.
+  if (rx('Wiring').test(d)) return 'Wiring';
 
   if (/passport|pa\s*\d/.test(d)) return 'Electronics';
   if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';

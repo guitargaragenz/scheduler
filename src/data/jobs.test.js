@@ -259,6 +259,37 @@ describe('inferBench — Finishing is a bench you can land on', () => {
   });
 });
 
+describe('inferBench — Wiring is a bench you can land on', () => {
+  it('picks up wiring-only work that used to land nowhere', () => {
+    expect(inferBench('rewire the harness', 'Active', 'GTS', '', 'Nobody')).toBe('Wiring');
+    expect(inferBench('resolder ground wire', 'Active', 'GTS', '', 'Nobody')).toBe('Wiring');
+    expect(inferBench('add shielding', 'Active', 'GTS', '', 'Nobody')).toBe('Wiring');
+  });
+
+  it('does NOT move the jobs Setup and Electronics already own', () => {
+    // Wiring is tested last precisely so these stay put. If it ever moves
+    // earlier in inferBench, these are the jobs that come off their bench.
+    expect(inferBench('full setup, new pickups', 'Active', 'GTS', '', 'Nobody')).toBe('Setup');
+    expect(inferBench('scratchy pot', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
+    expect(inferBench('output jack replacement', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
+    // Electronics, not Setup — it owns 'wiring', and there is no 'setup' word
+    // here to take priority. Pre-existing behaviour, asserted so that adding
+    // the Wiring bench is visibly not what decides it.
+    expect(inferBench('switch and wiring', 'Active', 'GTS', '', 'Nobody')).toBe('Electronics');
+  });
+
+  it('lets a rewire beat the manufacturer fallback, same as every other bench', () => {
+    // 'Fender' alone would say Setup. A description that names the work wins
+    // over the maker for Fretwork, Luthier and Finishing already; Wiring is
+    // not special. This is the one case where a job on the board today moves.
+    expect(inferBench('rewire harness', 'Active', 'GTS', '', 'Fender')).toBe('Wiring');
+  });
+
+  it('still lets a blocked wiring job be Admin', () => {
+    expect(inferBench('rewire the harness', 'On Hold', '', '', 'Nobody')).toBe('Admin');
+  });
+});
+
 describe('inferBench with broken keyword settings', () => {
   const setupJob = ['full setup and restring', 'Booked In', '', '', 'Fender'];
 
