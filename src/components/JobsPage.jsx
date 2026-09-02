@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'Finishing', 'Admin'];
+const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'Admin'];
 
 export default function JobsPage({ jobs, onJobClick }) {
   const [filter, setFilter] = useState('All');
