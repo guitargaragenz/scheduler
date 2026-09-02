@@ -1,6 +1,13 @@
 # Handoff — keyword warning dialog + "and" box
 
-doc_status: live
+doc_status: closed
+
+> **Closed 2026-09-02. Superseded by
+> [2026-09-02-handoff-keyword-save-not-sticking.md](2026-09-02-handoff-keyword-save-not-sticking.md).**
+> Its record of the two shipped builds is still accurate. Its open item — "10
+> jobs come back that have nothing to do with the edit" — turned out to be the
+> wrong question: job 1616 was offered, confirmed, and **did not move**. Chase
+> the save, not the list. Do not start from this file.
 
 Written 2026-09-01 at end of session. Start here.
 
