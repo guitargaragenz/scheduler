@@ -3,48 +3,7 @@ export const DEFAULT_BENCH_KEYWORDS = {
   Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
   Electronics: ['power', 'output', 'input', 'tube', 'fuse', 'amp', 'recap', 'blown', 'doa', 'caps', 'opamp', 'voltage', 'pcb', 'speaker', 'voice chip', 'calibrate', 'impedance', 'mute', 'phantom', 'preamp', 'mains', 'dc power', 'wire feed', 'keyboard', '\\bkeys?\\b', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack', 'valve', '\\bhead\\b', 'combo', 'bias', 'jack', 'pot', 'wiring', 'scratchy'],
   Setup:       ['setup', 'stp', 'intonation', 'pups', 'pickup', 'wiring', '\\bstring\\b', 'strings', 'restring', 'switch', 'trem', 'nut', 'saddle', 'string height'],
-  // Finish-only work. Deliberately does NOT contain 'refinish' or a bare
-  // 'finish' — those stay Luthier keywords so a Luthier job still splits into
-  // a Luthier card plus a Finishing card (createSubtasks below). This list is
-  // for the job that is nothing but finish work, which had no way to land on
-  // this bench before: it had a colour and a split card, but no keywords, no
-  // Settings row and no test in inferBench.
-  Finishing:   ['lacquer', 'nitro', 'respray', 'clear coat', 'french polish', 'buff', 'polish out', 'touch up', 'touch-up', 'sand back', 'finish repair'],
-  // Wiring-only work. Same bug Finishing had: this bench has a colour, a
-  // Settings keyword box and a split card, but inferBench never tested it, so
-  // the box was read by nothing and a wiring-only job landed nowhere.
-  //
-  // Deliberately does NOT repeat Setup's or Electronics' terms — 'pickup',
-  // 'pups', 'wiring', 'switch', 'pot', 'jack' and 'scratchy' all belong to
-  // those two and stay there. Every one of those jobs is on a bench today and
-  // must not move. These are the words that currently match nothing at all.
-  // '"output jack"' and '"input jack"' are QUOTED, and that is what makes them
-  // work: Electronics owns the bare words 'output', 'input' and 'jack' and is
-  // tested first, so unquoted they would never win. Quoted, they beat it — so
-  // jack work lands on Wiring while "no output" and "input gain" stay on
-  // Electronics. The case Trevor asked for on 2026-09-01.
-  Wiring:      ['rewire', 'solder', 'resolder', 'harness', 'wiring loom', '\\bloom\\b', 'shielding', 'earth wire', 'ground wire', '"output jack"', '"input jack"'],
 };
-
-// The order the keyword benches are tested in, and the tie-break for the
-// phrase pass in inferBench. Matches the order of the `if` chain below it —
-// keep the two in step, or a tie will break one way and the single-word tests
-// the other.
-const BENCH_MATCH_ORDER = ['Fretwork', 'Luthier', 'Finishing', 'Electronics', 'Setup', 'Wiring'];
-
-// A keyword wrapped in double quotes in Settings — "output jack" — is a
-// priority keyword: it beats every unquoted keyword on every bench. Returns the
-// text inside the quotes, or null when the keyword is an ordinary one.
-//
-// Curly quotes count. A phone keyboard turns " into “ ” without asking, and a
-// keyword that silently stopped being a priority because iOS was helpful is
-// exactly the kind of invisible failure this app keeps getting bitten by.
-// Whitespace inside is trimmed, so `" output jack "` behaves as typed.
-export function quotedKeyword(word) {
-  const m = String(word ?? '').trim().match(/^["“”''](.+)["“”'']$/);
-  const inner = m?.[1]?.trim();
-  return inner ? inner : null;
-}
 
 // `backlog` is the 7th positional parameter and `vb` the 8th. Both are raw
 // booleans, not 'Y'/'N'. They exist so this function can ask blockedPile the
@@ -91,71 +50,15 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   for (const [bench, list] of Object.entries(keywords || {})) {
     if (Array.isArray(list) && list.length > 0) kw[bench] = list;
   }
-  // The ordinary, unquoted keywords for a bench. Quoted ones are deliberately
-  // left out: they are handled by the priority pass below and must never be
-  // joined into this regex, or the literal quote characters would go into the
-  // pattern and match nothing.
-  //
-  // `NEVER` when a bench has no unquoted keywords left. It CANNOT be an empty
-  // pattern: `[].join('|')` is `''`, and `new RegExp('')` matches every string,
-  // which sends every job on the board to that one bench. That is the same
-  // failure the empty-list guard above exists to stop, and quoting a bench's
-  // last keyword is a new way to reach it.
-  const NEVER = /(?!)/;
-  const rx = bench => {
-    const plain = (kw[bench] || []).filter(w => !quotedKeyword(w));
-    return plain.length > 0 ? new RegExp(plain.join('|')) : NEVER;
-  };
-
-  // ── Quoted keywords win ────────────────────────────────────────────────────
-  // A keyword typed in Settings wrapped in double quotes — "output jack" — beats
-  // every unquoted keyword, whatever bench each one is on.
-  //
-  // Why (Trevor, 2026-09-01): the chain below is first-bench-wins, so a specific
-  // phrase could lose to a vaguer single word purely because that word's bench
-  // is tested earlier. He wanted "output jack" on Wiring; Electronics owns the
-  // bare words 'output' and 'jack' and is tested first, so the phrase he typed
-  // did nothing. A typed phrase never winning is a problem with every keyword
-  // box in Settings, not just Wiring's.
-  //
-  // Quotes rather than the app guessing which keywords are "specific", because
-  // Trevor marks them himself as he goes. That makes the rule explicit and makes
-  // it safe by construction: no existing keyword is quoted, so nothing on the
-  // board moves bench until he deliberately quotes something.
-  //
-  // Longest match wins between two quoted hits, so "output jack socket" beats
-  // "output jack". On a tie the earlier bench in BENCH_MATCH_ORDER keeps it.
-  let quoted = null;
-  for (const bench of BENCH_MATCH_ORDER) {
-    for (const word of kw[bench] || []) {
-      const inner = quotedKeyword(word);
-      if (!inner) continue;
-      const m = d.match(new RegExp(inner));
-      if (m && m[0] && (!quoted || m[0].length > quoted.len)) quoted = { bench, len: m[0].length };
-    }
-  }
-  if (quoted) return quoted.bench;
+  const rx = bench => new RegExp(kw[bench].join('|'));
 
   if (rx('Fretwork').test(d)) return 'Fretwork';
   if (rx('Luthier').test(d)) return 'Luthier';
-  // After Luthier, and the order is load-bearing. A job that says "refinish"
-  // matches Luthier first and keeps its Luthier + Finishing split; only a job
-  // with no Luthier work in it at all falls through to here. Testing Finishing
-  // first would pull every refinish job off the Luthier bench and lose the
-  // split, which is a change to jobs already on the board — not the intent.
-  if (rx('Finishing').test(d)) return 'Finishing';
   // "setup", "stp", or "restring" take priority over Electronics keywords like "pot" —
   // the Setup split logic in createSubtasks will then separate the wiring component out
   if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return 'Setup';
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
-  // Wiring goes LAST of the keyword benches, and that is the whole safety of
-  // it. Setup and Electronics both own wiring-ish words ('pickup', 'pot',
-  // 'jack', 'wiring'), and every job carrying one of those is on a bench
-  // today. Testing Wiring earlier would pull them off it. Placed here, it can
-  // only catch a job the other four benches all declined — which before this
-  // returned null and sat with no bench at all.
-  if (rx('Wiring').test(d)) return 'Wiring';
 
   if (/passport|pa\s*\d/.test(d)) return 'Electronics';
   if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';

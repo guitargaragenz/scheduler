@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
 // The sentinel for "this row has no bench yet".
 //

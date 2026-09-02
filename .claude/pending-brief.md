@@ -1,36 +1,28 @@
-# Pending — the saved keyword lists need a clean-up
+# Record — day columns line up at any width (SHIPPED, not pending)
 
-doc_status: live
+doc_status: closed
 
-Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
-the open questions below have to be answered by him first.
+**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
+`509507e` (PR #53). Do not build from this file.
 
-## The problem
+The full record — the false alarm it came out of, the cause in both grids, and
+the two things found but not fixed — is in
+`docs/briefs/2026-08-26-day-columns-line-up.md`, `doc_status: closed`.
 
-Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
-and writes the result to the database (`App.jsx:265`). The saved keyword list
-has drifted, so the first keystroke in that tab moves **16 live jobs** — three
-of them amp jobs landing on the Luthier bench, because the saved Luthier list
-contains bare `broken` with no word boundary.
+## What shipped
 
-**Trevor is deliberately staying out of Settings → Keywords until this is
-fixed.** That is the live constraint.
+`flexShrink: 0` on every fixed-width Weekly Log column; `minWidth: 0` on every
+proportional calendar column and its heading. Display only. 764 tests green.
 
-## Not caused by PR #55
+## Worth carrying forward
 
-Verified against the live board before merge: none of the 121 jobs changes
-bench because of that PR. The drift predates it. Quoting does not fix it
-either — quotes make a keyword win, they do not stop a vague word matching.
-
-## Before building, ask Trevor
-
-1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
-2. Does the keyword fix need to happen WITHOUT firing the re-infer over
-   everything, or is one big correction acceptable?
-3. `finish` in his Luthier list is load-bearing for the refinish split — check
-   before touching.
-
-## Background, do NOT open to start work
-
-Full measurement, the job-by-job table and the likely fix are in
-`docs/briefs/2026-09-01-keyword-cleanup.md`.
+- **Column alignment is a data correctness property, not a cosmetic one.** A
+  heading drifting off its column made Trevor book job 1730 onto Wednesday
+  believing it was Thursday. The app did what he asked; the screen lied about
+  what he was asking, and the result looked fine afterwards. It then presented
+  as a phantom Daily Log bug and cost most of a session.
+- **Day view and Week view are ONE component.** `CalendarGrid.jsx` fed `weekDays`
+  — one day or seven (`App.jsx:952`). A fix to one is a fix to both.
+- A heading and its cell are separate flex items in separate rows. They stay
+  lined up only while they shrink at the same rate — never give one a shrink
+  floor the other lacks.

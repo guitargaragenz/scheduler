@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { useRef, useEffect, useState } from 'react';
 import { benchColors } from '../data/jobs.js';
 
-const BENCH_ORDER = ['Electronics', 'Setup', 'Luthier', 'Fretwork', 'Wiring', 'Finishing', 'Admin', 'No Bench'];
+const BENCH_ORDER = ['Electronics', 'Setup', 'Luthier', 'Fretwork', 'Wiring', 'Admin', 'No Bench'];
 
 function getWeekDatePrefix(date) {
   const y = date.getFullYear();
