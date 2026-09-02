@@ -1,42 +1,36 @@
-# Pending — To Be Invoiced is not a blocked status
+# Pending — the saved keyword lists need a clean-up
 
 doc_status: live
 
-Scoped and approved by Trevor 2026-09-02.
+Raised by Trevor 2026-09-01 after PR #55 merged. Not yet scoped or approved —
+the open questions below have to be answered by him first.
 
-`blockedPile()` (`src/data/jobs.js:296`) hard-codes the blocked statuses and
-`To Be Invoiced` is not among them, so those jobs read as workable. On any
-Settings keyword save the re-infer (`App.jsx:278`) then overwrites their Admin
-bench with a keyword one — usually Setup. That is the bug.
+## The problem
 
-The status means: finished in Multitrack, waiting on Trevor to send the invoice.
+Editing ANY keyword box in Settings re-runs bench matching over EVERY live job
+and writes the result to the database (`App.jsx:265`). The saved keyword list
+has drifted, so the first keystroke in that tab moves **16 live jobs** — three
+of them amp jobs landing on the Luthier bench, because the saved Luthier list
+contains bare `broken` with no word boundary.
 
-## Build
+**Trevor is deliberately staying out of Settings → Keywords until this is
+fixed.** That is the live constraint.
 
-1. Add `To Be Invoiced` to `blockedPile()`, returning its own pile key
-   `invoice`. Exact string, character for character.
-2. `blockedReason()` returns a plain reason — "completed, needs invoicing".
-3. New chip in `JobShelf.jsx`'s `PILES` row, label **To Invoice**. Trevor's
-   call: its own chip, not folded into Hold.
-4. Tests covering all three.
+## Not caused by PR #55
 
-## Out of scope
+Verified against the live board before merge: none of the 121 jobs changes
+bench because of that PR. The drift predates it. Quoting does not fix it
+either — quotes make a keyword win, they do not stop a vague word matching.
 
-- **The hand-set-bench problem** — a job set to Admin by hand that is not
-  blocked is still overwritten on a keyword save. Real, separate, not this.
-- Changing when the keyword save re-infers, or which jobs it covers.
-- The two shipped keyword builds (warning dialog, "and" box), PR #58.
-- Marking anything done; anything touching revenue.
-- Any backfill or migration of stored benches. No script in this build.
+## Before building, ask Trevor
 
-## Rules that bind it
+1. Eight of the 16 moves are corrections, not damage. Apply all 16, or some?
+2. Does the keyword fix need to happen WITHOUT firing the re-infer over
+   everything, or is one big correction acceptable?
+3. `finish` in his Luthier list is load-bearing for the refinish split — check
+   before touching.
 
-- Blast-radius (`jobs[]`, and the bench column gets written). Full protocol.
-- `blockedPile()` stays the single source of truth. No second copy of the
-  status test anywhere.
-- Verify the status string against live data before relying on it. `Waiting`
-  vs `Waiting Parts` cost two build rounds already.
+## Background, do NOT open to start work
 
-Background only, and **not needed to start the build** — the cause traced
-through the code, the pile decision and the link to the unexplained 10:
-`docs/briefs/2026-09-02-to-be-invoiced-blocked.md`.
+Full measurement, the job-by-job table and the likely fix are in
+`docs/briefs/2026-09-01-keyword-cleanup.md`.

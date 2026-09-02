@@ -9,7 +9,6 @@ import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflict
 import { pickMasterFields } from './data/joinJobs.js';
 import { noticeJobs, pruneDismissed, dismissAll } from './data/partsArrivedNotice.js';
 import { applySheetEdits } from './data/jobsSheet.js';
-import { previewBenchChanges, isReinferable } from './data/benchKeywordPreview.js';
 import CalendarGrid from './components/CalendarGrid.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import Toast from './components/Toast.jsx';
@@ -38,7 +37,6 @@ import { useDayMarks } from './hooks/useDayMarks.js';
 import CloseDayModal from './components/CloseDayModal.jsx';
 import CatchUpInterview from './components/CatchUpInterview.jsx';
 import BumpReasonModal from './components/BumpReasonModal.jsx';
-import KeywordChangePreviewModal from './components/KeywordChangePreviewModal.jsx';
 import SyncPreviewModal from './components/SyncPreviewModal.jsx';
 import PdfImportPreviewModal from './components/PdfImportPreviewModal.jsx';
 import ConflictBanner from './components/ConflictBanner.jsx';
@@ -125,10 +123,6 @@ export default function App() {
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
-  // A keyword edit waiting on Trevor's confirmation: { kw, moves }. While this
-  // is set NOTHING has been written — not the jobs, not the saved keyword list.
-  // The modal is the only way through to a write, same shape as pdfPlan above.
-  const [keywordChange, setKeywordChange] = useState(null);
   // Multitrack PDF drop: the parsed plan waiting on Trevor's confirmation.
   // While this is set, nothing has been written — the modal is the only way
   // through to a write.
@@ -252,19 +246,14 @@ export default function App() {
 
   // Lifted out of the Settings JSX when Settings became a page — same handler,
   // same behaviour, just no longer written inline in a prop.
-  //
-  // This is now the APPLY half only. It is not wired to Settings directly:
-  // requestBenchKeywordsChange below holds the edit up for confirmation first,
-  // and this runs only once Trevor has said go ahead.
-  const applyBenchKeywordsChange = useCallback((kw) => {
+  const handleBenchKeywordsChange = useCallback((kw) => {
     setBenchKeywords(kw);
     // Re-infer benches over the CURRENT jobs, in place — this handler
     // never rebuilds the jobs array from a source file.
     // Skip split children (bench chosen by the
     // user or the split logic) and split parents (changing their
     // bench would drift auto-split child IDs and orphan their
-    // scheduled slots). That filter is isReinferable(), shared with the
-    // preview so the two can never disagree about which jobs are in play.
+    // scheduled slots).
     //
     // `bench` is CSV/Sheet-owned in the new jobsMaster/jobsState
     // schema (architecture brief design decision #2) — this handler
@@ -274,7 +263,7 @@ export default function App() {
     // diff-save (which never touches jobsMaster fields at all).
     const reinferred = [];
     setJobs(prev => prev.map(j => {
-      if (!isReinferable(j)) return j;
+      if (j.parentId || j.isSplit || j.hasSubtasks) return j;
       const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true, j.vb === true);
       if (bench !== j.bench) reinferred.push({ ...j, bench });
       return { ...j, bench };
@@ -284,23 +273,6 @@ export default function App() {
       reinferred.forEach(j => saveJob(j.id, pickMasterFields(j)));
     }
   }, [setBenchKeywords, setJobs, justSavedAt]);
-
-  // What Settings now calls instead. It writes nothing at all: it works out
-  // which jobs the proposed keyword list would move and parks the whole edit
-  // in state for the confirmation modal. Cancel drops it and both the jobs and
-  // the saved keyword list are untouched, because neither was written.
-  const requestBenchKeywordsChange = useCallback((kw) => {
-    setKeywordChange({ kw, moves: previewBenchChanges(jobsRef.current, kw) });
-  }, []);
-
-  // Deliberately reads state and calls apply outside the setState updater —
-  // React runs updaters twice in development, and applying the change from
-  // inside one would save every moved job twice.
-  const confirmBenchKeywordsChange = useCallback(() => {
-    if (!keywordChange) return;
-    applyBenchKeywordsChange(keywordChange.kw);
-    setKeywordChange(null);
-  }, [keywordChange, applyBenchKeywordsChange]);
 
   // The body renders the first of these flags that is true, in a fixed order,
   // so they only ever behaved as one exclusive page selection. The buttons were
@@ -961,7 +933,7 @@ export default function App() {
               onRemoveSupplier={removeSupplier}
               benchKeywords={benchKeywords}
               defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
-              onBenchKeywordsChange={requestBenchKeywordsChange}
+              onBenchKeywordsChange={handleBenchKeywordsChange}
               hourlyRate={hourlyRate}
               onHourlyRateChange={setHourlyRate}
               weeklyRevenueTarget={weeklyTarget}
@@ -1178,14 +1150,6 @@ export default function App() {
             if (resolutions) resolveStaleDays(resolutions);
             setShowCatchUp(false);
           }}
-        />
-      )}
-
-      {keywordChange && (
-        <KeywordChangePreviewModal
-          moves={keywordChange.moves}
-          onConfirm={confirmBenchKeywordsChange}
-          onCancel={() => setKeywordChange(null)}
         />
       )}
 

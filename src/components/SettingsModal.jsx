@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { buildAndKeyword, andKeywordWords } from '../data/jobs.js';
 
 const BENCHES = ['Fretwork', 'Luthier', 'Electronics', 'Setup', 'Wiring', 'Finishing'];
 
@@ -70,52 +69,6 @@ function AddRow({ placeholder, onAdd }) {
   );
 }
 
-// Two plain words joined by "and". Trevor types `install` and `pickup`; the job
-// only lands on this bench when the description has BOTH. He never sees, and
-// never has to type, the pattern that gets stored — buildAndKeyword makes it.
-function AndRow({ onAdd }) {
-  const [a, setA] = useState('');
-  const [b, setB] = useState('');
-  const box = {
-    flex: 1, minWidth: 0, fontSize: 12, padding: '4px 8px',
-    background: '#0f172a', border: '1px solid #334155',
-    borderRadius: 5, color: '#e2e8f0', outline: 'none',
-  };
-  function submit() {
-    if (!a.trim() || !b.trim()) return;
-    onAdd(a, b);
-    setA(''); setB('');
-  }
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 10, color: '#475569', marginBottom: 4 }}>
-        Only when the description has both words
-      </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <input
-          value={a}
-          onChange={e => setA(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          placeholder="first word"
-          style={box}
-        />
-        <span style={{ fontSize: 11, color: '#64748b' }}>and</span>
-        <input
-          value={b}
-          onChange={e => setB(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          placeholder="second word"
-          style={box}
-        />
-        <button onClick={submit} style={{
-          padding: '4px 10px', background: '#1e3a5f', border: '1px solid #2563eb',
-          borderRadius: 5, color: '#bfdbfe', fontSize: 12, cursor: 'pointer',
-        }}>Add</button>
-      </div>
-    </div>
-  );
-}
-
 function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
   const [open, setOpen] = useState(false);
   // An empty stored array counts as "no entry" and shows the defaults, matching
@@ -129,14 +82,6 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
   function add(raw) {
     // Keywords are matched lowercase, so they are stored lowercase.
     const val = raw.trim().toLowerCase();
-    if (!val || effective.includes(val)) return;
-    onChange(bench, [...effective, val]);
-  }
-
-  // The "and" box. Stored as one entry, so removing its chip removes the whole
-  // thing — there is no half of it left behind.
-  function addAnd(a, b) {
-    const val = buildAndKeyword(a, b);
     if (!val || effective.includes(val)) return;
     onChange(bench, [...effective, val]);
   }
@@ -182,17 +127,11 @@ function KeywordEditor({ bench, keywords, defaultKeywords, onChange }) {
             )}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-            {effective.map(kw => {
-              // An "and" entry reads as `install + pickup`. What is stored is
-              // never shown.
-              const pair = andKeywordWords(kw);
-              return (
-                <Chip key={kw} label={pair ? `${pair[0]} + ${pair[1]}` : kw} onRemove={() => remove(kw)} />
-              );
-            })}
+            {effective.map(kw => (
+              <Chip key={kw} label={kw} onRemove={() => remove(kw)} />
+            ))}
           </div>
           <AddRow placeholder="add keyword…" onAdd={add} />
-          <AndRow onAdd={addAnd} />
         </div>
       )}
     </div>
@@ -335,8 +274,7 @@ export default function SettingsModal({
                 Keywords in job descriptions that determine bench assignment. Edit to add your own terms. Changes re-classify all jobs immediately.
                 <br /><br />
                 <strong style={{ color: '#94a3b8' }}>Put a keyword in quotes to make it win.</strong>{' '}
-                Benches are checked in a fixed order, so a general word on an earlier bench normally beats a more specific one later — <em>jack</em> on Electronics beats <em>output jack</em> on Wiring. A keyword in quotes, like <code style={{ color: '#94a3b8' }}>"output jack"</code>, jumps that order and wins over every unquoted keyword on every bench. Unquoted keywords keep working exactly as they always have.{' '}
-                The <em>and</em> box under each bench's keywords does the same for two words at once: the job only comes here when the description has <strong>both</strong>, and like a quoted keyword it jumps the bench order.
+                Benches are checked in a fixed order, so a general word on an earlier bench normally beats a more specific one later — <em>jack</em> on Electronics beats <em>output jack</em> on Wiring. A keyword in quotes, like <code style={{ color: '#94a3b8' }}>"output jack"</code>, jumps that order and wins over every unquoted keyword on every bench. Unquoted keywords keep working exactly as they always have.
               </p>
               {BENCHES.map(bench => (
                 <KeywordEditor
