@@ -39,11 +39,13 @@ this page. Start a session with `next`; if this section is still empty, say so.
 
 Real, nobody has picked them up, and they are not attached to any brief.
 
-- **A job taken off a day cannot be put back on it from the Daily Log picker.**
-  The only thing that clears the "keep it off this day" note is the Weekly Log
-  (`App.jsx:867` -> `onBookedOnDay`); the DL filters the note out at
-  `DailyLogPanel.jsx:685` and nothing there removes it. Found 2026-08-26 while
-  chasing the 1730 false alarm.
+- **Not a bug — corrected 2026-09-03.** This list used to say a job taken off a
+  day could not be put back. It can: re-marking the cell in the Weekly Log puts
+  it back on the day (`3708b9a`, `App.jsx:867` -> `onBookedOnDay`). Trevor's own
+  recollection was that the real fault that day was day alignment in the Weekly
+  Log, which shipped separately. All that remains is that the Daily Log's picker
+  does not itself offer a removed job — the Weekly Log is the way back, and that
+  is where you would go anyway. Nothing to build here.
 - **Four screens whose names collide** — Day view and Week view (both
   `CalendarGrid.jsx`), Weekly Log (`BenchWeekPage.jsx`), Daily Log
   (`DailyLogPanel.jsx`). Trevor, 2026-08-26: *"Man these names need to change
