@@ -28,6 +28,14 @@ the status line.
 
 ## Live — work that hasn't finished
 
+- **Current — start here: nothing gets a bench from the manufacturer.**
+  Scope lock: [`.claude/pending-brief.md`](../../.claude/pending-brief.md).
+  Background (don't open it to start):
+  [2026-09-02-no-manufacturer-benches.md](2026-09-02-no-manufacturer-benches.md).
+  Deletes the two `mfr` regexes in `inferBench()` so an unreadable job comes out
+  with no bench instead of Setup, and writes the rule into CLAUDE.md so it stops
+  coming back. Approved 2026-09-02, **resumes at step 2 — council.**
+
 - **[2026-09-02 — the keyword builds are reverted](2026-09-02-revert-keyword-builds.md)**
   PR #60 rolled back PRs #55 and #58 — **merged at `d0ffa22`**. Still live only
   for the open question behind it: is the Admin→Setup problem still showing on

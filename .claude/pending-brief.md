@@ -1,28 +1,45 @@
-# Record — day columns line up at any width (SHIPPED, not pending)
+# Scope lock — nothing gets a bench from the manufacturer
 
-doc_status: closed
+doc_status: live
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
-`509507e` (PR #53). Do not build from this file.
+Trevor, 2026-09-02: *"nothing should be filtered by manufacturer"*. The brand of
+the guitar says nothing about the work.
 
-The full record — the false alarm it came out of, the cause in both grids, and
-the two things found but not fixed — is in
-`docs/briefs/2026-08-26-day-columns-line-up.md`, `doc_status: closed`.
+## Build
 
-## What shipped
+1. **Delete the two manufacturer lines**, `src/data/jobs.js:64-65` — the
+   Electronics brand list (`db tech|rcf|...`) and the Setup brand list
+   (`fender|gibson|...`). Both test `m`, the `mfr` field, and nothing else. A
+   job matching no keyword then returns `null` — no bench — which `JobDrawer`'s
+   "Needs a bench" already catches.
+2. **Write the rule into CLAUDE.md** under "Workshop rules that the code must
+   respect". It was never written down; that is why it is being fixed again.
+3. **Tests** — `src/data/jobs.test.js:215-261` asserts brand-driven benches.
+   Update to assert `null`, and add one that fails if a bare manufacturer ever
+   picks a bench again.
 
-`flexShrink: 0` on every fixed-width Weekly Log column; `minWidth: 0` on every
-proportional calendar column and its heading. Display only. 764 tests green.
+## Out of scope
 
-## Worth carrying forward
+- **Line 63 stays.** `/passport|pa\s*\d/` tests the *description*, not `mfr`.
+- **No database change.** `bench` is stored, so jobs already on a brand-picked
+  bench keep it and the board looks identical after merge. Tell Trevor that
+  plainly — it must not read as "the fix didn't work".
+- **The Admin→Setup bug is not fixed here.** Cause unknown, needs live data.
+  Do not fold a theory about it into this build.
+- No change to `blockedPile()`, `scheduledSlots`, `calendarSlot`, `jobs[]`.
 
-- **Column alignment is a data correctness property, not a cosmetic one.** A
-  heading drifting off its column made Trevor book job 1730 onto Wednesday
-  believing it was Thursday. The app did what he asked; the screen lied about
-  what he was asking, and the result looked fine afterwards. It then presented
-  as a phantom Daily Log bug and cost most of a session.
-- **Day view and Week view are ONE component.** `CalendarGrid.jsx` fed `weekDays`
-  — one day or seven (`App.jsx:952`). A fix to one is a fix to both.
-- A heading and its cell are separate flex items in separate rows. They stay
-  lined up only while they shrink at the same rate — never give one a shrink
-  floor the other lacks.
+## Council must rule on
+
+- **How many jobs lose their bench on the next import?** Unknown from a web
+  session. If it is most of the board, the rollout needs staging.
+- **Whether `pdfImportPlan.js:96` earns its own brief** — it calls `inferBench`
+  without `action`/`backlog`/`vb`. Detail in the background file below.
+
+## Binds this build
+
+- `src/data/jobs.js` is a blast-radius file — **full protocol**, no shortcuts.
+- No browser test that writes job state: the preview talks to the LIVE database.
+- Documents describe the past; check every fact above against the code.
+
+Background only — do **not** open it to start the build:
+`docs/briefs/2026-09-02-no-manufacturer-benches.md`.
