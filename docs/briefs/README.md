@@ -28,10 +28,19 @@ the status line.
 
 ## Live — work that hasn't finished
 
+- **Current — start here: nothing gets a bench from the manufacturer.**
+  Scope lock: [`.claude/pending-brief.md`](../../.claude/pending-brief.md).
+  Background (don't open it to start):
+  [2026-09-02-no-manufacturer-benches.md](2026-09-02-no-manufacturer-benches.md).
+  Deletes the two `mfr` regexes in `inferBench()`, makes **Admin** the catch-all
+  so no job is ever bench-less, and writes both rules into CLAUDE.md so they
+  stop coming back. Approved 2026-09-02, **resumes at step 2 — council.**
+
 - **[2026-09-02 — the keyword builds are reverted](2026-09-02-revert-keyword-builds.md)**
-  Draft PR #60 rolls back PRs #55 and #58. Waiting on Trevor's approval to merge.
-  Read this one before anything else; it also lists two dead-end theories not to
-  re-run, and one real display bug found but not fixed.
+  PR #60 rolled back PRs #55 and #58 — **merged at `d0ffa22`**. Still live only
+  for the open question behind it: is the Admin→Setup problem still showing on
+  the board? Read this one before anything else; it lists two dead-end theories
+  not to re-run, and records the split-hours line Trevor has ruled a non-issue.
 
 Start a session with `next`. If nothing is live above, say so — the next piece of
 work is chosen from Parked, with Trevor, not picked off this page.

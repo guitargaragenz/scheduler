@@ -24,7 +24,7 @@ He then called it off and asked for a rollback instead of a fix:
 - `2dd856e` — unrelated: a new CLAUDE.md rule, see below
 
 764 tests green, production build clean, Vercel preview Ready.
-**Not merged. It needs Trevor's approval.**
+**Merged 2026-09-02 at `d0ffa22`** on Trevor's approval.
 
 Deliberately NOT reverted — process work unrelated to the bug:
 `.claude/agents/*.md`, `.claude/skills/protocol/SKILL.md`, and the three
@@ -51,15 +51,26 @@ themselves. It didn't. Trevor caught it.
    card; tapping the card opens the parent job. Not a regression from the
    revert, which touched one line in `BenchBoardPage.jsx` and nothing here.
 
-## The one real bug found, not fixed
+## The split-hours line — asked, answered, not a bug
 
-`DailyLogPage.jsx:470` prints `{s.hoursRange}h`. Split pieces have no
-`hoursRange`, so every split line renders as `Fretwork · h` with no number.
-Broken since it was written (`e498496`), unrelated to any of the above.
-Trevor was asked whether to fix it and had not answered.
+`DailyLogPage.jsx:470` prints `{s.hoursRange}h` on each split line. Checked
+2026-09-02, and the earlier description of it here was wrong — it is three
+different behaviours on one line, not one:
 
-Open alongside it: whether those split lines should be tappable at all. Also
-unanswered — that would be a new feature, not a rollback.
+- auto-split cards (`src/data/jobs.js:275`+) set their own `hoursRange`, so
+  those lines render a correct number;
+- hand-made splits (`src/hooks/useJobs.js:268`) spread the parent job and
+  override `hours` but not `hoursRange`, so they show the **parent's** range;
+- splits read back from Supabase (`src/hooks/useSupabase.js:95`) never map
+  `hoursRange` at all, so those are the blank `· h` ones.
+
+**Trevor's call, 2026-09-02: leave it.** *"hours don't count in log pages ...
+I work out of logs and use board and sheet to manipulate status benches,
+splits etc."* The number is never read there, so a wrong or missing one costs
+nothing. Not work. Do not re-raise it as a bug.
+
+Same for whether those split lines should be tappable — that would be a new
+feature, and it was never asked for.
 
 ## Also shipped this session
 
@@ -70,13 +81,19 @@ do his words and his evidence agree? If yes he is right — take his framing. If
 they genuinely conflict, name the exact conflict. Terminology alone is never
 grounds to correct him.
 
-## The next task, in order
+## The next task
 
-1. Trevor reviews PR #60 and decides whether the revert merges.
-2. **Only after that**, and only if the Admin→Setup problem is still live, the
-   cause is still unknown. Do not guess at it — two theories died this session.
-   It needs the jobs read off the board against Multitrack, or a session on
-   Micky with `.env`, because live job data is not readable from a web session.
+The revert is merged, so the only thing left is the original complaint:
+**is the Admin→Setup problem still showing on the board?**
+
+Nothing in the database changed, so any job already sitting on the wrong bench
+is still sitting there — the board looking unchanged straight after the merge
+proves nothing either way.
+
+If it is still live, the cause is still unknown. Do not guess at it — two
+theories died on 2026-09-02. It needs the jobs read off the board against
+Multitrack, or a session on Micky with `.env`, because live job data is not
+readable from a web session.
 
 ## Do not
 
