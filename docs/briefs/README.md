@@ -28,10 +28,13 @@ the status line.
 
 ## Live — work that hasn't finished
 
-**Nothing is live right now.** Everything scoped has shipped or is parked below.
+- **[2026-09-02 — the keyword builds are reverted](2026-09-02-revert-keyword-builds.md)**
+  Draft PR #60 rolls back PRs #55 and #58. Waiting on Trevor's approval to merge.
+  Read this one before anything else; it also lists two dead-end theories not to
+  re-run, and one real display bug found but not fixed.
 
-Start a session with `next`. If it lands here and finds this line, say so — the
-next piece of work is chosen from Parked, with Trevor, not picked off this page.
+Start a session with `next`. If nothing is live above, say so — the next piece of
+work is chosen from Parked, with Trevor, not picked off this page.
 
 ## Noticed, not scoped
 

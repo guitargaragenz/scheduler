@@ -1,8 +1,13 @@
 # Handoff — keyword warning dialog + "and" box
 
-doc_status: live
+doc_status: closed
 
-Written 2026-09-01 at end of session. Start here.
+Written 2026-09-01. **Superseded 2026-09-02 — do not start here.**
+
+Both builds this describes are reverted in draft PR #60. Trevor called off the
+fix and asked for a rollback instead. The "unresolved problem" below was chased
+and two theories died against live data. Current handoff:
+`docs/briefs/2026-09-02-revert-keyword-builds.md`.
 
 ## Where it stands
 
