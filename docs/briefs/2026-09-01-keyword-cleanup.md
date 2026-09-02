@@ -1,4 +1,11 @@
-doc_status: live
+doc_status: closed
+
+> **Closed 2026-09-01 by Trevor: "keyword cleanup was a mistake by bad council
+> decision."** This brief was scoped off a council call that turned out to be
+> wrong, and it was never work. Nothing in it is a task list, including the
+> three open questions and the job-by-job table. The live keyword work is
+> [2026-09-01-handoff-keyword-work.md](2026-09-01-handoff-keyword-work.md).
+> Kept rather than deleted only as the record of the wrong turn.
 
 # Next: the saved keyword lists need a clean-up before Settings is safe to open
 
