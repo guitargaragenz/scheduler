@@ -30,7 +30,8 @@ the status line.
 
 | Brief | Date | State |
 |-------|------|-------|
-| [2026-09-01-handoff-keyword-work.md](2026-09-01-handoff-keyword-work.md) | 2026-09-01 | Keyword warning dialog + "and" box, both shipped. **Open item:** a keyword edit lists 10 jobs that have nothing to do with the edit. Cause NOT established — the handoff says what is known and what is not. Do not guess at it and do not patch around it. |
+| [2026-09-02-to-be-invoiced-blocked.md](2026-09-02-to-be-invoiced-blocked.md) | 2026-09-02 | **Current — start here.** `To Be Invoiced` is missing from `blockedPile()`, so those jobs read as workable and any Settings keyword save overwrites their Admin bench with Setup. Scope lock at `.claude/pending-brief.md`, approved by Trevor 2026-09-02. Resumes at protocol step 2 (council). This brief is background — the scope lock is the build. |
+| [2026-09-01-handoff-keyword-work.md](2026-09-01-handoff-keyword-work.md) | 2026-09-01 | Keyword warning dialog + "and" box, both shipped. **Open item:** a keyword edit lists 10 jobs that have nothing to do with the edit. Cause now believed found — see the row above — but not yet confirmed against live data. Still do not patch around it. |
 
 Start a session with `next`. Read the live row above before anything else.
 
