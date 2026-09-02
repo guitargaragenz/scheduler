@@ -1,4 +1,4 @@
-doc_status: live
+doc_status: closed
 
 # Next: the saved keyword lists need a clean-up before Settings is safe to open
 

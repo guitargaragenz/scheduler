@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Session refresh — run the live half of the Sunday board meeting (2026-08-03)

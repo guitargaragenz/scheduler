@@ -11,6 +11,12 @@ from the repo — because a hardcoded brief name goes stale the day the brief sh
 
 ## Do this, in order
 
+0. **Sync with GitHub before reading anything.** Run `git fetch origin` and, if the working tree
+   is clean, `git checkout main && git pull --ff-only`. Say in one line how far behind the clone
+   was. **This step is not optional and nothing comes before it.** On 2026-09-03 a session spent
+   most of a context window re-diagnosing and re-fixing a bug that had already shipped weeks
+   earlier, purely because the local clone was 71 commits behind and the briefs were being read
+   against it. Stale clone in, stale work out.
 1. **Read [docs/briefs/README.md](../../../docs/briefs/README.md).** Its **Live** table is the
    source of truth for what is current. Ignore the Parked and Closed tables for now.
 2. **Read the scope lock the Live table points at** (usually `.claude/pending-brief.md`), and check
@@ -43,6 +49,20 @@ actually starting, not by asking which of the live items he wants.
 
 If the Live table holds more than one item, the one marked **"Current — start here"** is the one.
 If none is marked, take the top row and say that is what you did.
+
+## How to talk to Trevor while doing this
+
+**Short answers are a requirement, not a style.** He is a service tech, not a developer, and long
+technical text gets abandoned rather than skimmed — so a long answer is a failed answer.
+
+- Lead with the answer, then stop. No reasoning tour, no alternatives you rejected, no adjacent
+  things he didn't ask about.
+- A few sentences or a short list. No headings or nested bullets unless he asked for a document.
+- Plain English always — never trade jargon for brevity, do both.
+- Long only for risk, irreversible actions, and real decision points. Bold the risk.
+- If a lot genuinely needs saying, write it to a file and give him the one-line summary.
+- `tt` (too technical) and `tl` (too long) are instructions, not remarks. Re-answer shorter and
+  plainer immediately, and hold that register for the rest of the session. Never ask what he meant.
 
 ## Where the pieces live
 

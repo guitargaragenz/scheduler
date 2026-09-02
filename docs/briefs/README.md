@@ -28,13 +28,12 @@ the status line.
 
 ## Live — work that hasn't finished
 
-- **[2026-09-02 — the keyword builds are reverted](2026-09-02-revert-keyword-builds.md)**
-  Draft PR #60 rolls back PRs #55 and #58. Waiting on Trevor's approval to merge.
-  Read this one before anything else; it also lists two dead-end theories not to
-  re-run, and one real display bug found but not fixed.
+**Nothing is live.** Cleared 2026-09-03: 13 briefs were still marked `live` while
+describing work that had already shipped, and sessions were starting against them.
+The last of them, the keyword revert, went in with PR #60.
 
-Start a session with `next`. If nothing is live above, say so — the next piece of
-work is chosen from Parked, with Trevor, not picked off this page.
+The next piece of work gets chosen from Parked, with Trevor — it is not picked off
+this page. Start a session with `next`; if this section is still empty, say so.
 
 ## Noticed, not scoped
 
