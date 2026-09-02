@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 # Council record — the Daily Log drives the Weekly Log
 

@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 created: 2026-08-08
 ---
 

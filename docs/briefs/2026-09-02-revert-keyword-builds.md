@@ -1,6 +1,6 @@
 # Handoff — the keyword builds are reverted, and what's actually left
 
-doc_status: live
+doc_status: closed
 
 Written 2026-09-02 at end of session. Start here.
 

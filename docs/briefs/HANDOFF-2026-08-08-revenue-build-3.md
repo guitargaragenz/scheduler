@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Handoff 2026-08-08 — revenue Build 3, ready for the builder

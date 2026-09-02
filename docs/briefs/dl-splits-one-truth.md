@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Brief — one tick, one truth: DL split marks and the board card (2026-08-20)

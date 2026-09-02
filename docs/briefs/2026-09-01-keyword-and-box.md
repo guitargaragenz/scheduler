@@ -1,6 +1,6 @@
 # Keyword "and" box — match two words in one description
 
-doc_status: live
+doc_status: closed
 
 Requested by Trevor 2026-09-01. Builds AFTER the keyword-warning dialog
 (PR #58) is browser-tested and merged — that build owns the scope lock until then.
