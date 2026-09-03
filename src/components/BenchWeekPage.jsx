@@ -184,11 +184,21 @@ export function partsOf(job, all, byId) {
   return kids.length > 0 ? kids : [job];
 }
 
+// Wiring and Finishing are sub-benches: real work, but not benches Trevor
+// plans a week against, so they have no heading of their own here. A job whose
+// only bench is one of these used to fall through the cracks entirely — no
+// heading to list it under, and so no way to add it to the week either.
+// It now files under the primary bench that work belongs to.
+// Trevor, 2026-09-03. The job's own bench is untouched; this only decides
+// which heading its Weekly Log row sits under.
+const PRIMARY_OF = { Wiring: 'Setup', Finishing: 'Luthier' };
+
 // The bench a job's ROW is filed under: the parent's own if it has one,
 // otherwise the first bench any of its pieces sits on. One row, one bench
 // heading, even for a job split across two benches.
 export function rowBenchOf(job, parts) {
-  return job.bench || parts.map(p => p.bench).find(Boolean) || '';
+  const bench = job.bench || parts.map(p => p.bench).find(Boolean) || '';
+  return PRIMARY_OF[bench] || bench;
 }
 
 export function rowName(job) {
