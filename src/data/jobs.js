@@ -35,8 +35,12 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   // function, every screen agrees.
   if (blockedPile({ status, action, backlog: backlog === true, vb: vb === true })) return 'Admin';
 
-  const d = (desc + ' ' + model).toLowerCase();
-  const m = mfr.toLowerCase();
+  // Description only. `model` used to be folded in here and `mfr` matched against
+  // manufacturer regexes below — both gone, Trevor's ruling 2026-09-03: the brand
+  // of an instrument says nothing about the work being done on it. A Fender could
+  // be a refret or a rewire. Description keywords are now the only auto-allocator;
+  // `mfr` and `model` stay in the signature for callers, unused for bench choice.
+  const d = desc.toLowerCase();
 
   // A bench with an EMPTY keyword list falls back to its defaults, and this is
   // a safety rule, not tidiness. The old `{ ...DEFAULT, ...keywords }` merged at
@@ -59,10 +63,6 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return 'Setup';
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
-
-  if (/passport|pa\s*\d/.test(d)) return 'Electronics';
-  if (/db tech|rcf|turbosound|allen|hughes|behringer|ampeg|roland|marshall|matchless|casio|yamaha|trident|m audio|dynaudio|peavey|mackie|qsc|crown|crest|electro.voice|jbl|bose|bossweld|subtle noise|beesneez/.test(m)) return 'Electronics';
-  if (/fender|gibson|martin|taylor|maton|cole clark|takamine|aria|cort|hofner|solar|samick|suzuki|alegria|ibanez|epiphone|gretsch|rickenbacker|guild|larrivee|seagull/.test(m)) return 'Setup';
 
   // Couldn't classify it, and it is NOT blocked — so this is not the Admin case
   // above. Still null: a workable job the regexes can't place needs a human to
