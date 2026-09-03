@@ -409,6 +409,22 @@ function BulletRow({ bullet, locked, onToggle, onRemove, onOpenJob, jobs, onAddC
   );
 }
 
+// A split row's own fields, not the parent's. Manual splits (the ones Trevor
+// makes on the Jobs page) carry `hours` + `sessionNote` and inherit the
+// parent's empty `hoursRange`/`label`, so reading hoursRange/label alone
+// rendered every row as a bare "Electronics · h". Everything here is
+// optional and guarded, so a missing field drops out instead of leaking
+// punctuation.
+function splitLine(s) {
+  const parts = [s.bench];
+  if (s.hours) parts.push(`${s.hours}h`);
+  else if (s.hoursRange) parts.push(`${s.hoursRange}h`);
+  if (s.sessionTotal > 1 && s.sessionIndex) parts.push(`#${s.sessionIndex}/${s.sessionTotal}`);
+  const detail = s.sessionNote || s.label;
+  if (detail) parts.push(detail);
+  return parts.filter(Boolean).join(' · ');
+}
+
 function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn }) {
   const splits = jobs.filter(j => j.parentId === job.id);
   const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
@@ -467,7 +483,7 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
             <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#334155', flexShrink: 0 }} />
               <span style={{ fontSize: 10, color: '#64748b' }}>
-                {s.bench} · {s.hoursRange}h{s.label ? ` · ${s.label}` : ''}
+                {splitLine(s)}
               </span>
             </div>
           ))}
