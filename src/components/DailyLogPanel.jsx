@@ -644,6 +644,15 @@ export default function DailyLogPanel({
     return map;
   }, [entries]);
 
+  // Every row that has a job behind it is filed under that job's top-level id,
+  // so one guitar is one heading on the day however its lines arrived. A job
+  // booked from the Weekly Log supplies its own header row (headRow) — that
+  // line keeps its note and remove controls. A job present only through its
+  // pieces has no stored row for the header, so one is drawn from the job
+  // record: a label and a mark, nothing to take off the day. Adding a piece to
+  // a job already on the day therefore joins the heading that is there instead
+  // of opening a second one.
+  //
   // Splits sit under their parent job, indented, so a job worked on two
   // benches reads as one job with two markable lines under it instead of two
   // unrelated rows. A split is any dayJobs row whose job has a `parentId`;
@@ -663,19 +672,25 @@ export default function DailyLogPanel({
     const blocks = [];
     const groupAt = new Map(); // top-level job id -> index into blocks
     for (const row of dayJobs) {
-      const rowJob = jobById.get(row.id);
-      if (rowJob?.parentId) {
-        const top = topLevelJob(rowJob, jobs) || rowJob;
-        const topId = String(top.id);
-        if (groupAt.has(topId)) {
-          blocks[groupAt.get(topId)].rows.push(row);
-        } else {
-          groupAt.set(topId, blocks.length);
-          blocks.push({ kind: 'group', id: topId, label: rowName(top), rows: [row] });
-        }
-      } else {
-        blocks.push({ kind: 'single', row });
+      const topId = weekCellJobId(row.id, jobs);
+      if (!topId) { blocks.push({ kind: 'single', row }); continue; }
+      let at = groupAt.get(topId);
+      if (at === undefined) {
+        const top = jobById.get(topId);
+        at = blocks.length;
+        groupAt.set(topId, at);
+        blocks.push({
+          kind: 'group',
+          id: topId,
+          label: top ? rowName(top) : row.label,
+          headRow: null,
+          rows: [],
+        });
       }
+      // The job's own row is the block's header line; anything else is a
+      // piece indented under it.
+      if (String(row.id) === topId) blocks[at].headRow = row;
+      else blocks[at].rows.push(row);
     }
     return blocks;
   }, [dayJobs, jobById, jobs]);
@@ -1119,29 +1134,45 @@ export default function DailyLogPanel({
             // weekCellJobId resolves to itself) — it is never set from, or
             // reset by, the splits indented under it.
             <div key={`group:${block.id}`}>
-              <div style={{
-                display: 'flex', gap: 8, alignItems: 'center',
-                // White and bold for the guitar, gold for the pieces under
-                // it — the Day view's scheme, so the two read as different
-                // things at a glance.
-                padding: '4px 2px', fontSize: 12.5, color: '#f8fafc', fontWeight: 600,
-              }}>
-                <MarkSelect
-                  value={markOf.get(block.id)}
-                  disabled={!ready}
-                  onPick={(v) => handleSetMark({ id: block.id, label: block.label }, v)}
-                  title="How this job went today"
-                  ariaLabel={`Mark for ${block.label}`}
+              {block.headRow ? (
+                <JobLine
+                  row={block.headRow}
+                  markValue={markOf.get(block.headRow.id)}
+                  ready={ready}
+                  onPick={(v) => handleSetMark(block.headRow, v)}
+                  subNote={subTaskNote(block.headRow.id)}
+                  notes={notesFor.get(block.headRow.id) || []}
+                  onSaveNote={handleSaveNote}
+                  onDeleteNote={(id) => removeItem(dateKey, id)}
+                  onAddNote={() => handleAddNote(block.headRow)}
+                  onRemove={() => handleRemove(block.headRow)}
+                  taskControl={taskControlFor(block.id, block.label)}
                 />
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {block.label}
-                </span>
-                {/* The job's own line is where its tasks are reached. The
-                    indented rows under it are pieces already on the day, and a
-                    piece has no pieces of its own. `block.id` is already the
-                    top-level id. */}
-                {taskControlFor(block.id, block.label)}
-              </div>
+              ) : (
+                <div style={{
+                  display: 'flex', gap: 8, alignItems: 'center',
+                  // White and bold for the guitar, gold for the pieces under
+                  // it — the Day view's scheme, so the two read as different
+                  // things at a glance.
+                  padding: '4px 2px', fontSize: 12.5, color: '#f8fafc', fontWeight: 600,
+                }}>
+                  <MarkSelect
+                    value={markOf.get(block.id)}
+                    disabled={!ready}
+                    onPick={(v) => handleSetMark({ id: block.id, label: block.label }, v)}
+                    title="How this job went today"
+                    ariaLabel={`Mark for ${block.label}`}
+                  />
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {block.label}
+                  </span>
+                  {/* The job's own line is where its tasks are reached. The
+                      indented rows under it are pieces already on the day, and a
+                      piece has no pieces of its own. `block.id` is already the
+                      top-level id. */}
+                  {taskControlFor(block.id, block.label)}
+                </div>
+              )}
               {taskListFor(block.id)}
               {block.rows.map(row => (
                 <JobLine
