@@ -28,7 +28,11 @@ the status line.
 
 ## Live — work that hasn't finished
 
-**Nothing is live.** The brand/model bench fix shipped 2026-09-03 at `046a6d6`
+**Current — start here:** [2026-09-04 — mobile top bar overflows at phone width](2026-09-04-handoff-mobile-topbar.md).
+Small display-only job: the week dates and arrows get cut off the right edge on a
+phone. Approved 2026-09-03, not started. Does not need the full protocol.
+
+The brand/model bench fix shipped 2026-09-03 at `046a6d6`
 (PR #64) — see Closed. Cleared 2026-09-03: 13 briefs were still marked `live` while
 describing work that had already shipped, and sessions were starting against them.
 The last of them, the keyword revert, went in with PR #60.
