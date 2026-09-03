@@ -59,6 +59,11 @@ Real, nobody has picked them up, and they are not attached to any brief.
   not a tracker (`#PRJ` on a Daily Log bullet starts one, mirroring `#PL`).
   Needs its own conversation about what planning a customer project involves
   before anyone writes a brief.
+- **Drawer bench change is silently dropped on split jobs** — changing the
+  bench in the job drawer on a split job saves the cards but never the parent
+  row, so the board snaps back to the old bench. Found 2026-09-03 on job 1727.
+  Workaround: collapse to one card, save, re-split. Write-up:
+  [2026-09-03-drawer-bench-change-dropped-on-split-jobs.md](2026-09-03-drawer-bench-change-dropped-on-split-jobs.md).
 - **`docs/supabase-schema.sql` has drifted from the live database** — it is
   missing the `daily_logs` table the app actually uses.
 
