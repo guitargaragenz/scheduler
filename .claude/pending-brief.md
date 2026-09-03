@@ -1,28 +1,49 @@
-# Record — day columns line up at any width (SHIPPED, not pending)
+# Brand and model must never pick a bench
 
 doc_status: closed
 
-**Nothing is pending. This is a record, not a task list.** Shipped 2026-08-26 at
-`509507e` (PR #53). Do not build from this file.
+Shipped at `046a6d6` (PR #64), browser-tested on the Vercel preview and merged
+2026-09-03. Nothing on wrong benches.
 
-The full record — the false alarm it came out of, the cause in both grids, and
-the two things found but not fixed — is in
-`docs/briefs/2026-08-26-day-columns-line-up.md`, `doc_status: closed`.
+## What to build
 
-## What shipped
+In `src/data/jobs.js`, `inferBench()`:
 
-`flexShrink: 0` on every fixed-width Weekly Log column; `minWidth: 0` on every
-proportional calendar column and its heading. Display only. 764 tests green.
+1. Delete the three brand/model rules:
+   - `/passport|pa\s*\d/` → Electronics
+   - the amp/PA manufacturer regex → Electronics
+   - the guitar manufacturer regex → Setup
+2. Stop folding `model` into the matched text: `const d = desc.toLowerCase()`.
+3. The `mfr` and `model` arguments stay in the signature (callers pass them);
+   they are simply no longer used to choose a bench.
 
-## Worth carrying forward
+Anything the description keywords don't match returns `null` — "Needs a bench" —
+which JobDrawer already catches and refuses to save.
 
-- **Column alignment is a data correctness property, not a cosmetic one.** A
-  heading drifting off its column made Trevor book job 1730 onto Wednesday
-  believing it was Thursday. The app did what he asked; the screen lied about
-  what he was asking, and the result looked fine afterwards. It then presented
-  as a phantom Daily Log bug and cost most of a session.
-- **Day view and Week view are ONE component.** `CalendarGrid.jsx` fed `weekDays`
-  — one day or seven (`App.jsx:952`). A fix to one is a fix to both.
-- A heading and its cell are separate flex items in separate rows. They stay
-  lined up only while they shrink at the same rate — never give one a shrink
-  floor the other lacks.
+## Why
+
+Trevor's ruling, 2026-09-03: the brand of an instrument says nothing about the
+work being done on it. A Fender could be a refret or a rewire. Every job's
+description carries keywords that should pick the bench; the brand rules were a
+guess layered on top, and a wrong guess reads as a promise the job is workable
+at that bench.
+
+## Out of scope
+
+- No new keyword rules for any bench. Do not add keywords for Finishing or
+  Wiring — they stay sub-only, never auto-assigned.
+- Do not touch `blockedPile()` or the blocked→Admin first line.
+- Do not touch the bench display-order lists (separate uncommitted work).
+- Do not change the `null` fallback to Admin.
+- Do not add an unbenched counter or flag to the PDF import preview. Accepted:
+  after an import, unbenched jobs show as grey "no bench" cards on the Jobs page
+  and Trevor picks them up by eye.
+
+## Rules that bind this build
+
+- Blocked wins first. The `blockedPile()` check stays the opening statement.
+- No test changes needed: no existing test exercises the brand-only path.
+- Full protocol: council → builder → verifier → browser test → merge.
+
+Background only, do not open to start the build:
+`docs/briefs/2026-09-03-handoff-finishing-bench.md`.
