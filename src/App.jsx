@@ -93,7 +93,19 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [supabaseReady, setFirebaseReady] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
-  const [pomoJob, setPomoJob] = useState(null);
+  const [pomoJob, setPomoJobState] = useState(null);
+  // The day the job being invoiced was actually finished, when the drawer was
+  // opened by the Week page's close-off ×. The drawer re-resolves its job from
+  // jobs[], so this cannot ride on the job object — it has to sit beside it.
+  const [pomoFinishedOn, setPomoFinishedOn] = useState(null);
+  // Every OTHER way the drawer opens or closes goes through this and clears the
+  // date. Without that, a date set by one close-off would still be sitting here
+  // when the next job is invoiced from a pomodoro session, and that job's money
+  // would be stamped into the wrong week.
+  const setPomoJob = useCallback((job) => {
+    setPomoFinishedOn(null);
+    setPomoJobState(job);
+  }, []);
   const [showSummary, setShowSummary] = useState(false);
   const [showRevenueBreakdown, setShowRevenueBreakdown] = useState(false);
   // showParts is the PartsBox inventory DRAWER (PartsDrawer.jsx) — a different
@@ -353,7 +365,7 @@ export default function App() {
   // entries and has no notion of "this specific job".
   const handleAllPiecesDone = useCallback((parentJob) => {
     setPomoJob(parentJob);
-  }, []);
+  }, [setPomoJob]);
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
@@ -859,7 +871,10 @@ export default function App() {
                      is the only place the Daily/Weekly Log touches job state,
                      and it goes through the same call the rest of the app
                      already uses — there is no second way to finish a job. */
-                  onCloseJob={(job) => setPomoJob(job)}
+                  onCloseJob={(job, finishedOn) => {
+                    setPomoFinishedOn(finishedOn || null);
+                    setPomoJobState(job);
+                  }}
                   /* Booking a job onto a day clears any "keep it off this day"
                      note the Daily Log left there, so a removal can never
                      outlive the booking that follows it. Only 'hidden' items
@@ -1106,7 +1121,10 @@ export default function App() {
             parentJob={currentJob.parentId ? jobs.find(j => j.id === currentJob.parentId) : null}
             onClose={() => setPomoJob(null)}
             onLogSession={session => jobOps.handleLogPomoSession(currentJob.id, session)}
-            onMarkDone={jobOps.handleMarkDone}
+            /* The finished-on day only exists when the Week page's × opened
+               this drawer. Any other way in leaves it null, so a job invoiced
+               straight from a pomodoro session still means today. */
+            onMarkDone={(j, amt) => jobOps.handleMarkDone(j, amt, pomoFinishedOn)}
             onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
             onRemove={scheduler.unscheduleJob}
           />
