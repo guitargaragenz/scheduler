@@ -28,7 +28,12 @@ the status line.
 
 ## Live — work that hasn't finished
 
-**Current — start here:** [2026-09-04 — mobile top bar overflows at phone width](2026-09-04-handoff-mobile-topbar.md).
+**Current — start here:** [2026-09-10 — a job completes on the day it was finished](2026-09-10-handoff-completion-date.md).
+The scope lock is `.claude/pending-brief.md`; that handoff is background. Brief and
+council are done, both verdicts patched in. Next step is the builder, in a fresh
+session.
+
+**Also live:** [2026-09-04 — mobile top bar overflows at phone width](2026-09-04-handoff-mobile-topbar.md).
 Small display-only job: the week dates and arrows get cut off the right edge on a
 phone. Approved 2026-09-03, not started. Does not need the full protocol.
 
