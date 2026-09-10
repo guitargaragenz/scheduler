@@ -28,14 +28,12 @@ the status line.
 
 ## Live — work that hasn't finished
 
-**Current — start here:** [2026-09-10 — a job completes on the day it was finished](2026-09-10-handoff-completion-date.md).
-The scope lock is `.claude/pending-brief.md`; that handoff is background. Brief and
-council are done, both verdicts patched in. Next step is the builder, in a fresh
-session.
-
-**Also live:** [2026-09-04 — mobile top bar overflows at phone width](2026-09-04-handoff-mobile-topbar.md).
+**Current — start here:** [2026-09-04 — mobile top bar overflows at phone width](2026-09-04-handoff-mobile-topbar.md).
 Small display-only job: the week dates and arrows get cut off the right edge on a
 phone. Approved 2026-09-03, not started. Does not need the full protocol.
+
+The completion-date fix shipped 2026-09-11 at `049ec99` — money now lands in the
+week the work finished. Merged without the browser test, at Trevor's call.
 
 The brand/model bench fix shipped 2026-09-03 at `046a6d6`
 (PR #64) — see Closed. Cleared 2026-09-03: 13 briefs were still marked `live` while
@@ -49,6 +47,17 @@ this page. Start a session with `next`; if this section is still empty, say so.
 
 Real, nobody has picked them up, and they are not attached to any brief.
 
+- **Three revenue rows carry the wrong week, all stamped 2026-09-07.** Left by the
+  bug the completion-date fix closed (shipped 2026-09-11, `049ec99`). `cj-1632`
+  should read Friday 4 Sept. `cj-1740` was completed 10 Sept and then the job
+  itself was deleted by hand, so its money survives without a job on the board —
+  the finished day still needs confirming with Trevor. `cj-1711` is correct as-is.
+  A one-off by-hand fix, not app code. Job 1740 is also still missing from the
+  board and has to be re-added under a new number if the work comes back.
+- **The importer can strand a job.** `src/data/pdfImportPlan.js` only clears the
+  `done` flag on the "returning" path, which needs a non-null `departed_at`. A job
+  still on the Multitrack printout can stay flagged done and vanish from the board.
+  Job 1740 was unstuck by hand once already. Needs its own brief.
 - **Not a bug — corrected 2026-09-03.** This list used to say a job taken off a
   day could not be put back. It can: re-marking the cell in the Weekly Log puts
   it back on the day (`3708b9a`, `App.jsx:867` -> `onBookedOnDay`). Trevor's own

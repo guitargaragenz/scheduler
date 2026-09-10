@@ -1,6 +1,8 @@
 # Handoff — the completion-date fix
 
-doc_status: live
+Shipped 2026-09-11 at `049ec99`. Merged without the browser test, at Trevor's call.
+
+doc_status: closed
 
 Written 2026-09-10, at the end of a session that had compacted five times. The
 brief is trustworthy; this session's memory of anything older was not.
