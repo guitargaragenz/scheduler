@@ -21,6 +21,18 @@ function cleanupGcalEvents(removedChildren) {
   });
 }
 
+// A local 'YYYY-MM-DD' key back to a local Date, or null for anything else.
+//
+// Deliberately NOT new Date(key): that parses a bare date string as UTC, so in
+// timezones behind UTC it lands on the previous day. Built from the parts at
+// midday local instead, which no DST change can push over a day boundary.
+function parseLocalDateKey(key) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key || ''));
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 // Walks parentId up to the job the customer is actually invoiced for.
 //
 // Both kinds of split piece carry parentId — stored manual children
@@ -334,7 +346,11 @@ export function useJobs({
     }
   }
 
-  function handleMarkDone(job, amount) {
+  // finishedOn is an optional local 'YYYY-MM-DD' date — the day the job was
+  // actually finished, carried in from the Week page's × so the money lands in
+  // the week the work ended rather than the week the invoice was ticked.
+  // Omitted or null means now / the current week, exactly as before.
+  function handleMarkDone(job, amount, finishedOn = null) {
     // The revenue row belongs to the TOP-LEVEL job, never to a split piece.
     // Split work is invoiced combined at the end of the job — one invoice per
     // job — so both pieces of a two-piece job must resolve to the same key.
@@ -347,12 +363,18 @@ export function useJobs({
     // localDateKey, not toISOString() — the latter converts to UTC first,
     // which rolls Monday-local-midnight back to Sunday for timezones ahead
     // of UTC (NZ, UTC+12/+13), stamping the record into the previous week.
-    const weekKey = localDateKey(getWeekDays()[0]);
+    //
+    // A 'YYYY-MM-DD' string must NOT go through new Date(str): that parses as
+    // UTC midnight, which in NZ (UTC+12/+13) is midday the same day — harmless
+    // here, but the reverse rounding bites on other offsets. Build the local
+    // date from its parts instead, at midday, so no DST shift can move the day.
+    const finishedDate = parseLocalDateKey(finishedOn);
+    const weekKey = localDateKey(getWeekDays(finishedDate || undefined)[0]);
     const record = {
       id: String(invoiceJob.id), job: invoiceJob.job, mfr: invoiceJob.mfr, model: invoiceJob.model,
       bench: invoiceJob.bench, hours: invoiceJob.hours, customer: invoiceJob.customer || '',
       invoiceAmount: Number(amount) || 0,
-      completedAt: new Date().toISOString(),
+      completedAt: (finishedDate || new Date()).toISOString(),
       weekKey,
     };
     // Keyed on the top-level id, so a second piece replaces rather than

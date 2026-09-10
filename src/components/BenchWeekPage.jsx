@@ -645,9 +645,22 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
       showToast?.('That did not save');
       return;
     }
+    // The day the work actually finished: the LAST day column marked ×.
+    //
+    // Scanned here rather than via ruleOff(), which is gated on the close mark
+    // and reads the `marks` snapshot this render was built from — on this very
+    // press that snapshot has no close mark yet, so ruleOff() would return null
+    // every time. No day × at all means null, and the invoice falls back to
+    // today, which is what it always did.
+    const jobMarks = marks[row.id] || {};
+    let finishedOn = null;
+    for (let i = weekKeys.length - 1; i >= 0; i -= 1) {
+      if (cellMark(row, weekKeys[i], jobMarks) === 'cross') { finishedOn = weekKeys[i]; break; }
+    }
+
     // A typed row has no job behind it, so there is nothing to invoice. The
     // cross just means the admin task is done.
-    if (row.job) onCloseJob?.(row.job);
+    if (row.job) onCloseJob?.(row.job, finishedOn);
   }
 
   // Put a job on the week. Writes the week's row key and NOTHING else — no dot,
