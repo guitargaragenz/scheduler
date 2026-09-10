@@ -1,4 +1,4 @@
-// Shared between JobShelf.jsx (desktop) and DailyLogPage.jsx's mobile LogJobCard —
+// Shared between JobShelf.jsx (desktop) and DayViewPage.jsx's mobile LogJobCard —
 // a deferred checklist sub-step needs to stay visible on whichever job list Trevor
 // is actually looking at, or he forgets it exists.
 export default function DeferredItemsList({ items, onPullBackIn }) {

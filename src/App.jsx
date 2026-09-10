@@ -26,7 +26,7 @@ import WorkshopProjectsPage from './components/WorkshopProjectsPage.jsx';
 import PartsToOrderPage from './components/PartsToOrderPage.jsx';
 import MobileJobSheet from './components/MobileJobSheet.jsx';
 import ParkingLotPage from './components/ParkingLotPage.jsx';
-import DailyLogPage from './components/DailyLogPage.jsx';
+import DayViewPage from './components/DayViewPage.jsx';
 import JobsPage from './components/JobsPage.jsx';
 import JobsSheetPage from './components/JobsSheetPage.jsx';
 import BenchBoardPage from './components/BenchBoardPage.jsx';
@@ -233,7 +233,7 @@ export default function App() {
   }, [autoCarryForward, handleJobAutoCarryBumped]);
 
   // Retroactively fills in a reason on a previously-unresolved auto-carry bump
-  // entry — called from DailyLogPage's CarriedReasonPicker, correlated by the
+  // entry — called from DayViewPage's CarriedReasonPicker, correlated by the
   // bullet's `carriedFrom` date-key matching the entry's `fromSlot`.
   const handleSetBumpReason = useCallback((jobId, carriedFrom, { reason, reasonText }) => {
     setJobs(prev => prev.map(j => {
@@ -498,7 +498,7 @@ export default function App() {
   });
 
   // Attempt to schedule a bujo note as an ad-hoc calendar task. Returns
-  // { ok, reason } — DailyLogPage shows the reason inline on failure.
+  // { ok, reason } — DayViewPage shows the reason inline on failure.
   const handleScheduleAdHocNote = useCallback((text, date, hour, minute, hours) => {
     const result = scheduleAdHocTask({
       text, date, hour, minute, hours,
@@ -991,7 +991,7 @@ export default function App() {
               />
             </>
           ) : (
-            <DailyLogPage
+            <DayViewPage
               jobs={jobs}
               scheduledSlots={scheduledSlots}
               weekDays={weekDays}

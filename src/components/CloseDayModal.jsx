@@ -107,7 +107,7 @@ function BenchChips({ splits }) {
   );
 }
 
-// Matches the "bench · hours · action" subtitle DailyLogPage's BulletRow shows,
+// Matches the "bench · hours · action" subtitle DayViewPage's BulletRow shows,
 // so a split job's individual sub-tasks are distinguishable here too.
 function BulletMeta({ meta }) {
   if (!meta) return null;

@@ -37,7 +37,7 @@ describe('parseDays', () => {
 
 describe('job age sort order', () => {
   // The comparator this pins used to live inside parseCSV, which went with the
-  // CSV path in Build 2a. The rule itself is still live — JobShelf, DailyLogPage
+  // CSV path in Build 2a. The rule itself is still live — JobShelf, DayViewPage
   // and joinJobs all sort by `days` this way — so it is exercised directly here.
   const byAge = (a, b) => (b.days ?? -1) - (a.days ?? -1);
 

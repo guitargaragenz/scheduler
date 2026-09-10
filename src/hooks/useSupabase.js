@@ -110,7 +110,7 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       // Job age, computed here and ONLY here — Brief G, Build 1c.
       //
       // `job.days` is read in several places across the app and two of them are
-      // sort orders rather than displays (JobShelf.jsx, DailyLogPage.jsx).
+      // sort orders rather than displays (JobShelf.jsx, DayViewPage.jsx).
       // Working the age out at each display instead would leave the cards
       // ticking correctly while the lists stayed sorted on stale stored
       // numbers. Doing it once, here, means every one of those readers keeps

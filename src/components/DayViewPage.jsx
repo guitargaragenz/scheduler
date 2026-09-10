@@ -700,7 +700,7 @@ function ScheduleNoteModal({ text, defaultDate, onConfirm, onClose }) {
   );
 }
 
-export default function DailyLogPage({
+export default function DayViewPage({
   jobs, scheduledSlots, weekDays, displayedDate, onDisplayedDateChange, scheduledJobs, externalEvents, isDragging, activeJobId, onCalendarJobClick,
   onRemoveAdHocTask, onScheduleAdHocNote,
   dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
