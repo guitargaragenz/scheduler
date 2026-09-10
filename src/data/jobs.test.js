@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDays, blockedPile, blockedReason, benchColors, inferBench, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
+import { parseDays, blockedPile, blockedReason, benchColors, inferBench, isBenchUnplaced, BENCH_COLORS, NO_BENCH_COLORS } from './jobs.js';
 
 // Brief E, Task 1 + the blockedPile helper.
 //
@@ -229,10 +229,39 @@ describe('inferBench — blocked work gets Admin', () => {
     expect(inferBench('refret', 'Booked In', 'GTS', '', 'Fender')).toBe('Fretwork');
   });
 
-  it('still returns null for a workable job it genuinely cannot classify', () => {
-    // Not the Admin case — this one needs a human to pick the bench, and
-    // JobDrawer's "Needs a bench" option is what catches it.
-    expect(inferBench('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody')).toBeNull();
+  it('parks a workable job it genuinely cannot classify on Admin too', () => {
+    // Trevor, 2026-09-02: "there is no such thing as no bench and should never
+    // be." Unclassifiable work still gets a bench; that a human has yet to pick
+    // the real one is carried by isBenchUnplaced(), not by a null.
+    expect(inferBench('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody')).toBe('Admin');
+  });
+});
+
+describe('isBenchUnplaced — which Admin jobs still need a human', () => {
+  it('is true only for work that fell through every keyword', () => {
+    expect(isBenchUnplaced('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody')).toBe(true);
+  });
+
+  it('is false for a job a keyword actually placed', () => {
+    expect(isBenchUnplaced('full setup and restring', 'Active', 'GTS', '', 'Fender')).toBe(false);
+    expect(isBenchUnplaced('refret', 'Booked In', 'GTS', '', 'Fender')).toBe(false);
+    expect(isBenchUnplaced('bridge reset', 'Active', 'GTS', '', 'Martin')).toBe(false);
+    expect(isBenchUnplaced('blown output tube', 'Active', 'GTS', '', 'Marshall')).toBe(false);
+  });
+
+  it('is false for blocked work, which is on Admin on purpose', () => {
+    // Blocked jobs get Admin from blockedPile(), not from falling through, so
+    // nobody needs to be nagged to file them.
+    expect(isBenchUnplaced('zzz unclassifiable', 'On Hold', '', '', 'Nobody')).toBe(false);
+    expect(isBenchUnplaced('zzz unclassifiable', 'Active', 'INC', '', 'Nobody')).toBe(false);
+    expect(isBenchUnplaced('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody', undefined, true, false)).toBe(false);
+    expect(isBenchUnplaced('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody', undefined, false, true)).toBe(false);
+  });
+
+  it('agrees with inferBench under custom keywords', () => {
+    const kw = { Fretwork: ['zzz unclassifiable'] };
+    expect(inferBench('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody', kw)).toBe('Fretwork');
+    expect(isBenchUnplaced('zzz unclassifiable', 'Active', 'GTS', '', 'Nobody', kw)).toBe(false);
   });
 });
 

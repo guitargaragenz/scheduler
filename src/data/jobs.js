@@ -3,7 +3,8 @@
 // ('keyboard', 'synth', 'mixer', 'console', 'interface', 'desk', 'rack',
 // 'valve', 'head', 'combo') were removed from Electronics for that reason: a
 // rack unit could need a recap or a jack, and guessing reads as a promise the
-// job is workable at that bench. Unmatched jobs return null — "Needs a bench".
+// job is workable at that bench. Unmatched jobs land on Admin — there is no
+// such thing as "no bench" (Trevor, 2026-09-02).
 export const DEFAULT_BENCH_KEYWORDS = {
   Fretwork:    ['refret', 'fret level', 'fret dress', 'fret polish'],
   Luthier:     ['bridge(?!\\s*pup|\\s*pickup)', '\\bcrack\\b', 'brace', '\\breset\\b', '\\btop\\b', 'lower bout', 'inlay', 'binding', 'refinish', 'restoration', '\\bsplit\\b', 'lifting', 'lifted', 'broken neck', 'broken headstock', 'broken brace', 'broken bridge'],
@@ -70,13 +71,45 @@ export function inferBench(desc = '', status = '', action = '', model = '', mfr 
   if (rx('Electronics').test(d)) return 'Electronics';
   if (rx('Setup').test(d)) return 'Setup';
 
-  // Couldn't classify it, and it is NOT blocked — so this is not the Admin case
-  // above. Still null: a workable job the regexes can't place needs a human to
-  // pick the bench, and filing it under Admin would hide that. JobDrawer's
-  // "Needs a bench" option is what catches it (it refuses to save on that
-  // option), which is why that guard is still needed even though blocked work
-  // now gets Admin.
-  return null;
+  // Couldn't classify it. It still gets Admin, not null: Trevor's ruling
+  // (2026-09-02) is that "there is no such thing as no bench and should never
+  // be" — every job sits somewhere, and Admin is where unplaced work waits.
+  //
+  // That the job needs a human to pick a real bench is NOT lost. It is carried
+  // by isBenchUnplaced() below, which re-runs this same classification and
+  // reports whether the job only reached Admin by falling through here. That
+  // flag is what JobDrawer's save guard and the "needs a bench" popup read.
+  return 'Admin';
+}
+
+/**
+ * True when inferBench() could only place this job by falling through to the
+ * end — i.e. the keywords matched nothing and the job is not blocked, so its
+ * 'Admin' bench is a parking spot rather than a real decision.
+ *
+ * Same inputs as inferBench(), deliberately: this is the same question asked a
+ * second way, and it must never drift from it. DERIVED EVERY TIME, NEVER
+ * STORED — a stored copy would go stale the moment the description is edited
+ * or the bench keywords change.
+ *
+ * Blocked work is NOT unplaced: blockedPile() sends it to Admin on purpose.
+ */
+export function isBenchUnplaced(desc = '', status = '', action = '', model = '', mfr = '', keywords = DEFAULT_BENCH_KEYWORDS, backlog = false, vb = false) {
+  if (blockedPile({ status, action, backlog: backlog === true, vb: vb === true })) return false;
+
+  const d = (desc || '').toLowerCase();
+  const kw = { ...DEFAULT_BENCH_KEYWORDS };
+  for (const [bench, list] of Object.entries(keywords || {})) {
+    if (Array.isArray(list) && list.length > 0) kw[bench] = list;
+  }
+  const rx = bench => new RegExp(kw[bench].join('|'));
+
+  if (rx('Fretwork').test(d)) return false;
+  if (rx('Luthier').test(d)) return false;
+  if (/\bsetup\b|\bstp\b|\brestring\b/.test(d)) return false;
+  if (rx('Electronics').test(d)) return false;
+  if (rx('Setup').test(d)) return false;
+  return true;
 }
 
 // Job age from the CSV's `Days` column. A blank cell means Multitrack does not

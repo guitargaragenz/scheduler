@@ -4,7 +4,7 @@ import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
-// The sentinel for "this row has no bench yet".
+// The sentinel for "nobody has picked a bench for this row yet".
 //
 // Why it exists (Trevor, 2026-08-04): a <select> whose value matches none of
 // its options displays the FIRST one. ALL_BENCHES starts with 'Luthier', so a
@@ -13,6 +13,14 @@ const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'A
 // added only when the row genuinely has no bench, so it never appears as a
 // choice on a job that is already filed, and handleSave() refuses to write a
 // row still sitting on it.
+//
+// Updated 2026-09-11: a job's bench is never empty any more — unclassified work
+// lands on 'Admin' (Trevor: "there is no such thing as no bench"). So "empty
+// bench" can no longer be the test. The job's derived benchAuto flag is: it is
+// true exactly when the job reached Admin by falling through the keyword rules
+// rather than by a human choosing it. initRows() puts such a row on this
+// sentinel, which keeps the option, the label and the save guard below working
+// unchanged.
 const NEEDS_BENCH = '';
 
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -67,9 +75,12 @@ function initRows(job, allJobs = []) {
       return rows;
     }
   }
-  // `|| NEEDS_BENCH` normalises null/undefined to the sentinel so the <select>
-  // has a real matching option instead of falling through to its first one.
-  return [{ bench: job.bench || NEEDS_BENCH, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
+  // benchAuto true = the job only landed on Admin because nothing matched, so
+  // it still needs a human to pick. Start it on the sentinel so the drawer says
+  // "Needs a bench" and Save refuses until one is chosen. `|| NEEDS_BENCH` stays
+  // as a belt-and-braces normalise for any legacy row with a null bench.
+  const bench = job.benchAuto ? NEEDS_BENCH : (job.bench || NEEDS_BENCH);
+  return [{ bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
 export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus }) {

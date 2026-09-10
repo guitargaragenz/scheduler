@@ -88,6 +88,10 @@ export function useJobs({
   // never loaded. Our own writes mute the realtime echo for five seconds, so
   // without this the board would sit wrong until the next manual reload.
   reloadJobs,
+  // App.jsx's "needs a bench" popup. Called with the ids of jobs a committed
+  // import created that no keyword could place — they are on Admin, but nobody
+  // chose that, so a human still has to file them.
+  onNeedsBench = null,
 }) {
   // ---- Revenue already saved: load it back on start, keep it live ----
   //
@@ -498,6 +502,14 @@ export function useJobs({
     // Same order as the Jobs PDF: write first, then update the screen. A card
     // that visibly changes age and was never actually saved is worse than a
     // moment's delay.
+    // Only the jobs this import CREATED. An existing job's bench is left alone
+    // by the import, so re-raising it here would nag about work Trevor has
+    // already dealt with; the once-per-load check in App.jsx covers those.
+    const announceNeedsBench = () => {
+      if (!onNeedsBench) return;
+      onNeedsBench(plan.newJobs.filter(j => j.benchAuto).map(j => j.id));
+    };
+
     const applyLocally = () => {
       const dateByRef = new Map(plan.writes.map(w => [String(w.id), w.data.firstSeen]));
       setJobs(prev => prev.map(j => {
@@ -571,6 +583,7 @@ export function useJobs({
 
     if (!isSupabaseConfigured()) {
       applyLocally();
+      announceNeedsBench();
       showToast(`Imported ${plan.newJobs.length} new · ${plan.existingCount} updated (not saved — no database configured)`);
       return;
     }
@@ -657,6 +670,8 @@ export function useJobs({
         ...(departedOk ? departures.map(d => `departed:${d.id}`) : []),
       ],
     });
+
+    announceNeedsBench();
 
     const newCount = plan.newJobs.length;
     const backCount = plan.returning?.length ?? 0;

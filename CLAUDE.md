@@ -189,6 +189,22 @@ designed around not knowing one of them (2026-08-02).
   Anything proposing an exception so a `BL` job can still report parts arriving is modelling a
   case that does not exist — the same shape as "a completed job never comes back".
 
+- **A bench is picked from the work, never from the brand or the item.** What a job
+  needs doing decides its bench; the manufacturer and model never do. Trevor's ruling
+  2026-09-03, after brand and model were dropped as bench signals: a rack unit could need
+  a recap or a jack, and guessing from the badge on the front reads as a promise the job
+  is workable at that bench when nobody has actually read the fault. Anything proposing to
+  sort jobs by manufacturer — a bench rule, a filter, a keyword list — is guessing.
+
+- **There is no such thing as "no bench".** Trevor, 2026-09-02: "there is no such thing as
+  no bench and should never be." Every job sits somewhere. Work nothing can classify parks
+  on Admin, which is where unplaced work waits for him to file it — it is not a claim the
+  job is admin work. That a job still needs a human to choose is carried separately, as a
+  derived flag, and surfaced by the "needs a bench" popup; it is never stored on the job
+  and never left to an empty bench field. Anything that treats a bench-less job as a real
+  state — an empty-string bench, a null bench, a "No bench set" group — is modelling
+  something that cannot happen.
+
 - **Glue needs at least 12 hours to set.** Any glue-up — a neck join, a bridge, a brace, a
   crack — has to be booked at least 12 hours before the next piece of work on that same
   guitar. In practice that means a glue session and the work that depends on it cannot share

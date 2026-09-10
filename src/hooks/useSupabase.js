@@ -7,7 +7,7 @@ import {
   appendConflictLog,
 } from '../utils/supabase.js';
 import { expandAutoSplits } from '../data/joinJobs.js';
-import { deriveJobStatusFlags, blockedPile } from '../data/jobs.js';
+import { deriveJobStatusFlags, blockedPile, isBenchUnplaced, DEFAULT_BENCH_KEYWORDS } from '../data/jobs.js';
 import { jobAgeDays } from '../utils/jobAge.js';
 
 // Detect top-level jobs that disappeared from the jobs table
@@ -61,7 +61,12 @@ export function departedJobNumbersFromDb(dbJobs = []) {
 // regenerate the derived auto-split bench cards. That regeneration step is
 // not optional bookkeeping: auto-split cards are derived-not-stored by
 // design, so without it big jobs simply never break into bench cards.
-export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
+// `benchKeywords` is optional and defaults to the built-in list, so every
+// existing caller behaves exactly as before. It is here for benchAuto below,
+// which has to re-run the keyword classification to decide whether a stored
+// bench was ever really chosen — with the wrong keyword list, a job placed by
+// one of Trevor's own custom keywords would read as unplaced.
+export function normalizeJobsFromDb(dbJobs, benchHours = {}, benchKeywords = DEFAULT_BENCH_KEYWORDS) {
   // The single read-side choke point for departures. A job Multitrack has
   // dropped off the printout keeps its row — tag, action, hours, bench, pomo
   // log, everything — but stops existing as far as every screen in the app is
@@ -99,6 +104,19 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}) {
       model: j.model,
       status: j.status,
       bench: j.bench,
+      // Derived, never stored — the jobs table has no column for it and
+      // toJobRow() drops it, deliberately. Without recomputing it here the
+      // flag would die on every page reload and the "needs a bench" popup
+      // would only ever fire on the import that created the job.
+      //
+      // Two halves, both needed. isBenchUnplaced() says the description still
+      // matches no keyword; the bench check says nobody has since moved it.
+      // A stored bench that is anything but Admin proves a human chose it,
+      // because falling through can only ever produce 'Admin'. (A job a tech
+      // deliberately files under Admin still reads as unplaced — accepted:
+      // it is the safe direction to be wrong in, and the popup dismisses.)
+      benchAuto: (j.bench == null || j.bench === 'Admin')
+        && isBenchUnplaced(j.desc, j.status, j.action, j.model, j.mfr, benchKeywords, backlog, vb),
       // Coerced: a NUMERIC column can come back as a string over PostgREST,
       // and every split calculation in createSubtasks() is arithmetic — a
       // string here turns the derived cards' hours into NaN.
@@ -182,6 +200,9 @@ export function useSupabase({
   onJobsDisappeared,
   onSplitOrphansFound,
   benchHours,
+  // Trevor's bench keywords, for the benchAuto recompute in
+  // normalizeJobsFromDb(). Optional — defaults to the built-in list.
+  benchKeywords,
   // False until the shared settings have been read (or have failed and fallen
   // back to defaults). Nothing below loads or subscribes until it is true —
   // see the init effect. Defaults to true so a caller that does not pass it
@@ -202,10 +223,15 @@ export function useSupabase({
   const benchHoursRef = useRef(benchHours);
   benchHoursRef.current = benchHours;
 
+  // Same staleness trap as benchHours above: the realtime callback closes over
+  // first-render values, so the keywords are read through a ref too.
+  const benchKeywordsRef = useRef(benchKeywords);
+  benchKeywordsRef.current = benchKeywords;
+
   // Load and normalize jobs from Supabase
   async function loadAndSetJobs() {
     const dbJobs = await loadJobs();
-    const normalized = normalizeJobsFromDb(dbJobs, benchHoursRef.current);
+    const normalized = normalizeJobsFromDb(dbJobs, benchHoursRef.current, benchKeywordsRef.current || DEFAULT_BENCH_KEYWORDS);
 
     setJobs(normalized);
     prevJoinedJobsRef.current = normalized;
@@ -243,7 +269,7 @@ export function useSupabase({
       // Suppress echo if we just saved
       if (Date.now() - justSavedAt.current < 5000) return;
 
-      const normalized = normalizeJobsFromDb(updated, benchHoursRef.current);
+      const normalized = normalizeJobsFromDb(updated, benchHoursRef.current, benchKeywordsRef.current || DEFAULT_BENCH_KEYWORDS);
 
       // Detect disappeared jobs
       if (hasSeenFirstSnapshotRef.current) {
