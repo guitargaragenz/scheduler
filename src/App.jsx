@@ -97,10 +97,10 @@ export default function App() {
   // objects, so the list stays live: the moment a bench is picked benchAuto
   // goes false and that row drops out of the popup on its own.
   //
-  // null means "not shown yet". Dismissing sets it to an empty list, which is
-  // the same thing on screen but stops the load check re-opening it.
+  // Raised by a PDF import only, never on app load: a bench Trevor picked
+  // himself looks identical to one the app guessed, so an on-load check would
+  // nag about deliberate Admin jobs every single time (Trevor, 2026-09-11).
   const [needsBenchIds, setNeedsBenchIds] = useState(null);
-  const needsBenchChecked = useRef(false);
 
   const addNeedsBench = useCallback((ids) => {
     if (!ids || ids.length === 0) return;
@@ -392,17 +392,6 @@ export default function App() {
   const handleAllPiecesDone = useCallback((parentJob) => {
     setPomoJob(parentJob);
   }, [setPomoJob]);
-
-  // Fires once, after the first load that actually returned jobs: anything
-  // still unplaced from a previous session gets raised now rather than waiting
-  // for the next import. `jobs` holds live jobs only — normalizeJobsFromDb
-  // drops departed_at rows before they ever reach here — so a soft-deleted job
-  // cannot appear in the popup.
-  useEffect(() => {
-    if (needsBenchChecked.current || jobs.length === 0) return;
-    needsBenchChecked.current = true;
-    addNeedsBench(jobs.filter(j => j.benchAuto && !j.parentId && !j.isDerived).map(j => j.id));
-  }, [jobs, addNeedsBench]);
 
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
