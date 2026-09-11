@@ -1,10 +1,10 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Handoff — mobile top bar overflows at phone width
 
-Written 2026-09-04. One small display job, approved, not started.
+Written 2026-09-04. Shipped 2026-09-11 at `4e40dd7`.
 
 ## The job
 
