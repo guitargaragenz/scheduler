@@ -3,7 +3,7 @@ import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench } from './data/jobs.js';
+import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench, isBenchUnplaced } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
 import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
@@ -19,6 +19,7 @@ import PomoDrawer from './components/PomoDrawer.jsx';
 import WeeklySummaryModal from './components/WeeklySummaryModal.jsx';
 import PartsDrawer from './components/PartsDrawer.jsx';
 import HelpDrawer from './components/HelpDrawer.jsx';
+import NeedsBenchPopup from './components/NeedsBenchPopup.jsx';
 // The Projects nav button now opens the tab strip, not the old page directly.
 // WorkshopProjectsPage renders ProjectsPage itself, as the pinned "Project
 // Jobs" tab at the far right.
@@ -89,6 +90,23 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
+
+  // ---- "Needs a bench" popup ----
+  // No job is ever bench-less any more; unclassified work parks on Admin and
+  // carries benchAuto. This holds the job IDs to nag about, not the job
+  // objects, so the list stays live: the moment a bench is picked benchAuto
+  // goes false and that row drops out of the popup on its own.
+  //
+  // Raised by a PDF import only, never on app load: a bench Trevor picked
+  // himself looks identical to one the app guessed, so an on-load check would
+  // nag about deliberate Admin jobs every single time (Trevor, 2026-09-11).
+  const [needsBenchIds, setNeedsBenchIds] = useState(null);
+
+  const addNeedsBench = useCallback((ids) => {
+    if (!ids || ids.length === 0) return;
+    setNeedsBenchIds(prev => Array.from(new Set([...(prev || []), ...ids.map(String)])));
+  }, []);
+
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [supabaseReady, setFirebaseReady] = useState(false);
@@ -190,6 +208,9 @@ export default function App() {
     // instead of it being erased on the next save (the exact #1520/#1175 bug).
     onSplitOrphansFound: addDisappearedJobs,
     benchHours,
+    // For the benchAuto recompute in normalizeJobsFromDb(): a job placed by
+    // one of Trevor's own keywords must not read back as "needs a bench".
+    benchKeywords,
     // Jobs are not loaded until the shared settings have arrived. benchHours
     // decides how big each auto-split bench card is, so loading jobs first would
     // size every split card off a placeholder and then leave it that way.
@@ -277,8 +298,13 @@ export default function App() {
     setJobs(prev => prev.map(j => {
       if (j.parentId || j.isSplit || j.hasSubtasks) return j;
       const bench = inferBench(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true, j.vb === true);
-      if (bench !== j.bench) reinferred.push({ ...j, bench });
-      return { ...j, bench };
+      // Re-inferring can move a job onto Admin purely by falling through the
+      // new keywords, so benchAuto has to be recomputed here too — otherwise a
+      // job that just became unplaced would keep a stale "someone chose this"
+      // flag and never reach the popup. Derived, not stored.
+      const benchAuto = isBenchUnplaced(j.desc, j.status, j.action, j.model, j.mfr, kw, j.backlog === true, j.vb === true);
+      if (bench !== j.bench) reinferred.push({ ...j, bench, benchAuto });
+      return { ...j, bench, benchAuto };
     }));
     if (isSupabaseConfigured() && reinferred.length > 0) {
       justSavedAt.current = Date.now();
@@ -378,6 +404,9 @@ export default function App() {
     // these loaded and live, so they are passed down rather than re-read.
     weekMarks: weekMarks.marks,
     reloadJobs: supabaseOps.loadJobs,
+    // Raised by a committed PDF import for any newly created job that no
+    // keyword could place.
+    onNeedsBench: addNeedsBench,
   });
 
   // Dropping a Multitrack PDF only ever gets as far as the preview screen.
@@ -1084,6 +1113,17 @@ export default function App() {
       />
 
       <Toast message={toast} onDismiss={() => setToast('')} />
+
+      {/* Rendered here, outside the page switch, so it shows on week view and
+          day view too — Trevor only opens the bench board to add benches, so a
+          board-only signal would let unplaced imports sit unnoticed. */}
+      <NeedsBenchPopup
+        jobs={(needsBenchIds || [])
+          .map(id => jobs.find(j => String(j.id) === String(id)))
+          .filter(j => j && j.benchAuto)}
+        onOpenJob={job => setEditingJob(job)}
+        onDismiss={() => setNeedsBenchIds([])}
+      />
 
       {editingJob && (
         isMobile ? (

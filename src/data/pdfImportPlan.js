@@ -5,7 +5,7 @@
 // says yes before a single row is touched. It also carries the two refusals
 // that stop a bad drop reaching the database at all.
 
-import { inferBench, deriveJobStatusFlags, blockedPile } from './jobs.js';
+import { inferBench, isBenchUnplaced, deriveJobStatusFlags, blockedPile } from './jobs.js';
 
 // A top-level job on the board is one Multitrack knows about, and its id is
 // its job number. The app's own split cards (1620_Electronics_0, 1689_Luthier_1
@@ -94,6 +94,12 @@ export function buildNewJob(parsedJob, benchKeywords = {}) {
   const fields = pdfFieldsOf(parsedJob);
   const flags = statusFlagsFor(fields);
   const bench = inferBench(fields.desc, fields.status, '', fields.model, fields.mfr, benchKeywords, false, false);
+  // Every job gets a bench now, so "Admin" no longer tells us whether a human
+  // ever picked it. benchAuto records that this one only got there by falling
+  // through the keywords — that is what the popup and JobDrawer's save guard
+  // read. Derived, never trusted from storage: normalizeJobsFromDb() works it
+  // out again on every load.
+  const benchAuto = isBenchUnplaced(fields.desc, fields.status, '', fields.model, fields.mfr, benchKeywords, false, false);
   // Same rule the CSV importer used: a job with no hours figure that is ready to be
   // worked on gets one hour, so it is schedulable rather than invisible.
   // Anything blocked stays at 0 until Trevor says otherwise.
@@ -104,6 +110,7 @@ export function buildNewJob(parsedJob, benchKeywords = {}) {
     parentId: null,
     ...fields,
     bench,
+    benchAuto,
     hours,
     days: null,
     scheduled: false,
