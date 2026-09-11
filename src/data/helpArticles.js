@@ -105,15 +105,15 @@ If a #PERSONAL block is detected in your Google Calendar overlapping a scheduled
   },
 
   {
-    id: 'firebase-sync',
+    id: 'cloud-sync',
     section: 'Scheduler',
-    title: 'Cross-device sync (Firebase)',
-    keywords: ['firebase', 'sync', 'cross-device', 'phone', 'tablet', 'cloud', 'save'],
-    body: `The scheduler automatically saves to Firebase Firestore in real time. Any device signed into the same Firebase account will see the same schedule.
+    title: 'Cross-device sync',
+    keywords: ['sync', 'supabase', 'cross-device', 'phone', 'tablet', 'cloud', 'save'],
+    body: `The scheduler saves to the cloud automatically as you work. Any device signed in to the same workshop sees the same schedule.
 
-Changes are debounced — saved 1.5 seconds after you stop making changes. When another device makes a change, your view updates automatically within a few seconds.
+Changes are saved as you make them. When another device makes a change, your view updates automatically within a few seconds.
 
-Echo suppression prevents your own saves from triggering an unnecessary reload.`,
+Your own changes never cause your screen to reload.`,
   },
 
   // ─── SIDEBAR ──────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ Phases:
 • Break — 5-minute break after each pomo
 • Done — session complete, ready to log
 
-After a session, add an optional note (e.g. "replaced output transformer") and click Log Session. The session is saved to Firebase against that specific job.
+After a session, add an optional note (e.g. "replaced output transformer") and click Log Session. The session is saved against that specific job.
 
 Pomo dots show how many sessions you've completed for the job. Past sessions are listed below the timer with timestamps and notes.
 
