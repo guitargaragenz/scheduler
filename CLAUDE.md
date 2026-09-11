@@ -22,9 +22,16 @@ Don't leave new briefs loose at the repo root; they get lost there.
 
 ## Starting a New Session
 
-1. **Micky / Moby** — open terminal, `cd` into the scheduler project folder, run `claude`. The repo context is automatic.
+1. **Micky / Moby** — open the Claude desktop app, Code tab, with the scheduler project
+   selected. That is the normal way in. The terminal (`cd` into the project folder, run
+   `claude`) is the same thing and still works — use it only for setup commands the app
+   can't show, like `/permissions`, `/config` and `/hooks`. Corrected 2026-09-11: this
+   step used to say terminal-only, which predates the desktop app and had Trevor thinking
+   he was in the wrong place.
 2. **iPhone** — go to `claude.ai/code`, start a new session, select `guitargaragenz/scheduler` from the repo list.
-3. **All devices** — CLAUDE.md loads automatically. No need to re-explain the project — just pick up where you left off. Sessions don't sync across devices — context lives here in CLAUDE.md, not in session history.
+3. **Every session starts with `/next`** — it syncs the clone with GitHub, reads the live
+   brief list, and picks up at the right protocol step. Don't start work without it.
+4. **All devices** — CLAUDE.md loads automatically. No need to re-explain the project — just pick up where you left off. Sessions don't sync across devices — context lives here in CLAUDE.md, not in session history.
 
 ### Devices
 - **Micky** — iMac, primary dev machine. Start all local builds and dev server testing here. Has `.env` with Firebase / Google API keys.
