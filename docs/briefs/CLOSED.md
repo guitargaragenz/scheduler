@@ -52,3 +52,23 @@ Everything else has been deleted. Twenty-one spent briefs came out of this folde
 was already recorded elsewhere. **Nothing is lost:** `git log -- docs/briefs/` has all of
 them in full, permanently. They were removed because a folder of finished work that reads
 like live work is what caused the failed build rounds.
+
+## Recently shipped — moved off the Live section 2026-09-11
+
+- **CLAUDE.md trim**, 2026-09-11, `4597304` — 267 → 245 lines, dated incident stories moved to
+  [../why-the-rules-exist.md](../why-the-rules-exist.md). `8da4641` then split the short-answer and
+  plain-English rules back apart (247 lines), because concise and plain are different properties and
+  "both, always" invited buying shortness with jargon.
+- **Mobile top bar**, 2026-09-11, `4e40dd7` — the header wraps and the button row swipes, so week
+  dates and arrows stay on screen at phone width.
+- **Completion date**, 2026-09-11, `049ec99` — money lands in the week the work finished. Merged
+  without the browser test, at Trevor's call. Three pre-existing wrong-week rows remain, listed in
+  the index's "Noticed, not scoped".
+- **Brand/model bench fix**, 2026-09-03, `046a6d6` (PR #64) — detail in the table above.
+- **13 briefs wrongly marked `live`**, cleared 2026-09-03. They described work that had already
+  shipped and sessions were starting against them. The last, the keyword revert, went in with PR #60.
+  This is why `doc_status:` gets closed in the same session the work ships.
+- **Not a bug, corrected 2026-09-03.** The index used to say a job taken off a day could not be put
+  back. It can: re-marking the cell in the Weekly Log puts it back (`3708b9a`, `App.jsx:867` ->
+  `onBookedOnDay`). All that remains is that the Daily Log's own picker doesn't offer a removed job,
+  and the Weekly Log is where you'd go anyway. Nothing to build.
