@@ -163,10 +163,6 @@ export default function BenchBoardPage({ jobs }) {
       }))
       .filter(c => c.cards.length > 0);
 
-    const none = cards.filter(c => !c.card.bench);
-    if (none.length) {
-      benches.push({ key: '__none', name: 'No bench set', colour: '#475569', cards: none });
-    }
     return benches;
   }, [cards, cut]);
 
