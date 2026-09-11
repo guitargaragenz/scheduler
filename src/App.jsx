@@ -572,7 +572,7 @@ export default function App() {
         <header style={{
           padding: '10px 20px', background: '#1e293b', borderBottom: '1px solid #334155',
           display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
-          overflowX: 'auto',
+          flexWrap: 'wrap', rowGap: 8,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -615,12 +615,12 @@ export default function App() {
             )}
           </div>
 
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          <div style={{ flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={() => setWeekDays(getWeekDays(new Date(weekDays[0].getTime() - 7 * 86400000)))}
               style={{ background: 'none', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', fontSize: 16, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >‹</button>
-            <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 160, textAlign: 'center' }}>{formatDateRange(weekDays)}</span>
+            <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 0, textAlign: 'center', whiteSpace: 'nowrap' }}>{formatDateRange(weekDays)}</span>
             <button
               onClick={() => setWeekDays(getWeekDays(new Date(weekDays[0].getTime() + 7 * 86400000)))}
               style={{ background: 'none', border: '1px solid #334155', borderRadius: 6, color: '#94a3b8', fontSize: 16, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -631,7 +631,7 @@ export default function App() {
             >Today</button>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'nowrap', justifyContent: 'flex-start', overflowX: 'auto', maxWidth: '100%', marginLeft: 'auto' }}>
             <div title={gcal.signedIn ? 'Calendar connected' : 'Calendar disconnected'} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{
                 width: 8, height: 8, borderRadius: '50%',
