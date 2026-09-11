@@ -78,3 +78,14 @@ Trevor pays for that in context, which is what he has least of.
   bench signals.
 - **Glue needs 12 hours, added 2026-08-04,** after a week schedule put a 1635 neck glue and the
   rest of its bench cards on the same Friday.
+
+## Spent standing orders
+
+- **Plumbing before polish, Trevor 2026-07-29,** right after Brief G Build 1b merged
+  (`f2ee449`): *"save all UI changes until after PDF drop implemented successfully and CSV
+  pipeline gone."* Earlier the same day: *"Appointments and UI can wait until everything's rock
+  solid."* It held the three Jobs Sheet usability changes he had asked for that same day, plus
+  the calendar-appointments bug. Two systems writing the same job columns was the class of
+  problem that quietly eats his markup; a dark sheet was only annoying. **Satisfied the same
+  day at `1e4186a`**, and retired from the briefs index 2026-09-11 — it was never meant as a
+  permanent rule.

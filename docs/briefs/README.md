@@ -51,9 +51,10 @@ Real, nobody has picked them up, not attached to any brief.
 
 ## Parked — agreed in principle, waiting on something
 
-> **Standing order, Trevor 2026-07-29:** "save all UI changes until after PDF drop
-> implemented successfully and CSV pipeline gone." **Satisfied** 2026-07-29 at `1e4186a`.
-> Unblocked is not re-approved — re-check with Trevor before restarting either UI brief.
+> **No standing order.** UI work was blocked until the PDF drop shipped and the
+> CSV pipeline went. Both happened 2026-07-29 at `1e4186a`, so nothing below is
+> blocked now. Unblocked is not approved — the two UI briefs need a yes from me
+> before either restarts.
 
 None of these is scoped or approved; each file holds the detail.
 

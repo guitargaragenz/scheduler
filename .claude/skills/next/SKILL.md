@@ -24,8 +24,10 @@ hardcoded brief name goes stale the day the brief ships.
    **Then stop reading.** The scope lock links out to the full brief for background. Don't
    follow that link to start — it can be hundreds of lines and spends the session before any
    work happens. Open it only if the scope lock doesn't answer a real question, and say why.
-3. **Read the standing-order blockquote above the Parked table** in the same README. It fixes
-   the order of work, and overrides any instinct to start with a small visible change.
+3. **Read the blockquote above the Parked table** in the same README. If it sets a standing
+   order it fixes the order of work and overrides any instinct to start with a small visible
+   change. If it says there is none, nothing in Parked is blocked — but nothing there is
+   approved either, so it still doesn't get started without a yes from Trevor.
 4. **Work out which protocol step this resumes at** from the brief's own text, not from
    assumption: 1 brief → 2 council → 3 builder → 4 verifier → 5 browser test → 6 merge. A
    brief Trevor approved that council has never seen resumes at **2**, not 3. Approved is not
@@ -34,8 +36,8 @@ hardcoded brief name goes stale the day the brief ships.
    status string, a column name, a function name. Briefs have lost whole build rounds to a
    fact that was true the day it was written. One grep is cheaper than a build round.
 6. **Report in plain English, then start.** Four things: which brief is live and what it does;
-   which step it resumes at and why; what the standing order says is *not* being touched; the
-   first action you are taking now.
+   which step it resumes at and why; what the blockquote above Parked says about what is *not*
+   being touched; the first action you are taking now.
 
 Step 6 finishes by actually starting. This is not a status report he has to reply to, and not
 a menu of live items to pick from.
