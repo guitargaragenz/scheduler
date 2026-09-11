@@ -32,6 +32,10 @@ the status line.
 Small display-only job: the week dates and arrows get cut off the right edge on a
 phone. Approved 2026-09-03, not started. Does not need the full protocol.
 
+[Strip the dead "no bench" leftovers](no-bench-cleanup-handoff.md) — the empty
+"No bench set" groups on the board, the week page and the weekly summary. Written
+2026-09-11, not yet briefed or approved.
+
 The completion-date fix shipped 2026-09-11 at `049ec99` — money now lands in the
 week the work finished. Merged without the browser test, at Trevor's call.
 
