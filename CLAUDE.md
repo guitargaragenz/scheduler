@@ -203,6 +203,9 @@ otherwise stays off the Mac. Hard rule, not a preference.
 - **Found wrong, fix the fact — don't just note it.** If the whole document is spent, delete it.
   Git keeps it (`git log -- docs/briefs/`), so deleting loses nothing and stops it being found by
   search and acted on.
+- **No brief from one incident without a cause.** One thing going wrong once is not a defect. Ask
+  Trevor what he did, and reproduce the symptom in the code or the data. Can't reproduce it, no
+  brief. Code that *could* explain it is not proof it did.
 
 ### A scope lock is a page, not a file of record
 
