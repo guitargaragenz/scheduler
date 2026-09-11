@@ -1,5 +1,7 @@
 ---
-doc_status: live
+doc_status: closed
+
+Shipped 2026-09-11 at `f5b2315` (merge), builds `b3a41e7` + `cf7f6dc`.
 ---
 
 # Scope lock — strip the dead "no bench" leftovers
