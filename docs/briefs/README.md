@@ -32,6 +32,10 @@ the status line.
 |---|---|
 | [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | **Current — start here.** Nothing is mid-build. Says what the next work should be and where it starts. |
 
+The CLAUDE.md trim shipped 2026-09-11 at `4597304` — 267 → 245 lines, with the
+dated incident stories moved to [../why-the-rules-exist.md](../why-the-rules-exist.md).
+Its handoff is now closed.
+
 The mobile top bar fix shipped 2026-09-11 at `4e40dd7` — the header now wraps
 and the button row swipes, so the week dates and arrows stay on screen at phone
 width.

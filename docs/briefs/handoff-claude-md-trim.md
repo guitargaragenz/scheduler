@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Handoff — CLAUDE.md trim, part 2
+
+**Shipped at `4597304` (2026-09-11).** CLAUDE.md is 267 → 245 lines; the stories moved
+to [docs/why-the-rules-exist.md](../why-the-rules-exist.md). Nothing below is a task list.
 
 ## Where things stand
 
