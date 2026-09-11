@@ -41,3 +41,27 @@ Both assert the dead behaviour, so both change with the code. Suite must stay gr
 - Protocol: this touches `jobs[]` shape reads across three screens, so run the full
   agent-team protocol — brief approved in `.claude/pending-brief.md` first, no commit
   without it.
+
+## Council verdict, 2026-09-11 (both reviewers: go)
+
+- Leave `benchColors()` and `NO_BENCH_COLORS` alone. It handles a missing bench
+  safely and ~20 other callers rely on it.
+- Leave the `canAdd` field in place. Stripping it is a bigger refactor, not this job.
+- `buildManualInvoiceJob()` still sets a null bench, but that object never reaches
+  the three bench screens. Out of scope; worth knowing.
+
+## Amendment, 2026-09-11 — the Admin fallback at load
+
+The verifier would not sign off because nothing proved a bench-less job can never
+reach the three screens. Tracing it showed it can: commit `233ef0a` introduced the
+"unplaced work parks on Admin" rule but never backfilled existing Supabase rows, and
+`normalizeJobsFromDb` takes the stored bench verbatim and never re-infers on load. So
+a legacy null-bench row would load bench-less and, with the "No bench set" buckets
+gone, appear on none of the three screens.
+
+Trevor directed the fix directly: `src/hooks/useSupabase.js` now loads `j.bench ||
+'Admin'`. `benchAuto` on the line below still reads the raw `j.bench`, so such a job
+still reads as unplaced and still reaches the "needs a bench" popup. Three tests added
+in `src/hooks/useSupabase.test.js`. Council step was not re-run for this: it is a
+one-line change inside the scope council already reviewed, and it closes a hole
+council itself did not catch.

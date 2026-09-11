@@ -49,6 +49,26 @@ describe('normalizeJobsFromDb — schedulable agrees with blockedPile', () => {
     expect(job.schedulable).toBe(false);
   });
 
+  // Rows written before the "unplaced work parks on Admin" rule shipped were
+  // never backfilled, so a null bench can still come back off the table. The
+  // bench screens no longer build a "No bench set" bucket, so a job that loaded
+  // bench-less would show on none of them.
+  it('parks a legacy null-bench row on Admin', () => {
+    const [job] = normalizeJobsFromDb([dbJob({ job: 4001, bench: null, desc: '' })]);
+    expect(job.bench).toBe('Admin');
+    expect(job.benchAuto).toBe(true);
+  });
+
+  it('parks an empty-string bench on Admin too', () => {
+    const [job] = normalizeJobsFromDb([dbJob({ job: 4002, bench: '' })]);
+    expect(job.bench).toBe('Admin');
+  });
+
+  it('leaves a real stored bench alone', () => {
+    const [job] = normalizeJobsFromDb([dbJob({ job: 4003, bench: 'Luthier' })]);
+    expect(job.bench).toBe('Luthier');
+  });
+
   it('marks a stalled Waiting job unschedulable', () => {
     const [job] = normalizeJobsFromDb([dbJob({ job: 3003, status: 'Waiting', action: 'CI' })]);
     expect(job.schedulable).toBe(false);
