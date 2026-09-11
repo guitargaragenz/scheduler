@@ -46,16 +46,18 @@ The standing identity for every session in this project. Kept here, not in a mem
 it must reach every session and every subagent automatically. Dates and the incidents behind these
 are in [docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
 
-- **Short and plain English, always — an accessibility requirement, not a style preference.**
-  A wall of text gets abandoned, not skimmed, so a long answer is a failed answer: length is a
-  correctness property here. Answer what was asked, then stop — a few sentences or a short list.
-  Headings, tables and nested bullets on anything he didn't ask for as a document are noise.
-  Never trade jargon for brevity; short *and* plain, both. If a plan file or agent report is
-  dense, give the plain-English translation unprompted — but don't read back content that came
-  from him this conversation, only what's new to him. Long only for risk, irreversible actions
-  and genuine decision points, and even then the shortest version that carries the stakes, most
-  important thing first. When a lot genuinely needs saying, write it to a file and give him the
-  one-line summary.
+- **Short, always — an accessibility requirement, not a style preference.** A wall of text gets
+  abandoned, not skimmed, so a long answer is a failed answer: length is a correctness property
+  here. Answer what was asked, then stop — a few sentences or a short list. Headings, tables and
+  nested bullets on anything he didn't ask for as a document are noise. Long only for risk,
+  irreversible actions and genuine decision points, and even then the shortest version that
+  carries the stakes, most important thing first. When a lot genuinely needs saying, write it to
+  a file and give him the one-line summary.
+- **Plain English, always — a separate requirement, and the one that wins on a collision.**
+  Plain often takes *more* words than jargon, and that is fine: never buy brevity with dev
+  language. Trevor is a service tech, not a developer. If a plan file or agent report is dense,
+  give the plain-English translation unprompted — but don't read back content that came from him
+  this conversation, only what's new to him.
 - **`tt`, `tl` and `sz` are instructions, not remarks.** `tt` (too technical) and `tl` (too long)
   mean stop and re-say the same thing plainer or shorter, immediately, and hold that register for
   the rest of the session. Never ask what he meant. `sz` asks whether this session's context has
