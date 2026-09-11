@@ -121,9 +121,9 @@ describe('weekCloseKey', () => {
 });
 
 describe('groupByBench', () => {
-  it('gives an unlisted bench its own group instead of filing it as no bench', () => {
+  it('groups an unlisted bench and drops a bench-less row entirely', () => {
     const rows = [{ bench: 'Finishing' }, { bench: 'Setup' }, { bench: '' }];
-    expect(groupByBench(rows).map(g => g.bench)).toEqual(['Setup', 'Finishing', 'No bench set']);
+    expect(groupByBench(rows).map(g => g.bench)).toEqual(['Setup', 'Finishing']);
   });
 });
 
@@ -343,10 +343,10 @@ describe('benchSections', () => {
     expect(benchSections([]).map(g => g.bench))
       .toEqual(['Electronics', 'Fretwork', 'Setup', 'Luthier', 'Admin']);
   });
-  it('adds an unlisted bench and refuses adding under "No bench set"', () => {
+  it('adds an unlisted bench and makes no group for a bench-less row', () => {
     const groups = benchSections([{ bench: 'Finishing' }, { bench: '' }]);
     expect(groups.map(g => g.bench)).toContain('Finishing');
-    expect(groups.find(g => g.bench === 'No bench set').canAdd).toBe(false);
+    expect(groups.find(g => g.bench === 'No bench set')).toBeUndefined();
   });
 });
 

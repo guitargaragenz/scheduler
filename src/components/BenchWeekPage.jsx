@@ -419,18 +419,15 @@ export function buildWeekExport({ rows, weekKeys, weekDays, marks }) {
 }
 
 // Benches in the shop's own order first, then any other bench name that turns
-// up in the data, then the jobs with no bench at all.
+// up in the data.
 //
-// The "then any other bench name" step matters: a fixed list quietly files an
-// unlisted bench (Finishing, or one added later) under "No bench set", which is
-// the same silent mis-filing benchColors() exists to stop.
+// The "then any other bench name" step matters: a fixed list would quietly drop
+// an unlisted bench (Finishing, or one added later), which is the same silent
+// mis-filing benchColors() exists to stop.
 export function groupByBench(rows) {
   const known = BENCH_ORDER.filter(b => rows.some(r => r.bench === b));
   const extra = [...new Set(rows.map(r => r.bench).filter(b => b && !BENCH_ORDER.includes(b)))].sort();
-  const groups = [...known, ...extra].map(b => ({ bench: b, rows: rows.filter(r => r.bench === b) }));
-  const none = rows.filter(r => !r.bench);
-  if (none.length) groups.push({ bench: 'No bench set', rows: none });
-  return groups;
+  return [...known, ...extra].map(b => ({ bench: b, rows: rows.filter(r => r.bench === b) }));
 }
 
 // What the page draws. Same grouping as groupByBench(), except every shop bench
@@ -441,21 +438,14 @@ export function groupByBench(rows) {
 // page could never be filled by hand at all. groupByBench() is left alone
 // because buildWeekExport() uses it, and an exported week should still list only
 // the benches that actually have jobs on them.
-//
-// `canAdd` is false for "No bench set": a job with no bench cannot be offered
-// under a bench, so those rows can appear (from a booking or a mark) but nothing
-// can be added there. Accepted, per the brief.
 export function benchSections(rows) {
   const all = rows || [];
   const extra = [...new Set(all.map(r => r.bench).filter(b => b && !BENCH_ORDER.includes(b)))].sort();
-  const groups = [...BENCH_ORDER, ...extra].map(bench => ({
+  return [...BENCH_ORDER, ...extra].map(bench => ({
     bench,
     rows: all.filter(r => r.bench === bench),
     canAdd: true,
   }));
-  const none = all.filter(r => !r.bench);
-  if (none.length) groups.push({ bench: 'No bench set', rows: none, canAdd: false });
-  return groups;
 }
 
 // The jobs offerable under one bench: on that bench, not finished, and not

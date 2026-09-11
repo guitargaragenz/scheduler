@@ -103,7 +103,13 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}, benchKeywords = DEF
       mfr: j.mfr,
       model: j.model,
       status: j.status,
-      bench: j.bench,
+      // Falsy benches park on Admin, per the workshop rule that no job is ever
+      // bench-less. Rows written before that rule shipped were never backfilled,
+      // so without this a legacy null-bench row loads bench-less and, since the
+      // three bench screens no longer build a "No bench set" bucket, would
+      // simply not appear on any of them. benchAuto below still reads the RAW
+      // j.bench, so such a job keeps reading as unplaced and reaches the popup.
+      bench: j.bench || 'Admin',
       // Derived, never stored — the jobs table has no column for it and
       // toJobRow() drops it, deliberately. Without recomputing it here the
       // flag would die on every page reload and the "needs a bench" popup
