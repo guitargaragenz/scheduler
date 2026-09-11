@@ -5,7 +5,6 @@
 GGNZ is organized into departments, each with its own `claude.md` + `context/` folder:
 
 - **Apps** (this file, repo root) — Scheduler — **live app: https://ggnz-scheduler.vercel.app** (the deployed app, can't move — see [SCHEDULER-ARCHITECTURE.md](SCHEDULER-ARCHITECTURE.md) for tech stack, CSV pipeline, file boundaries, and code patterns). No subfolder of its own since Scheduler lives at repo root, unlike the other departments.
-  - Job Tracker (legacy standalone tool) decommissioned 2026-07-06 — archived to `archive/job-tracker/`, no longer deployed. Superseded entirely by this app's Jobs page/Sidebar (same bench/status/action filtering, plus real scheduling and sync).
 - **Marketing** — [marketing/claude.md](marketing/claude.md)
 - **Admin** — [admin/claude.md](admin/claude.md) (board meetings, backlog, parts/procurement)
 - North star: [northstar.md](northstar.md)
@@ -25,9 +24,7 @@ Don't leave new briefs loose at the repo root; they get lost there.
 1. **Micky / Moby** — open the Claude desktop app, Code tab, with the scheduler project
    selected. That is the normal way in. The terminal (`cd` into the project folder, run
    `claude`) is the same thing and still works — use it only for setup commands the app
-   can't show, like `/permissions`, `/config` and `/hooks`. Corrected 2026-09-11: this
-   step used to say terminal-only, which predates the desktop app and had Trevor thinking
-   he was in the wrong place.
+   can't show, like `/permissions`, `/config` and `/hooks`.
 2. **iPhone** — go to `claude.ai/code`, start a new session, select `guitargaragenz/scheduler` from the repo list.
 3. **Every session starts with `/next`** — it syncs the clone with GitHub, reads the live
    brief list, and picks up at the right protocol step. Don't start work without it.
@@ -49,18 +46,16 @@ The standing identity for every session in this project. Kept here, not in a mem
 it must reach every session and every subagent automatically. Dates and the incidents behind these
 are in [docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
 
-- **Short answers, always. This is an accessibility requirement, not a style preference.** In
-  Trevor's words: "with an ADHD mind long text and jargon just shuts me down." A wall of text
-  gets abandoned, not skimmed — so a long answer is a failed answer. Length is a correctness
-  property here. Answer what was asked, then stop. A few sentences or a short list. Headings,
-  tables and nested bullets on anything he didn't ask for as a document are noise. Long only for
-  risk, irreversible actions and genuine decision points — and even then, shortest version that
-  carries the stakes, most important thing first. When a lot genuinely needs saying, write it to
-  a file and give him the one-line summary.
-- **Plain English, not dev language.** Trevor is a service tech, not a developer. Never trade
-  jargon for brevity — short *and* plain, both. If a plan file or agent report is dense, give the
-  plain-English translation unprompted. **Exception:** don't read back content that came from him
-  this conversation — a brief he already approved. Only translate what's new to him.
+- **Short and plain English, always — an accessibility requirement, not a style preference.**
+  A wall of text gets abandoned, not skimmed, so a long answer is a failed answer: length is a
+  correctness property here. Answer what was asked, then stop — a few sentences or a short list.
+  Headings, tables and nested bullets on anything he didn't ask for as a document are noise.
+  Never trade jargon for brevity; short *and* plain, both. If a plan file or agent report is
+  dense, give the plain-English translation unprompted — but don't read back content that came
+  from him this conversation, only what's new to him. Long only for risk, irreversible actions
+  and genuine decision points, and even then the shortest version that carries the stakes, most
+  important thing first. When a lot genuinely needs saying, write it to a file and give him the
+  one-line summary.
 - **`tt`, `tl` and `sz` are instructions, not remarks.** `tt` (too technical) and `tl` (too long)
   mean stop and re-say the same thing plainer or shorter, immediately, and hold that register for
   the rest of the session. Never ask what he meant. `sz` asks whether this session's context has
@@ -91,11 +86,6 @@ are in [docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
 - `useSupabase.js` and `utils/supabase.js` — the live job-state persistence layer
 - `jobs[]` shape/identity
 
-> Corrected 2026-07-28: this list previously named `useFirebase.js` and called
-> `scheduledSlots` Firestore state. The app runs on Supabase — `useFirebase.js` is dead
-> code (nothing imports it, and it reads from Supabase anyway). Deleting it is separate
-> housekeeping, not part of any feature build.
-
 **The protocol:**
 1. **Brief** — written, scope-locked, posted to `.claude/pending-brief.md`, Trevor approves ("yp")
 2. **Council** — two independent `ggnz-council` agents review, weigh in on design decisions
@@ -106,16 +96,12 @@ are in [docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
 
 **Before your first commit:** Check `.claude/pending-brief.md` for a brief entry covering this work. No brief entry, no commit. If you're unsure whether work is "blast-radius" (multi-file, complex, touches shared state), default to running it through the full protocol rather than solo.
 
-**Why this matters:** This protocol is the reason Trevor doesn't babysit builds. Skipping it means he has to come back mid-session and manually redirect work, which defeats the whole point. Don't skip it.
-
 ---
 
 ## Model Discipline — Non-Negotiable
 
-Added 2026-07-28 after repeatedly hitting rate limits. **Subagents inherit the session's
-model by default.** That was the leak: Trevor sets Opus for architecture thinking, then every
-council reviewer, verifier and scout spawns as Opus too. One `council this` was eleven Opus
-agents.
+**Subagents inherit the session's model by default.** That is the leak: set Opus for
+architecture thinking and every council reviewer, verifier and scout spawns as Opus too.
 
 **The rule: no agent is ever spawned without its model decided on purpose.**
 
@@ -136,10 +122,6 @@ spawn and blocks it if no model is set, or if a premium model is requested for a
 than `ggnz-builder`. Do not route around the hook — if something genuinely needs a premium
 agent, ask Trevor and say why.
 
-**Why `ggnz-builder` stays on Opus:** it writes to `scheduledSlots`, `useSupabase.js` and the
-`jobs[]` shape. A cheap agent's mistake there costs a bad merge and a debugging session, which
-burns more than it saved. Cheap everywhere else; careful where the live job data is.
-
 **Two things the hook can't catch, so they're on Claude:**
 - **Don't delegate small work.** Every subagent starts cold and re-reads CLAUDE.md, the brief
   and the files. For a one-file edit that costs more than just doing it. Delegate chunky,
@@ -151,8 +133,8 @@ burns more than it saved. Cheap everywhere else; careful where the live job data
 
 ## Workshop rules that the code must respect
 
-Trevor's operating rules, not app behaviour. Written down because a build already got
-designed around not knowing one of them (2026-08-02).
+Trevor's operating rules, not app behaviour. The incidents behind them are in
+[docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
 
 - **A completed job never comes back.** If work returns to the bench, it is rebooked under a
   new job number — no exceptions. So a job number reappearing on a Multitrack printout is
@@ -161,16 +143,13 @@ designed around not knowing one of them (2026-08-02).
 
 - **A job is never Backlog and Waiting Parts at the same time.** Ordering parts for a backlog
   job is the moment Trevor takes the `BL` tag off it, so `BL` and `WP` cannot coexist on one
-  job. Added 2026-08-05, after Build 1 made `BL` block and this looked like it would mute the
-  "🔧 PARTS ARRIVED?" notice for backlog jobs. It cannot: the combination doesn't occur.
-  Anything proposing an exception so a `BL` job can still report parts arriving is modelling a
+  job. Anything proposing an exception so a `BL` job can still report parts arriving is modelling a
   case that does not exist — the same shape as "a completed job never comes back".
 
 - **A bench is picked from the work, never from the brand or the item.** What a job
-  needs doing decides its bench; the manufacturer and model never do. Trevor's ruling
-  2026-09-03, after brand and model were dropped as bench signals: a rack unit could need
-  a recap or a jack, and guessing from the badge on the front reads as a promise the job
-  is workable at that bench when nobody has actually read the fault. Anything proposing to
+  needs doing decides its bench; the manufacturer and model never do. A rack unit could need
+  a recap or a jack, and guessing from the badge on the front reads as a promise the job is
+  workable at that bench when nobody has actually read the fault. Anything proposing to
   sort jobs by manufacturer — a bench rule, a filter, a keyword list — is guessing.
 
 - **There is no such thing as "no bench".** Trevor, 2026-09-02: "there is no such thing as
@@ -185,9 +164,8 @@ designed around not knowing one of them (2026-08-02).
 - **Glue needs at least 12 hours to set.** Any glue-up — a neck join, a bridge, a brace, a
   crack — has to be booked at least 12 hours before the next piece of work on that same
   guitar. In practice that means a glue session and the work that depends on it cannot share
-  a day: glue late one day, carry on the next. Added 2026-08-04, after a week schedule put a
-  1635 neck glue and the rest of its bench cards on the same Friday. Hours alone will always
-  say it fits; the glue does not care. Anything that packs a job's sessions by available
+  a day: glue late one day, carry on the next. Hours alone will always say it fits; the glue
+  does not care. Anything that packs a job's sessions by available
   hours needs this rule, or it will keep proposing schedules that cannot physically happen.
 
 ---

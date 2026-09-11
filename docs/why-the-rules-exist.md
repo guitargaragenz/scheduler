@@ -51,3 +51,30 @@ Trevor pays for that in context, which is what he has least of.
   reply is still being written — he is not a fast typer, hence two letters.
 - **`sz` (2026-08-04),** after he asked the long way mid-session. Answer honestly: what is
   degrading, what is still solid, and a plain yes or no on starting fresh. Never reassurance.
+
+## Moved out of CLAUDE.md 2026-09-11, to keep it short
+
+- **Job Tracker decommissioned 2026-07-06.** The legacy standalone tool was archived to
+  `archive/job-tracker/` and is no longer deployed. The Jobs page and Sidebar superseded it
+  entirely — same bench/status/action filtering, plus real scheduling and sync.
+- **Starting a session, corrected 2026-09-11.** Step 1 used to say terminal-only, which predates
+  the desktop app and had Trevor thinking he was in the wrong place.
+- **Blast-radius file list, corrected 2026-07-28.** It previously named `useFirebase.js` and called
+  `scheduledSlots` Firestore state. The app runs on Supabase — `useFirebase.js` is dead code
+  (nothing imports it, and it reads from Supabase anyway). Deleting it is separate housekeeping,
+  not part of any feature build.
+- **Model discipline, added 2026-07-28** after repeatedly hitting rate limits. Trevor sets Opus for
+  architecture thinking, then every council reviewer, verifier and scout spawns as Opus too. One
+  `council this` was eleven Opus agents.
+- **Why `ggnz-builder` stays on Opus.** It writes to `scheduledSlots`, `useSupabase.js` and the
+  `jobs[]` shape. A cheap agent's mistake there costs a bad merge and a debugging session, which
+  burns more than it saved. Cheap everywhere else; careful where the live job data is.
+- **Workshop rules written down 2026-08-02,** because a build already got designed around not
+  knowing one of them.
+- **Backlog never coexists with Waiting Parts, added 2026-08-05.** Build 1 made `BL` block, and
+  that looked like it would mute the "PARTS ARRIVED?" notice for backlog jobs. It cannot: the
+  combination doesn't occur.
+- **Bench comes from the work, Trevor's ruling 2026-09-03,** after brand and model were dropped as
+  bench signals.
+- **Glue needs 12 hours, added 2026-08-04,** after a week schedule put a 1635 neck glue and the
+  rest of its bench cards on the same Friday.
