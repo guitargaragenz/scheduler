@@ -28,7 +28,9 @@ the status line.
 
 ## Live — work that hasn't finished
 
-Nothing live right now.
+| Doc | What it does |
+|---|---|
+| [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | **Current — start here.** Nothing is mid-build. Says what the next work should be and where it starts. |
 
 The mobile top bar fix shipped 2026-09-11 at `4e40dd7` — the header now wraps
 and the button row swipes, so the week dates and arrows stay on screen at phone
