@@ -26,10 +26,13 @@ Real, nobody has picked them up, not attached to any brief.
 - **The Projects planner shape would suit customer project jobs.** Raised while building
   Workshop Projects (`947ab5a`). Needs a conversation with Trevor about what planning a
   customer project involves before anyone writes a brief.
-- **Drawer bench change is silently dropped on split jobs** — saves the cards but never
-  the parent row, so the board snaps back. Found on job 1727. Workaround: collapse to one
-  card, save, re-split. Write-up:
-  [2026-09-03-drawer-bench-change-dropped-on-split-jobs.md](2026-09-03-drawer-bench-change-dropped-on-split-jobs.md).
+- **On mobile, Day view doesn't show the split cards that Week view and desktop show** — a
+  UI difference, not a bug. Trevor, 2026-09-13. A split job shows one card per piece on the
+  computer and in mobile Week view; mobile Day view doesn't render them. The old "drawer
+  bench change dropped on split jobs" write-up was filed here as a save bug and deleted the
+  same day: the board renders each child with the child's own bench
+  (`src/components/BenchBoardPage.jsx:49`), so the parent's stale bench never reaches the
+  screen and that symptom can't happen. Nothing to fix in the save path. UI work needs a yes.
 
 ## Parked — what each one is waiting on
 

@@ -24,12 +24,26 @@ job 1740 by hand; the app never hid it. The brief, the council round and the bui
 were all spent on a premise that was false, and the record was deleted at `5a3e918`.
 The rule that came out of it is in CLAUDE.md: no brief from one incident without a cause.
 
-## Recommended next work — bench change on split jobs
+## The split-job bench change — dead too, do not restart
 
-Changing bench in the job drawer on a split job saves the cards but not the parent
-row, so the board snaps back. Found 2026-09-03 on job 1727. It has a workaround
-(collapse to one card, save, re-split). Write-up:
-`docs/briefs/2026-09-03-drawer-bench-change-dropped-on-split-jobs.md`.
+This handoff recommended it. It was also wrong, and that is two dead
+recommendations from one document in a day. The board never shows the parent of a
+split job: it renders one card per child using the child's own bench
+(`src/components/BenchBoardPage.jsx:49`). The parent's stale bench cannot reach
+the screen, so the symptom the old write-up described can't happen. The write-up
+was deleted 2026-09-13. Job 1727 is a single un-split row in Supabase today.
+
+The save path really does skip the parent on a multi-card save
+(`src/hooks/useJobs.js:327`), but nothing reads it, so there is nothing to fix.
+
+What is real, and is a UI change rather than a bug: on mobile, Day view doesn't
+show the split cards that Week view and the computer show. Logged in
+`docs/briefs/BACKLOG.md`. Not approved.
+
+## Nothing is recommended from this document
+
+Both of its recommendations are spent. Pick the next work from the briefs index
+and the backlog, not from here.
 
 ## Not to be started without asking Trevor first
 
