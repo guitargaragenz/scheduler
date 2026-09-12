@@ -17,25 +17,18 @@ thing that shipped was the "no bench" cleanup, merged at `f5b2315`.
 
 Lesson, again: documents describe the past, the code describes the present.
 
-## Recommended next work — the vanishing job
+## The vanishing job — dead, do not restart
 
-`src/data/pdfImportPlan.js` only clears a job's `done` flag on the "returning" path,
-and that path needs a non-null `departed_at`. So a job still on the Multitrack
-printout can stay flagged done and drop off the board. Job 1740 was put back by hand
-once already.
+This handoff recommended it. It was wrong. The whole incident was Trevor deleting
+job 1740 by hand; the app never hid it. The brief, the council round and the build
+were all spent on a premise that was false, and the record was deleted at `5a3e918`.
+The rule that came out of it is in CLAUDE.md: no brief from one incident without a cause.
 
-That breaks a workshop rule outright: a job number reappearing on a Multitrack
-printout is live work by definition.
-
-This is blast-radius work — it touches the `jobs[]` shape. **It starts at protocol
-step 1: a brief Trevor approves, then council, then builder.** Do not start building
-off this handoff.
-
-## The other candidate, if Trevor prefers it
+## Recommended next work — bench change on split jobs
 
 Changing bench in the job drawer on a split job saves the cards but not the parent
 row, so the board snaps back. Found 2026-09-03 on job 1727. It has a workaround
-(collapse to one card, save, re-split), which is why it sits second. Write-up:
+(collapse to one card, save, re-split). Write-up:
 `docs/briefs/2026-09-03-drawer-bench-change-dropped-on-split-jobs.md`.
 
 ## Not to be started without asking Trevor first
