@@ -53,6 +53,7 @@ import { useAdHocTasks } from './hooks/useAdHocTasks.js';
 import { useFocusList } from './hooks/useFocusList.js';
 import { useAppSettings } from './hooks/useAppSettings.js';
 import { useSuppliers } from './hooks/useSuppliers.js';
+import { usePartCategories } from './hooks/usePartCategories.js';
 import { usePendingRevenueReview } from './hooks/usePendingRevenueReview.js';
 
 export default function App() {
@@ -75,6 +76,12 @@ export default function App() {
     suppliers, error: supplierError,
     add: addSupplier, rename: renameSupplier, remove: removeSupplier,
   } = useSuppliers();
+
+  // The managed part category list, same arrangement as suppliers above.
+  const {
+    categories: partCategories, error: categoryError,
+    add: addCategory, rename: renameCategory, remove: removeCategory,
+  } = usePartCategories();
 
   // Starts empty. Jobs arrive from Supabase on the first snapshot; there is no
   // seed data baked into the bundle. (Until Build 2a this called
@@ -955,6 +962,7 @@ export default function App() {
           ) : showPartsToOrder ? (
             <PartsToOrderPage
               suppliers={suppliers}
+              categories={partCategories}
               onCheckStock={term => {
                 setPartsDrawerSearch(term || '');
                 selectPage('parts');
@@ -975,6 +983,11 @@ export default function App() {
               onAddSupplier={addSupplier}
               onRenameSupplier={renameSupplier}
               onRemoveSupplier={removeSupplier}
+              categories={partCategories}
+              categoryError={categoryError}
+              onAddCategory={addCategory}
+              onRenameCategory={renameCategory}
+              onRemoveCategory={removeCategory}
               benchKeywords={benchKeywords}
               defaultBenchKeywords={DEFAULT_BENCH_KEYWORDS}
               onBenchKeywordsChange={handleBenchKeywordsChange}
