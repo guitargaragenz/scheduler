@@ -1,0 +1,1044 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVT-6 PRO — Bench Job Card</title>
+
+<style>
+  :root {
+    --paper:#EDF0F4; --surface:#F8FAFC; --surface-2:#E4E9F0; --sunk:#DDE3EB;
+    --ink:#111820; --ink-2:#3D4A5A; --ink-3:#6B7A8D;
+    --line:#C7D0DB; --line-soft:#DCE3EB;
+    --accent:#1D5B8C; --accent-soft:#DBE9F5;
+    --hazard:#AE362A; --hazard-soft:#F7E3E0;
+    --pass:#2C6841; --pass-soft:#DDEDE3;
+    --warn:#7F5A0E; --warn-soft:#F6ECD4;
+    --grid:rgba(29,91,140,.055);
+
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --s1:.25rem; --s2:.5rem; --s3:.75rem; --s4:1rem; --s5:1.5rem; --s6:2rem; --s7:3rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#0C1218; --surface:#131B23; --surface-2:#1B252F; --sunk:#0A1015;
+      --ink:#DCE4EC; --ink-2:#A1B0BF; --ink-3:#71808E;
+      --line:#293641; --line-soft:#1E2A34;
+      --accent:#6FB0DE; --accent-soft:#152F3E;
+      --hazard:#E27C6D; --hazard-soft:#391E1A;
+      --pass:#7DBC94; --pass-soft:#152E1D;
+      --warn:#D8AD5D; --warn-soft:#312610;
+      --grid:rgba(111,176,222,.06);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0C1218; --surface:#131B23; --surface-2:#1B252F; --sunk:#0A1015;
+    --ink:#DCE4EC; --ink-2:#A1B0BF; --ink-3:#71808E;
+    --line:#293641; --line-soft:#1E2A34;
+    --accent:#6FB0DE; --accent-soft:#152F3E;
+    --hazard:#E27C6D; --hazard-soft:#391E1A;
+    --pass:#7DBC94; --pass-soft:#152E1D;
+    --warn:#D8AD5D; --warn-soft:#312610;
+    --grid:rgba(111,176,222,.06);
+  }
+  :root[data-theme="light"] {
+    --paper:#EDF0F4; --surface:#F8FAFC; --surface-2:#E4E9F0; --sunk:#DDE3EB;
+    --ink:#111820; --ink-2:#3D4A5A; --ink-3:#6B7A8D;
+    --line:#C7D0DB; --line-soft:#DCE3EB;
+    --accent:#1D5B8C; --accent-soft:#DBE9F5;
+    --hazard:#AE362A; --hazard-soft:#F7E3E0;
+    --pass:#2C6841; --pass-soft:#DDEDE3;
+    --warn:#7F5A0E; --warn-soft:#F6ECD4;
+    --grid:rgba(29,91,140,.055);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin:0;
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 100%,
+      var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 62rem; margin:0 auto; padding: var(--s5) var(--s4) var(--s7); }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    background: var(--surface);
+    border:1px solid var(--line);
+    border-top:3px solid var(--accent);
+    padding: var(--s5);
+    display:flex; flex-direction:column; gap: var(--s4);
+  }
+  .mast-top { display:flex; flex-wrap:wrap; gap: var(--s4); align-items:flex-end; justify-content:space-between; }
+  .eyebrow {
+    font-family: var(--mono); font-size:.7rem; letter-spacing:.16em;
+    text-transform:uppercase; color: var(--accent); margin:0 0 var(--s2);
+  }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); line-height:1.08; margin:0; letter-spacing:-.02em; text-wrap:balance; }
+  h1 .sub { display:block; font-size:.55em; font-weight:500; color: var(--ink-2); letter-spacing:0; margin-top:.35em; }
+
+  .idblock { font-family: var(--mono); font-size:.75rem; color: var(--ink-2); text-align:right; line-height:1.7; }
+  .idblock b { color: var(--ink); font-weight:600; }
+
+  .jobfields { display:grid; grid-template-columns: repeat(auto-fit, minmax(9rem,1fr)); gap: var(--s3); }
+  .field { display:flex; flex-direction:column; gap: var(--s1); }
+  .field label {
+    font-family: var(--mono); font-size:.65rem; letter-spacing:.13em;
+    text-transform:uppercase; color: var(--ink-3);
+  }
+  input[type="text"], input[type="date"], input[type="number"] {
+    font-family: var(--mono); font-size:.85rem; color: var(--ink);
+    background: var(--sunk); border:1px solid var(--line);
+    padding:.4rem .5rem; border-radius:2px; width:100%; min-width:0;
+  }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible {
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+
+  .progress-wrap { display:flex; align-items:center; gap: var(--s3); }
+  .bar { flex:1; height:6px; background: var(--sunk); border:1px solid var(--line-soft); overflow:hidden; }
+  .bar span { display:block; height:100%; width:0; background: var(--accent); transition:width .25s ease; }
+  .progress-num { font-family: var(--mono); font-size:.78rem; color: var(--ink-2); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+  /* ---------- hazards ---------- */
+  .hazard {
+    margin-top: var(--s4);
+    background: var(--hazard-soft);
+    border:1px solid var(--hazard);
+    border-left-width:4px;
+    padding: var(--s4);
+  }
+  .hazard h2 {
+    font-family: var(--mono); font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+    color: var(--hazard); margin:0 0 var(--s2);
+  }
+  .hazard ul { margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.35rem; font-size:.9rem; }
+
+  /* ---------- stages ---------- */
+  .stage { margin-top: var(--s6); }
+  .stage-head {
+    display:flex; align-items:baseline; gap: var(--s3); flex-wrap:wrap;
+    border-bottom:2px solid var(--ink); padding-bottom:var(--s2); margin-bottom: var(--s4);
+  }
+  .stage-key {
+    font-family: var(--mono); font-size:.72rem; letter-spacing:.16em;
+    background: var(--ink); color: var(--paper); padding:.15rem .5rem;
+  }
+  .stage-head h2 { font-size:1.15rem; margin:0; letter-spacing:-.01em; }
+  .stage-note { font-size:.82rem; color: var(--ink-3); margin-left:auto; font-family:var(--mono); }
+
+  .step {
+    display:grid; grid-template-columns: auto 2.2rem 1fr;
+    gap: var(--s3);
+    background: var(--surface);
+    border:1px solid var(--line-soft);
+    border-left:3px solid var(--line);
+    padding: var(--s3) var(--s4);
+    margin-bottom: var(--s2);
+    align-items:start;
+  }
+  .step.done { border-left-color: var(--pass); background: var(--surface-2); }
+  .step.done .step-text { color: var(--ink-3); text-decoration:line-through; text-decoration-thickness:1px; }
+  .step.done .step-text b, .step.done .step-text code { color: var(--ink-3); }
+
+  .step input[type="checkbox"] { width:1.15rem; height:1.15rem; margin-top:.2rem; accent-color: var(--pass); cursor:pointer; flex:none; }
+  .step-n { font-family: var(--mono); font-size:.85rem; color: var(--accent); font-weight:600; font-variant-numeric:tabular-nums; padding-top:.1rem; }
+  .step-body { min-width:0; display:flex; flex-direction:column; gap: var(--s2); }
+  .step-text { margin:0; font-size:.94rem; }
+  .step-text b { font-weight:650; }
+
+  code, .desig {
+    font-family: var(--mono); font-size:.86em;
+    background: var(--accent-soft); color: var(--accent);
+    padding:.05em .3em; border-radius:2px;
+  }
+
+  .why { font-size:.82rem; color: var(--ink-2); border-left:2px solid var(--line); padding-left: var(--s3); margin:0; }
+  .why b { color: var(--ink); }
+
+  textarea {
+    font-family: var(--sans); font-size:.85rem; color: var(--ink);
+    background: var(--sunk); border:1px solid var(--line); border-radius:2px;
+    padding:.45rem .55rem; width:100%; resize:vertical; min-height:2.1rem; overflow:hidden; line-height:1.45;
+  }
+  textarea::placeholder { color: var(--ink-3); font-style:italic; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); background: var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:.85rem; min-width:30rem; }
+  caption {
+    text-align:left; font-family:var(--mono); font-size:.68rem; letter-spacing:.14em;
+    text-transform:uppercase; color: var(--ink-3); padding: var(--s3) var(--s3) var(--s2);
+  }
+  th, td { padding:.4rem .6rem; text-align:left; border-bottom:1px solid var(--line-soft); }
+  th {
+    font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--ink-2); background: var(--surface-2); font-weight:600; white-space:nowrap;
+  }
+  td { font-variant-numeric:tabular-nums; }
+  td.mono, th.mono { font-family:var(--mono); }
+  tbody tr:last-child td { border-bottom:none; }
+  table input { background:transparent; border:none; border-bottom:1px dashed var(--line); border-radius:0; padding:.2rem .1rem; }
+  table input:hover { border-bottom-color: var(--accent); }
+
+  .avgrow { display:flex; flex-wrap:wrap; align-items:center; gap: var(--s3); padding: var(--s3); background: var(--surface-2); border-top:1px solid var(--line); font-family:var(--mono); font-size:.82rem; }
+  .verdict { padding:.15rem .5rem; border-radius:2px; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; }
+  .verdict.ok { background: var(--pass-soft); color: var(--pass); border:1px solid var(--pass); }
+  .verdict.no { background: var(--hazard-soft); color: var(--hazard); border:1px solid var(--hazard); }
+  .verdict.idle { background: var(--sunk); color: var(--ink-3); border:1px solid var(--line); }
+
+  .abort { background: var(--warn-soft); border:1px solid var(--warn); border-left-width:3px; padding: var(--s3) var(--s4); font-size:.87rem; }
+  .abort b { color: var(--warn); }
+
+  /* ---------- reference ---------- */
+  details.ref { margin-top: var(--s6); border:1px solid var(--line); background: var(--surface); }
+  details.ref summary {
+    cursor:pointer; padding: var(--s3) var(--s4); font-family:var(--mono);
+    font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color: var(--accent);
+  }
+  .refgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:0; border-top:1px solid var(--line); }
+  .refcard { padding: var(--s4); border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+  .refcard h3 { font-size:.8rem; margin:0 0 var(--s2); font-family:var(--mono); letter-spacing:.1em; text-transform:uppercase; color: var(--ink-3); }
+  .refcard dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:.25rem var(--s3); font-size:.83rem; }
+  .refcard dt { font-family:var(--mono); color: var(--ink-2); white-space:nowrap; }
+  .refcard dd { margin:0; font-variant-numeric:tabular-nums; }
+
+  /* ---------- actions ---------- */
+  .actions {
+    position:sticky; bottom:0; margin-top: var(--s6);
+    display:flex; flex-wrap:wrap; gap: var(--s2); align-items:center;
+    background: var(--surface); border:1px solid var(--line); padding: var(--s3);
+  }
+  button {
+    font-family:var(--sans); font-size:.82rem; font-weight:550;
+    background: var(--surface-2); color: var(--ink);
+    border:1px solid var(--line); border-radius:2px; padding:.45rem .8rem; cursor:pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+  button.primary:hover { filter:brightness(1.1); color: var(--surface); }
+  button.danger:hover { border-color: var(--hazard); color: var(--hazard); }
+  .saved { font-family:var(--mono); font-size:.72rem; color: var(--ink-3); margin-left:auto; }
+
+  footer { margin-top: var(--s5); font-size:.75rem; color: var(--ink-3); font-family:var(--mono); line-height:1.7; }
+
+  @media (max-width: 34rem) {
+    .step { grid-template-columns: auto 1fr; }
+    .step-n { grid-column:2; padding-top:0; }
+    .step-body { grid-column:2; }
+    .idblock { text-align:left; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+
+  @media print {
+    @page { size:A4; margin:12mm 12mm 14mm; }
+    :root, :root[data-theme="dark"] {
+      --paper:#fff; --surface:#fff; --surface-2:#fff; --sunk:#fff;
+      --ink:#000; --ink-2:#222; --ink-3:#555;
+      --line:#888; --line-soft:#bbb;
+      --accent:#000; --accent-soft:#fff;
+      --hazard:#000; --hazard-soft:#fff;
+      --pass:#000; --pass-soft:#fff;
+      --warn:#000; --warn-soft:#fff;
+    }
+    * { -webkit-print-color-adjust:exact; print-color-adjust:exact; box-shadow:none !important; }
+    body { background:#fff; color:#000; font-size:10.5pt; line-height:1.35; }
+    .wrap { max-width:none; padding:0; }
+
+    /* hide screen-only bits */
+    .actions, .progress-wrap, .saved, details.ref summary { display:none !important; }
+
+    .masthead { padding:0 0 3mm; border:none; border-bottom:2px solid #000; gap:3mm; }
+    h1 { font-size:18pt; }
+    .jobfields { grid-template-columns:repeat(4,1fr); gap:2mm 4mm; }
+    input[type="text"], input[type="date"], input[type="number"] {
+      border:none; border-bottom:1px solid #000; border-radius:0; background:transparent; padding:1mm 0; min-height:7mm;
+    }
+
+    .hazard { border:1.5px solid #000; border-left-width:4px; padding:2.5mm 3mm; margin-top:3mm; }
+    .hazard ul { font-size:9.5pt; gap:1mm; }
+
+    .stage { margin-top:5mm; }
+    .stage-head { margin-bottom:2mm; break-after:avoid; page-break-after:avoid; }
+    .stage-key { background:#000; color:#fff; }
+
+    .step {
+      grid-template-columns:5mm 7mm 1fr; gap:2mm;
+      border:none; border-bottom:1px solid #ccc; border-left:none;
+      padding:1.8mm 0; margin:0; break-inside:avoid; page-break-inside:avoid;
+    }
+    .step.done { background:#fff; }
+    .step.done .step-text, .step.done .step-text b, .step.done .step-text code { color:#000; text-decoration:none; }
+
+    /* checkbox drawn as a clean square that prints ticked or empty */
+    .step input[type="checkbox"] {
+      appearance:none; -webkit-appearance:none; width:4mm; height:4mm; margin-top:.6mm;
+      border:1.2px solid #000; background:#fff; position:relative;
+    }
+    .step input[type="checkbox"]:checked::after {
+      content:"✓"; position:absolute; inset:-1.2mm 0 0 .4mm; font-size:10pt; font-weight:700; color:#000;
+    }
+
+    .step-text { font-size:10pt; }
+    code, .desig { background:none; color:#000; padding:0; font-weight:600; }
+    .why { font-size:8.5pt; color:#333; border-left:1px solid #999; padding-left:2mm; }
+
+    /* notes: filled ones print as text, empty ones as a writing line */
+    textarea {
+      border:none; border-bottom:1px dotted #777; border-radius:0; background:transparent;
+      padding:.5mm 0; min-height:6mm; height:auto !important; font-size:9.5pt; resize:none;
+    }
+    textarea::placeholder { color:transparent; }
+
+    .tablewrap { border:1px solid #000; overflow:visible; break-inside:avoid; page-break-inside:avoid; }
+    table { min-width:0; font-size:9pt; }
+    th { background:#eee; color:#000; }
+    th, td { padding:1mm 1.5mm; border-bottom:1px solid #bbb; }
+    table input { border-bottom:1px solid #999; min-height:5mm; }
+    .avgrow { background:#fff; border-top:1px solid #000; padding:1.5mm 2mm; }
+    .verdict { border:1px solid #000 !important; background:#fff !important; color:#000 !important; }
+    .abort { border:1px solid #000; border-left-width:3px; padding:2mm 3mm; font-size:9pt; break-inside:avoid; }
+    .abort b { color:#000; }
+
+    details.ref { border:none; margin-top:5mm; break-before:page; page-break-before:always; }
+    details.ref::before { content:"Reference data"; display:block; font-weight:700; font-size:12pt; border-bottom:2px solid #000; padding-bottom:1mm; margin-bottom:2mm; }
+    details.ref .refgrid { border-top:none; grid-template-columns:repeat(2,1fr); }
+    .refcard { padding:2mm 3mm 2mm 0; break-inside:avoid; border-color:#ccc; }
+    .refcard dl { font-size:8.5pt; }
+
+    footer { font-size:7.5pt; color:#444; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="mast-top">
+      <div>
+        <p class="eyebrow">Bench Job Card</p>
+        <h1>Ampeg SVT-6 PRO
+          <span class="sub">Power-up, relay chain &amp; bias procedure — 230&nbsp;V / 50&nbsp;Hz</span>
+        </h1>
+      </div>
+      <div class="idblock">
+        Assembly <b>07-699-01</b><br>
+        Board date <b>05-20-2008</b><br>
+        Schematic <b>07S699 rev A</b><br>
+        Parts list <b>07-699-PL rev D</b>
+      </div>
+    </div>
+
+    <div class="jobfields">
+      <div class="field"><label for="f-job">Job no.</label><input type="text" id="f-job"></div>
+      <div class="field"><label for="f-tech">Technician</label><input type="text" id="f-tech"></div>
+      <div class="field"><label for="f-date">Date</label><input type="date" id="f-date"></div>
+      <div class="field"><label for="f-serial">Serial no.</label><input type="text" id="f-serial"></div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="bar"><span id="barfill"></span></div>
+      <div class="progress-num" id="prognum">0 / 24 steps</div>
+    </div>
+  </header>
+
+  <section class="hazard">
+    <h2>Standing hazards — read before every session</h2>
+    <ul>
+      <li><b>The output is not ground-referenced.</b> This PCB is hardwired mono-bridge. Never put a grounded scope probe on either output leg — use differential, isolated or floating measurement.</li>
+      <li><b>Filter caps hold lethal charge long after power-down.</b> Six 5600&nbsp;µF/80&nbsp;V plus three 47&nbsp;µF/450&nbsp;V on a ~296&nbsp;V B+. Discharge and verify 0&nbsp;V before touching anything.</li>
+      <li><b>A variac is an autotransformer, not an isolator.</b> Always feed it from an isolation transformer.</li>
+      <li><b>Mains-potential taps.</b> The unused transformer primary tap sits at line potential when powered. It must be insulated, never landed on a tab.</li>
+    </ul>
+  </section>
+
+  <!-- ================= STAGE 0 ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">0</span>
+      <h2>Board out — capacitor check</h2>
+      <span class="stage-note">added Sat 7 Aug · do this first</span>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c25"><span class="step-n">0.1</span>
+      <div class="step-body">
+        <p class="step-text"><b>Pull the polarised electrolytics out of C10, C50 and C54.</b> These four positions — <code>C9</code>, <code>C10</code> (1&nbsp;µF) and <code>C50</code>, <code>C54</code> (10&nbsp;µF 35&nbsp;V) — must be <b>bipolar / non-polarised</b>. Film is fine for the 1&nbsp;µF parts.</p>
+        <p class="why">Confirmed off the schematic. On this drawing a polarised cap is drawn with a <b>+</b> on one plate; a non-polarised one has no +. C9, C10, C50 and C54 have no +. C10 sits in series with R27 (2.2K) across the bias spreader — there is no DC across that pair to define a polarity, so a polarised part there is being reverse-biased on half of every cycle.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c26"><span class="step-n">0.2</span>
+      <div class="step-body">
+        <p class="step-text">Check the <b>minus-half twins</b> the same way: <code>C36</code>, <code>C38</code> (1&nbsp;µF) and <code>C51</code>, <code>C55</code> (10&nbsp;µF 35&nbsp;V). Also non-polarised.</p>
+        <p class="why">Mirror positions in the other half of the bridge. Easy to miss because the fault half gets all the attention.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c27"><span class="step-n">0.3</span>
+      <div class="step-body">
+        <p class="step-text">Everything else on the power amp and supply sheets is either film or genuinely polarised — leave it. <b>Polarised (marked +):</b> C3, C5, C11, C14, C15, C16, C17, C18, C19, C21, C22, C24, C25, C26, C29, C31, C32, C40, C44, C45, C46.</p>
+        <p class="why">Film / non-polarised, no + on the print: C1, C2 (.0033 250V), C4, C6, C7, C8, C12, C13, C20, C23, C27, C28, C30, C33, C34, C35, C37, C39, C43, C47, C48, C49, C52, C53 — plus the four in step 0.1 and the four in step 0.2.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c28"><span class="step-n">0.4</span>
+      <div class="step-body">
+        <p class="step-text">While the board is out: check <b>R50</b> (2K 2W) for drift and <b>D14–D17</b> (1N4007) for shorts.</p>
+        <p class="why">These are the parts that take the hit if C14 ever shorted — which is the most likely reason it isn't fitted. R50 drifting high also pulls B+ down on its own.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c30"><span class="step-n">0.5</span>
+      <div class="step-body">
+        <p class="step-text">Check the two bias transistors: <b>Q2</b> (MPS-A06, works with trimpot <b>AP1</b>, plus half) and <b>Q22</b> (MPS-A06, works with <b>AP2</b>, minus half). Diode-test each with one leg lifted — about 0.6&nbsp;V base-to-emitter and base-to-collector one way, open the other way. <b>Any reading collector-to-emitter means it's shorted — replace it.</b></p>
+        <p class="why">These two set how hard the output FETs idle. Leaky or shorted and the bias runs away and cooks the output stage; open and you get crossover distortion. Same 2008 vintage as the zeners that failed, and they're cents each — if in any doubt just fit new ones. While you're there, sweep <b>AP1 and AP2</b> end to end on the ohmmeter and watch for jumps or dead spots; a dropout on the wiper spikes bias.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE A ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">A</span>
+      <h2>Bench prep</h2>
+      <span class="stage-note">power off throughout</span>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c1"><span class="step-n">01</span>
+      <div class="step-body">
+        <p class="step-text">Discharge the filter bank. Verify <b>0&nbsp;V</b> on <code>±65V</code>, <code>±100V</code> and <code>B+</code> before touching anything.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c2"><span class="step-n">02</span>
+      <div class="step-body">
+        <p class="step-text">Fit <b>C14</b> (47&nbsp;µF 450&nbsp;V) — check polarity.</p>
+        <p class="why">C14 is the <b>first reservoir</b> on the +296&nbsp;V B+. C14 → R50 (2K 2W) → C15 is a two-stage filter for the tube plates; leaving C14 out roughly halves the smoothing, which shows up as hum and ghosting through the preamp. Most likely reason it's missing: it shorted, was removed and never replaced — so <b>check R50 and D14–D17 before you fit a new one</b> (step 0.4).</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c3"><span class="step-n">03</span>
+      <div class="step-body">
+        <p class="step-text"><b>Leave the 4&nbsp;A inline fuse at <code>J31</code> in place for all bench work.</b> Remove it and restore the stock connection only at final assembly, before handover.</p>
+        <p class="why">J31 is the <b>CH1(−) output leg</b> — the fuse is in the <b>speaker line</b>, so it protects the cab, not the MOSFETs. It didn't save them; the 220&nbsp;Ω feed resistors and the sagging rails did. At rated power that leg carries <b>12.2&nbsp;A</b> into 4&nbsp;Ω (600&nbsp;W) and <b>22.4&nbsp;A</b> into 2&nbsp;Ω (1000&nbsp;W), so 4&nbsp;A opens at around 64&nbsp;W — useless in service, but a good safety net on the bench.<br><br>
+        <b>At handover: pull it out (factory fitted none), or go up to 15&nbsp;A slow-blow if you want one there. Anything smaller nuisance-blows on a loud note.</b> If you want actual device protection, that belongs in the ±65&nbsp;V rails — 10&nbsp;A slow-blow per leg — not the output. <b>Even then a fuse only limits collateral damage; silicon fails faster than any fuse can open.</b></p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c4"><span class="step-n">04</span>
+      <div class="step-body">
+        <p class="step-text">Insulate the floating <b>BLK/WHT</b> transformer tap. <b>Do not land it on a tab.</b></p>
+        <p class="why">Seven primary leads = dual winding with taps for 100/120/220/230/240&nbsp;V. Unused taps are meant to float. Connecting one shorts turns and destroys the transformer in seconds. Your dim-bulb result (half rails at 550&nbsp;mA) already confirms the 230&nbsp;V strapping is correct as it sits.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c5"><span class="step-n">05</span>
+      <div class="step-body">
+        <p class="step-text">Confirm <b>D20 / D23</b> (1N5353B 16&nbsp;V) are the right way round — measured <b>out of circuit</b>.</p>
+        <p class="why">A reversed zener looks like a short to your bench supply in stage B. Rule it out now rather than chasing a phantom later.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c6"><span class="step-n">06</span>
+      <div class="step-body">
+        <p class="step-text">Buzz <code>J25</code>→<code>J15</code> (expect ~0&nbsp;Ω) and check which side of the breaker <b>C1</b> taps.</p>
+        <p class="why">You bypassed the board with a breaker→switch wire. Electrically identical, but if C1/C2 (0.0033&nbsp;µF suppression caps) tap the post-breaker node, they're now orphaned — no fault, but you lose EMI suppression.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c7"><span class="step-n">07</span>
+      <div class="step-body">
+        <p class="step-text">Set <b>AP1</b> and <b>AP2</b> to <b>minimum bias</b>.</p>
+        <p class="why">AP1 (<code>R26</code>) is topside next to Q4. AP2 (<code>R100</code>) is on the <b>underside</b>, adjusted through the access hole. Twenty IRFP240/9240 at an unknown idle current is the one load in this amp that can run away — positive tempco at low idle. Establish trimmer direction at low mains where being wrong is survivable.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE B ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">B</span>
+      <h2>Relay chain test</h2>
+      <span class="stage-note">bench supplies — no mains</span>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c8"><span class="step-n">08</span>
+      <div class="step-body">
+        <p class="step-text">Lift <b>all four</b> feed resistors (220&nbsp;Ω 10&nbsp;W) so you don't backfeed the ±65&nbsp;V rails: <b>R21 / R63</b> on the negative side and <b>R51 / R64</b> on the positive side.</p>
+        <p class="why">There are two separate shunt chains, one per rail. Lifting only R21/R63 leaves the +16&nbsp;V side still fed from +65&nbsp;V.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c9"><span class="step-n">09</span>
+      <div class="step-body">
+        <p class="step-text">Inject <b>±15.5&nbsp;V</b> at the ±16&nbsp;V rail, ~100&nbsp;mA limit. <b>Not 16.0&nbsp;V.</b> Load it properly — preamp connected, both channels up, fans running — and read the supply's current meter. <b>Target ~50&nbsp;mA.</b></p>
+        <p class="why">1N5353B is 16&nbsp;V ±5% — a low-tolerance part starts conducting hard at 16.0 and eats your current limit. 15.5&nbsp;V is comfortably inside TL074 spec and keeps the zeners off, so you read pure load.<br><br>
+        <b>Pass / fail:</b> 40–60&nbsp;mA = normal, change no values. Under ~90&nbsp;mA = acceptable, rail stays regulated. Over ~90&nbsp;mA = the rail will sag; needs a TO-220 pass transistor off the zener as a reference — <b>separate quote</b>.<br><br>
+        The chain is 65&nbsp;V → R21 → R63 (440&nbsp;Ω series) → ~17&nbsp;V node, so only <b>~110&nbsp;mA total</b> is available. The zener dumps whatever the load doesn't take, so it runs <i>hottest at lightest load</i> (1.8&nbsp;W). That's the browning — a cooling problem, not a current problem.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c10"><span class="step-n">10</span>
+      <div class="step-body">
+        <p class="step-text">Feed <b>+60&nbsp;V</b> to the relay supply.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c11"><span class="step-n">11</span>
+      <div class="step-body">
+        <p class="step-text">Satisfy the UVLO: two 30&nbsp;V supplies in series → <b>60&nbsp;V</b> into the +65&nbsp;V rail, <i>or</i> ~60&nbsp;V straight onto <b>C11</b>.</p>
+        <p class="why">D11 is a <b>1N4751, 30&nbsp;V</b>. A single 30&nbsp;V supply sits right on its knee and won't release — you'd get a false "relay chain dead". C11 is a 63&nbsp;V part, so keep it at 60, not higher. With ±100&nbsp;V absent the VAS is dead and draw is negligible.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c12"><span class="step-n">12</span>
+      <div class="step-body">
+        <p class="step-text"><b>K1 / K2 should pull in.</b> If not, scope <b>IC1-D</b>, then the over-temp path (<b>IC1-C</b>, TS1/TS2 LM35DZ on J44/J45).</p>
+        <p class="why">This is the pass/fail on everything you've repaired. Two independent inhibits hold the relays: under-voltage and over-temp. At room temp the over-temp path should be permissive.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c13"><span class="step-n">13</span>
+      <div class="step-body">
+        <p class="step-text">Power down. Refit <b>all four stock 220&nbsp;Ω</b> resistors — <b>R21 / R63 and R51 / R64</b> — <b>standing 3–5&nbsp;mm off the board</b>. Stand <b>D20 / D23</b> off too, with high-temp fibreglass sleeving on their legs.</p>
+        <p class="why">Don't change the values — at ~110&nbsp;mA the resistors only see 2.7&nbsp;W each in 10&nbsp;W parts, and there's no headroom to raise the resistance anyway. The fix is air. Axial zeners shed heat through their <i>leads</i>, so a nominal 5&nbsp;W part in free air really handles 1–3&nbsp;W. 3–5&nbsp;mm only: longer legs work the joints loose in a road amp. Dab of neutral-cure (sensor-safe) silicone to steady them.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE C ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">C</span>
+      <h2>Variac ramp</h2>
+      <span class="stage-note">no current limiting — hand on the dial</span>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c14"><span class="step-n">14</span>
+      <div class="step-body">
+        <p class="step-text"><b>Isolation transformer → variac → amp.</b> Never variac alone.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c15"><span class="step-n">15</span>
+      <div class="step-body">
+        <p class="step-text">Clip meters on <b>before</b> you dial anything up: one source resistor per bank, one main rail, ammeter in line where you can see it without looking away from the variac.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c16"><span class="step-n">16</span>
+      <div class="step-body">
+        <p class="step-text">Ramp in steps, <b>pause 30&nbsp;s at each</b> and log the reading.</p>
+        <div class="tablewrap">
+          <table>
+            <caption>Ramp log</caption>
+            <thead>
+              <tr><th class="mono">Mains</th><th>Expected</th><th class="mono">Actual&nbsp;I</th><th class="mono">Rail&nbsp;V</th><th>Observations</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">30–50 V</td>
+                <td>Tens of mA. <b>Over ~200&nbsp;mA — stop.</b> That's a short.</td>
+                <td><input type="text" id="r1i" size="6"></td>
+                <td><input type="text" id="r1v" size="6"></td>
+                <td><input type="text" id="r1n"></td>
+              </tr>
+              <tr>
+                <td class="mono">50–100 V</td>
+                <td>Gentle rise. Tube heaters warming.</td>
+                <td><input type="text" id="r2i" size="6"></td>
+                <td><input type="text" id="r2v" size="6"></td>
+                <td><input type="text" id="r2n"></td>
+              </tr>
+              <tr>
+                <td class="mono">150–180 V</td>
+                <td><b>Relays should click in.</b> D11 is a 30&nbsp;V zener — UVLO releases here.</td>
+                <td><input type="text" id="r3i" size="6"></td>
+                <td><input type="text" id="r3v" size="6"></td>
+                <td><input type="text" id="r3n"></td>
+              </tr>
+              <tr>
+                <td class="mono">230 V</td>
+                <td>Idle roughly 0.5–1&nbsp;A once biased.</td>
+                <td><input type="text" id="r4i" size="6"></td>
+                <td><input type="text" id="r4v" size="6"></td>
+                <td><input type="text" id="r4n"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="why"><b>Relays click in at 150–180&nbsp;V on the variac — and give it 1–3 seconds after you get there before you call it dead.</b> C11 is 220&nbsp;µF and has to charge first, so the click is delayed, not instant. Below about 120&nbsp;V it will never release: the +65&nbsp;V rail scales with the mains, and D11 is a 30&nbsp;V zener that has to be passed before the circuit lets go.<br><br>
+        If they pull in at 150–180&nbsp;V, the ±16&nbsp;V rail, IC1, the under-voltage chain and the relay drivers are all good. <b>If they haven't clicked by 200&nbsp;V, stop there — don't push on to 230.</b> Go back to stage B and find out why.</p>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c17"><span class="step-n">17</span>
+      <div class="step-body">
+        <p class="step-text">Abort criteria — know these before you start.</p>
+        <div class="abort">
+          <b>Kill it immediately if either occurs:</b>
+          <ul style="margin:.4rem 0 0; padding-left:1.1rem;">
+            <li>Current climbing while voltage is <b>held constant</b> — that's thermal runaway building.</li>
+            <li>Source-resistor millivolts drifting upward on their own.</li>
+          </ul>
+          <div style="margin-top:.5rem;">Variac <b>down</b> first. Trimmer second. Never the other way round.</div>
+        </div>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE D ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">D</span>
+      <h2>Bias</h2>
+      <span class="stage-note">factory procedure, PCB 07-699-01</span>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c18"><span class="step-n">18</span>
+      <div class="step-body">
+        <p class="step-text">Conditions: <b>cold start</b>, <b>no load</b>, <b>Tube Voltage control at '300V'</b>.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c19"><span class="step-n">19</span>
+      <div class="step-body">
+        <p class="step-text"><b>AP1</b> → average <b>20 ±5 mVdc</b> across bank 1.</p>
+        <div class="tablewrap">
+          <table>
+            <caption>Bank 1 — Channel 1 (+) half · AP1 / R26 · topside near Q4</caption>
+            <thead><tr><th class="mono">R32</th><th class="mono">R34</th><th class="mono">R36</th><th class="mono">R38</th><th class="mono">R112</th><th class="mono">R33</th><th class="mono">R35</th><th class="mono">R37</th><th class="mono">R39</th><th class="mono">R138</th></tr></thead>
+            <tbody><tr>
+              <td><input type="number" step="0.1" class="b1" id="b1a" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1b" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1c" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1d" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1e" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1f" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1g" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1h" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1i" size="4"></td>
+              <td><input type="number" step="0.1" class="b1" id="b1j" size="4"></td>
+            </tr></tbody>
+          </table>
+          <div class="avgrow">
+            <span>Average</span>
+            <b id="b1avg">—</b><span>mV</span>
+            <span class="verdict idle" id="b1v">no data</span>
+            <span style="color:var(--ink-3);">target 15–25 mV</span>
+          </div>
+        </div>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c20"><span class="step-n">20</span>
+      <div class="step-body">
+        <p class="step-text"><b>AP2</b> → same across bank 2. Adjust from underneath, through the access hole.</p>
+        <div class="tablewrap">
+          <table>
+            <caption>Bank 2 — Channel 1 (−) half · AP2 / R100 · underside</caption>
+            <thead><tr><th class="mono">R85</th><th class="mono">R57</th><th class="mono">R96</th><th class="mono">R58</th><th class="mono">R143</th><th class="mono">R104</th><th class="mono">R86</th><th class="mono">R89</th><th class="mono">R106</th><th class="mono">R141</th></tr></thead>
+            <tbody><tr>
+              <td><input type="number" step="0.1" class="b2" id="b2a" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2b" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2c" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2d" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2e" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2f" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2g" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2h" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2i" size="4"></td>
+              <td><input type="number" step="0.1" class="b2" id="b2j" size="4"></td>
+            </tr></tbody>
+          </table>
+          <div class="avgrow">
+            <span>Average</span>
+            <b id="b2avg">—</b><span>mV</span>
+            <span class="verdict idle" id="b2v">no data</span>
+            <span style="color:var(--ink-3);">target 15–25 mV</span>
+          </div>
+        </div>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c21"><span class="step-n">21</span>
+      <div class="step-body">
+        <p class="step-text">Run <b>15–20 min</b>, then re-check both banks.</p>
+        <p class="why">IRFP240/9240 are positive-tempco at low idle. Bias will climb as the sinks warm — <b>expect to pull it back</b>. A single resistor is a proxy, not the spec; the spec is the average of ten.</p>
+        <textarea data-note placeholder="Re-check readings after warm-up…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STAGE E ================= -->
+  <section class="stage">
+    <div class="stage-head">
+      <span class="stage-key">E</span>
+      <h2>Before handover</h2>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c22"><span class="step-n">22</span>
+      <div class="step-body">
+        <p class="step-text">Fit the correct <b>8&nbsp;A</b> breaker. Currently <b>7&nbsp;A</b>.</p>
+        <p class="why">Print calls out 15&nbsp;A domestic/Japan, <b>8&nbsp;A export</b>. 7&nbsp;A is undersized 12.5% — the safe direction, but marginal on inrush (six 5600&nbsp;µF plus a large EI transformer) and at sustained high output. <b>Never go above 8&nbsp;A</b> — that's the transformer's protection.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c23"><span class="step-n">23</span>
+      <div class="step-body">
+        <p class="step-text">Confirm the ±16&nbsp;V rail still holds <b>≥15&nbsp;V</b> under full load, and that the standoff work from step 13 is secure.</p>
+        <p class="why">The resistors are fine as stock — <b>don't uprate them.</b> The heat is the zeners: they dump whatever the load leaves over, up to <b>1.8&nbsp;W</b>, through leads only. Standing them off is the repair. If the measured load came in over ~90&nbsp;mA, the rail will sag and the real fix is a TO-220 series-pass transistor using the zener as its reference — <b>quote that separately, don't do it inside this job.</b></p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c29"><span class="step-n">23b</span>
+      <div class="step-body">
+        <p class="step-text">Measure <b>DC offset across the speaker output</b>, no load, warm. Should be a few tens of millivolts at most.</p>
+        <p class="why"><b>Measure across the two output legs, not from either leg to chassis ground.</b> The output is bridged and neither side sits at ground. A big offset here means one half is biased differently from the other — find that before a speaker does.</p>
+        <textarea data-note placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c24"><span class="step-n">24</span>
+      <div class="step-body">
+        <p class="step-text">Ask the customer <b>why the previous tech fitted that fuse</b>.</p>
+        <p class="why">Someone added it deliberately, which usually means they were chasing something. Earlier repair history may point at an intermittent that predates all of this.</p>
+        <textarea data-note placeholder="Customer response…"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= REFERENCE ================= -->
+  <details class="ref" open>
+    <summary>Reference data</summary>
+    <div class="refgrid">
+      <div class="refcard">
+        <h3>Rails</h3>
+        <dl>
+          <dt>Main</dt><dd>±65 V (±67 V shown)</dd>
+          <dt>VAS</dt><dd>±100 V (±91 V shown)</dd>
+          <dt>B+</dt><dd>+296 V</dd>
+          <dt>Op-amp</dt><dd>±16 V zener shunt</dd>
+          <dt>Relay</dt><dd>+60 V</dd>
+        </dl>
+      </div>
+      <div class="refcard">
+        <h3>Bias</h3>
+        <dl>
+          <dt>Spec</dt><dd>20 ±5 mVdc average</dd>
+          <dt>R<sub>source</sub></dt><dd>0.47 Ω 5 W</dd>
+          <dt>Per device</dt><dd>≈42 mA at 20 mV</dd>
+          <dt>Devices</dt><dd>20 total, 10 per bank</dd>
+          <dt>Type</dt><dd>IRFP-240R / IRFP-9240R</dd>
+        </dl>
+      </div>
+      <div class="refcard">
+        <h3>Key parts</h3>
+        <dl>
+          <dt>IC1 / IC2</dt><dd>TL074 / TL072</dd>
+          <dt>D20 / D23</dt><dd>1N5353B 16 V</dd>
+          <dt>D11</dt><dd>1N4751 30 V (UVLO)</dd>
+          <dt>R21/R63 −</dt><dd>220 Ω 10 W</dd>
+          <dt>R51/R64 +</dt><dd>220 Ω 10 W</dd>
+          <dt>R134</dt><dd>120 Ω 10 W (−46 V, reads ~118 Ω — normal)</dd>
+          <dt>F1</dt><dd>1/8 A SB 250 V 5×20</dd>
+          <dt>Filter</dt><dd>6 × 5600 µF 80 V</dd>
+          <dt>B+ res.</dt><dd>3 × 47 µF 450 V</dd>
+        </dl>
+      </div>
+      <div class="refcard">
+        <h3>Faston map</h3>
+        <dl>
+          <dt>J30</dt><dd>CH1(+) output — W1</dd>
+          <dt>J37 / J40</dt><dd>CH1(+) rails — W2 / W3</dd>
+          <dt>J31</dt><dd>CH1(−) output — W5</dd>
+          <dt>J38 / J41</dt><dd>CH1(−) rails — W4 / W6</dd>
+          <dt>J47 / J48</dt><dd>CH1(−) inputs — W11 / W8</dd>
+        </dl>
+      </div>
+      <div class="refcard">
+        <h3>Mechanical</h3>
+        <dl>
+          <dt>Output devices</dt><dd>6–8 in-lb</dd>
+          <dt>Washers</dt><dd>Belleville, domed side up</dd>
+          <dt>PCB → heatsink</dt><dd>9–11 in-lb</dd>
+          <dt>Insulators</dt><dd>35-570-02 strip type</dd>
+        </dl>
+      </div>
+      <div class="refcard">
+        <h3>Dim-bulb reference</h3>
+        <dl>
+          <dt>200 W @ 230 V</dt><dd>0.87 A at full</dd>
+          <dt>at 0.3 A</dt><dd>amp sees 185 V</dd>
+          <dt>at 0.5 A</dt><dd>amp sees 132 V</dd>
+          <dt>at 0.55 A</dt><dd>amp sees 117 V</dd>
+          <dt>at 0.7 A</dt><dd>amp sees 65 V</dd>
+        </dl>
+        <p class="why" style="margin-top:.6rem;">A 200 W bulb is <b>too small</b> for a 1000 W amp with 33,600 µF of filter caps. Full-on bulb and half rails on the 200 W is the limiter, not a short — the resistance checks all came out clean. Use a bigger bulb or the variac, and listen for the relay click.</p>
+      </div>
+    </div>
+  </details>
+
+  <div class="actions">
+    <button class="primary" type="button" id="btn-export">Export notes</button>
+    <button type="button" id="btn-print">Print</button>
+    <button class="danger" type="button" id="btn-reset">Clear all</button>
+    <span class="saved" id="saved">not saved yet</span>
+  </div>
+
+  <footer>
+    Sources: schematic 07S699 rev A (11/17/04) · parts list 07-699-PL rev D (6/8/2005) · pictorial 07-699 rev B (04/27/05) · factory bias sheet (12/6/05).<br>
+    Note: <code>AMPEG SVT-6 SM.pdf</code> in the same folder is misfiled — it is the 1977 original SVT (AV9311). Ignore it.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "svt6pro-jobcard-v1";
+  var savedEl = document.getElementById("saved");
+  var store = null;
+  try { window.localStorage.setItem("__t", "1"); window.localStorage.removeItem("__t"); store = window.localStorage; } catch (e) { store = null; }
+
+  function fields() {
+    return Array.prototype.slice.call(document.querySelectorAll("input, textarea"));
+  }
+
+  // Give every note textarea a stable id based on document order.
+  document.querySelectorAll("[data-note]").forEach(function (t, i) { t.id = "note" + i; });
+
+  function grow(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
+
+  function markStep(cb) {
+    var step = cb.closest("[data-step]");
+    if (step) step.classList.toggle("done", cb.checked);
+  }
+
+  function updateProgress() {
+    var boxes = document.querySelectorAll('[data-step] input[type="checkbox"]');
+    var done = 0;
+    boxes.forEach(function (b) { if (b.checked) done++; });
+    var pct = boxes.length ? (done / boxes.length) * 100 : 0;
+    document.getElementById("barfill").style.width = pct + "%";
+    document.getElementById("prognum").textContent = done + " / " + boxes.length + " steps";
+  }
+
+  function average(sel) {
+    var vals = [];
+    document.querySelectorAll(sel).forEach(function (i) {
+      var v = parseFloat(i.value);
+      if (!isNaN(v)) vals.push(v);
+    });
+    if (!vals.length) return null;
+    return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+  }
+
+  function updateBias(cls, avgId, verdictId) {
+    var a = average("." + cls);
+    var avgEl = document.getElementById(avgId);
+    var vEl = document.getElementById(verdictId);
+    if (a === null) {
+      avgEl.textContent = "—";
+      vEl.className = "verdict idle";
+      vEl.textContent = "no data";
+      return;
+    }
+    avgEl.textContent = a.toFixed(1);
+    var ok = a >= 15 && a <= 25;
+    vEl.className = "verdict " + (ok ? "ok" : "no");
+    vEl.textContent = ok ? "in spec" : (a < 15 ? "under" : "over");
+  }
+
+  function refresh() {
+    updateProgress();
+    updateBias("b1", "b1avg", "b1v");
+    updateBias("b2", "b2avg", "b2v");
+  }
+
+  function save() {
+    if (!store) { savedEl.textContent = "storage unavailable — use Export"; return; }
+    var data = {};
+    fields().forEach(function (f) {
+      if (!f.id) return;
+      data[f.id] = (f.type === "checkbox") ? f.checked : f.value;
+    });
+    try {
+      store.setItem(KEY, JSON.stringify(data));
+      var d = new Date();
+      savedEl.textContent = "saved " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    } catch (e) {
+      savedEl.textContent = "save failed — use Export";
+    }
+  }
+
+  function load() {
+    if (!store) { savedEl.textContent = "storage unavailable — use Export"; return; }
+    var raw = null;
+    try { raw = store.getItem(KEY); } catch (e) { return; }
+    if (!raw) return;
+    var data;
+    try { data = JSON.parse(raw); } catch (e) { return; }
+    fields().forEach(function (f) {
+      if (!f.id || !(f.id in data)) return;
+      if (f.type === "checkbox") { f.checked = !!data[f.id]; markStep(f); }
+      else { f.value = data[f.id]; }
+    });
+    document.querySelectorAll("textarea").forEach(grow);
+    savedEl.textContent = "restored from this browser";
+  }
+
+  var timer = null;
+  document.addEventListener("input", function (e) {
+    if (e.target.tagName === "TEXTAREA") grow(e.target);
+    refresh();
+    clearTimeout(timer);
+    timer = setTimeout(save, 400);
+  });
+  document.addEventListener("change", function (e) {
+    if (e.target.type === "checkbox") markStep(e.target);
+    refresh();
+    save();
+  });
+
+  document.getElementById("btn-print").addEventListener("click", function () {
+    document.querySelectorAll("textarea").forEach(grow);
+    window.print();
+  });
+
+  document.getElementById("btn-reset").addEventListener("click", function () {
+    if (!window.confirm("Clear every checkbox, reading and note on this job card?")) return;
+    fields().forEach(function (f) {
+      if (f.type === "checkbox") { f.checked = false; markStep(f); } else { f.value = ""; }
+    });
+    document.querySelectorAll("textarea").forEach(grow);
+    if (store) { try { store.removeItem(KEY); } catch (e) {} }
+    refresh();
+    savedEl.textContent = "cleared";
+  });
+
+  document.getElementById("btn-export").addEventListener("click", function () {
+    var out = [];
+    out.push("AMPEG SVT-6 PRO — BENCH JOB CARD");
+    out.push("Assembly 07-699-01 · board date 05-20-2008");
+    out.push("");
+    ["f-job:Job no.", "f-tech:Technician", "f-date:Date", "f-serial:Serial no."].forEach(function (p) {
+      var bits = p.split(":");
+      out.push(bits[1] + ": " + (document.getElementById(bits[0]).value || "—"));
+    });
+    out.push("");
+
+    document.querySelectorAll(".stage").forEach(function (stage) {
+      var key = stage.querySelector(".stage-key").textContent;
+      var name = stage.querySelector("h2").textContent;
+      out.push("");
+      out.push("== " + key + ". " + name.toUpperCase() + " ==");
+      stage.querySelectorAll("[data-step]").forEach(function (st) {
+        var cb = st.querySelector('input[type="checkbox"]');
+        var n = st.querySelector(".step-n").textContent;
+        var text = st.querySelector(".step-text").textContent.replace(/\s+/g, " ").trim();
+        out.push((cb.checked ? "[x] " : "[ ] ") + n + ". " + text);
+        st.querySelectorAll("textarea").forEach(function (t) {
+          if (t.value.trim()) out.push("      NOTE: " + t.value.trim().replace(/\n/g, "\n      "));
+        });
+        st.querySelectorAll("table").forEach(function (tbl) {
+          var cap = tbl.querySelector("caption");
+          var rowvals = [];
+          tbl.querySelectorAll("input").forEach(function (i) { if (i.value.trim()) rowvals.push(i.value.trim()); });
+          if (rowvals.length) out.push("      " + (cap ? cap.textContent.trim() + ": " : "") + rowvals.join(" | "));
+        });
+      });
+    });
+
+    var a1 = average(".b1"), a2 = average(".b2");
+    out.push("");
+    out.push("BIAS AVERAGES (spec 20 ±5 mV)");
+    out.push("  Bank 1 (AP1): " + (a1 === null ? "—" : a1.toFixed(1) + " mV"));
+    out.push("  Bank 2 (AP2): " + (a2 === null ? "—" : a2.toFixed(1) + " mV"));
+
+    var text = out.join("\n");
+    var blob = new Blob([text], { type: "text/plain" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "svt6pro-jobcard.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    savedEl.textContent = "exported";
+  });
+
+  load();
+  document.querySelectorAll("textarea").forEach(grow);
+  refresh();
+})();
+</script>
+
+</body></html>
