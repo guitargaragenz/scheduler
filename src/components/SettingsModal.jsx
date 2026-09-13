@@ -179,8 +179,7 @@ function CategoryEditor({ categories = [], onAdd, onRename, onRemove }) {
       </p>
       <p style={{ fontSize: 11, color: '#475569', marginBottom: 12, lineHeight: 1.5 }}>
         Removing or renaming a category here never changes parts you have already saved —
-        they keep the name they were saved with and still group under it. It only changes
-        what is offered from now on.
+        they keep the name they were saved with. It only changes what is offered from now on.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
         {categories.length === 0 && (
