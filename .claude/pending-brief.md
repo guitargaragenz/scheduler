@@ -1,6 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+Shipped at `40d0fa4` on 2026-09-13 (browser-tested on preview, merged on Trevor's yp).
 
 # Scope lock — Parts to Order categories, managed in Settings
 
