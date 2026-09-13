@@ -170,6 +170,39 @@ function SupplierEditor({ suppliers = [], onAdd, onRename, onRemove }) {
   );
 }
 
+// The part category list. A copy of SupplierEditor, same chips.
+function CategoryEditor({ categories = [], onAdd, onRename, onRemove }) {
+  return (
+    <div>
+      <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12, lineHeight: 1.5 }}>
+        The categories offered when adding a part. Click a name to rename it, × to remove it.
+      </p>
+      <p style={{ fontSize: 11, color: '#475569', marginBottom: 12, lineHeight: 1.5 }}>
+        Removing or renaming a category here never changes parts you have already saved —
+        they keep the name they were saved with and still group under it. It only changes
+        what is offered from now on.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 10 }}>
+        {categories.length === 0 && (
+          <span style={{ fontSize: 12, color: '#475569' }}>No categories yet.</span>
+        )}
+        {categories.map(s => (
+          <Chip
+            key={s.id}
+            label={s.name}
+            onRemove={() => onRemove(s.id)}
+            onRename={() => {
+              const next = window.prompt('Rename category:', s.name);
+              if (next !== null && next.trim() && next.trim() !== s.name) onRename(s.id, next);
+            }}
+          />
+        ))}
+      </div>
+      <AddRow placeholder="add category…" onAdd={onAdd} />
+    </div>
+  );
+}
+
 const BENCH_HOUR_DEFAULTS = { Luthier: 1.5, Setup: 1.5, Finishing: 1.5 };
 
 export default function SettingsModal({
@@ -178,6 +211,7 @@ export default function SettingsModal({
   // this moved off localStorage.
   saveError,
   suppliers = [], supplierError, onAddSupplier, onRenameSupplier, onRemoveSupplier,
+  categories = [], categoryError, onAddCategory, onRenameCategory, onRemoveCategory,
   benchKeywords = {}, defaultBenchKeywords = {}, onBenchKeywordsChange,
   hourlyRate = 85, onHourlyRateChange,
   weeklyRevenueTarget = 1500, onWeeklyTargetChange,
@@ -228,7 +262,7 @@ export default function SettingsModal({
               the main header, so this was a second door to the same switch. The
               two pages that were buried inside the old "pages" tab now sit in the
               row it left behind: they are one click, not a tab with a panel. */}
-          {['keywords', 'suppliers', 'rates'].map(tab => (
+          {['keywords', 'suppliers', 'categories', 'rates'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
               padding: '10px 18px', background: 'none', border: 'none',
               borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
@@ -248,13 +282,13 @@ export default function SettingsModal({
 
         <div style={{ padding: '16px 20px' }}>
 
-          {(saveError || supplierError) && (
+          {(saveError || supplierError || categoryError) && (
             <div style={{
               marginBottom: 14, padding: '8px 12px', borderRadius: 6,
               background: '#450a0a', border: '1px solid #ef4444',
               color: '#fca5a5', fontSize: 12, lineHeight: 1.5,
             }}>
-              {saveError || supplierError}
+              {saveError || supplierError || categoryError}
             </div>
           )}
 
@@ -264,6 +298,15 @@ export default function SettingsModal({
               onAdd={onAddSupplier}
               onRename={onRenameSupplier}
               onRemove={onRemoveSupplier}
+            />
+          )}
+
+          {activeTab === 'categories' && (
+            <CategoryEditor
+              categories={categories}
+              onAdd={onAddCategory}
+              onRename={onRenameCategory}
+              onRemove={onRemoveCategory}
             />
           )}
 

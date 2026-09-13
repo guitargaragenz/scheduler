@@ -121,7 +121,7 @@ const labelStyle = {
   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 };
 
-export default function PartsToOrderPage({ onCheckStock, suppliers = [] }) {
+export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [] }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -290,14 +290,24 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [] }) {
 
           <div style={{ marginBottom: 18, marginTop: 18 }}>
             <label style={labelStyle} htmlFor="pto-cat">Category (optional)</label>
-            <input
+            <select
               id="pto-cat"
               style={fieldStyle}
               value={category}
               onChange={e => setCategory(e.target.value)}
-              placeholder="part"
-              autoComplete="off"
-            />
+            >
+              {/* Blank is first and the default. A blank category is left off
+                  the saved part, so the existing "part" fallback still applies. */}
+              <option value="">— none —</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            {categories.length === 0 && (
+              <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
+                No categories set up yet — add them in Settings.
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: 18 }}>

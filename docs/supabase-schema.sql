@@ -280,6 +280,17 @@ CREATE TABLE IF NOT EXISTS suppliers (
   name TEXT NOT NULL
 );
 
+-- 2026-09-13: the managed Parts to Order category list. A copy of suppliers
+-- above: names only, feeds ONE dropdown. parts_to_order.category stays plain
+-- TEXT with the name copied at save time, NOT a foreign key, so renaming or
+-- removing a category never changes a saved part.
+--
+-- No RLS, same as suppliers.
+CREATE TABLE IF NOT EXISTS part_categories (
+  id   TEXT PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
 -- 2026-08-01: app settings, shared across devices instead of per-browser.
 --
 -- Until now every Settings value lived in localStorage, so a keyword Trevor

@@ -1652,6 +1652,69 @@ export async function removeSupplier(id) {
   }
 }
 
+// ============ PART CATEGORIES (managed list — 2026-09-13) ============
+//
+// A straight copy of the SUPPLIERS section above, for the Category dropdown on
+// the Parts to Order page. Names only.
+//
+// Nothing here ever touches parts_to_order. The category NAME is copied onto a
+// part when it is saved, so renaming or removing a category below cannot change
+// a single saved part row. Same failure contract: log, then RE-THROW.
+
+export async function loadPartCategories() {
+  try {
+    const { data, error } = await getClient()
+      .from('part_categories')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(r => ({ id: String(r.id), name: r.name }));
+  } catch (e) {
+    console.error('Supabase load part categories error:', e);
+    throw e;
+  }
+}
+
+export async function addPartCategory({ id, name }) {
+  try {
+    const { error } = await getClient()
+      .from('part_categories')
+      .insert([{ id: id || `cat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name }]);
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase add part category error:', e);
+    throw e;
+  }
+}
+
+// Renames the list entry ONLY. Saved parts keep the old name.
+export async function renamePartCategory(id, name) {
+  try {
+    const { error } = await getClient()
+      .from('part_categories')
+      .update({ name })
+      .eq('id', String(id));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase rename part category error:', e);
+    throw e;
+  }
+}
+
+// Removes it from the dropdown. Saved parts tagged with it are untouched.
+export async function removePartCategory(id) {
+  try {
+    const { error } = await getClient()
+      .from('part_categories')
+      .delete()
+      .eq('id', String(id));
+    if (error) throw error;
+  } catch (e) {
+    console.error('Supabase remove part category error:', e);
+    throw e;
+  }
+}
+
 // ============ APP SETTINGS (shared across devices — 2026-08-01) ============
 //
 // A key/value store for the four settings that used to live in localStorage:
