@@ -1,31 +1,22 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-Shipped at `40d0fa4` on 2026-09-13 (browser-tested on preview, merged on Trevor's yp).
+# Scope lock — Key button on the Jobs Sheet
 
-# Scope lock — Parts to Order categories, managed in Settings
-
-Status: approved by Trevor 2026-09-13. Council skipped on his call (copy of the
-working suppliers pattern, no job state). Verifier and browser test still run.
+Status: approved by Trevor 2026-09-13 ("yes add the key button").
+Display only, one file, no job data — council and builder skipped. Browser test
+still runs; merge needs yp.
 
 ## Build
-- New Supabase table `part_categories` (names only), same shape as `suppliers`.
-  Add its SQL to `docs/supabase-schema.sql`.
-- `src/utils/supabase.js`: load/add/rename/remove for categories, copied from the
-  supplier functions.
-- New hook `src/hooks/usePartCategories.js`, copied from `useSuppliers.js`.
-- Settings: a fourth tab "categories", same chip editor as suppliers.
-- Parts to Order page: the Category free-text box becomes a dropdown of the managed
-  list, optional, like Supplier.
-- Tests mirroring `supabaseSuppliersSettings.test.js`.
+- `src/components/JobsSheetPage.jsx`: a "Key" button in the header, shown on
+  phone and iMac. Tapping it shows or hides a panel listing what each Action code
+  and each tick box (VB, BL, PJ) means. Wording taken from the Action and Flag
+  tables in `SCHEDULER-ARCHITECTURE.md`.
 
 ## Out of scope
-- Saved parts. A part keeps the category NAME copied at save time; renaming or
-  removing a category never changes a saved part.
-- The "part" fallback when no category is picked stays as it is.
-- No colours, ordering or grouping by category.
+- Anything that edits or saves a job.
+- The tick-off-WP-from-the-job-card idea (separate, not yet briefed).
 
 ## Rules
-- Blast-radius (touches `utils/supabase.js`): full protocol.
-- Nothing in the category code reads or writes `parts_to_order`.
+- Nothing in the key reads or writes job state.

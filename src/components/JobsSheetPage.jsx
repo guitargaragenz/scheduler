@@ -47,6 +47,22 @@ const C = {
 // White cells, grey gridlines, dark text — Trevor's own words: "like the
 // sheet". This table is its own island; nothing outside JobsSheetPage
 // changes colour off the back of this.
+// What the codes mean, so they don't have to be dug out again. Wording follows
+// the Action and Flag tables in SCHEDULER-ARCHITECTURE.md — change both together.
+const SHEET_KEY = [
+  ['GTS', 'Good To Start'],
+  ['DG', 'To be Diagnosed'],
+  ['INC', 'Incubating — still thinking it over'],
+  ['RS', 'Research'],
+  ['RS-C', 'Research with Claude'],
+  ['CI', 'Customer Involved — waiting on the customer'],
+  ['WP', 'Waiting Parts'],
+  ['FB', 'Fabrication — a jig has to be made first'],
+  ['VB', 'Virtual Booking — guitar not in the shop yet'],
+  ['BL', 'Backlog'],
+  ['PJ', 'Project'],
+];
+
 const SHEET_CSS = `
 .gsheet { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -201,6 +217,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
 
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const [result, setResult] = useState(null); // { ok, text }
 
   // Desc column width. null means auto — Desc soaks up whatever the other
@@ -352,6 +369,16 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
           </div>
         </div>
 
+        <button
+          onClick={() => setShowKey(v => !v)}
+          aria-expanded={showKey}
+          style={{
+            background: showKey ? C.edge : 'none', border: `1px solid ${C.edge}`, borderRadius: 6,
+            color: C.dim, fontSize: 12, padding: '5px 12px', cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >Key</button>
+
         {editable && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {invalidCount > 0 && (
@@ -389,6 +416,20 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
           </div>
         )}
       </div>
+
+      {showKey && (
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: '6px 22px',
+          padding: '10px 18px', fontSize: 12, color: C.dim,
+          borderBottom: `1px solid ${C.line}`,
+        }}>
+          {SHEET_KEY.map(([code, meaning]) => (
+            <span key={code}>
+              <strong style={{ color: C.bright }}>{code}</strong> {meaning}
+            </span>
+          ))}
+        </div>
+      )}
 
       {isMobile && (
         <div style={{
