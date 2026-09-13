@@ -1,0 +1,442 @@
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { BENCH_COLORS, benchColors } from '../data/jobs.js';
+
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
+
+// The sentinel for "nobody has picked a bench for this row yet".
+//
+// Why it exists (Trevor, 2026-08-04): a <select> whose value matches none of
+// its options displays the FIRST one. ALL_BENCHES starts with 'Luthier', so a
+// bench-less job opened here read "Luthier" — and pressing Save wrote Luthier
+// for real. Not cosmetic: a silent mis-file waiting on any save. The option is
+// added only when the row genuinely has no bench, so it never appears as a
+// choice on a job that is already filed, and handleSave() refuses to write a
+// row still sitting on it.
+//
+// Updated 2026-09-11: a job's bench is never empty any more — unclassified work
+// lands on 'Admin' (Trevor: "there is no such thing as no bench"). So "empty
+// bench" can no longer be the test. The job's derived benchAuto flag is: it is
+// true exactly when the job reached Admin by falling through the keyword rules
+// rather than by a human choosing it. initRows() puts such a row on this
+// sentinel, which keeps the option, the label and the save guard below working
+// unchanged.
+const NEEDS_BENCH = '';
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function fromTimeValue(val) {
+  const [h, m] = (val || '09:00').split(':').map(Number);
+  return { hour: h, minute: m };
+}
+
+function formatSlotDisplay(slot, weekDays = []) {
+  if (!slot) return null;
+  if (typeof slot === 'object') {
+    const { dayIdx, hour: h, minute: m = 0 } = slot;
+    const date = weekDays[dayIdx];
+    if (!date) return null;
+    const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const ampm = h < 12 ? 'AM' : 'PM';
+    const mins = m === 0 ? '' : `:${pad(m)}`;
+    return `${dayStr} · ${hour12}${mins} ${ampm}`;
+  }
+  const parts = slot.split('-').map(Number);
+  if (parts.length < 5 || parts.some(isNaN)) return null;
+  const [y, mo, d, h, m] = parts;
+  const date = new Date(y, mo - 1, d);
+  const dayStr = date.toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' });
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const mins = m === 0 ? '' : `:${pad(m)}`;
+  return `${dayStr} · ${hour12}${mins} ${ampm}`;
+}
+
+function initRows(job, allJobs = []) {
+  // Already split (manual OR auto) — hydrate the editor from the existing
+  // children so re-saving edits the real split instead of appending a
+  // duplicate one. isSplit only covers manual splits; auto-split jobs from
+  // createSubtasks() never get isSplit, only hasSubtasks + real children via
+  // parentId — checking isSplit alone left auto-split jobs hydrating from
+  // stale pre-split bench/hours, hiding the real split from the editor.
+  // isDerived: a derived bench card is a child, never a splittable parent.
+  if (!job.isSubtask && !job.isDerived) {
+    const children = allJobs
+      .filter(j => j.parentId === job.id)
+      .sort((a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0));
+    if (children.length > 0) {
+      const rows = [];
+      children.forEach(c => {
+        let row = rows.find(r => r.bench === c.bench);
+        if (!row) { row = { bench: c.bench, sessions: [] }; rows.push(row); }
+        row.sessions.push({ hours: c.hours, note: c.sessionNote || '' });
+      });
+      return rows;
+    }
+  }
+  // benchAuto true = the job only landed on Admin because nothing matched, so
+  // it still needs a human to pick. Start it on the sentinel so the drawer says
+  // "Needs a bench" and Save refuses until one is chosen. `|| NEEDS_BENCH` stays
+  // as a belt-and-braces normalise for any legacy row with a null bench.
+  const bench = job.benchAuto ? NEEDS_BENCH : (job.bench || NEEDS_BENCH);
+  return [{ bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
+}
+
+export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus }) {
+  const [rows, setRows] = useState(() => initRows(job, jobs));
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [timeVal, setTimeVal] = useState('09:00');
+  const [saveError, setSaveError] = useState(null);
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    function handleMouseDown(e) {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        onClose();
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
+  function updateSession(ri, si, field, value) {
+    setRows(prev => prev.map((row, r) => r !== ri ? row : {
+      ...row,
+      sessions: row.sessions.map((s, x) => x !== si ? s : { ...s, [field]: value }),
+    }));
+  }
+
+  function setSessionCount(ri, newCount) {
+    if (newCount < 1) return;
+    setRows(prev => prev.map((row, r) => {
+      if (r !== ri) return row;
+      const cur = row.sessions;
+      const total = cur.reduce((s, x) => s + Number(x.hours), 0);
+      if (newCount === cur.length) return row;
+      if (newCount > cur.length) {
+        const perSession = parseFloat((total / newCount).toFixed(1));
+        // Redistribute all sessions evenly, preserving existing notes
+        const next = Array.from({ length: newCount }, (_, i) => ({
+          hours: perSession,
+          note: i < cur.length ? cur[i].note : '',
+        }));
+        // Fix last item for rounding drift
+        const runningTotal = next.reduce((s, x) => s + Number(x.hours), 0);
+        next[newCount - 1].hours = parseFloat((Number(next[newCount - 1].hours) + (total - runningTotal)).toFixed(1));
+        return { ...row, sessions: next };
+      } else {
+        const kept = cur.slice(0, newCount).map(s => ({ ...s }));
+        const removedHours = cur.slice(newCount).reduce((s, x) => s + Number(x.hours), 0);
+        kept[newCount - 1].hours = parseFloat((Number(kept[newCount - 1].hours) + removedHours).toFixed(1));
+        return { ...row, sessions: kept };
+      }
+    }));
+  }
+
+  function addBench() {
+    const used = new Set(rows.map(r => r.bench));
+    const next = ALL_BENCHES.find(b => !used.has(b)) || 'Admin';
+    setRows(prev => [...prev, { bench: next, sessions: [{ hours: 1, note: '' }] }]);
+  }
+
+  function removeBench(ri) {
+    setRows(prev => prev.filter((_, i) => i !== ri));
+  }
+
+  function setBench(ri, bench) {
+    // Guard against two rows sharing a bench — child ids are
+    // `${parentId}_${bench}_${sessionIndex}`, so a duplicate bench across
+    // rows collides on id and silently drops one row's hours (last-write-wins).
+    setRows(prev => {
+      if (prev.some((row, i) => i !== ri && row.bench === bench)) return prev;
+      return prev.map((row, i) => i !== ri ? row : { ...row, bench });
+    });
+  }
+
+  function handleSave() {
+    // Refuse rather than guess. Writing a bench the tech never picked is the
+    // exact mis-file this guard exists to stop.
+    if (rows.some(r => !r.bench)) {
+      setSaveError('Pick a bench first — one row still says "Needs a bench".');
+      return;
+    }
+    setSaveError(null);
+    onSave(job, rows);
+    onClose();
+  }
+
+  // Derived auto-split bench cards are children too — they just never carry
+  // isSubtask (that flag marks a STORED manual child). Without isDerived
+  // here the drawer offers the full split UI on a derived card, and saving
+  // routes it through the parent branch, which materialises it as a real
+  // top-level row and hangs invisible grandchildren off it.
+  const isSubtaskEdit = !!job.isSubtask || !!job.isDerived;
+  const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
+  const totalHours = rows.reduce((s, r) => s + r.sessions.reduce((ss, x) => ss + Number(x.hours), 0), 0);
+  const bumpHistory = (job.bumpHistory || []).slice(-4).reverse();
+
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div ref={modalRef} style={{
+        background: '#1e293b', border: '1px solid #334155', borderRadius: 12,
+        width: 440, maxHeight: '82vh', overflowY: 'auto',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9' }}>#{job.job}</div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{job.mfr} {job.model}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, lineHeight: 1.4 }}>{job.desc}</div>
+            {job.calendarSlot && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                marginTop: 6, padding: '3px 8px', borderRadius: 6,
+                background: '#0f172a', border: '1px solid #2563eb',
+                fontSize: 11, color: '#93c5fd', fontWeight: 600,
+              }}>
+                <span style={{ fontSize: 10 }}>📅</span>
+                {formatSlotDisplay(job.calendarSlot, weekDays)}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginLeft: 12 }}>
+            {onToggleFocus && (
+              <button
+                onClick={onToggleFocus}
+                title={isFocused ? 'Remove from focus list' : 'Add to focus list'}
+                style={{
+                  background: isFocused ? '#78350f' : 'none',
+                  border: `1px solid ${isFocused ? '#f59e0b' : '#334155'}`,
+                  borderRadius: 6, color: isFocused ? '#fbbf24' : '#64748b',
+                  fontSize: 15, cursor: 'pointer', padding: '3px 7px', lineHeight: 1,
+                }}
+              >🎯</button>
+            )}
+            <button onClick={onClose} style={{
+              background: 'none', border: 'none', color: '#64748b', fontSize: 22,
+              cursor: 'pointer', padding: 0, lineHeight: 1, alignSelf: 'flex-start',
+            }}>×</button>
+          </div>
+        </div>
+
+        {/* Bench rows */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {rows.map((row, ri) => {
+            const colors = benchColors(row.bench);
+            const rowTotal = row.sessions.reduce((s, x) => s + Number(x.hours), 0);
+            return (
+              <div key={ri} style={{
+                borderRadius: 8, border: `1px solid ${colors.border}55`, overflow: 'hidden',
+              }}>
+                {/* Bench header */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+                  background: `${colors.bg}88`,
+                  borderBottom: `1px solid ${colors.border}33`,
+                }}>
+                  <div style={{ width: 3, alignSelf: 'stretch', background: colors.border, borderRadius: 2, flexShrink: 0 }} />
+                  {isSubtaskEdit ? (
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: colors.text }}>{row.bench || 'Needs a bench'}</span>
+                  ) : (
+                    <select
+                      value={row.bench}
+                      onChange={e => setBench(ri, e.target.value)}
+                      style={{ flex: 1, background: 'transparent', border: 'none', color: colors.text, fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none' }}
+                    >
+                      {!row.bench && (
+                        <option value={NEEDS_BENCH} style={{ background: '#1e293b', color: '#e2e8f0' }}>Needs a bench</option>
+                      )}
+                      {ALL_BENCHES.map(b => <option key={b} value={b} style={{ background: '#1e293b', color: '#e2e8f0' }}>{b}</option>)}
+                    </select>
+                  )}
+                  <span style={{ fontSize: 10, color: colors.text, opacity: 0.6, marginRight: 4 }}>{parseFloat(rowTotal.toFixed(1))}h</span>
+                  {!isSubtaskEdit && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.05em' }}>Sessions</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#0f172a', border: '1px solid #475569', borderRadius: 4, padding: '2px 7px' }}>
+                        <button onClick={() => setSessionCount(ri, row.sessions.length - 1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0 }}>−</button>
+                        <span style={{ fontSize: 12, color: '#cbd5e1', minWidth: 14, textAlign: 'center' }}>{row.sessions.length}</span>
+                        <button onClick={() => setSessionCount(ri, row.sessions.length + 1)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0 }}>+</button>
+                      </div>
+                    </div>
+                  )}
+                  {rows.length > 1 && !isSubtaskEdit && (
+                    <button onClick={() => removeBench(ri)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: 16, padding: 0, marginLeft: 2 }}>×</button>
+                  )}
+                </div>
+
+                {/* Session rows */}
+                {row.sessions.map((sess, si) => (
+                  <div key={si} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px 8px 18px',
+                    borderTop: si > 0 ? `1px solid ${colors.border}22` : 'none',
+                    background: 'rgba(0,0,0,0.2)',
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: colors.border, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: '#64748b', minWidth: 62, flexShrink: 0 }}>
+                      {row.sessions.length > 1 ? `Session ${si + 1}` : 'Hours'}
+                    </span>
+                    {/* Hours live on the parent job for a split child / derived
+                        bench card — editing here applies locally then silently
+                        reverts on reload, so it's read-only. */}
+                    <input
+                      type="number" min="0.5" step="0.5"
+                      value={sess.hours}
+                      readOnly={isSubtaskEdit}
+                      disabled={isSubtaskEdit}
+                      title={isSubtaskEdit ? 'Hours come from the parent job — edit them there' : undefined}
+                      onChange={e => updateSession(ri, si, 'hours', parseFloat(e.target.value) || 0.5)}
+                      style={{
+                        width: 54, background: isSubtaskEdit ? '#1e293b' : '#0f172a',
+                        border: '1px solid #475569', borderRadius: 4,
+                        padding: '3px 6px', fontSize: 12,
+                        color: isSubtaskEdit ? '#94a3b8' : '#cbd5e1', textAlign: 'center',
+                        cursor: isSubtaskEdit ? 'not-allowed' : 'auto',
+                      }}
+                    />
+                    <span style={{ fontSize: 11, color: '#475569' }}>h</span>
+                    <input
+                      type="text"
+                      placeholder={row.sessions.length > 1 ? `Session ${si + 1} note…` : 'Note (optional)'}
+                      value={sess.note}
+                      onChange={e => updateSession(ri, si, 'note', e.target.value)}
+                      style={{
+                        flex: 1, background: '#0f172a', border: '1px solid #475569', borderRadius: 4,
+                        padding: '3px 8px', fontSize: 12, color: '#cbd5e1',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {!isSubtaskEdit && (
+            <button
+              onClick={addBench}
+              style={{
+                border: '1px dashed #334155', background: 'transparent', borderRadius: 8,
+                padding: '8px 0', fontSize: 12, color: '#64748b', cursor: 'pointer',
+              }}
+            >
+              + Add bench
+            </button>
+          )}
+
+          {isSubtaskEdit && (
+            <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
+              Bench and hours are set on the parent job — edit them there.
+            </div>
+          )}
+
+          {onSchedule && weekDays.length > 0 && (
+            <div style={{ borderTop: '1px solid #334155', paddingTop: 12, marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>Schedule</div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                {weekDays.map((day, i) => {
+                  const today = new Date();
+                  const isToday = day.toDateString() === today.toDateString();
+                  const isPast = day < today && !isToday;
+                  const isSelected = selectedDay === i;
+                  return (
+                    <button key={i} onClick={() => setSelectedDay(i)} style={{
+                      flex: 1, minWidth: 36, padding: '5px 4px', borderRadius: 6, border: 'none',
+                      background: isSelected ? '#2563eb' : isToday ? '#1e3a5f' : '#0f172a',
+                      color: isSelected ? '#fff' : isPast ? '#334155' : isToday ? '#93c5fd' : '#94a3b8',
+                      outline: isToday && !isSelected ? '1px solid #2563eb' : 'none',
+                      cursor: isPast ? 'default' : 'pointer', fontSize: 10, fontWeight: 600,
+                    }}>
+                      <div>{day.toLocaleDateString('en-NZ', { weekday: 'short' })}</div>
+                      <div>{day.getDate()}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="time" value={timeVal}
+                  onChange={e => setTimeVal(e.target.value)}
+                  style={{
+                    background: '#0f172a', border: '1px solid #475569', borderRadius: 4,
+                    padding: '4px 8px', fontSize: 12, color: '#cbd5e1',
+                  }}
+                />
+                <button
+                  onClick={() => { const { hour, minute } = fromTimeValue(timeVal); onSchedule(job, selectedDay, hour, minute); onClose(); }}
+                  style={{
+                    flex: 1, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6,
+                    padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Place on Calendar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Bump history — read only, last 4 day-to-day reschedules. JobDrawer
+              has no pre-existing list to mirror, so this matches JobDrawer's
+              own dark-slate palette instead. */}
+          {bumpHistory.length > 0 && (
+            <div style={{ borderTop: '1px solid #334155', paddingTop: 10, marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                Bump history
+              </div>
+              {bumpHistory.map((entry, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  fontSize: 11, color: '#94a3b8', padding: '4px 0',
+                  borderTop: i > 0 ? '1px solid #1e293b' : 'none',
+                }}>
+                  <span>{new Date(entry.ts).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                  <span style={{ color: '#cbd5e1' }}>
+                    {entry.reason === 'Other' ? (entry.reasonText || 'Other') : (entry.reason || 'unspecified')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {saveError && (
+            <div style={{
+              background: '#450a0a', border: '1px solid #b91c1c', borderRadius: 6,
+              padding: '7px 10px', fontSize: 11, color: '#fca5a5', marginTop: 4,
+            }}>{saveError}</div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+            <span style={{ fontSize: 11, color: '#64748b' }}>
+              {totalCards === 1 ? '1 card' : `${totalCards} cards`} · {parseFloat(totalHours.toFixed(1))}h total
+            </span>
+            <button
+              onClick={handleSave}
+              style={{
+                background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6,
+                padding: '8px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              {isSubtaskEdit || totalCards === 1 ? 'Update' : 'Save splits'}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

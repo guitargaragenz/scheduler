@@ -1,0 +1,60 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "mcp__Claude_Browser__*"
+    ],
+    "deny": [
+      "Bash(git checkout -- *)",
+      "Bash(git clean -fd*)",
+      "Bash(git commit --amend*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf *)",
+      "Edit(.vite/**)",
+      "Edit(coverage/**)",
+      "Edit(dist/**)",
+      "Edit(node_modules/**)",
+      "Read(**/*.lock)",
+      "Read(.vite/**)",
+      "Read(coverage/**)",
+      "Read(dist/**)",
+      "Read(node_modules/**)",
+      "Read(package-lock.json)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/enforce-agent-model.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/warn-closed-brief.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/limit-scope-lock-size.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
