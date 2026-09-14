@@ -13,6 +13,8 @@ import {
   draftChanges,
   buildSheetWrites,
   applySheetEdits,
+  rowSearchText,
+  matchesSearch,
 } from './jobsSheet.js';
 import { APP_OWNED_JOB_FIELDS } from './joinJobs.js';
 
@@ -204,5 +206,50 @@ describe('the board after a Commit', () => {
     const after = applySheetEdits(j, { hours: 3, job: '1601' });
     expect(after.hours).toBe(3);
     expect(after.job).toBe('1601'); // unchanged, straight off the original job
+  });
+});
+
+describe('Sheet search', () => {
+  it('finds a row by any of its columns, whatever the case', () => {
+    const j = job();
+    for (const q of ['1601', 'dave', 'FENDER', 'strat', 'active', 'buzz']) {
+      expect(matchesSearch(j, undefined, q)).toBe(true);
+    }
+  });
+
+  it('an empty or blank box matches everything, so nothing hides by accident', () => {
+    const j = job();
+    expect(matchesSearch(j, undefined, '')).toBe(true);
+    expect(matchesSearch(j, undefined, '   ')).toBe(true);
+    expect(matchesSearch(j, undefined, null)).toBe(true);
+  });
+
+  it('needs every word to land somewhere, not just one of them', () => {
+    const j = job();
+    expect(matchesSearch(j, undefined, 'fender buzz')).toBe(true);
+    expect(matchesSearch(j, undefined, 'buzz fender')).toBe(true); // order is nothing
+    expect(matchesSearch(j, undefined, 'fender crack')).toBe(false);
+  });
+
+  // The one that would look like a bug in the shop: picking WP and then
+  // searching WP before Commit. The cell says WP, so the search must agree.
+  it('searches the tag and action he can see, not the ones saved', () => {
+    const j = job({ tag: 'EZ', action: 'GTS' });
+    const draft = { ...initialRowDraft(j), tag: 'H', action: 'WP' };
+    expect(matchesSearch(j, draft, 'WP')).toBe(true);
+    expect(matchesSearch(j, draft, 'H')).toBe(true);
+    expect(matchesSearch(j, draft, 'GTS')).toBe(false); // saved, but no longer on screen
+  });
+
+  it('falls back to the saved row when nothing has been typed into it', () => {
+    const j = job({ tag: 'EZ', action: 'GTS' });
+    expect(matchesSearch(j, undefined, 'GTS')).toBe(true);
+  });
+
+  it('does not fall over on a row with empty columns', () => {
+    const j = job({ customer: null, mfr: undefined, desc: '' });
+    expect(() => rowSearchText(j, undefined)).not.toThrow();
+    expect(matchesSearch(j, undefined, '1601')).toBe(true);
+    expect(matchesSearch(j, undefined, 'dave')).toBe(false);
   });
 });

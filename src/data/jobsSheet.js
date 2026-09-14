@@ -213,3 +213,34 @@ export function applySheetEdits(job, changes) {
   // job reading schedulable until the next reload.
   return { ...merged, ...statusFlagsFor(merged, merged.backlog === true, merged.vb === true) };
 }
+
+// ---------------------------------------------------------------------------
+// Search
+//
+// Fifty-odd rows on one page, so this is a plain substring match over the text
+// of a row — no index, no fuzzy matching, no ranking. It lives here rather than
+// in the page because it is pure and worth testing on its own: the page's job
+// is to decide which rows to draw, not to work out what a row says.
+//
+// The Tag and Action read off the DRAFT, not the saved job. What Trevor sees in
+// the cell is what he searches — typing WP and getting no hits because the WP
+// he just picked has not been committed yet would be a bug, not a subtlety.
+
+// Everything about one row that a search can see, lowercased.
+export function rowSearchText(job, draft) {
+  const d = draft || initialRowDraft(job);
+  return [
+    job.job, job.customer, job.mfr, job.model, job.status, job.desc,
+    d.tag, d.action,
+  ].map(v => (v ?? '').toString().toLowerCase()).join(' ');
+}
+
+// Every word has to land somewhere in the row — "fender bridge" finds the
+// Fender with a bridge job, not every Fender and every bridge. Order doesn't
+// matter and neither does which column each word hits.
+export function matchesSearch(job, draft, query) {
+  const words = (query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const hay = rowSearchText(job, draft);
+  return words.every(w => hay.includes(w));
+}
