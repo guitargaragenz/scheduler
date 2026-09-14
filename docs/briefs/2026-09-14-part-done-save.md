@@ -4,7 +4,7 @@ doc_status: live
 
 # Brief — a ticked part always saves as done
 
-Not approved yet. Blast-radius (writes jobs state) — full protocol.
+Approved by Trevor 2026-09-14 ("yp"). Blast-radius (writes jobs state) — full protocol.
 
 ## What went wrong (reproduced 2026-09-14 from live data)
 
