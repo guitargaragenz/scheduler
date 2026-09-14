@@ -28,10 +28,16 @@ Day view, calendar. So all of them can lose a tick.
 
 ## Build
 
-- Work out the updated part and parent from current state, not from values set
-  inside the updater, then write to Supabase every time.
-- Keep the all-parts-done check race-safe (the reason for the current design).
+- First, add a failing test that reproduces the lost save (tick fired after an
+  await). If the part or parent is simply missing from the jobs list instead,
+  stop and report — that is a different fix (council B's alternative cause).
+- Work out the updated part from a jobs ref kept in sync every render (never the
+  stale `jobs` prop), then write to Supabase every time.
+- The all-parts-done check reads that same fresh ref, so two quick ticks still
+  trigger the invoice prompt (council A).
 - If the write fails, keep the existing warning toast.
+
+Council 2026-09-14: both approve with changes, folded in above.
 
 ## Out of scope
 
