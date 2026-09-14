@@ -43,6 +43,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
           dragMode={dragMode}
           isHighlighted={highlighted}
           onClick={() => onJobClick(job)}
+          jobs={jobs}
           isFocused={focusSet.has(String(job.job))}
           onToggleFocus={onToggleFocus ? () => onToggleFocus(job.job) : undefined}
         />

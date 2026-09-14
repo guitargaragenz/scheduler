@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
+import { displayBenchOf } from '../utils/nextBench.js';
 
 const BENCH_ORDER = ['Fretwork', 'Luthier', 'Setup', 'Wiring', 'Electronics', 'Admin'];
 
@@ -54,6 +55,7 @@ export default function JobsPage({ jobs, onJobClick }) {
       <div key={job.id}>
         <JobRow
           job={job}
+          jobs={jobs}
           splits={subtasks.length}
           isExpanded={isExpanded}
           onTap={job.schedulable ? onJobClick : null}
@@ -159,8 +161,9 @@ export default function JobsPage({ jobs, onJobClick }) {
   );
 }
 
-function JobRow({ job, splits, isExpanded, onTap, onToggleExpand }) {
-  const colors = benchColors(job.bench);
+function JobRow({ job, jobs = [], splits, isExpanded, onTap, onToggleExpand }) {
+  // Parent rows follow the next bench still to do; child rows (no jobs passed) keep their own.
+  const colors = benchColors(displayBenchOf(job, jobs));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
