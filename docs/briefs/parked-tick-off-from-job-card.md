@@ -26,8 +26,8 @@ browser test → "yp".
 
 ## Trevor's answers (2026-09-14)
 1. Ticking off just clears the mark (WP → blank `action`).
-2. Only marks that hold a job up — e.g. WP, CI, VB, BL. Exact list still to confirm
-   with Trevor when writing the brief (INC, RS-C, DG?). Not GTS / FB / PJ-style labels.
+2. Only marks that hold a job up: WP, CI, INC, RS-C, DG, VB, BL (confirmed).
+   Not GTS, RS, FB or PJ.
 3. Ticking off WP never touches BL.
 4. Yes — the Parts Arrived banner should clear once WP is cleared. Verify it does.
 
