@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { benchColors } from '../data/jobs.js';
+import { displayBenchOf } from '../utils/nextBench.js';
 
 const SECTION_DEFS = [
   { key: 'input',    label: 'Needs Input',       sub: 'CI · WP',              actions: ['CI', 'WP'],             hatch: true  },
@@ -27,12 +28,13 @@ function actionTagColors(action) {
   return { bg: '#1f2937', color: '#9ca3af', border: '#374151' };
 }
 
-function JobBar({ job, windowDays, hatch }) {
+function JobBar({ job, windowDays, hatch, allJobs = [] }) {
   const TODAY_PCT = 93;
   const days = job.days || 0;
   const left  = days >= windowDays ? 0 : (windowDays - days) / windowDays * TODAY_PCT;
   const width = Math.max(TODAY_PCT - left, 0.5);
-  const bc    = benchColors(job.bench);
+  const shownBench = displayBenchOf(job, allJobs);
+  const bc    = benchColors(shownBench);
   const tc    = actionTagColors(job.action);
   const ageColor = ageBadgeColor(days);
 
@@ -54,7 +56,7 @@ function JobBar({ job, windowDays, hatch }) {
           <span style={{
             fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 3,
             background: bc.bg, color: bc.text, border: `1px solid ${bc.border}`,
-          }}>{job.bench}</span>
+          }}>{shownBench}</span>
         </div>
       </div>
 
@@ -105,7 +107,7 @@ function JobBar({ job, windowDays, hatch }) {
   );
 }
 
-function Section({ def, jobs, windowDays }) {
+function Section({ def, jobs, windowDays, allJobs }) {
   if (jobs.length === 0) return null;
   return (
     <div>
@@ -122,7 +124,7 @@ function Section({ def, jobs, windowDays }) {
           {jobs.length}
         </span>
       </div>
-      {jobs.map(j => <JobBar key={j.id} job={j} windowDays={windowDays} hatch={def.hatch} />)}
+      {jobs.map(j => <JobBar key={j.id} job={j} windowDays={windowDays} hatch={def.hatch} allJobs={allJobs} />)}
     </div>
   );
 }
@@ -248,7 +250,7 @@ export default function ProjectsPage({ jobs }) {
 
         {/* Sections */}
         {sections.map(({ def, jobs: sJobs }) => (
-          <Section key={def.key} def={def} jobs={sJobs} windowDays={windowDays} />
+          <Section key={def.key} def={def} jobs={sJobs} windowDays={windowDays} allJobs={jobs} />
         ))}
 
         {/* Other section */}
@@ -257,6 +259,7 @@ export default function ProjectsPage({ jobs }) {
             def={{ key: 'other', label: 'Other', sub: 'custom actions', hatch: false }}
             jobs={otherJobs}
             windowDays={windowDays}
+            allJobs={jobs}
           />
         )}
 

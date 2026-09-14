@@ -174,6 +174,7 @@ export default function JobShelf({
           dragMode={dragMode}
           isHighlighted={job.id === highlightedJobId}
           onClick={() => onJobClick(job)}
+          jobs={jobs}
           isFocused={focusSet.has(String(job.job))}
           onToggleFocus={onToggleFocus && !indent ? () => onToggleFocus(job.job) : undefined}
         />
