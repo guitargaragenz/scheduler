@@ -28,3 +28,6 @@ binds the code or how we work. A record, never a task list.
 - **Invoices PDF import:** cancelled. Don't revive it.
 - **Appointments missing from the calendar** was Google Cloud config, not code.
 - **Vercel preview uses the live database** — never click-test anything that writes job state.
+- **Next bench on the job card** (PR #69, `02a525a`): display only, never writes job state.
+- **Ticked part saves** (PR #70, `96cc365`): save outside the `setJobs` updater — React can defer it, so the save never ran.
+- **Week page day box** (PR #72, `3182f84`): tap toggles `·`, hold opens the marks list; the lift after a hold is swallowed, same as the end box.
