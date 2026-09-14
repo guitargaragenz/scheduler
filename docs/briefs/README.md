@@ -22,7 +22,6 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 | Doc | What it does |
 |---|---|
 | [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | **Current — start here.** Nothing is mid-build. Says what the next work should be and where it starts. |
-| [2026-09-14-jobs-sheet-tag-filter.md](2026-09-14-jobs-sheet-tag-filter.md) | Tag dropdown on the Jobs Sheet. Scope-locked in `.claude/pending-brief.md`, awaiting council. |
 
 The next piece of work gets chosen from Parked, with Trevor — it is not picked off
 this page. Start a session with `next`; if this section is still empty, say so.

@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Searching the Jobs Sheet by tag
@@ -12,8 +12,9 @@ type it.
 of DD we just use hashtag for tag search way easier". The dropdown is dead;
 nothing below describing it is a task.
 
-**The build is scope-locked in `.claude/pending-brief.md`.** Build from that,
-not from this file. This one only records where the idea came from.
+**Shipped on PR #68 as a `#tag` search, 2026-09-14.** The record is
+[2026-09-14-jobs-sheet-tag-search.md](2026-09-14-jobs-sheet-tag-search.md).
+Nothing here is a task.
 
 ## What was already there
 The search box shipped the same day at `09f12df` (PR #67). It already matches
