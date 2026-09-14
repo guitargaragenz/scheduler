@@ -1,8 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# Scope lock — Send a job to next week from the > box
+# Record (closed) — Send a job to next week from the > box
+
+Shipped at `f7d2d0b` (PR #65, build `ad0c631`), 2026-09-14. 796/796 tests, 41 files;
+verifier 17/17. Council (2 reviewers) fixes were folded into Build. Browser-tested live by Trevor: "works perfectly".
 
 Approved by Trevor ("yp", 2026-09-14).
 
@@ -41,6 +44,8 @@ All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
 - Carrying jobs forward automatically without a tap.
 - Any change to the Daily Log.
 
-## Council (2026-09-14)
-R2 go. R1 not yet: blank box would crash render + export; no next-week helper;
-long press built from scratch. All three folded into Build above.
+## Builder decisions the brief didn't cover
+- Send and Close greyed out on a closed job; Clear only on a sent job.
+- Closing a sent job when next week already has marks: > goes, job stays on next week.
+- Clear can't tell a sent row from an earlier hand-added one.
+- Removing a job from this week doesn't undo a send (harmless).
