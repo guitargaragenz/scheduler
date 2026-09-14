@@ -28,16 +28,26 @@ Day view, calendar. So all of them can lose a tick.
 
 ## Build
 
-- First, add a failing test that reproduces the lost save (tick fired after an
-  await). If the part or parent is simply missing from the jobs list instead,
-  stop and report — that is a different fix (council B's alternative cause).
-- Work out the updated part from a jobs ref kept in sync every render (never the
-  stale `jobs` prop), then write to Supabase every time.
-- The all-parts-done check reads that same fresh ref, so two quick ticks still
-  trigger the invoice prompt (council A).
-- If the write fails, keep the existing warning toast.
+Council round 2 (2026-09-14): both approve with changes, folded in here.
 
-Council 2026-09-14: both approve with changes, folded in above.
+- Pull the maths into a pure function in `useJobs.js`:
+  `planPieceDone(jobs, parentJobId, childJobId, pieceDone)` returns
+  `{ updatedChild, parentJob, children, allChildrenDone }`. Tick and untick both
+  go through it (untick has the same lost-save bug).
+- `jobsRef = useRef(jobs)` lives in `useJobs`, and is set to `jobs` on every
+  render. In the handler: plan from `jobsRef.current`, then set
+  `jobsRef.current` to the planned array **straight away**, so a second quick
+  tick sees the first before React re-renders.
+- `setJobs(prev => …)` still applies only `pieceDone` to that one child
+  (functional, so it doesn't overwrite other edits). No side effects inside it.
+- Write to Supabase from the planned child every call, outside the updater.
+  Two quick calls give two writes; the last one wins, which is fine.
+- If the child or parent isn't in the ref, stop and report. That's a different
+  cause (missing from the list), not this bug.
+- The failing test comes first. Unit-test `planPieceDone`, plus a hook test where
+  `setJobs` defers its updater: on the old code the save isn't called, on the
+  new code it is.
+- Keep the failure toast. `justSavedAt` behaviour stays as it is (deferred).
 
 ## Out of scope
 
@@ -48,7 +58,7 @@ Council 2026-09-14: both approve with changes, folded in above.
 ## Verifier checklist
 
 1. A tick from the Daily Log after an await always calls the save.
-2. Two quick ticks in a row both save, and the last one still triggers the invoice prompt.
+2. Two quick ticks in a row both call the save (two writes), and the last one still triggers the invoice prompt.
 3. Untick saves false.
 4. No changes to scheduledSlots, calendarSlot, or the jobs[] shape.
 5. Full test suite passes. A new test fails on the old code and passes on the new.
