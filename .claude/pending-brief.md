@@ -2,50 +2,48 @@
 doc_status: live
 ---
 
-# Brief — Search box on the Jobs Sheet
+# Brief — Tag dropdown on the Jobs Sheet
 
-Approved by Trevor ("yp", 2026-09-14). Council: 2 reviewers, both approve;
-their changes are folded in below. One box in the Jobs Sheet toolbar that
-hides the rows you aren't looking for.
+**Not approved yet.** Waiting on Trevor's "yp".
+
+Pick a tag from a list instead of typing it in the search box. Asked for
+2026-09-14, straight after the search box shipped.
 
 ## Build
-All in `src/components/JobsSheetPage.jsx`, plus tests.
+`src/components/JobsSheetPage.jsx`, plus tests.
 
-- A text box in the top bar, next to Key. Placeholder "Search jobs".
-- Typing hides every row that doesn't match. Clearing it shows them all again.
-- A match is a plain case-insensitive contains, against: job number, customer,
-  mfr, model, status, desc, and the row's current Tag and Action (draft value,
-  not the saved one — what he sees in the cell is what he searches).
-- Multiple words: every word has to match somewhere in the row.
-- The existing count line is the one that changes — "12 of 53 jobs · greyed
-  columns come from Multitrack". No second counter.
-- Escape in the box clears it. A small × in the box does the same.
-- No matches: "No jobs match that." A second, separate empty state — the
-  existing "No jobs on the board." line stays for an empty board.
+- A dropdown in the toolbar, beside the search box. Reads "All tags" when
+  nothing is picked; picking one shows only jobs on that tag.
+- Options come from `TAG_OPTIONS` in `src/data/jobsSheet.js` — the same list
+  the row's own Tag cell offers. Never a second hand-written list.
+- It reads the row's **draft** tag, not the saved one, exactly as the search
+  does. A tag picked but not yet committed filters on the new value.
+- Search box and dropdown narrow together: "Fender" typed plus EZ picked shows
+  Fenders on EZ, not everything Fender plus everything EZ.
+- The count line already reads "12 of 53 jobs" while filtering; a tag filter
+  counts as filtering the same way, with or without anything typed.
+- "No jobs match that." covers a tag with no jobs on it — same empty state.
+- The × already in the search box clears the box only. Clearing the tag is
+  picking "All tags".
 
 ## Rules that bind it
 - **`rows` stays the full list.** `dirty`, `invalidCount`, `commit` and
-  `discard` keep working off `rows`, never off the filtered list. Add a
-  separate `visibleRows` used only by `<tbody>`. Getting this wrong means an
-  edited job that's hidden by the search doesn't save — silent data loss.
-- A hidden changed row is called out: "3 changed (1 hidden)", and that text is
-  a button — clicking it clears the search so every changed row is back on
-  screen. "Hidden" means changed AND filtered out, never merely filtered out.
-- The search box shows on the read-only mobile rendering of this page too
-  (`isMobile`). Intended — looking a job up on the phone is the point.
-- Commit and Discard always act on every change, hidden or not — never
-  narrowed, never disabled, and commit doesn't clear the search.
-- Display only: writes nothing, saves nothing, resets to empty every visit.
-- Searching mfr is a lookup, not a bench rule — it never feeds bench choice.
+  `discard` keep iterating `rows`. The tag filter joins the existing
+  `visibleRows` memo; it does not get a second filtering path of its own.
+  Getting this wrong means an edited job filtered off screen doesn't save.
+- The "(N hidden)" button must count a row hidden by the tag filter too, and
+  clicking it clears BOTH the search box and the tag back to "All tags".
+- Display only: writes nothing, saves nothing, resets on every visit.
+- A tag filter is a lookup. It never feeds bench choice, and it is not a sort.
 - Not blast-radius: no `jobs[]`, `scheduledSlots`, `calendarSlot`, Supabase or
   `useGoogleCalendar` changes. If the build finds it needs one, stop and ask.
 
 ## Out of scope
-- The mobile sheet (`MobileJobSheet.jsx`). This is the desktop page only.
-- Search anywhere else in the app — bench board, week page, parking lot.
-- Sorting, column filters, saved searches, fuzzy matching, highlighting.
+- An Action dropdown, a status dropdown, or filtering on VB/BL/PJ.
+- Multi-select — one tag at a time.
+- The mobile sheet (`MobileJobSheet.jsx`), and search anywhere else in the app.
 - The parked Sheet items (Enter-to-move-down, 30-min snap): separate work.
 
 ## Background, not the next step
-`docs/briefs/parked-jobs-sheet-usability-changes.md` — other parked Sheet
-items. History, not this build.
+`docs/briefs/2026-09-14-jobs-sheet-tag-filter.md` — where the ask came from.
+`docs/briefs/2026-09-14-jobs-sheet-search.md` — the search box record.
