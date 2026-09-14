@@ -4,6 +4,7 @@ import CalendarGrid from './CalendarGrid';
 import DeferredItemsList from './DeferredItemsList.jsx';
 import ReasonPicker from './ReasonPicker.jsx';
 import { benchColors } from '../data/jobs.js';
+import { displayBenchOf } from '../utils/nextBench.js';
 import { localDateKey } from '../utils/calendar.js';
 
 const DATE_LABEL = new Date().toLocaleDateString('en-NZ', {
@@ -429,7 +430,8 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
   const splits = jobs.filter(j => j.parentId === job.id);
   const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
   const actionStyle = ACTION_COLORS[job.action] || { bg: '#1e293b', color: '#64748b' };
-  const bc = benchColors(job.bench);
+  const shownBench = displayBenchOf(job, jobs);
+  const bc = benchColors(shownBench);
   const benchStyle = { bg: bc.bg, color: bc.text };
 
   return (
@@ -467,7 +469,7 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
       )}
 
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginBottom: splits.length ? 8 : 0 }}>
-        <Tag label={job.bench} style={benchStyle} />
+        <Tag label={shownBench} style={benchStyle} />
         {job.action && <Tag label={job.action} style={actionStyle} />}
         {job.hoursRange && (
           <span style={{ fontSize: 10, color: '#64748b' }}>{job.hoursRange}h</span>

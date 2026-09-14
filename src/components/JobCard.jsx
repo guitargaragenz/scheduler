@@ -1,8 +1,9 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { benchColors, blockedPile, blockedReason } from '../data/jobs.js';
+import { displayBenchOf } from '../utils/nextBench.js';
 
-export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus }) {
+export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus, jobs = [] }) {
   const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
 
   // A blocked job (Waiting or Planning pile) never picks up at all — Trevor's
@@ -18,7 +19,9 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
     disabled: isBlocked,
   });
 
-  const colors = benchColors(job.bench);
+  // Parent cards show the next bench still to do; child parts keep their own.
+  const shownBench = displayBenchOf(job, jobs);
+  const colors = benchColors(shownBench);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -133,7 +136,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
             </button>
           )}
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.1)', color: colors.text }}>
-            {job.bench}
+            {shownBench}
           </span>
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.15)', color: '#fbbf24' }}>
             {job.hoursRange}h
