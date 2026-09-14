@@ -21,6 +21,7 @@ import {
   buildSheetWrites,
   parseHoursInput,
   isHoursInputInvalid,
+  matchesSearch,
 } from '../data/jobsSheet.js';
 
 const C = {
@@ -216,6 +217,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
   }, [jobs]);
 
   const [drafts, setDrafts] = useState({});
+  const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [result, setResult] = useState(null); // { ok, text }
@@ -296,6 +298,25 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
     return out;
   }, [rows, drafts]);
 
+  // visibleRows is for DRAWING ONLY. Everything that saves — dirty, commit,
+  // discard, invalidCount — stays on `rows`, the full list. Filter the list
+  // those read from and a job Trevor edited and then searched away from stops
+  // being saved without ever saying so; the whole point of the page is that
+  // Commit writes every change on it.
+  const visibleRows = useMemo(() => {
+    if (!search.trim()) return rows;
+    return rows.filter(job => matchesSearch(job, drafts[job.id], search));
+  }, [rows, drafts, search]);
+
+  // Changed rows the search is currently hiding. A count on its own is no use —
+  // he can't act on "1 hidden" without clearing the box to see what it was — so
+  // the number is a button that clears the search.
+  const hiddenDirtyCount = useMemo(() => {
+    if (!search.trim()) return 0;
+    const shown = new Set(visibleRows.map(j => j.id));
+    return dirty.filter(d => !shown.has(d.job.id)).length;
+  }, [dirty, visibleRows, search]);
+
   const invalidCount = useMemo(() => {
     return Object.values(drafts).filter(d => isHoursInputInvalid(d.hoursText)).length;
   }, [drafts]);
@@ -340,6 +361,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
   }, []);
 
   const editable = !isMobile;
+  const searching = search.trim().length > 0;
 
   return (
     <div style={{
@@ -365,8 +387,40 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: C.bright }}>Jobs Sheet</div>
           <div style={{ fontSize: 11, color: C.dimmer }}>
-            {rows.length} job{rows.length === 1 ? '' : 's'} · greyed columns come from Multitrack
+            {searching
+              ? `${visibleRows.length} of ${rows.length} jobs`
+              : `${rows.length} job${rows.length === 1 ? '' : 's'}`}
+            {' · greyed columns come from Multitrack'}
           </div>
+        </div>
+
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setSearch(''); } }}
+            placeholder="Search jobs"
+            aria-label="Search jobs"
+            style={{
+              width: 190, background: C.bg, border: `1px solid ${C.edge}`,
+              borderRadius: 6, color: C.text, fontSize: 12, fontFamily: 'inherit',
+              padding: '5px 26px 5px 10px',
+            }}
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear the search"
+              title="Clear the search"
+              style={{
+                position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: C.dim, fontSize: 14,
+                lineHeight: 1, padding: '0 4px', cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >×</button>
+          )}
         </div>
 
         <button
@@ -391,6 +445,18 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
             )}
             <span style={{ fontSize: 11, color: dirty.length ? C.accentText : C.dimmer }}>
               {dirty.length === 0 ? 'No changes' : `${dirty.length} changed`}
+              {hiddenDirtyCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  title="Clear the search and show every changed job"
+                  style={{
+                    background: 'none', border: 'none', padding: '0 0 0 4px',
+                    color: C.warn, fontSize: 11, fontFamily: 'inherit',
+                    cursor: 'pointer', textDecoration: 'underline',
+                  }}
+                >({hiddenDirtyCount} hidden)</button>
+              )}
             </span>
             <button
               onClick={discard}
@@ -447,6 +513,12 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
           <div style={{ color: C.dimmer, fontSize: 13, textAlign: 'center', padding: 40 }}>
             No jobs on the board.
           </div>
+        ) : visibleRows.length === 0 ? (
+          // Deliberately a different line from the empty board above: nothing
+          // matching a search and nothing to work on are not the same news.
+          <div style={{ color: C.dimmer, fontSize: 13, textAlign: 'center', padding: 40 }}>
+            No jobs match that.
+          </div>
         ) : (
           <table
             className="gsheet"
@@ -493,7 +565,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
               </tr>
             </thead>
             <tbody>
-              {rows.map(job => {
+              {visibleRows.map(job => {
                 const d = draftFor(job);
                 const changed = Object.keys(draftChanges(job, d)).length > 0;
                 const badHours = isHoursInputInvalid(d.hoursText);

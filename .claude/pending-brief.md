@@ -1,51 +1,49 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Record (closed) — Send a job to next week from the > box
+# Brief — Tag dropdown on the Jobs Sheet
 
-Shipped at `f7d2d0b` (PR #65, build `ad0c631`), 2026-09-14. 796/796 tests, 41 files;
-verifier 17/17. Council (2 reviewers) fixes were folded into Build. Browser-tested live by Trevor: "works perfectly".
+**Not approved yet.** Waiting on Trevor's "yp".
 
-Approved by Trevor ("yp", 2026-09-14).
+Pick a tag from a list instead of typing it in the search box. Asked for
+2026-09-14, straight after the search box shipped.
 
 ## Build
-All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
+`src/components/JobsSheetPage.jsx`, plus tests.
 
-- **Tap** — unchanged: toggles × on/off (closes the job, asks invoice as now).
-- **Long press** — opens a small menu on that box:
-  - **> Send to next week** — puts the job on next week's page (writes next
-    week's hand-added row key), and marks this week's box as a chosen >.
-  - **× Close** — same as a tap.
-  - **Clear** — removes a chosen >, and takes the job back off next week
-    only if next week has no day marks on it yet.
-- The box is BLANK by default — no more automatic >. Tap goes blank → × →
-  blank. > only shows when chosen from the menu.
-- Picking × on a job already sent to next week takes it back off next week
-  (same "no day marks yet" guard).
-- Works for hand-typed rows too (same row key carries their name; bench is
-  always Admin).
-- A blank box must not crash: the button render and the export line both do
-  `MARKS[t.mark]` today — handle "no mark" in both (export shows nothing).
-- Next week's day keys come from `getWeekDays` (`src/utils/calendar.js`) fed
-  Monday + 7 days. The "no day marks yet" guard checks those 7 day keys only.
-- Long press: hold timer on pointer down, cancel on move/up; when it fires,
-  swallow the click that follows. Stop the iPhone callout/text select.
-  Update existing `trailing()` tests that expect the automatic >.
+- A dropdown in the toolbar, beside the search box. Reads "All tags" when
+  nothing is picked; picking one shows only jobs on that tag.
+- Options come from `TAG_OPTIONS` in `src/data/jobsSheet.js` — the same list
+  the row's own Tag cell offers. Never a second hand-written list.
+- It reads the row's **draft** tag, not the saved one, exactly as the search
+  does. A tag picked but not yet committed filters on the new value.
+- Search box and dropdown narrow together: "Fender" typed plus EZ picked shows
+  Fenders on EZ, not everything Fender plus everything EZ.
+- The count line already reads "12 of 53 jobs" while filtering; a tag filter
+  counts as filtering the same way, with or without anything typed.
+- "No jobs match that." covers a tag with no jobs on it — same empty state.
+- The × already in the search box clears the box only. Clearing the tag is
+  picking "All tags".
 
 ## Rules that bind it
-- Writes to `bench_week_marks` only. Not jobs[], scheduledSlots, calendarSlot.
-- Chosen > is stored in its own non-day key, like the close key, so day
-  cells and the export never see it.
-- Never touches a job's booking. Next week's row lands blank, same as Add.
-- Long press must not also fire the tap (no accidental close).
+- **`rows` stays the full list.** `dirty`, `invalidCount`, `commit` and
+  `discard` keep iterating `rows`. The tag filter joins the existing
+  `visibleRows` memo; it does not get a second filtering path of its own.
+  Getting this wrong means an edited job filtered off screen doesn't save.
+- The "(N hidden)" button must count a row hidden by the tag filter too, and
+  clicking it clears BOTH the search box and the tag back to "All tags".
+- Display only: writes nothing, saves nothing, resets on every visit.
+- A tag filter is a lookup. It never feeds bench choice, and it is not a sort.
+- Not blast-radius: no `jobs[]`, `scheduledSlots`, `calendarSlot`, Supabase or
+  `useGoogleCalendar` changes. If the build finds it needs one, stop and ask.
 
 ## Out of scope
-- Carrying jobs forward automatically without a tap.
-- Any change to the Daily Log.
+- An Action dropdown, a status dropdown, or filtering on VB/BL/PJ.
+- Multi-select — one tag at a time.
+- The mobile sheet (`MobileJobSheet.jsx`), and search anywhere else in the app.
+- The parked Sheet items (Enter-to-move-down, 30-min snap): separate work.
 
-## Builder decisions the brief didn't cover
-- Send and Close greyed out on a closed job; Clear only on a sent job.
-- Closing a sent job when next week already has marks: > goes, job stays on next week.
-- Clear can't tell a sent row from an earlier hand-added one.
-- Removing a job from this week doesn't undo a send (harmless).
+## Background, not the next step
+`docs/briefs/2026-09-14-jobs-sheet-tag-filter.md` — where the ask came from.
+`docs/briefs/2026-09-14-jobs-sheet-search.md` — the search box record.
