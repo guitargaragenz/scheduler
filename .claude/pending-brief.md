@@ -1,51 +1,49 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Record (closed) — Send a job to next week from the > box
+# Brief — Search box on the Jobs Sheet
 
-Shipped at `f7d2d0b` (PR #65, build `ad0c631`), 2026-09-14. 796/796 tests, 41 files;
-verifier 17/17. Council (2 reviewers) fixes were folded into Build. Browser-tested live by Trevor: "works perfectly".
+**Not approved yet.** Waiting on Trevor's "yp".
 
-Approved by Trevor ("yp", 2026-09-14).
+One box in the Jobs Sheet toolbar that hides the rows you aren't looking for.
+53 jobs on one page and finding one means scrolling.
 
 ## Build
-All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
+All in `src/components/JobsSheetPage.jsx`, plus tests.
 
-- **Tap** — unchanged: toggles × on/off (closes the job, asks invoice as now).
-- **Long press** — opens a small menu on that box:
-  - **> Send to next week** — puts the job on next week's page (writes next
-    week's hand-added row key), and marks this week's box as a chosen >.
-  - **× Close** — same as a tap.
-  - **Clear** — removes a chosen >, and takes the job back off next week
-    only if next week has no day marks on it yet.
-- The box is BLANK by default — no more automatic >. Tap goes blank → × →
-  blank. > only shows when chosen from the menu.
-- Picking × on a job already sent to next week takes it back off next week
-  (same "no day marks yet" guard).
-- Works for hand-typed rows too (same row key carries their name; bench is
-  always Admin).
-- A blank box must not crash: the button render and the export line both do
-  `MARKS[t.mark]` today — handle "no mark" in both (export shows nothing).
-- Next week's day keys come from `getWeekDays` (`src/utils/calendar.js`) fed
-  Monday + 7 days. The "no day marks yet" guard checks those 7 day keys only.
-- Long press: hold timer on pointer down, cancel on move/up; when it fires,
-  swallow the click that follows. Stop the iPhone callout/text select.
-  Update existing `trailing()` tests that expect the automatic >.
+- A text box in the top bar, next to Key. Placeholder "Search jobs".
+- Typing hides every row that doesn't match. Clearing it shows them all again.
+- A match is a plain case-insensitive contains, against: job number, customer,
+  mfr, model, status, desc, and the row's current Tag and Action (draft value,
+  not the saved one — what he sees in the cell is what he searches).
+- Multiple words: every word has to match somewhere in the row.
+- Row count line reads "12 of 53 jobs" while searching.
+- Escape in the box clears it. A small × in the box does the same.
+- No matches: "No jobs match that." Not the "No jobs on the board" line.
 
 ## Rules that bind it
-- Writes to `bench_week_marks` only. Not jobs[], scheduledSlots, calendarSlot.
-- Chosen > is stored in its own non-day key, like the close key, so day
-  cells and the export never see it.
-- Never touches a job's booking. Next week's row lands blank, same as Add.
-- Long press must not also fire the tap (no accidental close).
+- **`rows` stays the full list.** `dirty`, `invalidCount`, `commit` and
+  `discard` keep working off `rows`, never off the filtered list. Add a
+  separate `visibleRows` used only by `<tbody>`. Getting this wrong means an
+  edited job that's hidden by the search doesn't save — silent data loss.
+- If a changed row is hidden, the counter says so: "3 changed (1 hidden)".
+- Commit and Discard always act on every change, hidden or not. Don't disable
+  them, don't narrow them, don't clear the search on commit.
+- Search is display only. It writes nothing, saves nothing to localStorage,
+  and resets to empty on every visit.
+- Searching mfr is a lookup, not a bench rule. Nothing about the search may
+  feed bench choice anywhere.
+- Not blast-radius: no `jobs[]`, `scheduledSlots`, `calendarSlot`, Supabase or
+  `useGoogleCalendar` changes. If the build finds it needs one, stop and ask.
 
 ## Out of scope
-- Carrying jobs forward automatically without a tap.
-- Any change to the Daily Log.
+- The mobile sheet (`MobileJobSheet.jsx`). This is the desktop page only.
+- Search anywhere else in the app — bench board, week page, parking lot.
+- Sorting, column filters, saved searches, fuzzy matching, highlighting.
+- The three parked Sheet items (Enter-to-move-down, 30-min snap): separate work.
 
-## Builder decisions the brief didn't cover
-- Send and Close greyed out on a closed job; Clear only on a sent job.
-- Closing a sent job when next week already has marks: > goes, job stays on next week.
-- Clear can't tell a sent row from an earlier hand-added one.
-- Removing a job from this week doesn't undo a send (harmless).
+## Background, not the next step
+`docs/briefs/parked-jobs-sheet-usability-changes.md` is the parked list of other
+Sheet changes. It is history — do not build from it. Its gate (CSV pipeline
+retired) has since been met, but those items are still unapproved.
