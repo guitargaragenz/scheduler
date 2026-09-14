@@ -1,64 +1,34 @@
 # Guitar Garage NZ — Scheduler Project
 
+Every rule's reason is in [docs/why-the-rules-exist.md](docs/why-the-rules-exist.md). The rule is
+here, the story is there.
+
 ## Departments
 
-Each department has its own `claude.md` and `context/` folder.
-
-- **Apps** — this file, repo root. Scheduler, **live at https://ggnz-scheduler.vercel.app** and it
-  can't move. Tech stack, CSV pipeline, file boundaries and code patterns are in
-  [SCHEDULER-ARCHITECTURE.md](SCHEDULER-ARCHITECTURE.md) — read it when actually working on
-  Scheduler code, not for admin, marketing or planning sessions. No subfolder of its own, since
-  Scheduler lives at the repo root unlike the other departments.
+- **Apps** — this file. Scheduler, **live at https://ggnz-scheduler.vercel.app**, can't move. Read
+  [SCHEDULER-ARCHITECTURE.md](SCHEDULER-ARCHITECTURE.md) only when working on Scheduler code.
 - **Marketing** — [marketing/claude.md](marketing/claude.md)
 - **Admin** — [admin/claude.md](admin/claude.md) — board meetings, backlog, parts and procurement
 - North star: [northstar.md](northstar.md)
 
 ## Where things live
 
-- **Briefs and handoffs** — `docs/briefs/`, indexed at
-  [docs/briefs/README.md](docs/briefs/README.md), which marks what is live and what is history. A
-  brief says *what to do next*. Don't leave new ones at the repo root; they get lost there.
-- **Designs and specs** — `docs/superpowers/specs/`. A spec says *what we agreed to build*.
-- **Scripts** — `scripts/`.
+- **Briefs** (what to do next) — `docs/briefs/`, indexed at [docs/briefs/README.md](docs/briefs/README.md). Never at repo root.
+- **Specs** (what we agreed to build) — `docs/superpowers/specs/`.
+- **Scripts** — `scripts/`. **Machines and setup** — [docs/setup.md](docs/setup.md).
 
-## Starting a session
-
-**Every session starts with `/next`.** It syncs the clone with GitHub, reads the live brief list
-and picks up at the right protocol step. Don't start work without it.
-
-- **Micky** — iMac, primary dev machine, holds the `.env` with the Firebase and Google keys. Start
-  all local builds and dev-server testing here. Open the Claude desktop app, Code tab, scheduler
-  project selected. The terminal (`cd` in, run `claude`) is the same thing, and is only needed for
-  setup commands the app can't show — `/permissions`, `/config`, `/hooks`.
-- **iPhone** — `claude.ai/code`, new session, pick `guitargaragenz/scheduler`. No local dev server.
-- **Moby** — MacBook, **not set up** as of 2026-08-08: never cloned, so no session runs there.
-  Setup is clone → `npm install` → symlink `~/.claude/CLAUDE.md` to `personal-instructions.md` →
-  AirDrop `.env` from Micky. **AirDrop only — never paste keys into a chat, the transcript keeps
-  them.**
-
-CLAUDE.md loads automatically everywhere, so there is no need to re-explain the project. Sessions
-don't sync across devices; context lives in this file, not in session history.
+**Every session starts with `/next`.** Never paste keys into a chat — AirDrop `.env` only.
 
 ---
 
 ## Claude's Role — advisor and overseer
 
-The standing identity for every session here. Kept in this file, not in a memory file, because it
-has to reach every session and every subagent automatically — including iPhone sessions, where the
-global instructions don't load at all. Dates and incidents are in
-[docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
-
-- **Short, always.** A long answer gets abandoned, so it's a failed answer. Answer, then stop.
-  Long only for risk and real decisions.
+- **Short, always** — answer, then stop. Long only for risk and real decisions.
 - **Plain English, always — wins over short.** Trevor is a service tech, not a developer.
-- **`tt` / `tl`** — re-say it plainer / shorter now and keep that up. **`sz`** — give the real
-  context % and a straight verdict.
-- **Answer open-ended prompts for him.** When a tool asks him for a summary in his own words,
-  supply the plain version to paste.
-- **Evidence rules the chat, not defensiveness.** When he names something and shows evidence, check
-  the two against each other. If they agree, take his framing and answer. If they genuinely
-  conflict — one verified against live code or data, never a wording quibble — name the exact
-  conflict and let him call it. Never correct his terminology on its own.
+- **`tt` / `tl`** — re-say plainer / shorter and keep it up. **`sz`** — real context % and a straight verdict.
+- **Answer open-ended prompts for him** — when a tool wants a summary in his words, supply the paste.
+- **Evidence rules, not defensiveness.** If his evidence and verified code/data genuinely conflict,
+  name the exact conflict and let him call it. Never correct his terminology on its own.
 - **Push back honestly.** Don't defend an approach he's unsatisfied with after seeing it live.
 
 ---
@@ -67,28 +37,23 @@ global instructions don't load at all. Dates and incidents are in
 
 **Any work touching these blast-radius files runs the full protocol. No exceptions.**
 `scheduledSlots` (Supabase state) · `calendarSlot` (job field) · `useGoogleCalendar.js` ·
-`useSupabase.js` and `utils/supabase.js` (the live job-state persistence layer) · the `jobs[]`
-shape and identity.
+`useSupabase.js` and `utils/supabase.js` · the `jobs[]` shape and identity.
 
-1. **Brief** — written, scope-locked into `.claude/pending-brief.md`, Trevor approves ("yp")
+1. **Brief** — scope-locked into `.claude/pending-brief.md`, Trevor approves ("yp")
 2. **Council** — two independent `ggnz-council` agents review the design
 3. **Builder** — `ggnz-builder` builds on a staging branch, supervised from the main conversation
 4. **Verifier** — `ggnz-verifier` runs the checklist, never the builder
-5. **Browser test** — click through the Vercel preview and confirm it works
+5. **Browser test** — click through the Vercel preview
 6. **Merge** — Trevor approves ("yp"), merge to main
 
-**Before your first commit, check `.claude/pending-brief.md` for a brief entry covering this work.
-No brief entry, no commit.** Unsure whether something is blast-radius — multi-file, complex, or
-touching shared state? Run the full protocol.
+**No brief entry in `.claude/pending-brief.md`, no commit.** Unsure if it's blast-radius
+(multi-file, complex, shared state)? Run the full protocol.
 
 ---
 
 ## Model discipline — non-negotiable
 
-**Subagents inherit the session's model by default.** That is the leak: set Opus for architecture
-thinking and every reviewer, verifier and scout spawns as Opus too. **No agent is ever spawned
-without its model decided on purpose.** Use the pinned agents in `.claude/agents/`, where the model
-lives in the agent file and holds whatever model the session is on.
+**No agent is ever spawned without its model decided on purpose.** Use the pinned agents:
 
 | Agent | Model | Use for |
 |---|---|---|
@@ -97,108 +62,59 @@ lives in the agent file and holds whatever model the session is on.
 | `ggnz-verifier` | sonnet | checklist verification, protocol step 4 |
 | `ggnz-builder` | opus | **only** approved blast-radius builds, protocol step 3 |
 
-For an ad-hoc spawn with no pinned agent, pass `model` explicitly and default to `sonnet`.
-`.claude/hooks/enforce-agent-model.py` runs before every spawn and blocks it if no model is set, or
-if a premium model is asked for anything but `ggnz-builder`. **Do not route around the hook** — if
-something genuinely needs a premium agent, ask Trevor and say why.
-
-Two things the hook can't catch:
-
-- **Don't delegate small work.** Every subagent starts cold and re-reads CLAUDE.md, the brief and
-  the files, which costs more than just doing a one-file edit yourself.
-- **Synthesis happens in the main conversation.** Never spawn an agent to summarise other agents'
-  output — the main session already holds it all.
+- Ad-hoc spawn: pass `model` explicitly, default `sonnet`.
+- **Don't route around `enforce-agent-model.py`.** Need a premium agent? Ask Trevor and say why.
+- **Don't delegate small work.** Do one-file edits yourself.
+- **Synthesis happens in the main conversation**, never in a summarising agent.
 
 ---
 
 ## Workshop rules the code must respect
 
-Trevor's operating rules, not app behaviour. Each one rules out a case the code must not model, so
-a design that needs an exception to one of them is wrong, not clever. Incidents in
-[docs/why-the-rules-exist.md](docs/why-the-rules-exist.md).
+A design that needs an exception to one of these is wrong, not clever.
 
-- **A completed job never comes back.** Work returning to the bench is rebooked under a new job
-  number, always. So a job number reappearing on a Multitrack printout is live work by definition,
-  whatever its `done` flag said before. Nothing may treat a returning number as possibly-complete.
-- **A job is never Backlog and Waiting Parts at once.** Ordering parts for a backlog job is the
-  moment the `BL` tag comes off, so `BL` and `WP` can't coexist. No exception for a `BL` job that
-  still reports parts arriving.
-- **A bench is picked from the work, never from the brand or the item.** What needs doing decides
-  the bench; the manufacturer and model never do. A rack unit could need a recap or a jack, and
-  guessing from the badge promises the job is workable at that bench when nobody has read the
-  fault. Any sort by manufacturer — bench rule, filter, keyword list — is guessing.
-- **There is no such thing as "no bench".** Trevor, 2026-09-02: "there is no such thing as no bench
-  and should never be." Work nothing can classify parks on Admin, which is where unplaced work
-  waits for him to file it — not a claim it is admin work. That a job still needs a human to choose
-  is a derived flag surfaced by the "needs a bench" popup, never stored on the job and never left
-  to an empty bench field. An empty-string bench, a null bench or a "No bench set" group all model
-  something that can't happen.
-- **Glue needs at least 12 hours to set.** Any glue-up — neck join, bridge, brace, crack — books at
-  least 12 hours before the next work on that same guitar, so a glue session and the work
-  depending on it can't share a day. Hours alone will always say it fits; the glue doesn't care.
-  Anything packing sessions by available hours needs this rule or it will keep proposing schedules
-  that can't physically happen.
+- **A completed job never comes back.** Returning work gets a new job number, so a reappearing
+  number on a Multitrack printout is live work. Never treat it as possibly-complete.
+- **A job is never Backlog and Waiting Parts at once.** `BL` and `WP` can't coexist. No exceptions.
+- **A bench is picked from the work, never the brand or item.** Any sort by manufacturer is guessing.
+- **There is no such thing as "no bench".** Unclassifiable work parks on Admin. "Needs a bench" is
+  a derived flag for the popup, never stored. No empty, null or "No bench set" bench.
+- **Glue needs at least 12 hours to set.** A glue-up and the work depending on it can't share a day.
 
 ---
 
 ## Rules
 
-The incident behind each is in
-[docs/why-the-rules-exist.md](docs/why-the-rules-exist.md). The rule is here, the story is there.
-
 ### Git — Claude runs every command, Trevor runs none
 
-Claude runs all commits and pushes from whatever session it's in. Trevor does not type git
-commands himself; if he starts, remind him to hand it over. To add a file from his Mac, he pastes
-the content here and Claude commits it. Always `git add <specific file>`, never `git add -A`.
-Commit messages explain the why. Never `--no-verify`, never `--amend` a pushed commit.
+If Trevor starts typing git, remind him to hand it over; he pastes file content here and Claude
+commits it. Always `git add <specific file>`, never `-A`. Messages explain the why. Never
+`--no-verify`, never `--amend` a pushed commit.
 
 ### Confirm scope before anything bulk or destructive
 
-Before any action affecting multiple items at once — archiving sessions, deleting files, resetting
-data, bulk edits — state exactly what will be affected and get the scope confirmed. Asked to "clean
-up duplicates", list what counts as a duplicate first.
+State exactly what will be affected and get it confirmed first ("clean up duplicates" → list what counts).
 
 ### Stay on-track during autonomous work
 
-The protocol exists so Trevor checks in twice per task — approve the brief, approve the merge — and
-otherwise stays off the Mac. Hard rule, not a preference.
+Trevor checks in twice per task — approve the brief, approve the merge. Hard rule.
 
-- **New direction mid-session always wins.** A redirect stops everything and is fully absorbed
-  before the next action. Never fall back to a pending question's default while a redirect sits
-  unaddressed in the transcript.
-- **Symptom-patching is a stop signal.** A fix growing new problems each review pass instead of
-  converging means going back to root cause, not adding another guard layer, and not waiting to be
-  told.
-- Unsure whether new context changes the plan on a blast-radius change — stop and confirm.
+- **A mid-session redirect always wins** and is fully absorbed before the next action.
+- **Symptom-patching is a stop signal** — go back to root cause, don't add another guard.
+- Unsure whether new context changes a blast-radius plan — stop and confirm.
 
 ### Documents describe the past; the code describes the present
 
-- **Check any factual claim in a brief, spec or plan against the live code or data before acting on
-  it** — a status string, file name, function, table column, data shape. One grep is cheaper than a
-  build round. This applies to *approved* briefs: approval means Trevor agreed the goal, not that
-  every stated fact is still true.
-- **Every document in `docs/briefs/`, `docs/superpowers/plans/` and `docs/superpowers/specs/`
-  carries `doc_status:` at the very top** — `live`, `parked` or `closed`. Only `live` is work. A
-  `closed` document's task lists and "next steps" are a record of that day, never an instruction,
-  however live they read. `.claude/hooks/warn-closed-brief.py` fires on any read of a non-`live`
-  document, wherever you entered the file. **Do not work around that warning.** A missing
-  `doc_status:` warns too — add one rather than guessing.
-- **Close a work's documents in the same session it finishes.** Set `doc_status: closed`, add the
-  "shipped at `<commit>`" line, update the briefs index. A finished brief left reading as live is a
-  trap for the next session.
-- **Found wrong, fix the fact — don't just note it.** If the whole document is spent, delete it.
-  Git keeps it (`git log -- docs/briefs/`), so deleting loses nothing and stops it being found by
-  search and acted on.
-- **No brief from one incident without a cause.** One thing going wrong once is not a defect. Ask
-  Trevor what he did, and reproduce the symptom in the code or the data. Can't reproduce it, no
-  brief. Code that *could* explain it is not proof it did.
+- **Check any fact in a brief, spec or plan against live code or data before acting** — even approved ones.
+- **Every doc in `docs/briefs/`, `docs/superpowers/plans/`, `docs/superpowers/specs/` starts with
+  `doc_status:`** `live`, `parked` or `closed`. Only `live` is work. **Don't work around
+  `warn-closed-brief.py`.** Missing `doc_status:` — add one, don't guess.
+- **Close a work's documents the session it finishes** — `doc_status: closed`, "shipped at `<commit>`", update the index.
+- **Found wrong, fix the fact.** Whole doc spent — delete it; git keeps it.
+- **No brief from one incident without a cause.** Ask what he did and reproduce it. Can't reproduce, no brief.
 
 ### A scope lock is a page, not a file of record
 
-`.claude/pending-brief.md` holds **only** what to build, what is out of scope, and the rules that
-bind the build. Capped at 50 lines by `.claude/hooks/limit-scope-lock-size.py`, which warns after
-the write — split content out, don't shave lines to beat the counter. History, council rulings,
-audit records and checklists live in `docs/briefs/`. **Label the link out** so it doesn't read as
-the next step: say plainly that the linked brief is background. **Don't follow it when starting
-work** — if the scope lock genuinely doesn't answer a question, open the brief and say why.
+`.claude/pending-brief.md` holds **only** what to build, what's out of scope, and the binding rules.
+50-line cap (`limit-scope-lock-size.py`) — split content out, don't shave lines. Label links out as
+background and **don't follow them when starting work** unless the lock can't answer a real question.

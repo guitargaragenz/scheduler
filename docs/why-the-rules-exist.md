@@ -89,3 +89,21 @@ Trevor pays for that in context, which is what he has least of.
   problem that quietly eats his markup; a dark sheet was only annoying. **Satisfied the same
   day at `1e4186a`**, and retired from the briefs index 2026-09-11 — it was never meant as a
   permanent rule.
+
+## Model discipline — why
+
+Subagents inherit the session's model by default. Set Opus for architecture thinking and every
+reviewer, verifier and scout spawns as Opus too — that is the leak the pinned agents and the
+`enforce-agent-model.py` hook exist to stop. Delegating small work costs more than doing it: every
+subagent starts cold and re-reads CLAUDE.md, the brief and the files. Synthesis stays in the main
+conversation because it already holds every agent's output.
+
+## Claude's Role — why it lives in CLAUDE.md
+
+It has to reach every session and subagent automatically, including iPhone sessions, where the
+global instructions don't load.
+
+## Scope lock — why it's capped
+
+A long scope lock gets read as the next step. History, council rulings, audit records and
+checklists live in `docs/briefs/`; the lock links out to them, labelled as background.
