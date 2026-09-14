@@ -62,3 +62,16 @@ Council round 2 (2026-09-14): both approve with changes, folded in here.
 3. Untick saves false.
 4. No changes to scheduledSlots, calendarSlot, or the jobs[] shape.
 5. Full test suite passes. A new test fails on the old code and passes on the new.
+
+## Handoff — 2026-09-14, end of session (start the next session here)
+
+Browser test (step 5) done:
+- Save test passed. The 1520 Electronics part stayed crossed after a reload, and the database saved it as done.
+- A mis-click on 1621 Fretwork did no harm. That part is back to not done in the database.
+
+Still to do, in order:
+1. Clear the 1520 cross on the Daily Log.
+2. Check the database shows that part as not done again.
+3. Remove the 1520 row from today's log.
+4. Fix PR #70's clash with main (only docs files clash). Note: main's `.claude/pending-brief.md` still holds the shipped next-bench-card scope lock, and main's briefs README says nothing is live. This branch's versions are the right ones.
+5. Merge only after Trevor says "yp". Then close this brief's docs.
