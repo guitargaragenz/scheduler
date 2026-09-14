@@ -24,8 +24,11 @@ Clearing a mark from the card writes job state (the `jobs[]` shape, saved throug
 the Supabase layer). Full protocol applies: brief → council → builder → verifier →
 browser test → "yp".
 
-## Questions for Trevor before a brief
-1. Ticking off WP clears `action` to blank — or sets it to something else?
-2. Which other marks belong on the card: other action codes, and/or VB / BL / PJ?
-3. Workshop rule: BL and WP can't coexist — should ticking WP on ever touch BL?
-4. Does the Parts Arrived banner go away on its own once WP is cleared? (Check.)
+## Trevor's answers (2026-09-14)
+1. Ticking off just clears the mark (WP → blank `action`).
+2. Only marks that hold a job up — e.g. WP, CI, VB, BL. Exact list still to confirm
+   with Trevor when writing the brief (INC, RS-C, DG?). Not GTS / FB / PJ-style labels.
+3. Ticking off WP never touches BL.
+4. Yes — the Parts Arrived banner should clear once WP is cleared. Verify it does.
+
+Next step: write the scope lock from these answers, get "yp", run the protocol.

@@ -47,7 +47,7 @@ None of these is scoped or approved; each file holds the detail.
 | [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | Nothing. Two small changes left. |
 | [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | Nothing. One finding of four left. |
 | [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | The first Sunday board meeting. |
-| [parked-tick-off-from-job-card.md](parked-tick-off-from-job-card.md) | Trevor's answers to four questions. Blast-radius. |
+| [parked-tick-off-from-job-card.md](parked-tick-off-from-job-card.md) | A scope lock and "yp". Questions answered. Blast-radius. |
 
 What each is actually waiting on, in full: [BACKLOG.md](BACKLOG.md).
 
