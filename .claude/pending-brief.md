@@ -20,7 +20,15 @@ All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
   blank. > only shows when chosen from the menu.
 - Picking × on a job already sent to next week takes it back off next week
   (same "no day marks yet" guard).
-- Works for hand-typed rows too (copies their bench and name to next week).
+- Works for hand-typed rows too (same row key carries their name; bench is
+  always Admin).
+- A blank box must not crash: the button render and the export line both do
+  `MARKS[t.mark]` today — handle "no mark" in both (export shows nothing).
+- Next week's day keys come from `getWeekDays` (`src/utils/calendar.js`) fed
+  Monday + 7 days. The "no day marks yet" guard checks those 7 day keys only.
+- Long press: hold timer on pointer down, cancel on move/up; when it fires,
+  swallow the click that follows. Stop the iPhone callout/text select.
+  Update existing `trailing()` tests that expect the automatic >.
 
 ## Rules that bind it
 - Writes to `bench_week_marks` only. Not jobs[], scheduledSlots, calendarSlot.
@@ -32,3 +40,7 @@ All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
 ## Out of scope
 - Carrying jobs forward automatically without a tap.
 - Any change to the Daily Log.
+
+## Council (2026-09-14)
+R2 go. R1 not yet: blank box would crash render + export; no next-week helper;
+long press built from scratch. All three folded into Build above.
