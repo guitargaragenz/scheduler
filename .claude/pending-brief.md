@@ -2,25 +2,30 @@
 doc_status: live
 ---
 
-# Scope lock — a ticked part always saves as done
+# Scope lock — Week page day box: tap for ·, hold for the list
 
-Approved by Trevor 2026-09-14. Council done. Blast-radius: full protocol.
-Background only: docs/briefs/2026-09-14-part-done-save.md (for the checklist).
+Approved by Trevor ("go", 2026-09-14). Paused occupant: job card shows the next
+bench (approved, back in here once this ships).
 
-## Build (src/hooks/useJobs.js, handleMarkPieceDone)
+Trevor: "default click in WL days columns to be . - same functionality as >
+column. 1 click = . then long click for DD"
 
-- Pure `planPieceDone(jobs, parentJobId, childJobId, pieceDone)` →
-  `{ updatedChild, parentJob, children, allChildrenDone }`. Tick and untick use it.
-- `jobsRef` in useJobs, set to `jobs` each render. Handler plans from
-  `jobsRef.current`, then sets `jobsRef.current` to the planned array at once.
-- `setJobs(prev => …)` only sets that child's pieceDone. No side effects inside it.
-- Supabase write from the planned child on every call, outside the updater.
-- Child or parent missing from the ref: stop and report.
-- Failing test first: unit tests for planPieceDone, plus a hook test with a
-  deferred setJobs updater (the save isn't called on old code, is called on new).
-- Keep the failure toast. Leave justSavedAt alone.
+## Build
+- Tap a blank day box → `·` (booked).
+- Tap a `·` box → blank.
+- Tap a `/`, `>` or `×` box → nothing.
+- Hold (same long press as the end box) → the list of marks + clear, as the
+  dropdown offers today. The tap after a hold never also fires.
+- `src/components/BenchWeekPage.jsx` only. Saves through the existing setMark.
+
+## Rules that bind it
+- No change to what marks mean or how they're stored.
+- Booking back onto a day still undoes that day's removal (onBookedOnDay).
 
 ## Out of scope
+- The end box. Daily Log. Export.
 
-- Daily Log mark rules. Fixing old lost ticks. PR #69 next-bench card.
-- scheduledSlots, calendarSlot, jobs[] shape, useGoogleCalendar.js.
+## Verifier checklist
+1. Tap blank → ·; tap · → blank; tap / > × → unchanged.
+2. Hold opens the list; picking sets that mark; tap after hold does nothing.
+3. Full test suite passes.

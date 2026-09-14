@@ -702,6 +702,99 @@ function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, 
   );
 }
 
+// A day box. Trevor, 2026-09-14: "1 click = . then long click for DD". A tap
+// on a blank box books it (·) and a tap on · clears it; a tap on / > or × does
+// nothing, so a stray tap can't wipe a real mark. A long press opens the full
+// list, same press as the end box, and the lift after it is swallowed.
+// Not-ready taps still reach onPick, which says so rather than silently refusing.
+function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick }) {
+  const timer = useRef(null);
+  const start = useRef(null);
+  const fired = useRef(false);
+
+  function cancel() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }
+
+  return (
+    <div style={{ position: 'relative', width, flexShrink: 0 }}>
+      <button
+        type="button"
+        aria-label={label}
+        data-mark={mark || ''}
+        onPointerDown={(e) => {
+          fired.current = false;
+          start.current = { x: e.clientX, y: e.clientY };
+          cancel();
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            fired.current = true;
+            onOpen();
+          }, LONG_PRESS_MS);
+        }}
+        onPointerMove={(e) => {
+          const s0 = start.current;
+          if (!timer.current || !s0) return;
+          if (Math.abs(e.clientX - s0.x) > LONG_PRESS_SLOP || Math.abs(e.clientY - s0.y) > LONG_PRESS_SLOP) cancel();
+        }}
+        onPointerUp={cancel}
+        onPointerLeave={cancel}
+        onPointerCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (fired.current) { fired.current = false; return; }
+          if (!mark) onPick('dot');
+          else if (mark === 'dot') onPick('');
+        }}
+        title={mark ? `${MARKS[mark].label} — hold for more` : 'blank — tap to book, hold for more'}
+        style={{
+          width, height: 30, cursor: ready ? 'pointer' : 'default',
+          border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
+          background: '#111c2f',
+          color: mark === 'cross' ? '#f87171' : mark === 'slash' ? '#34d399' : '#cbd5e1',
+          fontSize: 16, lineHeight: 1, padding: 0,
+          WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
+          touchAction: 'manipulation',
+        }}
+      >{mark ? MARKS[mark].symbol : '\u00a0'}</button>
+      {open && (
+        <>
+          <div onClick={onDismiss} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div
+            role="menu"
+            aria-label={`Marks for ${label}`}
+            style={{
+              position: 'absolute', top: 34, left: 0, zIndex: 41,
+              display: 'flex', flexDirection: 'column', minWidth: 120,
+              background: '#0f172a', border: '1px solid #334155', borderRadius: 6,
+              boxShadow: '0 6px 18px rgba(0,0,0,0.5)', overflow: 'hidden',
+            }}
+          >
+            {/* The marks first, Clear last and spelled out — never drawn as ·,
+                so picking the dot can't wipe the cell (Build B, 2026-08-22). */}
+            {[
+              ...Object.entries(MARKS).map(([key, mk]) => ({ key, label: `${mk.symbol}  ${mk.label}`, value: key })),
+              { key: 'clear', label: 'Clear', value: '' },
+            ].map(item => (
+              <button
+                key={item.key}
+                type="button"
+                role="menuitem"
+                onClick={() => { onDismiss(); onPick(item.value); }}
+                style={{
+                  textAlign: 'left', padding: '10px 12px', border: 'none',
+                  background: 'transparent', fontSize: 14, color: '#e2e8f0', cursor: 'pointer',
+                }}
+              >{item.label}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
@@ -1033,43 +1126,17 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   {weekKeys.map((k) => {
                     const m = cellMark(row, k, jobMarks);
                     return (
-                      <select
+                      <DayCell
                         key={k}
-                        value={m || ''}
-                        disabled={!ready}
-                        onChange={(e) => setCell(row, k, e.target.value)}
-                        title={m ? MARKS[m].label : 'blank'}
-                        aria-label={`${rowLabel(row)} — ${k}`}
-                        style={{
-                          width: cellW, flexShrink: 0,
-                          height: 30, cursor: ready ? 'pointer' : 'default',
-                          border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
-                          background: '#111c2f',
-                          color: m === 'cross' ? '#f87171' : m === 'slash' ? '#34d399' : '#cbd5e1',
-                          fontSize: 16, lineHeight: 1, padding: 0, textAlign: 'center',
-                          // No browser arrow, and the symbol stays centred
-                          // without it — a 30px cell has no room for both.
-                          appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
-                          textAlignLast: 'center',
-                        }}
-                      >
-                        {/* The real marks first, then erase — LAST, and never
-                            drawn as `·`. Both used to draw `·` with erase on
-                            top, so picking the dot one line too high wiped the
-                            cell instead of setting it, and a job held on the
-                            page only by that mark dropped off the week for
-                            good. The erase line is blank text under its own
-                            `clear` heading: an optgroup label shows in the open
-                            list but never in the 30px cell, so a blank cell
-                            still reads as blank. Do not put a symbol back on
-                            it, and do not move it above the marks. */}
-                        {Object.entries(MARKS).map(([key, mk]) => (
-                          <option key={key} value={key}>{mk.symbol}</option>
-                        ))}
-                        <optgroup label="clear">
-                          <option value="">{'\u00a0'}</option>
-                        </optgroup>
-                      </select>
+                        label={`${rowLabel(row)} — ${k}`}
+                        mark={m}
+                        ready={ready}
+                        width={cellW}
+                        open={menuFor === `${row.id}|${k}`}
+                        onOpen={() => setMenuFor(`${row.id}|${k}`)}
+                        onDismiss={() => setMenuFor(null)}
+                        onPick={(v) => setCell(row, k, v)}
+                      />
                     );
                   })}
 
