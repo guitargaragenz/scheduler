@@ -235,12 +235,31 @@ export function rowSearchText(job, draft) {
   ].map(v => (v ?? '').toString().toLowerCase()).join(' ');
 }
 
+// A word starting with # is a code, not text: #EZ means the tag IS EZ, never
+// that the letters e and z turn up in a description. Three of the four tags —
+// M, T and H — are single letters, so plain text search cannot find them at
+// all; this is what # is for.
+//
+// Tag and Action are both accepted. WP is an Action and EZ is a Tag, but
+// nobody typing #WP is thinking about which of the two lists the code lives
+// in, and no code appears in both, so there is nothing to disambiguate.
+function matchesCode(job, draft, word) {
+  const d = draft || initialRowDraft(job);
+  const code = word.slice(1);
+  if (!code) return false; // a bare # is not a search
+  return (d.tag ?? '').toLowerCase() === code
+      || (d.action ?? '').toLowerCase() === code;
+}
+
 // Every word has to land somewhere in the row — "fender bridge" finds the
 // Fender with a bridge job, not every Fender and every bridge. Order doesn't
-// matter and neither does which column each word hits.
+// matter and neither does which column each word hits. A #code word is matched
+// whole, so "fender #ez" is the Fenders on EZ.
 export function matchesSearch(job, draft, query) {
   const words = (query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
   const hay = rowSearchText(job, draft);
-  return words.every(w => hay.includes(w));
+  return words.every(w => (
+    w.startsWith('#') ? matchesCode(job, draft, w) : hay.includes(w)
+  ));
 }
