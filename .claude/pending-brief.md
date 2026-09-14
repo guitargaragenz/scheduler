@@ -20,7 +20,7 @@ primary bench... at the moment is default to main primary bench all the way thro
 - Ticks come from Daily Log, Week page, Day view, Close Day, Pomo — all set
   `pieceDone`; the card must follow any of them.
 - Follows next bench: JobCard for a parent (incl. sidebar top-level rows and the
-  calendar/day chip for the parent), `DayViewPage` `LogJobCard`, `ProjectsPage`.
+  calendar/day chip for the parent), `DayViewPage` `LogJobCard`, `ProjectsPage`, `JobsPage` `JobRow` (parent rows).
 - Child part cards keep their own bench.
 
 ## Rules that bind it
@@ -44,4 +44,4 @@ primary bench... at the moment is default to main primary bench all the way thro
 
 ## Council changes
 Parts' saved order is unstable after reload → fixed main-bench order instead
-(Trevor confirmed). Places-to-follow list ruled; child cards excluded.
+(Trevor confirmed). Places-to-follow list ruled; child cards excluded. Verifier added JobsPage JobRow (missed spot; filters stay on job.bench).
