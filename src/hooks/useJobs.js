@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { canInvoiceJob } from '../data/jobs.js';
 import { parseTextItems, loadPdfPages } from '../data/parseMultitrackPdf.js';
 import { parseJobsByAgeTextItems, looksLikeJobsByAge } from '../data/parseJobsByAgePdf.js';
@@ -52,6 +52,28 @@ export function topLevelJob(job, jobs) {
   return current;
 }
 
+// Plans a piece tick/untick against a jobs array without touching it. Returns
+// the updated child, its parent, the parent's children as they will be, and
+// whether that tick finishes every piece (always false on an untick). child or
+// parent come back null when not on the board. `next` is the planned array.
+export function planPieceDone(jobs, parentJobId, childJobId, pieceDone) {
+  let updatedChild = null;
+  const next = (jobs || []).map(j => {
+    if (j.id === childJobId) { updatedChild = { ...j, pieceDone }; return updatedChild; }
+    return j;
+  });
+  const parentJob = next.find(j => j.id === parentJobId) || null;
+  let children = [];
+  let allChildrenDone = false;
+  if (parentJob) {
+    children = parentJob.hasSubtasks
+      ? next.filter(j => parentJob.subtasks?.includes(j.id))
+      : next.filter(j => j.parentId === parentJob.id);
+    allChildrenDone = pieceDone && children.length > 0 && children.every(c => c.pieceDone);
+  }
+  return { updatedChild, parentJob, children, allChildrenDone, next };
+}
+
 export function useJobs({
   jobs,
   setJobs,
@@ -93,6 +115,9 @@ export function useJobs({
   // chose that, so a human still has to file them.
   onNeedsBench = null,
 }) {
+  // Latest jobs, readable from handlers without waiting on a setJobs updater.
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
   // ---- Revenue already saved: load it back on start, keep it live ----
   //
   // completed_jobs is written by handleMarkDone() below and, until now, was
@@ -709,42 +734,22 @@ export function useJobs({
   }
 
   function handleMarkPieceDone(parentJobId, childJobId, pieceDone, onAllPiecesDone) {
-    let updatedChild = null;
-    let parentJob = null;
-    let allChildrenDone = false;
-    let children = [];
+    // Plan from the ref, never from inside the setJobs updater. React may run
+    // an updater later, so values set inside it can still be empty here —
+    // that returned early and silently skipped the save. The ref is updated
+    // straight away so a second tick before the next render plans on top of
+    // this one, keeping the all-pieces-done check correct for quick clicks.
+    const plan = planPieceDone(jobsRef.current, parentJobId, childJobId, pieceDone);
+    const { updatedChild, parentJob, children, allChildrenDone } = plan;
+    if (!updatedChild || !parentJob) {
+      console.warn('Piece-done skipped: child or parent not on the board', { parentJobId, childJobId });
+      return;
+    }
+    jobsRef.current = plan.next;
 
-    // Compute the child update, parent lookup, and all-children-done check
-    // all from the SAME fresh array (`next`) inside one updater call. Doing
-    // the all-children check against the outer `jobs` closure instead (as a
-    // previous version did) is a real race: `jobs` is the array from this
-    // hook's last render, which is stale if two pieces get marked in quick
-    // succession (faster than a React re-render round-trip) — e.g. clicking
-    // through several split pieces back to back. That stale read can make
-    // the very-last piece's completion check see the previous piece as
-    // still not-done, silently skipping the invoice prompt. Reading
-    // everything from `next` eliminates the race regardless of click timing.
-    setJobs(prev => {
-      const next = prev.map(j => {
-        if (j.id === childJobId) {
-          updatedChild = { ...j, pieceDone };
-          return updatedChild;
-        }
-        return j;
-      });
-      parentJob = next.find(j => j.id === parentJobId) || null;
-      if (parentJob && pieceDone) {
-        children = parentJob.hasSubtasks
-          ? next.filter(j => parentJob.subtasks?.includes(j.id))
-          : next.filter(j => j.parentId === parentJob.id);
-        allChildrenDone = children.length > 0 && children.every(c => c.pieceDone);
-      }
-      return next;
-    });
+    // Pure: only this child's pieceDone, no side effects.
+    setJobs(prev => prev.map(j => (j.id === childJobId ? { ...j, pieceDone } : j)));
 
-    if (!updatedChild || !parentJob) return;
-
-    // Persist to Firestore
     if (isSupabaseConfigured()) {
       justSavedAt.current = Date.now();
       batchWriteJobsState([{ id: childJobId, data: jobsStateFieldsFor(updatedChild) }])
