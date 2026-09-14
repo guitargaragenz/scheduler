@@ -36,7 +36,7 @@ A brief needs, at minimum:
   genuinely needs them.
 - **A numbered checklist for the verifier.** Number it once, at the end, so renumbering later
   doesn't desynchronise from the text.
-- `doc_status: live` on line 1.
+- `doc_status: live` in the frontmatter at the very top.
 
 **Check every factual claim against the live code before you write it down.** File names,
 line numbers, status strings, table columns, function names. Briefs E, F and G each lost a
