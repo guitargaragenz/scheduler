@@ -253,3 +253,64 @@ describe('Sheet search', () => {
     expect(matchesSearch(j, undefined, 'dave')).toBe(false);
   });
 });
+
+describe('Sheet search — #codes', () => {
+  // The whole point: M, T and H are single letters, so typing them plainly
+  // matches most of the sheet and finds nothing useful.
+  it('matches a tag exactly, where plain text could not', () => {
+    const j = job({ mfr: 'Marshall', tag: 'M' });
+    expect(matchesSearch(j, undefined, '#M')).toBe(true);
+    expect(matchesSearch(j, undefined, '#T')).toBe(false);
+    // plain "M" still behaves as text, and hits Marshall
+    expect(matchesSearch(job({ mfr: 'Marshall', tag: 'EZ' }), undefined, 'M')).toBe(true);
+    expect(matchesSearch(job({ mfr: 'Marshall', tag: 'EZ' }), undefined, '#M')).toBe(false);
+  });
+
+  it('matches an action code too, since he is not sorting out which list it is in', () => {
+    const j = job({ action: 'WP' });
+    expect(matchesSearch(j, undefined, '#WP')).toBe(true);
+    expect(matchesSearch(j, undefined, '#wp')).toBe(true);
+    expect(matchesSearch(j, undefined, '#GTS')).toBe(false);
+  });
+
+  it('never matches a code inside ordinary text', () => {
+    const j = job({ customer: 'Ezra', desc: 'wp connector', mfr: 'Gretsch', tag: '', action: '' });
+    expect(matchesSearch(j, undefined, '#EZ')).toBe(false);
+    expect(matchesSearch(j, undefined, '#WP')).toBe(false);
+    expect(matchesSearch(j, undefined, 'ez')).toBe(true); // plain text still finds Ezra
+  });
+
+  it('is exact, so #RS does not drag in RS-C', () => {
+    expect(matchesSearch(job({ action: 'RS-C' }), undefined, '#RS')).toBe(false);
+    expect(matchesSearch(job({ action: 'RS-C' }), undefined, '#RS-C')).toBe(true);
+  });
+
+  it('mixes with ordinary words — every word still has to match', () => {
+    const fenderEz = job({ mfr: 'Fender', tag: 'EZ' });
+    const gibsonEz = job({ mfr: 'Gibson', tag: 'EZ' });
+    expect(matchesSearch(fenderEz, undefined, 'fender #ez')).toBe(true);
+    expect(matchesSearch(gibsonEz, undefined, 'fender #ez')).toBe(false);
+    expect(matchesSearch(fenderEz, undefined, 'fender #h')).toBe(false);
+  });
+
+  it('reads the tag on screen, not the one saved', () => {
+    const j = job({ tag: 'EZ' });
+    const draft = { ...initialRowDraft(j), tag: 'H' };
+    expect(matchesSearch(j, draft, '#H')).toBe(true);
+    expect(matchesSearch(j, draft, '#EZ')).toBe(false);
+  });
+
+  it('a bare # or a code that is not real matches nothing, and never falls back to text', () => {
+    const j = job({ tag: 'EZ', desc: 'hash # in the text' });
+    expect(matchesSearch(j, undefined, '#')).toBe(false);
+    expect(matchesSearch(j, undefined, '#zz')).toBe(false);
+    // two codes at once: a job has one tag and one action, so nothing matches
+    expect(matchesSearch(j, undefined, '#EZ #M')).toBe(false);
+  });
+
+  it('does not fall over on a row with no tag or action at all', () => {
+    const j = job({ tag: null, action: null });
+    expect(matchesSearch(j, undefined, '#EZ')).toBe(false);
+    expect(matchesSearch(j, undefined, '#')).toBe(false);
+  });
+});

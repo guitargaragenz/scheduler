@@ -64,6 +64,10 @@ const SHEET_KEY = [
   ['PJ', 'Project'],
 ];
 
+// The one thing about the search box that isn't obvious from looking at it, so
+// it rides along with the codes it searches for.
+const SEARCH_HINT = '#EZ, #WP — a # searches the Tag and Action columns only.';
+
 const SHEET_CSS = `
 .gsheet { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -400,7 +404,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
             value={search}
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setSearch(''); } }}
-            placeholder="Search jobs"
+            placeholder="Search jobs or #tag"
             aria-label="Search jobs"
             style={{
               width: 190, background: C.bg, border: `1px solid ${C.edge}`,
@@ -494,6 +498,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
               <strong style={{ color: C.bright }}>{code}</strong> {meaning}
             </span>
           ))}
+          <span style={{ flexBasis: '100%', color: C.dimmer }}>{SEARCH_HINT}</span>
         </div>
       )}
 
