@@ -1,51 +1,47 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Record (closed) — Send a job to next week from the > box
+# Scope lock — Job card shows the next bench still to do
 
-Shipped at `f7d2d0b` (PR #65, build `ad0c631`), 2026-09-14. 796/796 tests, 41 files;
-verifier 17/17. Council (2 reviewers) fixes were folded into Build. Browser-tested live by Trevor: "works perfectly".
+Approved by Trevor ("yp", 2026-09-14). Previous occupant: send-to-next-week record, at `ed50e72`.
 
-Approved by Trevor ("yp", 2026-09-14).
+Trevor: "Once the luthier work is done I want the job card to change to next
+primary bench... at the moment is default to main primary bench all the way through."
 
 ## Build
-All in the week page's end box (`src/components/BenchWeekPage.jsx`) plus tests.
-
-- **Tap** — unchanged: toggles × on/off (closes the job, asks invoice as now).
-- **Long press** — opens a small menu on that box:
-  - **> Send to next week** — puts the job on next week's page (writes next
-    week's hand-added row key), and marks this week's box as a chosen >.
-  - **× Close** — same as a tap.
-  - **Clear** — removes a chosen >, and takes the job back off next week
-    only if next week has no day marks on it yet.
-- The box is BLANK by default — no more automatic >. Tap goes blank → × →
-  blank. > only shows when chosen from the menu.
-- Picking × on a job already sent to next week takes it back off next week
-  (same "no day marks yet" guard).
-- Works for hand-typed rows too (same row key carries their name; bench is
-  always Admin).
-- A blank box must not crash: the button render and the export line both do
-  `MARKS[t.mark]` today — handle "no mark" in both (export shows nothing).
-- Next week's day keys come from `getWeekDays` (`src/utils/calendar.js`) fed
-  Monday + 7 days. The "no day marks yet" guard checks those 7 day keys only.
-- Long press: hold timer on pointer down, cancel on move/up; when it fires,
-  swallow the click that follows. Stop the iPhone callout/text select.
-  Update existing `trailing()` tests that expect the automatic >.
+- For a **top-level job with parts**, the card shows the first main bench in the
+  fixed order **Luthier → Fretwork → Setup** that still has an unticked part.
+- Sub-benches count as their main bench: Finishing = Luthier, Wiring = Setup
+  (reuse the `PRIMARY_OF` idea in `BenchWeekPage.jsx`). Two parts on one bench
+  keep the card there until both are ticked. Do NOT use the parts' array order.
+- Electronics jobs never split — unchanged. No parts / all ticked → job's own bench.
+- Colour follows the bench shown. Worked out when drawing; nothing saved.
+- Ticks come from Daily Log, Week page, Day view, Close Day, Pomo — all set
+  `pieceDone`; the card must follow any of them.
+- Follows next bench: JobCard for a parent (incl. sidebar top-level rows and the
+  calendar/day chip for the parent), `DayViewPage` `LogJobCard`, `ProjectsPage`.
+- Child part cards keep their own bench.
 
 ## Rules that bind it
-- Writes to `bench_week_marks` only. Not jobs[], scheduledSlots, calendarSlot.
-- Chosen > is stored in its own non-day key, like the close key, so day
-  cells and the export never see it.
-- Never touches a job's booking. Next week's row lands blank, same as Add.
-- Long press must not also fire the tap (no accidental close).
+- Never writes to jobs[], `job.bench`, scheduledSlots or calendarSlot.
+- Never shows an empty bench (unplaced work stays on Admin).
+- Wiring/Finishing stay sub-benches — never a week-page heading.
 
 ## Out of scope
-- Carrying jobs forward automatically without a tap.
-- Any change to the Daily Log.
+- Bench board, week page grouping, sidebar bench filter and counts.
+- Changing how or where parts are marked done; reordering parts.
+- Google Calendar event colours.
 
-## Builder decisions the brief didn't cover
-- Send and Close greyed out on a closed job; Clear only on a sent job.
-- Closing a sent job when next week already has marks: > goes, job stays on next week.
-- Clear can't tell a sent row from an earlier hand-added one.
-- Removing a job from this week doesn't undo a send (harmless).
+## Verifier checklist
+1. Parent card shows first main bench (L→F→S) with an unticked part; colour matches.
+2. Finishing counts as Luthier, Wiring as Setup; two parts on one bench hold it.
+3. A tick from DL, Week page or Day view moves the card on.
+4. No parts / all done / Electronics → job's own bench. Child cards unchanged.
+5. No writes to jobs[], job.bench, scheduledSlots, calendarSlot; never empty bench.
+6. Bench board, week grouping, sidebar filter unchanged.
+7. Full test suite passes; new tests cover 1–4.
+
+## Council changes
+Parts' saved order is unstable after reload → fixed main-bench order instead
+(Trevor confirmed). Places-to-follow list ruled; child cards excluded.
