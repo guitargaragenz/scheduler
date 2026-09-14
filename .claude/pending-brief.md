@@ -2,48 +2,51 @@
 doc_status: live
 ---
 
-# Brief — Tag dropdown on the Jobs Sheet
+# Brief — `#tag` search on the Jobs Sheet
 
 **Not approved yet.** Waiting on Trevor's "yp".
 
-Pick a tag from a list instead of typing it in the search box. Asked for
-2026-09-14, straight after the search box shipped.
+Typing `#EZ` in the search box means "this job's tag is EZ", not "the letters
+EZ appear somewhere in the row". Trevor's call, 2026-09-14, replacing the tag
+dropdown briefed earlier the same day — no new control on screen, and it fixes
+what the dropdown was working around.
+
+The tags are `EZ`, `M`, `T`, `H` — typing `M` or `T` as free text matches most
+of the sheet, so plain search is useless for three of the four.
 
 ## Build
-`src/components/JobsSheetPage.jsx`, plus tests.
+`src/data/jobsSheet.js` (the matcher) and `src/components/JobsSheetPage.jsx`
+(placeholder and Key panel), plus tests.
 
-- A dropdown in the toolbar, beside the search box. Reads "All tags" when
-  nothing is picked; picking one shows only jobs on that tag.
-- Options come from `TAG_OPTIONS` in `src/data/jobsSheet.js` — the same list
-  the row's own Tag cell offers. Never a second hand-written list.
-- It reads the row's **draft** tag, not the saved one, exactly as the search
-  does. A tag picked but not yet committed filters on the new value.
-- Search box and dropdown narrow together: "Fender" typed plus EZ picked shows
-  Fenders on EZ, not everything Fender plus everything EZ.
-- The count line already reads "12 of 53 jobs" while filtering; a tag filter
-  counts as filtering the same way, with or without anything typed.
-- "No jobs match that." covers a tag with no jobs on it — same empty state.
-- The × already in the search box clears the box only. Clearing the tag is
-  picking "All tags".
+- A word starting with `#` is an exact, case-insensitive match against the
+  row's Tag **or** Action. `#ez` finds EZ; `#wp` finds WP.
+- Tag and Action both, because he won't be sorting out which code is which
+  while typing. `#` means "this is a code", nothing finer.
+- It reads the DRAFT tag and action, same as the rest of the search already
+  does. A WP picked but not committed answers `#WP`.
+- Exact means exact: `#M` matches the tag M, never the M inside "Marshall",
+  and `#RS` never matches `RS-C`.
+- A `#` word mixes with plain words: `fender #ez` is Fenders on EZ. Every word
+  still has to match, same rule as now.
+- A bare `#`, or `#` plus no real code, matches nothing — it never falls back
+  to a text search.
+- Placeholder becomes "Search jobs or #tag", and the Key panel gains a line
+  saying `#EZ` searches by code — findable without being told.
 
 ## Rules that bind it
-- **`rows` stays the full list.** `dirty`, `invalidCount`, `commit` and
-  `discard` keep iterating `rows`. The tag filter joins the existing
-  `visibleRows` memo; it does not get a second filtering path of its own.
-  Getting this wrong means an edited job filtered off screen doesn't save.
-- The "(N hidden)" button must count a row hidden by the tag filter too, and
-  clicking it clears BOTH the search box and the tag back to "All tags".
+- **`rows` stays the full list.** This only changes what `matchesSearch` in
+  `jobsSheet.js` counts as a match — no change to `visibleRows`, `dirty`,
+  `invalidCount`, `commit` or `discard`. Nothing new narrows what saves.
 - Display only: writes nothing, saves nothing, resets on every visit.
-- A tag filter is a lookup. It never feeds bench choice, and it is not a sort.
+- A code search is a lookup. It never feeds bench choice, and it is not a sort.
 - Not blast-radius: no `jobs[]`, `scheduledSlots`, `calendarSlot`, Supabase or
   `useGoogleCalendar` changes. If the build finds it needs one, stop and ask.
 
 ## Out of scope
-- An Action dropdown, a status dropdown, or filtering on VB/BL/PJ.
-- Multi-select — one tag at a time.
-- The mobile sheet (`MobileJobSheet.jsx`), and search anywhere else in the app.
-- The parked Sheet items (Enter-to-move-down, 30-min snap): separate work.
+- The tag dropdown. This replaces it; the earlier brief is dead.
+- `#` searching VB/BL/PJ, status, or anything but Tag and Action.
+- Autocomplete on `#`. Two codes at once (`#EZ #M`) correctly matches nothing.
+- The mobile sheet, and search anywhere else in the app.
 
 ## Background, not the next step
 `docs/briefs/2026-09-14-jobs-sheet-tag-filter.md` — where the ask came from.
-`docs/briefs/2026-09-14-jobs-sheet-search.md` — the search box record.

@@ -2,15 +2,18 @@
 doc_status: live
 ---
 
-# Tag dropdown on the Jobs Sheet
+# Searching the Jobs Sheet by tag
 
 Trevor asked for this on 2026-09-14, straight after browser-testing the search
 box: he typed EZ, saw it work, and asked for a way to pick a tag rather than
 type it.
 
+**Trevor replaced the dropdown with a `#tag` search the same day** — "instead
+of DD we just use hashtag for tag search way easier". The dropdown is dead;
+nothing below describing it is a task.
+
 **The build is scope-locked in `.claude/pending-brief.md`.** Build from that,
-not from this file. This one only records where the idea came from and what was
-already true when it was written.
+not from this file. This one only records where the idea came from.
 
 ## What was already there
 The search box shipped the same day at `09f12df` (PR #67). It already matches
@@ -29,7 +32,12 @@ also matches a description containing "ez".
   stays the full list, because `dirty`, `invalidCount`, `commit` and `discard`
   all iterate it.
 
-## Open question for Trevor, answered before the build starts
-Should picking a tag and typing in the box at the same time narrow to jobs
-matching **both**, or should picking a tag replace whatever is typed? The scope
-lock assumes both, as an "and" — that is how every other filter he uses behaves.
+## Why the dropdown went
+The tags are `EZ`, `M`, `T`, `H`. Three of the four are single letters, so
+plain text search can't find them — `M` matches half the sheet. The dropdown
+existed to work around that. `#M` is an exact match and needs no new control,
+so it does the same job with less on screen.
+
+The open question the dropdown had — whether a picked tag and typed text
+narrow together or replace each other — died with it. `fender #ez` is one
+search box and every word still has to match.
