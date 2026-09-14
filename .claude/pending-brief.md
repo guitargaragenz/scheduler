@@ -4,7 +4,7 @@ doc_status: live
 
 # Brief — Search box on the Jobs Sheet
 
-**Not approved yet.** Waiting on Trevor's "yp".
+Approved by Trevor ("yp", 2026-09-14). Council next.
 
 One box in the Jobs Sheet toolbar that hides the rows you aren't looking for.
 53 jobs on one page and finding one means scrolling.
