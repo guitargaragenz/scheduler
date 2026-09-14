@@ -13,6 +13,8 @@ import {
   draftChanges,
   buildSheetWrites,
   applySheetEdits,
+  rowSearchText,
+  matchesSearch,
 } from './jobsSheet.js';
 import { APP_OWNED_JOB_FIELDS } from './joinJobs.js';
 
@@ -204,5 +206,111 @@ describe('the board after a Commit', () => {
     const after = applySheetEdits(j, { hours: 3, job: '1601' });
     expect(after.hours).toBe(3);
     expect(after.job).toBe('1601'); // unchanged, straight off the original job
+  });
+});
+
+describe('Sheet search', () => {
+  it('finds a row by any of its columns, whatever the case', () => {
+    const j = job();
+    for (const q of ['1601', 'dave', 'FENDER', 'strat', 'active', 'buzz']) {
+      expect(matchesSearch(j, undefined, q)).toBe(true);
+    }
+  });
+
+  it('an empty or blank box matches everything, so nothing hides by accident', () => {
+    const j = job();
+    expect(matchesSearch(j, undefined, '')).toBe(true);
+    expect(matchesSearch(j, undefined, '   ')).toBe(true);
+    expect(matchesSearch(j, undefined, null)).toBe(true);
+  });
+
+  it('needs every word to land somewhere, not just one of them', () => {
+    const j = job();
+    expect(matchesSearch(j, undefined, 'fender buzz')).toBe(true);
+    expect(matchesSearch(j, undefined, 'buzz fender')).toBe(true); // order is nothing
+    expect(matchesSearch(j, undefined, 'fender crack')).toBe(false);
+  });
+
+  // The one that would look like a bug in the shop: picking WP and then
+  // searching WP before Commit. The cell says WP, so the search must agree.
+  it('searches the tag and action he can see, not the ones saved', () => {
+    const j = job({ tag: 'EZ', action: 'GTS' });
+    const draft = { ...initialRowDraft(j), tag: 'H', action: 'WP' };
+    expect(matchesSearch(j, draft, 'WP')).toBe(true);
+    expect(matchesSearch(j, draft, 'H')).toBe(true);
+    expect(matchesSearch(j, draft, 'GTS')).toBe(false); // saved, but no longer on screen
+  });
+
+  it('falls back to the saved row when nothing has been typed into it', () => {
+    const j = job({ tag: 'EZ', action: 'GTS' });
+    expect(matchesSearch(j, undefined, 'GTS')).toBe(true);
+  });
+
+  it('does not fall over on a row with empty columns', () => {
+    const j = job({ customer: null, mfr: undefined, desc: '' });
+    expect(() => rowSearchText(j, undefined)).not.toThrow();
+    expect(matchesSearch(j, undefined, '1601')).toBe(true);
+    expect(matchesSearch(j, undefined, 'dave')).toBe(false);
+  });
+});
+
+describe('Sheet search — #codes', () => {
+  // The whole point: M, T and H are single letters, so typing them plainly
+  // matches most of the sheet and finds nothing useful.
+  it('matches a tag exactly, where plain text could not', () => {
+    const j = job({ mfr: 'Marshall', tag: 'M' });
+    expect(matchesSearch(j, undefined, '#M')).toBe(true);
+    expect(matchesSearch(j, undefined, '#T')).toBe(false);
+    // plain "M" still behaves as text, and hits Marshall
+    expect(matchesSearch(job({ mfr: 'Marshall', tag: 'EZ' }), undefined, 'M')).toBe(true);
+    expect(matchesSearch(job({ mfr: 'Marshall', tag: 'EZ' }), undefined, '#M')).toBe(false);
+  });
+
+  it('matches an action code too, since he is not sorting out which list it is in', () => {
+    const j = job({ action: 'WP' });
+    expect(matchesSearch(j, undefined, '#WP')).toBe(true);
+    expect(matchesSearch(j, undefined, '#wp')).toBe(true);
+    expect(matchesSearch(j, undefined, '#GTS')).toBe(false);
+  });
+
+  it('never matches a code inside ordinary text', () => {
+    const j = job({ customer: 'Ezra', desc: 'wp connector', mfr: 'Gretsch', tag: '', action: '' });
+    expect(matchesSearch(j, undefined, '#EZ')).toBe(false);
+    expect(matchesSearch(j, undefined, '#WP')).toBe(false);
+    expect(matchesSearch(j, undefined, 'ez')).toBe(true); // plain text still finds Ezra
+  });
+
+  it('is exact, so #RS does not drag in RS-C', () => {
+    expect(matchesSearch(job({ action: 'RS-C' }), undefined, '#RS')).toBe(false);
+    expect(matchesSearch(job({ action: 'RS-C' }), undefined, '#RS-C')).toBe(true);
+  });
+
+  it('mixes with ordinary words — every word still has to match', () => {
+    const fenderEz = job({ mfr: 'Fender', tag: 'EZ' });
+    const gibsonEz = job({ mfr: 'Gibson', tag: 'EZ' });
+    expect(matchesSearch(fenderEz, undefined, 'fender #ez')).toBe(true);
+    expect(matchesSearch(gibsonEz, undefined, 'fender #ez')).toBe(false);
+    expect(matchesSearch(fenderEz, undefined, 'fender #h')).toBe(false);
+  });
+
+  it('reads the tag on screen, not the one saved', () => {
+    const j = job({ tag: 'EZ' });
+    const draft = { ...initialRowDraft(j), tag: 'H' };
+    expect(matchesSearch(j, draft, '#H')).toBe(true);
+    expect(matchesSearch(j, draft, '#EZ')).toBe(false);
+  });
+
+  it('a bare # or a code that is not real matches nothing, and never falls back to text', () => {
+    const j = job({ tag: 'EZ', desc: 'hash # in the text' });
+    expect(matchesSearch(j, undefined, '#')).toBe(false);
+    expect(matchesSearch(j, undefined, '#zz')).toBe(false);
+    // two codes at once: a job has one tag and one action, so nothing matches
+    expect(matchesSearch(j, undefined, '#EZ #M')).toBe(false);
+  });
+
+  it('does not fall over on a row with no tag or action at all', () => {
+    const j = job({ tag: null, action: null });
+    expect(matchesSearch(j, undefined, '#EZ')).toBe(false);
+    expect(matchesSearch(j, undefined, '#')).toBe(false);
   });
 });

@@ -4,7 +4,7 @@ doc_status: live
 
 # Scope lock — Job card shows the next bench still to do
 
-Approved by Trevor ("yp", 2026-09-14). Previous occupant: send-to-next-week record, at `ed50e72`.
+Approved by Trevor ("yp", 2026-09-14). Previous occupant: empty (after #tag search, PR #68).
 
 Trevor: "Once the luthier work is done I want the job card to change to next
 primary bench... at the moment is default to main primary bench all the way through."
