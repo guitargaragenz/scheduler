@@ -21,7 +21,9 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 | Doc | What it does |
 |---|---|
-| [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | **Current — start here.** Nothing is mid-build. Says what the next work should be and where it starts. |
+| `.claude/pending-brief.md` on PR #69 | **Current — start here.** Job card shows the next bench still to do. Built; waiting on Trevor's merge yp. |
+| [2026-09-14-part-done-save.md](2026-09-14-part-done-save.md) | A ticked part always saves as done. Brief written, awaiting Trevor's yp. |
+| [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | Older handoff — background only. |
 
 The next piece of work gets chosen from Parked, with Trevor — it is not picked off
 this page. Start a session with `next`; if this section is still empty, say so.
