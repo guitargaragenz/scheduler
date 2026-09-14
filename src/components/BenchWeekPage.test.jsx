@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   weekRows, cellMark, trailing, slotDateKey, groupByBench, buildWeekExport,
-  weekRowKey, weekCloseKey, benchSections, addableJobs, ruleOff,
+  weekRowKey, weekCloseKey, weekSendKey, nextWeekKeys, hasDayMarks, benchSections, addableJobs, ruleOff,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
   compareJobNumber,
 } from './BenchWeekPage.jsx';
@@ -89,18 +89,43 @@ describe('cellMark', () => {
 });
 
 describe('trailing', () => {
-  it('carries an unfinished job into next week', () => {
-    expect(trailing(WEEK, { '2026-08-11': 'slash' })).toEqual({ mark: 'arrow', closed: false });
+  // Blank by default (Trevor, 2026-09): nothing carries forward unless chosen.
+  it('leaves an unfinished job blank', () => {
+    expect(trailing(WEEK, { '2026-08-11': 'slash' })).toEqual({ mark: '', closed: false, sent: false });
   });
-  // The whole point of the close column having its own stored value: a day
-  // cross means "worked on it and finished for the day", which is not the same
-  // as "the job is off the bench". Only the close mark closes a job.
+  // A day cross means "finished for the day", not "the job is off the bench".
   it('does not close a job just because a day was crossed off', () => {
-    expect(trailing(WEEK, { '2026-08-13': 'cross' })).toEqual({ mark: 'arrow', closed: false });
+    expect(trailing(WEEK, { '2026-08-13': 'cross' })).toEqual({ mark: '', closed: false, sent: false });
   });
   it('closes the job when the close column itself is marked', () => {
     expect(trailing(WEEK, { [weekCloseKey(WEEK)]: 'closed' }))
-      .toEqual({ mark: 'cross', closed: true });
+      .toEqual({ mark: 'cross', closed: true, sent: false });
+  });
+  it('shows > only once the job has been sent to next week', () => {
+    expect(trailing(WEEK, { [weekSendKey(WEEK)]: 'sent' }))
+      .toEqual({ mark: 'arrow', closed: false, sent: true });
+  });
+  it('lets close win over sent', () => {
+    expect(trailing(WEEK, { [weekSendKey(WEEK)]: 'sent', [weekCloseKey(WEEK)]: 'closed' }))
+      .toEqual({ mark: 'cross', closed: true, sent: false });
+  });
+});
+
+describe('next week', () => {
+  it('keys the send mark to this week', () => {
+    expect(weekSendKey(WEEK)).toBe('next:2026-08-10');
+  });
+  it('works out next week from Monday plus seven days', () => {
+    expect(nextWeekKeys(WEEK)).toEqual(['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23']);
+  });
+  it('crosses a month end', () => {
+    expect(nextWeekKeys(['2026-08-31'])[0]).toBe('2026-09-07');
+  });
+  it('only counts day keys as day marks', () => {
+    const next = nextWeekKeys(WEEK);
+    expect(hasDayMarks(next, { 'week:2026-08-17': 'row' })).toBe(false);
+    expect(hasDayMarks(next, { '2026-08-19': 'slash' })).toBe(true);
+    expect(hasDayMarks(next, undefined)).toBe(false);
   });
 });
 
@@ -137,7 +162,16 @@ describe('buildWeekExport', () => {
     const line = text.split('\n').find(l => l.includes('1714 Fender Strat'));
     expect(line).toContain('/');
     expect(line).toContain('×');
-    // An unclosed job still carries on, whatever its day marks say.
+    // Blank by default: an unclosed, unsent job has no end mark.
+    expect(line.trim().endsWith('×')).toBe(true);
+    expect(line.includes('>')).toBe(false);
+  });
+
+  it('ends a sent job with >', () => {
+    const marks = { a: { '2026-08-11': 'slash', [weekSendKey(WEEK)]: 'sent' } };
+    const rows = weekRows(jobs, WEEK, marks);
+    const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
+      .split('\n').find(l => l.includes('1714 Fender Strat'));
     expect(line.trim().endsWith('>')).toBe(true);
   });
 
@@ -171,7 +205,7 @@ describe('buildWeekExport', () => {
     const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
       .split('\n').find(l => l.includes('1714 Fender'));
     // Only the name and the trailing carry-on symbol. No day symbol anywhere.
-    expect(line.replace('1714 Fender', '').trim()).toBe('>');
+    expect(line.replace('1714 Fender', '').trim()).toBe('');
   });
 });
 
@@ -325,7 +359,7 @@ describe('typing a task that is not a job', () => {
     expect(rowLabel(rows.find(r => r.typed))).toBe('+ buy strings');
     const line = buildWeekExport({ rows, weekKeys: WEEK, weekDays: DAYS, marks })
       .split('\n').find(l => l.includes('buy strings'));
-    expect(line.replace('+ buy strings', '').trim()).toBe('>');
+    expect(line.replace('+ buy strings', '').trim()).toBe('');
   });
 
   it('exports a marked typed row the same way a job row does', () => {

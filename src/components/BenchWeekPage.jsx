@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { benchColors } from '../data/jobs.js';
-import { localDateKey, formatDateRange } from '../utils/calendar.js';
+import { localDateKey, formatDateRange, getWeekDays } from '../utils/calendar.js';
 
 // The week page — bench view, Build 1.
 //
@@ -90,6 +90,40 @@ export function weekCloseKey(weekKeys) {
 // The value stored under the close key. Same reasoning as ROW_MARK: never
 // drawn, and not a MARKS name.
 const CLOSE_MARK = 'closed';
+
+// The key that holds "Trevor chose to send this job on to next week".
+//
+// Same trick again: beside the day marks, never one of the seven day keys, so
+// day cells and the export's day columns cannot see it. It is only ever set by
+// picking "Send to next week" off the end box's long-press menu — the box is
+// blank by default and never shows > on its own.
+export function weekSendKey(weekKeys) {
+  const monday = (weekKeys || [])[0];
+  return monday ? `next:${monday}` : null;
+}
+
+// The value stored under the send key. Never drawn, not a MARKS name.
+const SEND_MARK = 'sent';
+
+// The seven day keys of the week after this one. Built from getWeekDays() fed
+// this Monday plus seven days, so it can never disagree with how the page
+// itself lays out a week. The Monday string is split and rebuilt as a LOCAL
+// date on purpose: new Date('2026-08-10') would parse as UTC midnight and land
+// on the Sunday before in New Zealand.
+export function nextWeekKeys(weekKeys) {
+  const monday = (weekKeys || [])[0];
+  if (!monday) return [];
+  const [y, m, d] = monday.split('-').map(Number);
+  if (!y || !m || !d) return [];
+  return getWeekDays(new Date(y, m - 1, d + 7)).map(localDateKey);
+}
+
+// True when any of next week's seven days carries a mark for this job. The
+// guard on taking a job back off next week: once a day has been marked there,
+// work has been planned or done against it and the row stays.
+export function hasDayMarks(dayKeys, jobMarks) {
+  return (dayKeys || []).some(k => Boolean(jobMarks?.[k]));
+}
 
 // ---------------------------------------------------------------------------
 // Typed rows — hand-written admin work that is not a job (Build 1c)
@@ -338,7 +372,10 @@ export function cellMark(row, dateKey, jobMarks) {
   return row.bookedDays.has(dateKey) ? 'dot' : '';
 }
 
-// The trailing column: × once the job has been closed off, > until then.
+// The trailing column: × once the job has been closed off, > once it has been
+// sent on to next week, and blank otherwise. Blank is the default — > is never
+// drawn unless it was chosen (Trevor, 2026-09-14). mark is '' for a blank box,
+// so every caller must handle "no mark" rather than look it up in MARKS.
 //
 // Read from its own stored value, NOT from the day cells. A × on a day means
 // "worked and finished that piece that day" and nothing more — no money
@@ -346,8 +383,10 @@ export function cellMark(row, dateKey, jobMarks) {
 // column and nowhere else, and it is always a deliberate tap.
 export function trailing(weekKeys, jobMarks) {
   const closeKey = weekCloseKey(weekKeys);
+  const sendKey = weekSendKey(weekKeys);
   const closed = Boolean(closeKey && jobMarks?.[closeKey]);
-  return { mark: closed ? 'cross' : 'arrow', closed };
+  const sent = !closed && Boolean(sendKey && jobMarks?.[sendKey]);
+  return { mark: closed ? 'cross' : (sent ? 'arrow' : ''), closed, sent };
 }
 
 // Where the rule-off line starts on a closed row.
@@ -408,7 +447,7 @@ export function buildWeekExport({ rows, weekKeys, weekDays, marks }) {
         const m = cellMark(row, k, jobMarks);
         return (m ? MARKS[m].symbol : ' ').padEnd(4);
       });
-      lines.push('  ' + rowLabel(row).padEnd(nameWidth) + cells.join('') + MARKS[t.mark].symbol);
+      lines.push('  ' + rowLabel(row).padEnd(nameWidth) + cells.join('') + (t.mark ? MARKS[t.mark].symbol : ''));
     }
   }
 
@@ -563,12 +602,117 @@ function AddTaskToBench({ ready, nameW, isMobile, onAddTask }) {
   );
 }
 
+// How long a press has to be held before it opens the menu instead of tapping.
+export const LONG_PRESS_MS = 500;
+// How far a finger can drift before the press counts as a scroll, not a hold.
+const LONG_PRESS_SLOP = 10;
+
+// The end box. A tap toggles × exactly as before. A long press opens a small
+// menu — Send to next week, Close, Clear — and the click the browser fires when
+// the finger lifts is swallowed, so a long press can never also close the job.
+function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, onCloseJob, onClear }) {
+  const timer = useRef(null);
+  const start = useRef(null);
+  const fired = useRef(false);
+
+  function cancel() {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }
+
+  return (
+    <div style={{ position: 'relative', width, flexShrink: 0 }}>
+      <button
+        type="button"
+        aria-label={`End box for ${row.name}`}
+        onPointerDown={(e) => {
+          if (!ready) return;
+          fired.current = false;
+          start.current = { x: e.clientX, y: e.clientY };
+          cancel();
+          timer.current = setTimeout(() => {
+            timer.current = null;
+            fired.current = true;
+            onOpen();
+          }, LONG_PRESS_MS);
+        }}
+        onPointerMove={(e) => {
+          const s0 = start.current;
+          if (!timer.current || !s0) return;
+          if (Math.abs(e.clientX - s0.x) > LONG_PRESS_SLOP || Math.abs(e.clientY - s0.y) > LONG_PRESS_SLOP) cancel();
+        }}
+        onPointerUp={cancel}
+        onPointerLeave={cancel}
+        onPointerCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (fired.current) { fired.current = false; return; }
+          onTap();
+        }}
+        disabled={!ready}
+        title={t.closed
+          ? `${row.name} is closed — tap to undo`
+          : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''} — hold for more`}
+        style={{
+          width, height: 30, cursor: ready ? 'pointer' : 'default',
+          border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
+          background: t.closed ? '#2a0f12' : '#111c2f',
+          color: t.closed ? '#f87171' : (t.sent ? '#94a3b8' : '#475569'),
+          fontSize: 16, lineHeight: 1, padding: 0,
+          WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
+          touchAction: 'manipulation',
+        }}
+      >{t.mark ? MARKS[t.mark].symbol : '\u00a0'}</button>
+      {open && (
+        <>
+          <div onClick={onDismiss} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div
+            role="menu"
+            aria-label={`Options for ${row.name}`}
+            style={{
+              position: 'absolute', top: 34, right: 0, zIndex: 41,
+              display: 'flex', flexDirection: 'column', minWidth: 170,
+              background: '#0f172a', border: '1px solid #334155', borderRadius: 6,
+              boxShadow: '0 6px 18px rgba(0,0,0,0.5)', overflow: 'hidden',
+            }}
+          >
+            {[
+              { label: '> Send to next week', onClick: onSend, disabled: t.closed },
+              { label: '\u00d7 Close', onClick: onCloseJob, disabled: t.closed },
+              { label: 'Clear', onClick: onClear, disabled: !t.sent },
+            ].map(item => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                onClick={item.onClick}
+                disabled={item.disabled}
+                style={{
+                  textAlign: 'left', padding: '10px 12px', border: 'none',
+                  background: 'transparent', fontSize: 14,
+                  color: item.disabled ? '#475569' : '#e2e8f0',
+                  cursor: item.disabled ? 'default' : 'pointer',
+                }}
+              >{item.label}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
   const groups = useMemo(() => benchSections(rows), [rows]);
   const rowKey = useMemo(() => weekRowKey(weekKeys), [weekKeys]);
   const closeKey = useMemo(() => weekCloseKey(weekKeys), [weekKeys]);
+  const sendKey = useMemo(() => weekSendKey(weekKeys), [weekKeys]);
+  const nextKeys = useMemo(() => nextWeekKeys(weekKeys), [weekKeys]);
+  const nextRowKey = useMemo(() => weekRowKey(nextKeys), [nextKeys]);
+  // Which row's end-box menu is open, by row id. One at a time.
+  const [menuFor, setMenuFor] = useState(null);
 
   function handleExport() {
     const text = buildWeekExport({ rows, weekKeys, weekDays, marks });
@@ -613,7 +757,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // writes done: true itself — the close mark is a note on the week, and the
   // real finishing still goes through the same call it always did.
   //
-  // Tapping × again clears it back to >, which is how a mis-tap is undone. That
+  // Tapping × again clears it back to blank, which is how a mis-tap is undone. That
   // clears the week's note only; it does not un-invoice a job, and it asks no
   // money question on the way back.
   async function handleClose(row) {
@@ -635,6 +779,8 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
       showToast?.('That did not save');
       return;
     }
+    // Closing a job that was sent on to next week takes it back off next week.
+    if (t.sent) await unsend(row);
     // The day the work actually finished: the LAST day column marked ×.
     //
     // Scanned here rather than via ruleOff(), which is gated on the close mark
@@ -651,6 +797,52 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
     // A typed row has no job behind it, so there is nothing to invoice. The
     // cross just means the admin task is done.
     if (row.job) onCloseJob?.(row.job, finishedOn);
+  }
+
+  // Send a job on to next week: puts it on next week's page the same way Add
+  // does (next week's row key, nothing else, so it lands blank) and records the
+  // choice under this week's send key so the box shows >. A typed row carries
+  // its name and bench on that row key, so the same value is copied across.
+  async function handleSend(row) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (!sendKey || !nextRowKey) return;
+    const jobMarks = marks[row.id] || {};
+    if (trailing(weekKeys, jobMarks).closed) return;
+    const value = row.typed ? jobMarks[rowKey] : ROW_MARK;
+    if (!value) return;
+    const put = await setMark(row.id, nextRowKey, value);
+    if (!put?.ok) {
+      showToast?.('That did not get sent to next week');
+      return;
+    }
+    const res = await setMark(row.id, sendKey, SEND_MARK);
+    if (!res?.ok) showToast?.('That did not save');
+  }
+
+  // Undo a send: clears this week's send key, and takes the job back off next
+  // week only if none of next week's seven days has a mark on it yet.
+  async function unsend(row) {
+    if (!sendKey) return;
+    const res = await setMark(row.id, sendKey, '');
+    if (!res?.ok) {
+      showToast?.('That did not save');
+      return;
+    }
+    if (!nextRowKey || hasDayMarks(nextKeys, marks[row.id])) return;
+    const off = await setMark(row.id, nextRowKey, '');
+    if (!off?.ok) showToast?.('That did not come off next week');
+  }
+
+  async function handleClear(row) {
+    if (!ready) {
+      showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (!trailing(weekKeys, marks[row.id] || {}).sent) return;
+    await unsend(row);
   }
 
   // Put a job on the week. Writes the week's row key and NOTHING else — no dot,
@@ -884,22 +1076,19 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   {/* The closing column. Its own stored value and its own tap
                       target — this is the one place a job gets finished, and
                       the one place the invoice is asked for. */}
-                  <button
-                    type="button"
-                    onClick={() => handleClose(row)}
-                    disabled={!ready}
-                    title={t.closed
-                      ? `${row.name} is closed — tap to undo`
-                      : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''}`}
-                    style={{
-                      width: cellW, flexShrink: 0,
-                      height: 30, cursor: ready ? 'pointer' : 'default',
-                      border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
-                      background: t.closed ? '#2a0f12' : '#111c2f',
-                      color: t.closed ? '#f87171' : '#475569',
-                      fontSize: 16, lineHeight: 1, padding: 0,
-                    }}
-                  >{MARKS[t.mark].symbol}</button>
+                  <EndBox
+                    row={row}
+                    t={t}
+                    ready={ready}
+                    width={cellW}
+                    open={menuFor === row.id}
+                    onOpen={() => setMenuFor(row.id)}
+                    onDismiss={() => setMenuFor(null)}
+                    onTap={() => handleClose(row)}
+                    onSend={() => { setMenuFor(null); handleSend(row); }}
+                    onCloseJob={() => { setMenuFor(null); if (!t.closed) handleClose(row); }}
+                    onClear={() => { setMenuFor(null); handleClear(row); }}
+                  />
 
                   {/* Take the job off the week.
                       Only on rows with no booking this week — a booked job is on
