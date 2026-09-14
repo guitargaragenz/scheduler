@@ -19,12 +19,7 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 ## Live — work that hasn't finished
 
-| Doc | What it does |
-|---|---|
-| [2026-09-14-part-done-save.md](2026-09-14-part-done-save.md) | **Current — start here.** A ticked part always saves as done. Approved; at council. |
-| [2026-09-11-session-handoff.md](2026-09-11-session-handoff.md) | Older handoff — background only. |
-
-The next piece of work gets chosen from Parked, with Trevor — it is not picked off
+Nothing is live. The next piece of work gets chosen from Parked, with Trevor — it is not picked off
 this page. Start a session with `next`; if this section is still empty, say so.
 
 ## Noticed, not scoped
@@ -49,10 +44,11 @@ None of these is scoped or approved; each file holds the detail.
 | [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | Nothing. One finding of four left. |
 | [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | The first Sunday board meeting. |
 | [parked-tick-off-from-job-card.md](parked-tick-off-from-job-card.md) | A scope lock and "yp". Questions answered. Blast-radius. |
+| [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md) | Nothing — see file. |
 
 What each is actually waiting on, in full: [BACKLOG.md](BACKLOG.md).
 
-Closed briefs — kept only because the reasoning still matters — live in [CLOSED.md](CLOSED.md).
+Closed work is a one-line history of lessons in [CLOSED.md](CLOSED.md).
 
 ---
 

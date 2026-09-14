@@ -13,6 +13,7 @@ hardcoded brief name goes stale the day the brief ships.
 
 0. **Sync first — nothing comes before it.** `git fetch origin`, then if the tree is clean
    `git checkout main && git pull --ff-only`. Say in one line how far behind the clone was.
+   Tree dirty or mid-merge: say so in one sentence and stop.
    A session once burned most of a context window re-fixing a bug that had already shipped,
    purely because the clone was 71 commits behind. Stale clone in, stale work out.
 1. **Read [docs/briefs/README.md](../../../docs/briefs/README.md).** Its **Live** table is
