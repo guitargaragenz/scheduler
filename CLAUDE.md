@@ -52,14 +52,8 @@ Tone/length rules are in `~/.claude/CLAUDE.md` (short, plain English, tt/tl/sz) 
 
 ## Model discipline — non-negotiable
 
-**No agent is ever spawned without its model decided on purpose.** Use the pinned agents:
-
-| Agent | Model | Use for |
-|---|---|---|
-| `ggnz-scout` | haiku | "where is X", file lookups, does-this-still-exist |
-| `ggnz-council` | sonnet | design review, second opinions, protocol step 2 |
-| `ggnz-verifier` | sonnet | checklist verification, protocol step 4 |
-| `ggnz-builder` | opus | **only** approved blast-radius builds, protocol step 3 |
+**No agent is ever spawned without its model decided on purpose.** Use the pinned agents — each
+`.claude/agents/*.md` file declares its own `model:` and when to use it.
 
 - Ad-hoc spawn: pass `model` explicitly, default `sonnet`.
 - **Don't route around `enforce-agent-model.py`.** Need a premium agent? Ask Trevor and say why.

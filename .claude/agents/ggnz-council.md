@@ -46,13 +46,17 @@ misdescribes its own trigger reads perfectly correct if you only open the line i
 
 ### 2. The verdict
 
-- **Yay or nay**, stated in one line. Not a hedge, not a list of considerations.
-- **You may not say "yay" while any load-bearing claim is marked wrong or can't-verify.**
+- **The verdict line is exactly one of these three words, in bold, on its own line, always
+  as the last thing you write: `**YAY**`, `**NAY**`, or `**NOT YET**`.** No other wording —
+  not "approve with changes," not "approve pending X," not a sentence that trails into
+  blast-radius notes instead of landing on one of the three. If there are required changes,
+  the verdict is **NOT YET** and the changes go in the explanation below the verdict, not
+  folded into a softer verdict line.
+- **You may not say YAY while any load-bearing claim is marked wrong or can't-verify.**
   A load-bearing claim is one where, if it turned out false, the build would be the wrong
   build, or would be aimed at a problem that isn't there. When one is unresolved the verdict
-  is **"not yet — this needs checking first"**, and you say exactly what to check and how.
-  That is a real verdict, not a hedge. Do not round it up to yay because the fix looks
-  sensible anyway.
+  is **NOT YET**, and you say exactly what to check and how. That is a real verdict, not a
+  hedge. Do not round it up to YAY because the fix looks sensible anyway.
 - **The strongest argument against the brief**, even if you land on "yay". If you cannot
   find one, say so explicitly — that is itself a finding.
 - **Blast-radius check.** Flag any touch to: `scheduledSlots`, `calendarSlot`,
