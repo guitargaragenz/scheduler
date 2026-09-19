@@ -1035,6 +1035,7 @@ export default function App() {
           ) : (
             <DayViewPage
               jobs={jobs}
+              dayItems={dayMarks.dayItems}
               scheduledSlots={scheduledSlots}
               weekDays={weekDays}
               displayedDate={displayedDate}

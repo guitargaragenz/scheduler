@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { latestDayMarks } from './DailyLogPanel.jsx';
 import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
 import DeferredItemsList from './DeferredItemsList.jsx';
@@ -426,8 +427,11 @@ function splitLine(s) {
   return parts.filter(Boolean).join(' · ');
 }
 
-function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn }) {
+function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn, crossedIds }) {
   const splits = jobs.filter(j => j.parentId === job.id);
+  // Done on the board (pieceDone) or crossed off on the Daily Log. Crosses made
+  // before the Daily Log saved pieceDone never wrote it, so the marks are read too.
+  const isDone = s => s.pieceDone || (crossedIds?.has(String(s.id)) ?? false);
   const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
   const actionStyle = ACTION_COLORS[job.action] || { bg: '#1e293b', color: '#64748b' };
   const shownBench = displayBenchOf(job, jobs);
@@ -482,8 +486,8 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
       {splits.length > 0 && (
         <div style={{ borderTop: '1px solid #334155', paddingTop: 7, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {splits.map(s => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: s.pieceDone ? 0.45 : 1 }}>
-              {s.pieceDone
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: isDone(s) ? 0.45 : 1 }}>
+              {isDone(s)
                 ? <span style={{ fontSize: 10, color: '#4ade80', width: 4, flexShrink: 0 }}>✓</span>
                 : <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#334155', flexShrink: 0 }} />}
               <span style={{ fontSize: 10, color: '#64748b' }}>
@@ -713,8 +717,15 @@ export default function DayViewPage({
   focusList = [], onToggleFocus,
   onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
   onSetBumpReason,
-  onMarkPieceDone,
+  onMarkPieceDone, dayItems,
 }) {
+  // Every piece whose latest Daily Log mark is a cross — the Daily Log's own
+  // "done" — so its rows here can dim to match.
+  const crossedIds = useMemo(() => {
+    const out = new Set();
+    for (const [id, label] of latestDayMarks(dayItems)) if (label === 'cross') out.add(String(id));
+    return out;
+  }, [dayItems]);
   const autoCarryRanRef = useRef(false);
   useEffect(() => {
     if (autoCarryRanRef.current) return;
@@ -1177,6 +1188,7 @@ export default function DayViewPage({
                     jobs={jobs}
                     deferredItems={deferredItems}
                     onPullBackIn={onPullBackIn}
+                    crossedIds={crossedIds}
                   />
                 ))
               )}
