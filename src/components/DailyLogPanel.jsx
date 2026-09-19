@@ -10,7 +10,9 @@ import { benchColors } from '../data/jobs.js';
 //
 // What it writes: bench_day_marks; the one Weekly Log cell that matches the
 // mark just picked; and that split's `pieceDone` when the mark becomes or
-// stops being a cross. Nothing else. Not scheduledSlots, not calendarSlot, and
+// stops being a cross; and, when a piece is marked, the job's own line for that
+// day (`/`, or × on the last piece) on the day and the week. Nothing else. Not
+// scheduledSlots, not calendarSlot, and
 // nothing that finishes a whole job. Putting a job on a day is a note about the
 // day, not a booking — nothing here moves a calendar slot. Closing a job is
 // still the cross in the Weekly Log's last column, and the invoice is still
@@ -929,10 +931,51 @@ export default function DailyLogPanel({
     // The job's own header row is untouched by all of this: it is not a split,
     // so it falls straight through and last pick still wins. That row is where
     // the job's `·`, `/` and `>` come from on the week.
+    //
+    // CHANGED 2026-09-19, Trevor's call, and it replaces the "a split writes
+    // nothing to the week" rule above: "when I put a tick or whatever I want the
+    // job mark to recognise this and add / which saves me having to add it. If
+    // the last part of the job is ticked off I want that to change accordingly."
+    // and, asked about the week: "WL too unless it's already there but change
+    // state if DL changes state".
+    //
+    // So a piece's mark now also moves the job's OWN line, on the day and on the
+    // week, in these three ways and no others:
+    //   - any `·`, `/` or `×` on a piece puts `/` on the job line, unless the
+    //     line already says `/` or `×` (`>` is deferred, not worked, so it
+    //     doesn't count);
+    //   - the × on the last uncrossed piece makes the job line ×;
+    //   - taking that × off again drops the job line back to `/`.
+    // A week cell that already holds what would be written is left alone, and a
+    // `/` never overwrites a × already on the week.
     if (rowJob?.parentId) {
-      const isCross = value === 'cross' || (value === '' && previous === 'cross');
-      if (!isCross) return;
-      if (!isLastUncrossedSplit(row.id, jobs, dayItems)) return;
+      const isLast = isLastUncrossedSplit(row.id, jobs, dayItems);
+      const headNow = markOf.get(weekJobId) || '';
+      const weekNow = marks?.[weekJobId]?.[dateKey] || '';
+      const downgrade = previous === 'cross' && value !== 'cross' && isLast
+        && (headNow === 'cross' || weekNow === 'cross');
+
+      let want = '';
+      if (value === 'cross' && isLast) want = 'cross';
+      else if (downgrade) want = 'slash';
+      else if (['dot', 'slash', 'cross'].includes(value) && headNow !== 'slash' && headNow !== 'cross') want = 'slash';
+      if (!want) return;
+
+      if (headNow !== want) {
+        const headRes = await addItem(dateKey, markIdFor(weekJobId), 'mark', want);
+        if (!headRes?.ok) {
+          showToast?.('The job’s own mark did not save');
+          return;
+        }
+      }
+      const weekHasIt = want === 'cross' ? weekNow === 'cross'
+        : downgrade ? weekNow === 'slash'
+        : weekNow === 'slash' || weekNow === 'cross';
+      if (!weekHasIt) {
+        const weekRes = await setWeekMark?.(weekJobId, dateKey, want);
+        if (!weekRes?.ok) showToast?.('The Weekly Log did not take that mark');
+      }
+      return;
     }
 
     const weekRes = await setWeekMark?.(weekJobId, dateKey, value || '');
