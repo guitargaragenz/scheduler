@@ -291,11 +291,11 @@ describe('the "+ Put a job on this day…" picker', () => {
     expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
   });
 
-  it('leaves out a piece already ticked off', () => {
+  it('still offers a piece already ticked off, like the Day View', () => {
     setup({ jobs: pickableJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)) });
     search('1714');
 
-    expect(pieceButtons()).toEqual(['Setup — level and crown']);
+    expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
   });
 
   it('places the piece when its line is clicked', async () => {

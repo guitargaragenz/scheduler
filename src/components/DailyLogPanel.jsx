@@ -190,7 +190,14 @@ export function dayJobOptions(jobs, weekKeys, marks, dayItems) {
       // Only the PICKER filters. `bookedOnDay()` deliberately does not: a split
       // that is booked is booked whether or not it is done, and hiding a
       // finished piece there would erase the day's record of the work.
-      if (part.scheduled || part.calendarSlot || part.pieceDone) continue;
+      if (part.scheduled || part.calendarSlot) continue;
+      // Trevor, 2026-09-19: the Daily Log picker must show the same pieces the
+      // Day View lists for a split job (Ampeg #1520: Day View 5, Daily Log 1).
+      // Day View lists every piece not booked on the calendar, done or not, so
+      // the done/crossed rules below now apply to an UNSPLIT job only — a whole
+      // job crossed off is finished, and that is the 2026-08-26 fix.
+      const isPiece = part.id !== row.job.id;
+      if (!isPiece && part.pieceDone) continue;
       // A piece crossed off on the Daily Log. `pieceDone` alone was not enough:
       // it is only ever written for a SPLIT (`handleSetMark` guards on
       // `rowJob?.parentId`), and `partsOf()` offers an unsplit job as its own
@@ -207,7 +214,7 @@ export function dayJobOptions(jobs, weekKeys, marks, dayItems) {
       // Only the cross. `/` (part done) and `>` (deferred) are both live work
       // and stay on offer. Taking the × off puts the row back with no reload,
       // because this map is read fresh on every render — that is the undo.
-      if (dayMarks.get(String(part.id)) === 'cross') continue;
+      if (!isPiece && dayMarks.get(String(part.id)) === 'cross') continue;
       // The job this piece belongs to, used as the dropdown's group heading so
       // the picker reads the way the Daily Log itself now does — pieces under
       // their job, not a flat run of lines that all start with the same number.

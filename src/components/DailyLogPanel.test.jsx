@@ -46,13 +46,15 @@ describe('dayJobOptions', () => {
 
   // Trevor, 2026-08-22: 1632 offered 7 pieces where the job card showed the 4
   // still to do. The card has always hidden finished pieces; the picker did not.
-  it('does not offer a piece that is already ticked off', () => {
+  // Superseded, Trevor 2026-09-19: the picker now matches the Day View, which
+  // lists every unbooked piece of a split job, done or not.
+  it('still offers a piece of a split job that is ticked off', () => {
     const jobs = [
       { id: 'p', job: '1632', mfr: 'Hofner', model: 'Verythin', isSplit: true, calendarSlot: '2026-08-11-9-0' },
       { id: 'c1', job: '1632', parentId: 'p', bench: 'Setup' },
       { id: 'c2', job: '1632', parentId: 'p', bench: 'Fretwork', pieceDone: true },
     ];
-    expect(dayJobOptions(jobs, WEEK, {}).map(o => o.id)).toEqual(['c1']);
+    expect(dayJobOptions(jobs, WEEK, {}).map(o => o.id)).toEqual(['c1', 'c2']);
   });
 
   // An unsplit job IS its own single piece, so the same rule has to reach it.
@@ -110,14 +112,14 @@ describe('dayJobOptions', () => {
       }
     });
 
-    it('hides a crossed split without hiding its siblings', () => {
+    it('still offers a crossed split of a split job, like the Day View', () => {
       const jobs = [
         { id: 'p', job: '1632', mfr: 'Hofner', model: 'Verythin', isSplit: true, calendarSlot: '2026-08-11-9-0' },
         { id: 'c1', job: '1632', parentId: 'p', bench: 'Setup' },
         { id: 'c2', job: '1632', parentId: 'p', bench: 'Fretwork' },
       ];
       const ids = dayJobOptions(jobs, WEEK, {}, crossedOn('2026-08-10', 'c2')).map(o => o.id);
-      expect(ids).toEqual(['c1']);
+      expect(ids).toEqual(['c1', 'c2']);
     });
 
     // The board's tick is a separate signal and still counts on its own — a
@@ -353,17 +355,18 @@ describe('the Task picker on a job line', () => {
   afterEach(cleanup);
   beforeEach(() => vi.clearAllMocks());
 
-  it('shows the job its own remaining pieces, and never a booked or finished one', () => {
+  it('shows the job its own unbooked pieces, done or not, and never a booked one', () => {
     setup();
     fireEvent.click(taskButton('1714 Fender Strat'));
     const offered = ticks().map(el => el.getAttribute('aria-label'));
-    // Fretwork and Wiring only: Setup is on this day already, Electronics is
-    // booked to the Wednesday, and Admin is ticked off.
+    // Fretwork, Wiring and Admin: Setup is on this day already and Electronics
+    // is booked to the Wednesday. Admin is ticked off but still offered, the
+    // same as the Day View lists it (Trevor, 2026-09-19).
     expect(offered.some(l => l.includes('Fretwork'))).toBe(true);
     expect(offered.some(l => l.includes('Wiring'))).toBe(true);
+    expect(offered.some(l => l.includes('Admin'))).toBe(true);
     expect(offered.some(l => l.includes('Setup'))).toBe(false);
     expect(offered.some(l => l.includes('Electronics'))).toBe(false);
-    expect(offered.some(l => l.includes('Admin'))).toBe(false);
     // And nothing from the other job on the day.
     expect(offered.some(l => l.includes('Luthier'))).toBe(false);
   });
@@ -372,11 +375,11 @@ describe('the Task picker on a job line', () => {
     const { addItem, setWeekMark } = setup();
     fireEvent.click(taskButton('1714 Fender Strat'));
     ticks().forEach(el => fireEvent.click(el));
-    fireEvent.click(screen.getByRole('button', { name: /Add 2 to this day/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Add 3 to this day/ }));
 
-    await waitFor(() => expect(addItem).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(addItem).toHaveBeenCalledTimes(3));
     const placed = addItem.mock.calls.map(c => c[1]);
-    expect(new Set(placed)).toEqual(new Set(['c2', 'c3']));
+    expect(new Set(placed)).toEqual(new Set(['c2', 'c3', 'c5']));
     expect(addItem.mock.calls.every(c => c[0] === '2026-08-10' && c[2] === 'job')).toBe(true);
     // Placing pieces is not a week write: handlePickJob stops a split before
     // the Weekly Log, and this control only ever places pieces.
