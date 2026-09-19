@@ -1083,7 +1083,7 @@ export default function DayViewPage({
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Customer, make, model…"
+                  placeholder="Job #, customer, make, model…"
                   style={{
                     flex: 1, background: '#1e293b', border: '1px solid #334155',
                     borderRadius: 8, padding: '8px 12px', fontSize: 13,
