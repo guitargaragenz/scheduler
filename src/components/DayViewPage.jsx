@@ -482,8 +482,10 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
       {splits.length > 0 && (
         <div style={{ borderTop: '1px solid #334155', paddingTop: 7, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {splits.map(s => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#334155', flexShrink: 0 }} />
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: s.pieceDone ? 0.45 : 1 }}>
+              {s.pieceDone
+                ? <span style={{ fontSize: 10, color: '#4ade80', width: 4, flexShrink: 0 }}>✓</span>
+                : <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#334155', flexShrink: 0 }} />}
               <span style={{ fontSize: 10, color: '#64748b' }}>
                 {splitLine(s)}
               </span>
