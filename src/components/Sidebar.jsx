@@ -108,7 +108,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
     displayedHold      = [];
   } else {
     const q = search.toLowerCase();
-    const matchText  = j => [j.job, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
+    const matchText  = j => [j.job, j.customer, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
       .some(v => String(v || '').toLowerCase().includes(q));
     const SUB_ONLY_BENCHES = new Set(['Wiring', 'Finishing']);
     const matchBench = j => !benchFilter || j.bench === benchFilter ||
@@ -191,7 +191,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Job #, make, model, bench…"
+                  placeholder="Job #, customer, make, model, bench…"
                   style={{
                     display: 'block', width: '100%', marginTop: 6, padding: '6px 10px',
                     background: '#0a1a38', border: '1px solid #3b82f6', borderRadius: 6,
