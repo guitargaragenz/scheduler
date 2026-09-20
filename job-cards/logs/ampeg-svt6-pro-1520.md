@@ -74,11 +74,32 @@ The odd leg out is the CW one, on the transistor base.
 Dead for the first half, then up fast, vicious at the end. Working range is around the
 middle-to-upper third.
 
+## 2026-09-21 — pots wound to minimum, positions as found recorded
+
+**Both are single-turn trims** (~270° of travel). Wound fully anticlockwise with the amp off.
+Travel from the as-found position to the anticlockwise end:
+
+| Pot | Travel to CCW end | As found, roughly |
+|---|---|---|
+| AP1 | 1/2 turn | ~2/3 of the way toward the CW end |
+| AP2 | 1/4 turn | ~1/3 of the way toward the CW end |
+
+**AP1's as-found position cross-checks the trace** — the maths put the working point around the
+middle-to-upper third of the travel, and that's where it was sitting.
+
+**AP2 sat noticeably lower than AP1.** Could be genuine device spread between the two halves,
+could be a previous hand. Don't expect the two pots to end up matched.
+
+**Do not wind them back to the as-found positions.** Those belonged to the amp before this repair —
+different caps, different zeners, and C14 missing entirely, so B+ was wrong. Bias gets set by the
+meter, from minimum, every time. The numbers above are only useful for pacing the turns so you're
+not hunting blind.
+
 ## Open / next
 
-- **Next action: wind AP1 and AP2 fully anticlockwise with the amp off, counting the turns**, then
-  the step 14–17 ramp. At the 120 V pause, read bias millivolts **before touching either pot** —
-  expect near zero — and take a quarter-turn feel reading.
+- **Next action:** both pots are now at minimum. Ramp per steps 14–17, and at
+  the 120 V pause read bias millivolts **before touching either pot** — expect near zero — then
+  take a quarter-turn feel reading.
 - Bias never yet set. No bias readings taken.
 - Breaker still the undersized 7 A — card step 22 wants the correct 8 A before handover.
 - Card step 24: ask the customer why the previous tech fitted that fuse.
