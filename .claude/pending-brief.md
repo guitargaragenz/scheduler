@@ -1,8 +1,15 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Scope lock — empty
+# Scope lock — Bench supply diagram on the SVT-6 PRO job card
 
-Nothing approved. Last occupant (Week page day box) shipped at `3182f84`, PR #72.
-The job-card next-bench work it paused had already shipped at `02a525a` (PR #69).
+Approved by Trevor ("yp", 2026-09-20).
+
+## Build
+- Add a wiring diagram to `job-cards/ampeg-svt6-pro.html`, inside step 11: two dual 30 V bench
+  supplies, each switched to SERIES, stacked to give +60 V / 0 V / -60 V.
+- Add the matching screen and print styles for the figure.
+
+## Out of scope
+- No Scheduler app code. Nothing in `src/`, no blast-radius files.

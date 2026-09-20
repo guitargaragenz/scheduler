@@ -212,6 +212,12 @@
   .refcard dt { font-family:var(--mono); color: var(--ink-2); white-space:nowrap; }
   .refcard dd { margin:0; font-variant-numeric:tabular-nums; }
 
+
+  /* ---------- wiring figure ---------- */
+  figure.wiring { margin:0; border:1px solid var(--line); background: var(--surface); padding: var(--s3); }
+  figure.wiring svg { width:100%; height:auto; display:block; }
+  figure.wiring figcaption { font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color: var(--ink-3); margin-bottom: var(--s2); }
+
   /* ---------- actions ---------- */
   .actions {
     position:sticky; bottom:0; margin-top: var(--s6);
@@ -316,6 +322,8 @@
     .refcard { padding:2mm 3mm 2mm 0; break-inside:avoid; border-color:#ccc; }
     .refcard dl { font-size:8.5pt; }
 
+    figure.wiring { border:1px solid #000; padding:2mm; break-inside:avoid; page-break-inside:avoid; }
+    figure.wiring svg { max-height:110mm; }
     footer { font-size:7.5pt; color:#444; }
   }
 </style>
@@ -528,6 +536,90 @@
       <div class="step-body">
         <p class="step-text">Satisfy the UVLO: two 30&nbsp;V supplies in series → <b>60&nbsp;V</b> into the +65&nbsp;V rail, <i>or</i> ~60&nbsp;V straight onto <b>C11</b>.</p>
         <p class="why">D11 is a <b>1N4751, 30&nbsp;V</b>. A single 30&nbsp;V supply sits right on its knee and won't release — you'd get a false "relay chain dead". C11 is a 63&nbsp;V part, so keep it at 60, not higher. With ±100&nbsp;V absent the VAS is dead and draw is negligible.</p>
+        <figure class="wiring">
+          <figcaption>Two dual 30 V supplies stacked for ±60 V</figcaption>
+          <svg viewBox="0 0 700 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two dual bench supplies, each switched to series, stacked to give plus 60 volts, ground and minus 60 volts.">
+            <style>
+              .pnl { fill:var(--surface-2); stroke:var(--ink); stroke-width:1.5 }
+              .disp { fill:var(--sunk); stroke:var(--line); stroke-width:1 }
+              .dtxt { fill:var(--ink); font-size:13px; font-family:var(--mono) }
+              .kn { fill:none; stroke:var(--ink-3); stroke-width:1.5 }
+              .knM { fill:none; stroke:var(--hazard); stroke-width:2.5 }
+              .sm { fill:var(--ink-2); font-size:11px; font-family:var(--sans) }
+              .bg { fill:var(--ink); font-size:14px; font-weight:600; font-family:var(--sans) }
+              .red { fill:var(--hazard) }
+              .blk { fill:var(--ink) }
+              .grn { fill:none; stroke:var(--ink-3); stroke-width:1 }
+              .dim { opacity:.4 }
+              .wr { stroke:var(--hazard); stroke-width:3; fill:none; stroke-linecap:round }
+              .wb { stroke:var(--ink); stroke-width:3; fill:none; stroke-linecap:round }
+              .wg { stroke:var(--ink-3); stroke-width:3; fill:none; stroke-dasharray:7 4; stroke-linecap:round }
+            </style>
+
+            <text class="bg" x="30" y="26">Supply A — switch set to SERIES</text>
+            <rect class="pnl" x="30" y="36" width="400" height="185" rx="8"/>
+            <rect class="disp" x="48" y="52" width="80" height="34" rx="3"/><text class="dtxt" x="58" y="74">30.0 V</text>
+            <rect class="disp" x="136" y="52" width="70" height="34" rx="3"/><text class="dtxt" x="146" y="74">0.05 A</text>
+            <text class="sm" x="48" y="100">CH 1 — master</text>
+            <rect class="disp dim" x="236" y="52" width="80" height="34" rx="3"/><text class="dtxt dim" x="246" y="74">30.0 V</text>
+            <rect class="disp dim" x="324" y="52" width="70" height="34" rx="3"/><text class="dtxt dim" x="334" y="74">0.05 A</text>
+            <text class="sm" x="236" y="100">CH 2 — follows CH 1</text>
+            <circle class="knM" cx="70" cy="128" r="14"/><circle class="knM" cx="112" cy="128" r="14"/>
+            <circle class="kn dim" cx="258" cy="128" r="14"/><circle class="kn dim" cx="300" cy="128" r="14"/>
+            <text class="sm" x="46" y="158">turn these only</text>
+            <text class="sm" x="240" y="158">leave alone</text>
+            <rect x="344" y="108" width="62" height="36" rx="4" fill="none" stroke="var(--line)"/>
+            <text class="sm dim" x="350" y="122">INDEP</text>
+            <text class="sm" x="350" y="137" fill="var(--hazard)">SERIES</text>
+            <circle class="blk" cx="70" cy="190" r="8"/><text class="sm" x="62" y="211">CH1 −</text>
+            <circle class="grn dim" cx="112" cy="190" r="8"/><text class="sm dim" x="102" y="211">GND</text>
+            <circle class="red" cx="154" cy="190" r="8"/><text class="sm" x="146" y="211">CH1 +</text>
+            <circle class="blk" cx="258" cy="190" r="8"/><text class="sm" x="250" y="211">CH2 −</text>
+            <circle class="grn dim" cx="300" cy="190" r="8"/><text class="sm dim" x="290" y="211">GND</text>
+            <circle class="red" cx="342" cy="190" r="8"/><text class="sm" x="334" y="211">CH2 +</text>
+
+            <text class="bg" x="30" y="286">Supply B — switch set to SERIES</text>
+            <rect class="pnl" x="30" y="296" width="400" height="185" rx="8"/>
+            <rect class="disp" x="48" y="312" width="80" height="34" rx="3"/><text class="dtxt" x="58" y="334">30.0 V</text>
+            <rect class="disp" x="136" y="312" width="70" height="34" rx="3"/><text class="dtxt" x="146" y="334">0.05 A</text>
+            <text class="sm" x="48" y="360">CH 1 — master</text>
+            <rect class="disp dim" x="236" y="312" width="80" height="34" rx="3"/><text class="dtxt dim" x="246" y="334">30.0 V</text>
+            <rect class="disp dim" x="324" y="312" width="70" height="34" rx="3"/><text class="dtxt dim" x="334" y="334">0.05 A</text>
+            <text class="sm" x="236" y="360">CH 2 — follows CH 1</text>
+            <circle class="knM" cx="70" cy="388" r="14"/><circle class="knM" cx="112" cy="388" r="14"/>
+            <circle class="kn dim" cx="258" cy="388" r="14"/><circle class="kn dim" cx="300" cy="388" r="14"/>
+            <rect x="344" y="368" width="62" height="36" rx="4" fill="none" stroke="var(--line)"/>
+            <text class="sm dim" x="350" y="382">INDEP</text>
+            <text class="sm" x="350" y="397" fill="var(--hazard)">SERIES</text>
+            <circle class="blk" cx="70" cy="450" r="8"/><text class="sm" x="62" y="471">CH1 −</text>
+            <circle class="grn dim" cx="112" cy="450" r="8"/><text class="sm dim" x="102" y="471">GND</text>
+            <circle class="red" cx="154" cy="450" r="8"/><text class="sm" x="146" y="471">CH1 +</text>
+            <circle class="blk" cx="258" cy="450" r="8"/><text class="sm" x="250" y="471">CH2 −</text>
+            <circle class="grn dim" cx="300" cy="450" r="8"/><text class="sm dim" x="290" y="471">GND</text>
+            <circle class="red" cx="342" cy="450" r="8"/><text class="sm" x="334" y="471">CH2 +</text>
+
+            <path class="wr" d="M154 190 V178 H470"/>
+            <text class="bg" x="478" y="182">+60 V</text>
+            <text class="sm" x="478" y="199">A's CH1 +  (outer post)</text>
+            <path class="wg" d="M258 190 H210 V252 H470"/>
+            <path class="wg" d="M154 450 V252"/>
+            <circle cx="330" cy="252" r="6" fill="var(--ink-3)"/>
+            <text class="bg" x="478" y="256">0 V — ground</text>
+            <text class="sm" x="478" y="273">the only wire between</text>
+            <text class="sm" x="478" y="288">the supplies: A's CH2 −</text>
+            <text class="sm" x="478" y="303">to B's CH1 +</text>
+            <path class="wb" d="M258 450 V438 H470"/>
+            <text class="bg" x="478" y="442">−60 V</text>
+            <text class="sm" x="478" y="459">B's CH2 −  (outer post)</text>
+            <text class="sm" x="478" y="492">Green earth posts stay</text>
+            <text class="sm" x="478" y="507">empty on both supplies.</text>
+            <text class="sm" x="478" y="60">SERIES joins the two</text>
+            <text class="sm" x="478" y="75">inner posts for you.</text>
+            <text class="sm" x="478" y="90">Use the outer two, and</text>
+            <text class="sm" x="478" y="105">CH1's knobs set both</text>
+            <text class="sm" x="478" y="120">channels at once.</text>
+          </svg>
+        </figure>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
