@@ -363,7 +363,7 @@
     <h2>Standing hazards — read before every session</h2>
     <ul>
       <li><b>The output is not ground-referenced.</b> This PCB is hardwired mono-bridge. Never put a grounded scope probe on either output leg — use differential, isolated or floating measurement.</li>
-      <li><b>Filter caps hold lethal charge long after power-down.</b> Six 5600&nbsp;µF/80&nbsp;V plus three 47&nbsp;µF/450&nbsp;V on a ~296&nbsp;V B+. Discharge and verify 0&nbsp;V before touching anything.</li>
+      <li><b>Filter caps hold lethal charge long after power-down.</b> Six 5600&nbsp;µF/80&nbsp;V plus two 47&nbsp;µF/450&nbsp;V (C14, C15) on a ~296&nbsp;V B+. Discharge and verify 0&nbsp;V before touching anything.</li>
       <li><b>A variac is an autotransformer, not an isolator.</b> Always feed it from an isolation transformer.</li>
       <li><b>Mains-potential taps.</b> The unused transformer primary tap sits at line potential when powered. It must be insulated, never landed on a tab.</li>
     </ul>
@@ -380,7 +380,7 @@
     <div class="step" data-step>
       <input type="checkbox" id="c25"><span class="step-n">0.1</span>
       <div class="step-body">
-        <p class="step-text"><b>Pull the polarised electrolytics out of C10, C50 and C54.</b> These four positions — <code>C9</code>, <code>C10</code> (1&nbsp;µF) and <code>C50</code>, <code>C54</code> (10&nbsp;µF 35&nbsp;V) — must be <b>bipolar / non-polarised</b>. Film is fine for the 1&nbsp;µF parts.</p>
+        <p class="step-text"><b>Pull the polarised electrolytics out of C9, C10, C50 and C54.</b> These four positions — <code>C9</code>, <code>C10</code> (1&nbsp;µF) and <code>C50</code>, <code>C54</code> (10&nbsp;µF 35&nbsp;V) — must be <b>bipolar / non-polarised</b>. Film is fine for the 1&nbsp;µF parts.</p>
         <p class="why">Confirmed off the schematic. On this drawing a polarised cap is drawn with a <b>+</b> on one plate; a non-polarised one has no +. C9, C10, C50 and C54 have no +. C10 sits in series with R27 (2.2K) across the bias spreader — there is no DC across that pair to define a polarity, so a polarised part there is being reverse-biased on half of every cycle.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
@@ -398,8 +398,8 @@
     <div class="step" data-step>
       <input type="checkbox" id="c27"><span class="step-n">0.3</span>
       <div class="step-body">
-        <p class="step-text">Everything else on the power amp and supply sheets is either film or genuinely polarised — leave it. <b>Polarised (marked +):</b> C3, C5, C11, C14, C15, C16, C17, C18, C19, C21, C22, C24, C25, C26, C29, C31, C32, C40, C44, C45, C46.</p>
-        <p class="why">Film / non-polarised, no + on the print: C1, C2 (.0033 250V), C4, C6, C7, C8, C12, C13, C20, C23, C27, C28, C30, C33, C34, C35, C37, C39, C43, C47, C48, C49, C52, C53 — plus the four in step 0.1 and the four in step 0.2.</p>
+        <p class="step-text">Everything else on the power amp and supply sheets is either film or genuinely polarised — leave it. <b>Polarised (marked +):</b> C3, C5, C11, C12, C14, C15, C16, C17, C18, C19, C21, C22, C24, C25, C26, C29, C31, C32, C40, C44, C45, C46.</p>
+        <p class="why">Film / non-polarised, no + on the print: C1, C2 (.0033 250V), C4, C6, C7, C8, C13, C20, C23, C27, C28, C30, C33, C34, C35, C37, C39, C43, C47, C48, C49, C52, C53 — plus the four in step 0.1 and the four in step 0.2.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -407,8 +407,8 @@
     <div class="step" data-step>
       <input type="checkbox" id="c28"><span class="step-n">0.4</span>
       <div class="step-body">
-        <p class="step-text">While the board is out: check <b>R50</b> (2K 2W) for drift and <b>D14–D17</b> (1N4007) for shorts.</p>
-        <p class="why">These are the parts that take the hit if C14 ever shorted — which is the most likely reason it isn't fitted. R50 drifting high also pulls B+ down on its own.</p>
+        <p class="step-text">While the board is out: check <b>R50</b> (2K 2W) for drift, <b>D14–D17</b> (1N4007) for shorts, and <b>F1 — the 1/8&nbsp;A slow-blow in the B+ feed</b> (fuse clips FC1/FC2).</p>
+        <p class="why">These are the parts that take the hit if C14 ever shorted — which is the most likely reason it isn't fitted. R50 drifting high also pulls B+ down on its own. <b>F1 feeds the whole +300&nbsp;V tube-plate supply</b> — C14, R50, C15 and everything past them. If B+ is dead or the preamp is silent, check F1 <i>before</i> chasing anything else, and note that 1/8&nbsp;A is the correct value — don't uprate it.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -489,7 +489,7 @@
       <input type="checkbox" id="c7"><span class="step-n">07</span>
       <div class="step-body">
         <p class="step-text">Set <b>AP1</b> and <b>AP2</b> to <b>minimum bias</b>.</p>
-        <p class="why">AP1 (<code>R26</code>) is topside next to Q4. AP2 (<code>R100</code>) is on the <b>underside</b>, adjusted through the access hole. Twenty IRFP240/9240 at an unknown idle current is the one load in this amp that can run away — positive tempco at low idle. Establish trimmer direction at low mains where being wrong is survivable.</p>
+        <p class="why"><b>Both are 10K trimpots, marked AP1 and AP2 on the print — not R26 or R100.</b> AP1 sits in <b>Q2</b>'s leg (plus half), topside next to Q4. AP2 sits in <b>Q22</b>'s leg (minus half), on the <b>underside</b>, adjusted through the access hole. <b>R26 and R100 are 5.62&nbsp;K 1% fixed resistors elsewhere in the bias circuit — don't go near them.</b> Twenty IRFP240/9240 at an unknown idle current is the one load in this amp that can run away — positive tempco at low idle. Establish trimmer direction at low mains where being wrong is survivable.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -709,7 +709,7 @@
             </tbody>
           </table>
         </div>
-        <p class="why"><b>Relays click in at 150–180&nbsp;V on the variac — and give it 1–3 seconds after you get there before you call it dead.</b> C11 is 220&nbsp;µF and has to charge first, so the click is delayed, not instant. Below about 120&nbsp;V it will never release: the +65&nbsp;V rail scales with the mains, and D11 is a 30&nbsp;V zener that has to be passed before the circuit lets go.<br><br>
+        <p class="why"><b>Relays click in at 150–180&nbsp;V on the variac — and give it 1–3 seconds after you get there before you call it dead.</b> The delay is <b>C12 (2.2&nbsp;µF)</b> charging through D11 into IC1-D — so the click is delayed, not instant. (C11, the 220&nbsp;µF reservoir, sits straight off +65&nbsp;V through D10 and fills almost instantly; it isn't what times the delay.) Below about 120&nbsp;V it will never release: the +65&nbsp;V rail scales with the mains, and D11 is a 30&nbsp;V zener that has to be passed before the circuit lets go.<br><br>
         If they pull in at 150–180&nbsp;V, the ±16&nbsp;V rail, IC1, the under-voltage chain and the relay drivers are all good. <b>If they haven't clicked by 200&nbsp;V, stop there — don't push on to 230.</b> Go back to stage B and find out why.</p>
       </div>
     </div>
@@ -753,7 +753,7 @@
         <p class="step-text"><b>AP1</b> → average <b>20 ±5 mVdc</b> across bank 1.</p>
         <div class="tablewrap">
           <table>
-            <caption>Bank 1 — Channel 1 (+) half · AP1 / R26 · topside near Q4</caption>
+            <caption>Bank 1 — Channel 1 (+) half · AP1 (10K trim at Q2) · topside near Q4</caption>
             <thead><tr><th class="mono">R32</th><th class="mono">R34</th><th class="mono">R36</th><th class="mono">R38</th><th class="mono">R112</th><th class="mono">R33</th><th class="mono">R35</th><th class="mono">R37</th><th class="mono">R39</th><th class="mono">R138</th></tr></thead>
             <tbody><tr>
               <td><input type="number" step="0.1" class="b1" id="b1a" size="4"></td>
@@ -785,7 +785,7 @@
         <p class="step-text"><b>AP2</b> → same across bank 2. Adjust from underneath, through the access hole.</p>
         <div class="tablewrap">
           <table>
-            <caption>Bank 2 — Channel 1 (−) half · AP2 / R100 · underside</caption>
+            <caption>Bank 2 — Channel 1 (−) half · AP2 (10K trim at Q22) · underside</caption>
             <thead><tr><th class="mono">R85</th><th class="mono">R57</th><th class="mono">R96</th><th class="mono">R58</th><th class="mono">R143</th><th class="mono">R104</th><th class="mono">R86</th><th class="mono">R89</th><th class="mono">R106</th><th class="mono">R141</th></tr></thead>
             <tbody><tr>
               <td><input type="number" step="0.1" class="b2" id="b2a" size="4"></td>
@@ -900,7 +900,8 @@
           <dt>R134</dt><dd>120 Ω 10 W (−46 V, reads ~118 Ω — normal)</dd>
           <dt>F1</dt><dd>1/8 A SB 250 V 5×20</dd>
           <dt>Filter</dt><dd>6 × 5600 µF 80 V</dd>
-          <dt>B+ res.</dt><dd>3 × 47 µF 450 V</dd>
+          <dt>B+ res.</dt><dd>2 × 47 µF 450 V (C14, C15)</dd>
+          <dt>AP1 / AP2</dt><dd>10 K trim at Q2 / Q22 (not R26 / R100)</dd>
         </dl>
       </div>
       <div class="refcard">
