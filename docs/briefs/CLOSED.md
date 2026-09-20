@@ -17,6 +17,7 @@ binds the code or how we work. A record, never a task list.
 - **Daily Log drives Weekly Log:** write under the top-level job id; D Log always wins; the app never books a day; no invoice prompt from the D Log.
 - **Auto rows:** removing one stores a `hidden` row, never a delete. Nothing in the D Log clears `hidden`.
 - **Not a bug:** a removed job can be put back by re-marking the Weekly Log.
+- **Job cards get audited against the print, not remembered:** the SVT-6 PRO card carried six wrong facts until the schematic was read. Worst was naming R26/R100 as the bias trimmers — AP1/AP2 are 10K pots at Q2/Q22. Check part numbers on the drawing before a card tells a tech to turn something.
 - **Week page:** Trevor picks jobs, the app never schedules. Week marks live in their own table. The calendar 30-second poll is parked, not deleted.
 - **Parts arrived:** the banner stays until ✕ and never re-raises a dismissed job.
 - **WP disagreement:** the app reports it and never clears the tag — the import can't touch hand-kept columns, on purpose.
