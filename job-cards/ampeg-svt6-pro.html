@@ -526,7 +526,8 @@
     <div class="step" data-step>
       <input type="checkbox" id="c10"><span class="step-n">10</span>
       <div class="step-body">
-        <p class="step-text">Feed <b>+60&nbsp;V</b> to the relay supply.</p>
+        <p class="step-text">Feed <b>+60&nbsp;V</b> to the <code>+60V</code> net — <b>pin 2 of the K1 and K2 coils</b>, or across <b>C26</b> (10&nbsp;µF 100&nbsp;V). This is the relay coil supply.</p>
+        <p class="why"><b>This is not the same 60&nbsp;V as step 11, and you need both.</b> The <code>+60V</code> net is its own rectified supply — LINE1 and LINE2 through D22&nbsp;/&nbsp;D26, filtered by C26 — and it only powers the two coils. Step 11's 60&nbsp;V goes somewhere else entirely (+65&nbsp;V rail or C11) to release the under-voltage lockout through D11. Coils powered but UVLO not satisfied, or the other way round, and the relays stay out either way.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
