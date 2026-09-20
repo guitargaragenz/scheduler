@@ -1,0 +1,158 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVT-6 PRO #1520 — Repair Log</title>
+<style>
+:root{
+  --paper:#EDF0F4;--surface:#F8FAFC;--surface-2:#E4E9F0;
+  --ink:#111820;--ink-2:#3D4A5A;--ink-3:#6B7A8D;
+  --line:#C7D0DB;--line-soft:#DCE3EB;
+  --accent:#1D5B8C;--accent-soft:#DBE9F5;
+  --hazard:#AE362A;--hazard-soft:#F7E3E0;
+  --grid:rgba(29,91,140,.055);
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0C1218;--surface:#131B23;--surface-2:#1B252F;
+  --ink:#DCE4EC;--ink-2:#A1B0BF;--ink-3:#71808E;
+  --line:#293641;--line-soft:#1E2A34;
+  --accent:#6FB0DE;--accent-soft:#152F3E;
+  --hazard:#E27C6D;--hazard-soft:#391E1A;
+  --grid:rgba(111,176,222,.06);
+}}
+:root[data-theme="dark"]{
+  --paper:#0C1218;--surface:#131B23;--surface-2:#1B252F;
+  --ink:#DCE4EC;--ink-2:#A1B0BF;--ink-3:#71808E;
+  --line:#293641;--line-soft:#1E2A34;
+  --accent:#6FB0DE;--accent-soft:#152F3E;
+  --hazard:#E27C6D;--hazard-soft:#391E1A;
+  --grid:rgba(111,176,222,.06);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/100% 28px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/28px 100%,
+    var(--paper);
+  color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:52rem;margin:0 auto;padding:1.5rem 1rem 3rem}
+.masthead{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);padding:1.5rem}
+.eyebrow{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 .5rem}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);line-height:1.1;margin:0;letter-spacing:-.02em}
+.idblock{font-family:var(--mono);font-size:.75rem;color:var(--ink-2);line-height:1.7;margin-top:1rem}
+.idblock b{color:var(--ink);font-weight:600}
+.intro{color:var(--ink-2);font-size:.92rem;margin:1.25rem 0 0}
+h2{font-size:1.05rem;margin:2.25rem 0 .75rem;padding-bottom:.4rem;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+.entry{background:var(--surface);border:1px solid var(--line-soft);border-left:3px solid var(--accent);padding:1rem 1.15rem;margin:0 0 1rem}
+.entry p{margin:0 0 .6rem}.entry p:last-child{margin-bottom:0}
+ul{margin:.4rem 0 .8rem;padding-left:1.15rem}
+li{margin:0 0 .45rem}
+b{font-weight:650}
+.hazard{background:var(--hazard-soft);border-left-color:var(--hazard)}
+.hazard b{color:var(--hazard)}
+table{width:100%;border-collapse:collapse;margin:.75rem 0 1rem;font-size:.9rem}
+th,td{border:1px solid var(--line);padding:.45rem .6rem;text-align:left}
+th{background:var(--surface-2);font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+td{background:var(--surface)}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.88em}
+.foot{margin-top:2.5rem;font-size:.8rem;color:var(--ink-3);font-family:var(--mono)}
+</style></head><body>
+<div class="wrap">
+
+<div class="masthead">
+  <p class="eyebrow">Repair log · live</p>
+  <h1>Ampeg SVT-6 PRO — job #1520</h1>
+  <div class="idblock">
+    Customer <b>Pete Johanson</b><br>
+    Assembly <b>07-699-01</b> · Schematic <b>07S699 rev A</b><br>
+    Card <a href="../ampeg-svt6-pro.html">ampeg-svt6-pro.html</a>
+  </div>
+  <p class="intro">What actually happened on the bench, in order. The card says what to do; this says what was done and what it read. <b>Newest entry at the bottom.</b></p>
+</div>
+
+<h2>Done so far</h2>
+<div class="entry">
+<ul>
+<li><b>Out-of-spec caps and resistors replaced.</b> (Values and positions not recorded at the time — add them here if they're still known.)</li>
+<li><b>Two 16 V zeners replaced — D20 / D23</b> (1N5353B). Both mounted standing off the PCB. No sleeving fitted; not needed, nothing close enough to touch the legs.</li>
+<li><b>C14 fitted</b> (47 µF 450 V, B+ reservoir). It was missing when the amp came in.</li>
+<li><b>4 A inline fuse at J31</b> in place for bench work.</li>
+<li><b>Floating BLK/WHT transformer tap</b> insulated.</li>
+<li><b>Bench supply chain: isolation transformer → variac → amp.</b> Confirmed by Trevor, and what card step 14 requires. <b>Iso is 2300 VA — ample</b> for a 1000 W amp; it won't limit. <b>Variac is a Voltac SB-10 — 2 kVA, 230 V in, 0–260 V out, 10 A max.</b> Tightest link in the chain, but ~2.3 kW of headroom against an amp that idles at well under 1 A of mains. <b>Nothing in the bench chain will limit this amp.</b> The 0–260 V range also gives good resolution through the 150–180 V relay window.</li>
+<li><b>Four 220 Ω 10 W feed resistors never lifted</b> — R21 / R63 and R51 / R64 all still in place, so card step 13 has nothing to refit.</li>
+</ul>
+</div>
+
+<h2>2026-09-20 — light bulb limiter attempt, aborted</h2>
+<div class="entry">
+<p><b>Tried to power up on a light bulb limiter. Stopped: bulb stayed at full brightness and the rails only came up to about half.</b></p>
+<p><b>Not a fault — the limiter is too small.</b> A 200 W bulb passes 0.87 A flat out at 230 V, against 33,600 µF of filter caps and a 1000 W transformer. From the card's own dim-bulb table, at 0.5 A drawn the amp only sees 132 V. That is the half rails, exactly.</p>
+<p>Correcting the first read of it: the relays not pulling in doesn't make the bulb brighter — relays out means <i>less</i> load, not more. It's the other way round. The bulb is too small, so the rails sag, and <b>below about 120 V the relays can never release</b> — the +65 V rail scales with the mains and D11 is a 30 V zener that has to be passed first. Result is a locked stalemate that reads like a dead amp.</p>
+<p><b>Decision: use the variac, not the bulb.</b> This amp is a variac job.</p>
+</div>
+
+<h2>Decisions taken</h2>
+<div class="entry">
+<ul>
+<li><b>Card steps 9–12 skipped</b> (bench-supply injection to prove the K1 / K2 relay chain). The variac ramp exercises the same chain in place, with a current limit and abort criteria. Accepted trade: if the relays don't click at 150–180 V, come back and do 9–12 to find out why.</li>
+</ul>
+</div>
+
+<h2>2026-09-20 — trimmer direction traced off the print</h2>
+<div class="entry">
+<p><b>Anticlockwise is minimum bias on both AP1 and AP2.</b> Traced at high magnification; both pots are wired identically.</p>
+<ul>
+<li>The <b>CW-marked leg goes to the bias transistor's base</b> (Q2 for AP1, Q22 for AP2), with the <b>22 K collector-to-base</b> above it.</li>
+<li>The <b>wiper is strapped back to the other end leg</b>, which goes to common — and Trevor confirmed from the board that the <b>emitter also goes to common</b>. That last fact is what closed it.</li>
+<li>So the pot sits <b>base-to-emitter</b> and the working resistance is <b>CW leg → wiper</b>. Classic Vbe multiplier: spread ≈ 0.65 × (1 + 22K / pot).</li>
+<li><b>Fully anticlockwise = full 10 K in circuit = smallest spread = minimum bias.</b></li>
+</ul>
+<p><b>Bench identification of the legs:</b> two of the three read a dead short — wiper and common end. The odd leg out is the CW one, on the transistor base.</p>
+<p><b>The travel is badly non-linear</b> — 10 K ≈ 2.1 V spread, 5 K ≈ 3.5 V, 3 K ≈ 5.4 V, 1 K ≈ 15 V. Dead for the first half, then up fast, vicious at the end. Working range is around the middle-to-upper third.</p>
+</div>
+
+<h2>2026-09-21 — pots wound to minimum, positions as found recorded</h2>
+<div class="entry">
+<p><b>Both are single-turn trims</b> (~270° of travel). Wound fully anticlockwise with the amp off. Travel from the as-found position to the anticlockwise end:</p>
+<table>
+<tr><th>Pot</th><th>Travel to CCW end</th><th>As found, roughly</th></tr>
+<tr><td>AP1</td><td>1/2 turn</td><td>~2/3 of the way toward the CW end</td></tr>
+<tr><td>AP2</td><td>1/4 turn</td><td>~1/3 of the way toward the CW end</td></tr>
+</table>
+<p><b>AP1's as-found position cross-checks the trace</b> — the maths put the working point around the middle-to-upper third of the travel, and that's where it was sitting.</p>
+<p><b>AP2 sat noticeably lower than AP1.</b> Could be genuine device spread between the two halves, could be a previous hand. Don't expect the two pots to end up matched.</p>
+</div>
+<div class="entry hazard">
+<p><b>Do not wind them back to the as-found positions.</b> Those belonged to the amp before this repair — different caps, different zeners, and C14 missing entirely, so B+ was wrong. Bias gets set by the meter, from minimum, every time. The numbers above are only useful for pacing the turns so you're not hunting blind.</p>
+</div>
+
+<h2>Open / next</h2>
+<div class="entry">
+<ul>
+<li><b>Next action:</b> both pots are now at minimum. Ramp per steps 14–17, and at the 120 V pause read bias millivolts <b>before touching either pot</b> — expect near zero — then take a quarter-turn feel reading.</li>
+<li>Bias never yet set. No bias readings taken.</li>
+<li>Breaker still the undersized 7 A — card step 22 wants the correct 8 A before handover.</li>
+<li>Card step 24: ask the customer why the previous tech fitted that fuse.</li>
+</ul>
+</div>
+
+<h2>Readings</h2>
+<div class="entry">
+<p>Fill in as they're taken. Bias spec is <b>20 ±5 mVdc, averaged across the ten resistors in a bank</b> — a single resistor is a proxy, not the spec.</p>
+<table>
+<tr><th>Date</th><th>Mains (variac)</th><th>+65 V rail</th><th>Bank 1 mV</th><th>Bank 2 mV</th><th>Mains current</th><th>Note</th></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+</div>
+
+<p class="foot">doc_status: live</p>
+</div>
+</body></html>
