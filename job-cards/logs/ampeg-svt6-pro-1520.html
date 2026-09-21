@@ -131,6 +131,13 @@ code{font-family:var(--mono);font-size:.88em}
 <p><b>Do not wind them back to the as-found positions.</b> Those belonged to the amp before this repair — different caps, different zeners, and C14 missing entirely, so B+ was wrong. Bias gets set by the meter, from minimum, every time. The numbers above are only useful for pacing the turns so you're not hunting blind.</p>
 </div>
 
+<h2>2026-09-21 &mdash; no breaker bypass wire; card step 6 corrected</h2>
+<div class="entry">
+<p><b>The mains wiring is entirely factory.</b> Original PCB track, original breaker, no breaker&rarr;switch bypass wire &mdash; confirmed by Trevor at the bench.</p>
+<p>Card step 6 had been written around a bypass wire that does not exist, and warned that C1/C2 (0.0033&nbsp;&mu;F suppression caps) might be left orphaned by it. <b>They are not &mdash; they sit as designed and the EMI suppression is intact.</b> Step 6 has been rewritten as a plain J25&rarr;J15 continuity check, which is still worth doing.</p>
+<p>Where the bypass came from is unknown; it was not something Trevor did. Nothing else on the card depends on it.</p>
+</div>
+
 <h2>Open / next</h2>
 <div class="entry">
 <ul>
