@@ -78,13 +78,20 @@ code{font-family:var(--mono);font-size:.88em}
 <h2>Done so far</h2>
 <div class="entry">
 <ul>
-<li><b>Out-of-spec caps and resistors replaced.</b> (Values and positions not recorded at the time — add them here if they're still known.)</li>
-<li><b>Two 16 V zeners replaced — D20 / D23</b> (1N5353B). Both mounted standing off the PCB. No sleeving fitted; not needed, nothing close enough to touch the legs.</li>
-<li><b>C14 fitted</b> (47 µF 450 V, B+ reservoir). It was missing when the amp came in.</li>
+<li><b>Parts replaced — confirmed list.</b>
+  <ul>
+  <li><b>R21, R51, R63, R64</b> — 220&nbsp;Ω 10&nbsp;W wirewound × 4. All four were out of spec. These are the &plusmn;16&nbsp;V rail feed resistors, 440&nbsp;Ω a side.</li>
+  <li><b>D20, D23</b> — 1N5353B 16&nbsp;V 5&nbsp;W zeners × 2.</li>
+  <li><b>C24, C25</b> — 47&nbsp;µF 35&nbsp;V × 2.</li>
+  <li><b>C14</b> — 47&nbsp;µF 450&nbsp;V, the first B+ reservoir. It was <b>missing entirely</b> when the amp came in, not just out of spec.</li>
+  <li><b>Full electrolytic recap</b> — power supply and preamp boards.</li>
+  </ul></li>
+<li><b>D20 / D23 mounting:</b> both standing off the PCB. <b>No sleeving fitted</b> — not needed, nothing close enough to touch the legs.</li>
 <li><b>4 A inline fuse at J31</b> in place for bench work.</li>
 <li><b>Floating BLK/WHT transformer tap</b> insulated.</li>
 <li><b>Bench supply chain: isolation transformer → variac → amp.</b> Confirmed by Trevor, and what card step 14 requires. <b>Iso is 2300 VA — ample</b> for a 1000 W amp; it won't limit. <b>Variac is a Voltac SB-10 — 2 kVA, 230 V in, 0–260 V out, 10 A max.</b> Tightest link in the chain, but ~2.3 kW of headroom against an amp that idles at well under 1 A of mains. <b>Nothing in the bench chain will limit this amp.</b> The 0–260 V range also gives good resolution through the 150–180 V relay window.</li>
-<li><b>Four 220 Ω 10 W feed resistors never lifted</b> — R21 / R63 and R51 / R64 all still in place, so card step 13 has nothing to refit.</li>
+<li><b>Card step 13 is already satisfied.</b> The four replacement 220&nbsp;Ω resistors went in <b>standing about 2&nbsp;mm off the board on a bead of silicone</b>. The card asks for 3–5&nbsp;mm, but the purpose is keeping the heat out of the laminate and 2&nbsp;mm on silicone does that. <b>Not worth lifting them again for the extra millimetre.</b> D20 / D23 are stood off as well. Nothing on the card now needs the board open.</li>
+<li><b>Note on the earlier entry:</b> an earlier version of this log said the four feed resistors were never lifted. That was wrong — all four were out of spec and were replaced.</li>
 </ul>
 </div>
 
