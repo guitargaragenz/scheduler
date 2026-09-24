@@ -39,10 +39,8 @@ non-linear: dead for the first half, then up fast, vicious at the end.
 
 ## Next steps
 
-1. **Confirm the eight non-polarised cap positions before applying power** — C9, C10, C36,
-   C38 (1 µF) and C50, C51, C54, C55 (10 µF 35 V). The full recap may have put polarised
-   electrolytics into them. C10 matters most; it sits across the bias spreader with no DC to
-   define a polarity.
+1. ~~Confirm the eight non-polarised cap positions~~ — **done 2026-09-24, all eight are
+   non-polarised.**
 2. **Reassemble** — transformer leads landed, board mounted.
 3. **Ramp per card steps 14–17.** Pause 30 s per step and log each reading into the log's
    Readings table.

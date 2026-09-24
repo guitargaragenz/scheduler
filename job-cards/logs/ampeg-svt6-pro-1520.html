@@ -160,6 +160,9 @@ code{font-family:var(--mono);font-size:.88em}
 <div class="entry hazard">
 <p><b>Open question before the ramp &mdash; the full recap versus card steps 0.1 and 0.2.</b> Eight positions on this board <b>must be non-polarised</b>: <b>C9, C10, C36, C38</b> (1&nbsp;&micro;F, film is fine) and <b>C50, C51, C54, C55</b> (10&nbsp;&micro;F 35&nbsp;V). If the recap put ordinary polarised electrolytics into any of them, they are being reverse-biased on half of every cycle. <b>C10 matters most</b> &mdash; it sits in series with R27 (2.2K) across the bias spreader, where there is no DC to define a polarity at all. Confirm what is actually fitted in those eight before ramping.</p>
 </div>
+<div class="entry">
+<p><b>Closed 2026-09-24:</b> all eight checked at the bench &mdash; <b>every one is non-polarised</b>. The recap got them right. Nothing to change.</p>
+</div>
 
 <h2>2026-09-24 &mdash; card tick-boxes do not persist to the file</h2>
 <div class="entry">
@@ -195,7 +198,7 @@ code{font-family:var(--mono);font-size:.88em}
 <h2>Open / next</h2>
 <div class="entry">
 <ul>
-<li><b>Next action:</b> confirm the eight non-polarised cap positions above, then <b>reassemble the amp</b> — transformer leads landed, board mounted — and ramp per steps 14–17. At the 120&nbsp;V pause read bias millivolts <b>before touching either pot</b> — expect near zero — then take a quarter-turn feel reading.</li>
+<li><b>Next action:</b> <b>reassemble the amp</b> — transformer leads landed, board mounted — and ramp per steps 14–17. At the 120&nbsp;V pause read bias millivolts <b>before touching either pot</b> — expect near zero — then take a quarter-turn feel reading.</li>
 <li><b>If the relays have not clicked by 200 V, stop there.</b> Don’t push on to 230. That is the point at which stage B (steps 8–12, bench supplies with the four feed resistors lifted) becomes worth the strip-down, and not before — stage B needs the amp open and the ramp needs it assembled, so each attempt costs a full reassembly.</li>
 <li>Bias never yet set. No bias readings taken.</li>
 <li>Breaker still the undersized 7 A — card step 22 wants the correct 8 A before handover.</li>
