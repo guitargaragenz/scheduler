@@ -91,33 +91,26 @@
 </header>
 
 <section class="hazard">
-  <h2><span class="n">1</span>Check first: which mains version is this amp?</h2>
-  <p>The transformer leads land on different tabs for each mains voltage. <b>Wrong version = wrong voltage on the transformer the moment it's powered.</b></p>
-  <p>Your amp will be one of the two export versions, <b>U</b> or <b>W</b>. They differ by one lead. To tell which:</p>
-  <ul>
-    <li>One primary lead is <b>not used</b> and sits cable-tied to the other primary wires. That tie stays on even with the leads unplugged.</li>
-    <li><b>BLK/WHT tied off → U version.</b> &nbsp; <b>BLACK tied off → W version.</b></li>
-    <li>Cross-check: the small in-line part (item 74) plugs onto whichever of those two <i>is</i> used.</li>
-  </ul>
-  <p><b>If nothing is tied off and both BLACK and BLK/WHT have tabs to go to, stop.</b> That's the US 120 V (D) or Japan 100 V (J) wiring. It must not go on NZ mains.</p>
+  <h2><span class="n">1</span>This amp is the U version</h2>
+  <p>Confirmed at the bench: the <b>Black/White</b> primary lead is the one tied off, so this is the <b>U</b> export version. <b>Only use the U tabs below.</b> Any other version's wiring puts the wrong voltage on the transformer.</p>
 </section>
 
 <section>
   <h2><span class="n">2</span>Transformer primary — the mains side</h2>
   <div class="scroll">
   <table>
-    <tr><th>Lead colour</th><th>U version</th><th>W version</th></tr>
-    <tr class="diff"><td><span class="sw" style="background:var(--w-blk)"></span>Black</td><td class="tab">J21 <span class="note">via item 74</span></td><td class="off">not used — tie off</td></tr>
-    <tr class="diff"><td><span class="sw stripe"></span>Black/White</td><td class="off">not used — tie off</td><td class="tab">J21 <span class="note">via item 74</span></td></tr>
-    <tr><td><span class="sw" style="background:var(--w-wht)"></span>White</td><td class="tab">J27</td><td class="tab">J27</td></tr>
-    <tr><td><span class="sw" style="background:var(--w-vio)"></span>Violet</td><td class="tab">J23</td><td class="tab">J23</td></tr>
-    <tr><td><span class="sw" style="background:var(--w-brn)"></span>Brown</td><td class="tab">J28</td><td class="tab">J28</td></tr>
-    <tr><td><span class="sw" style="background:var(--w-gry)"></span>Grey</td><td class="tab">J35</td><td class="tab">J35</td></tr>
-    <tr><td><span class="sw" style="background:var(--w-blue)"></span>Blue</td><td class="tab">J29</td><td class="tab">J29</td></tr>
+    <tr><th>Lead colour</th><th>Tab</th></tr>
+    <tr><td><span class="sw" style="background:var(--w-blk)"></span>Black</td><td class="tab">J21 <span class="note">via item 74</span></td></tr>
+    <tr><td><span class="sw" style="background:var(--w-wht)"></span>White</td><td class="tab">J27</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-vio)"></span>Violet</td><td class="tab">J23</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-brn)"></span>Brown</td><td class="tab">J28</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-gry)"></span>Grey</td><td class="tab">J35</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-blue)"></span>Blue</td><td class="tab">J29</td></tr>
+    <tr><td><span class="sw stripe"></span>Black/White</td><td class="off">not used — stays tied off</td></tr>
   </table>
   </div>
-  <p class="note"><b>Item 74</b> sits in line between J21 and the lead: its <b>female</b> end goes on the J21 tab, its <b>male</b> end takes the Black (U) or Black/White (W) lead. Place it so it isn't touching any wiring.</p>
-  <p class="note">Tabs <b>J20 and J22 stay empty</b> on both export versions. They're for the 120 V / 100 V wiring.</p>
+  <p class="note"><b>Item 74</b> sits in line between J21 and the lead: its <b>female</b> end goes on the J21 tab, its <b>male</b> end takes the Black lead. Place it so it isn't touching any wiring.</p>
+  <p class="note">Tabs <b>J20 and J22 stay empty</b>. They're only used on 120 V / 100 V amps.</p>
 </section>
 
 <section>
@@ -218,7 +211,7 @@
 <section>
   <h2><span class="n">7</span>Wire dressing — factory notes</h2>
   <ul>
-    <li>Tie the <b>unused primary lead</b> (from section 1) back to the other primary wires.</li>
+    <li>Keep the unused <b>Black/White</b> primary lead tied back to the other primary wires.</li>
     <li>Bundle <b>W5, W6, W4</b> with the <b>fan wires</b>. Tie about <b>65 mm</b> (2½ in) from the solder end.</li>
     <li>Bundle <b>W1–W6</b> together at <b>C21</b> and tie.</li>
     <li>Twist the <b>yellow and white</b> input wires (W8, W11) together.</li>
