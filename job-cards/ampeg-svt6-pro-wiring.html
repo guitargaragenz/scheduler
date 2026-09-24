@@ -1,0 +1,235 @@
+<title>SVT-6 PRO Wiring Map</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:#EDF0F4; --surface:#F8FAFC; --surface-2:#E4E9F0;
+    --ink:#111820; --ink-2:#3D4A5A; --ink-3:#6B7A8D;
+    --line:#C7D0DB; --line-soft:#DCE3EB;
+    --accent:#1D5B8C; --accent-soft:#DBE9F5;
+    --hazard:#AE362A; --hazard-soft:#F7E3E0;
+    --pass:#2C6841; --pass-soft:#DDEDE3;
+    --warn:#7F5A0E; --warn-soft:#F6ECD4;
+    --grid:rgba(29,91,140,.055);
+    --w-red:#C0392B; --w-blue:#2563A8; --w-blk:#1A1A1A; --w-yel:#D4A20A; --w-wht:#FFFFFF;
+    --w-grn:#2E8B45; --w-org:#E07A1F; --w-vio:#7B4BB5; --w-brn:#7A4A25; --w-gry:#8A8F96;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:#0C1218; --surface:#131B23; --surface-2:#1B252F;
+      --ink:#DCE4EC; --ink-2:#A1B0BF; --ink-3:#71808E;
+      --line:#293641; --line-soft:#1E2A34;
+      --accent:#6FB0DE; --accent-soft:#152F3E;
+      --hazard:#E27C6D; --hazard-soft:#391E1A;
+      --pass:#7DBC94; --pass-soft:#152E1D;
+      --warn:#D8AD5D; --warn-soft:#312610;
+      --grid:rgba(111,176,222,.06);
+      --w-blk:#000000;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:#0C1218; --surface:#131B23; --surface-2:#1B252F;
+    --ink:#DCE4EC; --ink-2:#A1B0BF; --ink-3:#71808E;
+    --line:#293641; --line-soft:#1E2A34;
+    --accent:#6FB0DE; --accent-soft:#152F3E;
+    --hazard:#E27C6D; --hazard-soft:#391E1A;
+    --pass:#7DBC94; --pass-soft:#152E1D;
+    --warn:#D8AD5D; --warn-soft:#312610;
+    --grid:rgba(111,176,222,.06);
+    --w-blk:#000000;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; color:var(--ink); font:16px/1.55 var(--sans);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 100%,
+      var(--paper);
+  }
+  .wrap { max-width:56rem; margin:0 auto; padding:1.5rem 1rem 3rem; display:flex; flex-direction:column; gap:1.25rem; }
+  header { background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--accent); padding:1.25rem; }
+  header h1 { margin:0; font-size:1.6rem; text-wrap:balance; }
+  header p { margin:.35rem 0 0; color:var(--ink-2); }
+  .id { font-family:var(--mono); font-size:.8rem; color:var(--ink-3); letter-spacing:.02em; }
+  section { background:var(--surface); border:1px solid var(--line); padding:1.1rem 1.25rem; }
+  h2 { margin:0 0 .6rem; font-size:1.15rem; display:flex; gap:.6rem; align-items:baseline; }
+  h2 .n { font-family:var(--mono); color:var(--accent); font-size:.9rem; }
+  p { margin:.4rem 0; max-width:65ch; }
+  .hazard { border-color:var(--hazard); background:var(--hazard-soft); }
+  .hazard h2 { color:var(--hazard); }
+  .note { font-size:.9rem; color:var(--ink-2); }
+  .flag { border-left:3px solid var(--warn); background:var(--warn-soft); padding:.5rem .75rem; margin:.6rem 0; font-size:.92rem; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:.95rem; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:.45rem .6rem; border-bottom:1px solid var(--line-soft); vertical-align:middle; }
+  th { font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-3); font-weight:600; }
+  td.tab { font-family:var(--mono); font-weight:700; font-size:1.05rem; white-space:nowrap; }
+  td.off { color:var(--hazard); font-weight:600; font-size:.9rem; }
+  tr.diff td { background:var(--warn-soft); }
+  .sw { display:inline-block; width:1.6rem; height:.7rem; border-radius:2px; border:1px solid var(--line); vertical-align:middle; margin-right:.45rem; }
+  .sw.stripe { background:repeating-linear-gradient(90deg, var(--w-blk) 0 5px, var(--w-wht) 5px 10px) !important; }
+  .chain { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem; margin:.6rem 0; }
+  .chain span { font-family:var(--mono); font-size:.9rem; padding:.2rem .5rem; border:1px solid var(--line); background:var(--surface-2); }
+  .chain b { color:var(--ink-3); font-weight:400; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr)); gap:1rem; }
+  .cols h3 { margin:.2rem 0 .3rem; font-size:.95rem; }
+  ul { margin:.4rem 0; padding-left:1.2rem; }
+  li { margin:.25rem 0; }
+  svg text { fill:var(--ink); font-family:var(--mono); }
+  footer { font-size:.8rem; color:var(--ink-3); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="id">#1520 · Pete Johanson · Assy 07-699-01 · 230 V / 50 Hz</div>
+  <h1>SVT-6 PRO — wiring map for reassembly</h1>
+  <p>Every lead and plug on the power amp board, in the order you'll land them. Taken from the factory final-assembly drawing (00-541-XX rev 5, sheet 3), the power amp pictorial (07-699 rev B) and schematic 07S699.</p>
+</header>
+
+<section class="hazard">
+  <h2><span class="n">1</span>Check first: which mains version is this amp?</h2>
+  <p>The transformer leads land on different tabs for each mains voltage. <b>Wrong version = wrong voltage on the transformer the moment it's powered.</b></p>
+  <p>Your amp will be one of the two export versions, <b>U</b> or <b>W</b>. They differ by one lead. To tell which:</p>
+  <ul>
+    <li>One primary lead is <b>not used</b> and sits cable-tied to the other primary wires. That tie stays on even with the leads unplugged.</li>
+    <li><b>BLK/WHT tied off → U version.</b> &nbsp; <b>BLACK tied off → W version.</b></li>
+    <li>Cross-check: the small in-line part (item 74) plugs onto whichever of those two <i>is</i> used.</li>
+  </ul>
+  <p><b>If nothing is tied off and both BLACK and BLK/WHT have tabs to go to, stop.</b> That's the US 120 V (D) or Japan 100 V (J) wiring. It must not go on NZ mains.</p>
+</section>
+
+<section>
+  <h2><span class="n">2</span>Transformer primary — the mains side</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Lead colour</th><th>U version</th><th>W version</th></tr>
+    <tr class="diff"><td><span class="sw" style="background:var(--w-blk)"></span>Black</td><td class="tab">J21 <span class="note">via item 74</span></td><td class="off">not used — tie off</td></tr>
+    <tr class="diff"><td><span class="sw stripe"></span>Black/White</td><td class="off">not used — tie off</td><td class="tab">J21 <span class="note">via item 74</span></td></tr>
+    <tr><td><span class="sw" style="background:var(--w-wht)"></span>White</td><td class="tab">J27</td><td class="tab">J27</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-vio)"></span>Violet</td><td class="tab">J23</td><td class="tab">J23</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-brn)"></span>Brown</td><td class="tab">J28</td><td class="tab">J28</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-gry)"></span>Grey</td><td class="tab">J35</td><td class="tab">J35</td></tr>
+    <tr><td><span class="sw" style="background:var(--w-blue)"></span>Blue</td><td class="tab">J29</td><td class="tab">J29</td></tr>
+  </table>
+  </div>
+  <p class="note"><b>Item 74</b> sits in line between J21 and the lead: its <b>female</b> end goes on the J21 tab, its <b>male</b> end takes the Black (U) or Black/White (W) lead. Place it so it isn't touching any wiring.</p>
+  <p class="note">Tabs <b>J20 and J22 stay empty</b> on both export versions. They're for the 120 V / 100 V wiring.</p>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Transformer secondary — one plug</h2>
+  <p>All six secondary leads go into the <b>6-pin header J34</b>. It's a single keyed plug, so it only goes in one way. Pin order from the schematic, if you need to check a lead:</p>
+  <div class="scroll">
+  <table>
+    <tr><th>J34 pin</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+    <tr><td>Lead</td>
+      <td><span class="sw" style="background:var(--w-red)"></span>Red</td>
+      <td><span class="sw" style="background:var(--w-grn)"></span>Green</td>
+      <td><span class="sw" style="background:var(--w-org)"></span>Orange</td>
+      <td><span class="sw" style="background:var(--w-grn)"></span>Green</td>
+      <td><span class="sw" style="background:var(--w-org)"></span>Orange</td>
+      <td><span class="sw" style="background:var(--w-red)"></span>Red</td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>Mains in: inlet → breaker → switch</h2>
+  <p><b>Live side</b></p>
+  <div class="chain"><span>IEC inlet (J8) LINE</span><b>→</b><span>J26</span><b>→</b><span>breaker</span><b>→</b><span>J25</span><b>→</b><span>J15</span><b>→</b><span>switch</span><b>→</b><span>J19</span><b>→</b><span>transformer</span></div>
+  <p><b>Neutral side</b></p>
+  <div class="chain"><span>IEC inlet NEUT</span><b>→</b><span>J17 / J18</span><b>→</b><span>switch</span><b>→</b><span>J24</span><b>→</b><span>transformer</span></div>
+  <p><b>Earth:</b> inlet AC ground → <b>J14 chassis ground</b>. Make sure it's tight before any power goes on.</p>
+
+  <div class="cols">
+    <div>
+      <h3>Power switch, seen from the back</h3>
+      <svg viewBox="0 0 300 190" width="100%" style="max-width:300px" role="img" aria-label="Power switch rear view: left column J18 top, J24 bottom; right column J15 top, J19 bottom">
+        <rect x="110" y="20" width="80" height="150" rx="3" fill="var(--surface-2)" stroke="var(--ink-2)" stroke-width="2"/>
+        <g fill="var(--surface)" stroke="var(--ink-3)">
+          <rect x="118" y="28" width="28" height="38"/><rect x="154" y="28" width="28" height="38"/>
+          <rect x="118" y="76" width="28" height="38"/><rect x="154" y="76" width="28" height="38"/>
+          <rect x="118" y="124" width="28" height="38"/><rect x="154" y="124" width="28" height="38"/>
+        </g>
+        <g fill="var(--accent)"><circle cx="132" cy="95" r="5"/><circle cx="168" cy="95" r="5"/><circle cx="132" cy="143" r="5"/><circle cx="168" cy="143" r="5"/></g>
+        <g stroke="var(--accent)" stroke-width="2" fill="none">
+          <path d="M132 95 H60"/><path d="M132 143 H60"/><path d="M168 95 H240"/><path d="M168 143 H240"/>
+        </g>
+        <text x="10" y="100" font-size="15">J18</text><text x="10" y="148" font-size="15">J24</text>
+        <text x="248" y="100" font-size="15">J15</text><text x="248" y="148" font-size="15">J19</text>
+        <text x="150" y="186" font-size="11" text-anchor="middle" style="fill:var(--ink-3)">top row unused</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Breaker</h3>
+      <p>Two leads: one to <b>J26</b>, one to <b>J25</b>.</p>
+      <p class="note">Still the 7 A breaker. Swap it for the correct <b>8 A</b> before handover (card step 22).</p>
+      <h3>Convenience outlet</h3>
+      <p class="note">US models only, so there's none on this export amp. Its tabs (J16, and J17 or J18) stay empty.</p>
+    </div>
+  </div>
+  <div class="flag"><b>The drawings disagree on the neutral tab.</b> The schematic says the neutral goes to the switch from <b>J17</b>; the assembly drawing says <b>J18</b>. Put it back on whichever tab it came off. The board's printed labels settle it. Without the outlet, it's the only lead going to that pair.</div>
+</section>
+
+<section>
+  <h2><span class="n">5</span>Output-stage Fastons (W wires)</h2>
+  <p><b>Red is always +65 V and blue is always −65 V.</b> <b>Swapping a red and a blue puts that rail on backwards.</b></p>
+  <div class="scroll">
+  <table>
+    <tr><th>Wire</th><th>Colour</th><th>Tab</th><th>What it carries</th></tr>
+    <tr><td colspan="4" class="note"><b>Channel 1 (+) half</b></td></tr>
+    <tr><td>W1</td><td><span class="sw" style="background:var(--w-red)"></span>Red</td><td class="tab">J30</td><td>CH1(+) output</td></tr>
+    <tr><td>W2</td><td><span class="sw" style="background:var(--w-red)"></span>Red</td><td class="tab">J37</td><td>+65 V rail</td></tr>
+    <tr><td>W3</td><td><span class="sw" style="background:var(--w-blue)"></span>Blue</td><td class="tab">J40</td><td>−65 V rail</td></tr>
+    <tr><td colspan="4" class="note"><b>Channel 1 (−) half</b></td></tr>
+    <tr><td>W5</td><td><span class="sw" style="background:var(--w-blk)"></span>Black</td><td class="tab">J31</td><td>CH1(−) output — <b>the 4 A in-line fuse is on this one</b></td></tr>
+    <tr><td>W4</td><td><span class="sw" style="background:var(--w-red)"></span>Red</td><td class="tab">J38</td><td>+65 V rail</td></tr>
+    <tr><td>W6</td><td><span class="sw" style="background:var(--w-blue)"></span>Blue</td><td class="tab">J41</td><td>−65 V rail</td></tr>
+    <tr><td>W11</td><td><span class="sw" style="background:var(--w-wht)"></span>White</td><td class="tab">J47</td><td>CH1(−) input (+)</td></tr>
+    <tr><td>W8</td><td><span class="sw" style="background:var(--w-yel)"></span>Yellow</td><td class="tab">J48</td><td>CH1(−) input (−)</td></tr>
+  </table>
+  </div>
+  <p class="note">W7, W9 and W10 don't exist on this build. Wire colours are from the schematic; tab numbers are from the pictorial, and both agree.</p>
+  <p class="note">The J31 fuse is still the blown original. That's fine for the ramp because there's no speaker load. <b>Fit a fresh 4 A before any cab goes on.</b></p>
+</section>
+
+<section>
+  <h2><span class="n">6</span>Plugs and speaker outputs</h2>
+  <div class="scroll">
+  <table>
+    <tr><th>Connector</th><th>Goes to</th></tr>
+    <tr><td class="tab">J34</td><td>Transformer secondary, 6-pin (section 3)</td></tr>
+    <tr><td class="tab">J43</td><td>Heatsink fan</td></tr>
+    <tr><td class="tab">J10</td><td>Heatsink fan (the second one)</td></tr>
+    <tr><td class="tab">J44 → J45</td><td>Temperature sensor lead, main board to the power breakoff board</td></tr>
+    <tr><td class="tab">J36</td><td>4-pin: +300 V, −65 V and dirty ground to the preamp</td></tr>
+    <tr><td class="tab">J13</td><td>11-pin preamp header: ±16 V, preamp out, effects send/return, tube plate voltage, mute</td></tr>
+    <tr><td class="tab">J9</td><td>Ribbon (item 54)</td></tr>
+    <tr><td class="tab">J32</td><td>Speakon <b>1+</b></td></tr>
+    <tr><td class="tab">J33</td><td>Speakon <b>1−</b></td></tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">7</span>Wire dressing — factory notes</h2>
+  <ul>
+    <li>Tie the <b>unused primary lead</b> (from section 1) back to the other primary wires.</li>
+    <li>Bundle <b>W5, W6, W4</b> with the <b>fan wires</b>. Tie about <b>65 mm</b> (2½ in) from the solder end.</li>
+    <li>Bundle <b>W1–W6</b> together at <b>C21</b> and tie.</li>
+    <li>Twist the <b>yellow and white</b> input wires (W8, W11) together.</li>
+    <li>Twist the J9 ribbon twice over the lead beside it (item 55), which keeps the ribbon up off the board.</li>
+    <li>Fan wires twisted, leaving by the top notch of the fan brace.</li>
+    <li>Transformer turned for least hum. Put it back the way it came out.</li>
+  </ul>
+</section>
+
+<footer>
+  Sources, all in this folder: <i>Final Assembly Drawings and Parts List Bass Amplifier (00-541-XX_5).pdf</i> sheet 3 · <i>Power Amplifier Pictorial and Parts List (699PWA_B).pdf</i> · <i>Ampeg SVT PRO S699 Power Amp Schematic.pdf</i>.
+</footer>
+
+</div>
