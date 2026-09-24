@@ -453,7 +453,7 @@
     <div class="step" data-step>
       <input type="checkbox" id="c3"><span class="step-n">03</span>
       <div class="step-body">
-        <p class="step-text"><b>Leave the 4&nbsp;A inline fuse at <code>J31</code> in place for all bench work.</b> Remove it and restore the stock connection only at final assembly, before handover.</p>
+        <p class="step-text"><b>The 4&nbsp;A inline fuse at <code>J31</code> is blown — it is the one the amp arrived with.</b> Fine to ramp with it blown (no load, no output current), but <b>fit a fresh 4&nbsp;A before any speaker goes on</b>. Remove it and restore the stock connection at final assembly, before handover.</p>
         <p class="why">J31 is the <b>CH1(−) output leg</b> — the fuse is in the <b>speaker line</b>, so it protects the cab, not the MOSFETs. It didn't save them; the 220&nbsp;Ω feed resistors and the sagging rails did. At rated power that leg carries <b>12.2&nbsp;A</b> into 4&nbsp;Ω (600&nbsp;W) and <b>22.4&nbsp;A</b> into 2&nbsp;Ω (1000&nbsp;W), so 4&nbsp;A opens at around 64&nbsp;W — useless in service, but a good safety net on the bench.<br><br>
         <b>At handover: pull it out (factory fitted none), or go up to 15&nbsp;A slow-blow if you want one there. Anything smaller nuisance-blows on a loud note.</b> If you want actual device protection, that belongs in the ±65&nbsp;V rails — 10&nbsp;A slow-blow per leg — not the output. <b>Even then a fuse only limits collateral damage; silicon fails faster than any fuse can open.</b></p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
@@ -874,8 +874,8 @@
     <div class="step" data-step>
       <input type="checkbox" id="c24"><span class="step-n">24</span>
       <div class="step-body">
-        <p class="step-text">Ask the customer <b>why the previous tech fitted that fuse</b>.</p>
-        <p class="why">Someone added it deliberately, which usually means they were chasing something. Earlier repair history may point at an intermittent that predates all of this.</p>
+        <p class="step-text"><b>Closed — nothing to ask.</b> This step wanted the fuse’s history from the customer.</p>
+        <p class="why"><b>Pete bought the amp second-hand in this condition</b> and has no history to give. The best account is the plain one: the previous tech fitted a fuse roughly 4&times; undersized, it blew on a loud night with nothing failing downstream, and the amp went back still dead. <b>No hidden intermittent needs inventing to explain it.</b></p>
         <textarea data-note placeholder="Customer response…"></textarea>
       </div>
     </div>

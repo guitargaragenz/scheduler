@@ -95,12 +95,13 @@ code{font-family:var(--mono);font-size:.88em}
 </ul>
 </div>
 
-<h2>2026-09-20 — light bulb limiter attempt, aborted</h2>
+<h2>Early August 2026 — light bulb limiter attempt, aborted</h2>
 <div class="entry">
 <p><b>Tried to power up on a light bulb limiter. Stopped: bulb stayed at full brightness and the rails only came up to about half.</b></p>
 <p><b>Not a fault — the limiter is too small.</b> A 200 W bulb passes 0.87 A flat out at 230 V, against 33,600 µF of filter caps and a 1000 W transformer. From the card's own dim-bulb table, at 0.5 A drawn the amp only sees 132 V. That is the half rails, exactly.</p>
 <p>Correcting the first read of it: the relays not pulling in doesn't make the bulb brighter — relays out means <i>less</i> load, not more. It's the other way round. The bulb is too small, so the rails sag, and <b>below about 120 V the relays can never release</b> — the +65 V rail scales with the mains and D11 is a 30 V zener that has to be passed first. Result is a locked stalemate that reads like a dead amp.</p>
 <p><b>Decision: use the variac, not the bulb.</b> This amp is a variac job.</p>
+<p><b>Dating note:</b> this happened at the bench in <b>early August 2026</b>, during the original diagnosis, and was only written up on 20&nbsp;Sep. The 550&nbsp;mA / half-rails figure in the card’s dim-bulb reference table is from this same event. <b>It predates the repairs</b> — the zeners, the four feed resistors, C14 and the recap all came after it.</p>
 </div>
 
 <h2>Decisions taken</h2>
@@ -110,7 +111,7 @@ code{font-family:var(--mono);font-size:.88em}
 </ul>
 </div>
 
-<h2>2026-09-20 — trimmer direction traced off the print</h2>
+<h2>2026-09-20 — trimmer direction traced off the print <span style="font-weight:400;color:var(--ink-3)">(desk work, amp not powered)</span></h2>
 <div class="entry">
 <p><b>Anticlockwise is minimum bias on both AP1 and AP2.</b> Traced at high magnification; both pots are wired identically.</p>
 <ul>
@@ -123,7 +124,7 @@ code{font-family:var(--mono);font-size:.88em}
 <p><b>The travel is badly non-linear</b> — 10 K ≈ 2.1 V spread, 5 K ≈ 3.5 V, 3 K ≈ 5.4 V, 1 K ≈ 15 V. Dead for the first half, then up fast, vicious at the end. Working range is around the middle-to-upper third.</p>
 </div>
 
-<h2>2026-09-21 — pots wound to minimum, positions as found recorded</h2>
+<h2>2026-09-21 — pots wound to minimum, positions as found recorded <span style="font-weight:400;color:var(--ink-3)">(bench, amp dead — no power applied)</span></h2>
 <div class="entry">
 <p><b>Both are single-turn trims</b> (~270° of travel). Wound fully anticlockwise with the amp off. Travel from the as-found position to the anticlockwise end:</p>
 <table>
@@ -138,14 +139,14 @@ code{font-family:var(--mono);font-size:.88em}
 <p><b>Do not wind them back to the as-found positions.</b> Those belonged to the amp before this repair — different caps, different zeners, and C14 missing entirely, so B+ was wrong. Bias gets set by the meter, from minimum, every time. The numbers above are only useful for pacing the turns so you're not hunting blind.</p>
 </div>
 
-<h2>2026-09-21 &mdash; no breaker bypass wire; card step 6 corrected</h2>
+<h2>2026-09-24 &mdash; no breaker bypass wire; card step 6 corrected</h2>
 <div class="entry">
 <p><b>The mains wiring is entirely factory.</b> Original PCB track, original breaker, no breaker&rarr;switch bypass wire &mdash; confirmed by Trevor at the bench.</p>
 <p>Card step 6 had been written around a bypass wire that does not exist, and warned that C1/C2 (0.0033&nbsp;&mu;F suppression caps) might be left orphaned by it. <b>They are not &mdash; they sit as designed and the EMI suppression is intact.</b> Step 6 has been rewritten as a plain J25&rarr;J15 continuity check, which is still worth doing.</p>
 <p>Where the bypass came from is unknown; it was not something Trevor did. Nothing else on the card depends on it.</p>
 </div>
 
-<h2>2026-09-21 &mdash; board-out checks cleared, board closed up</h2>
+<h2>2026-09-24 &mdash; board-out checks cleared, board closed up</h2>
 <div class="entry">
 <p><b>Card steps 0.4 and 0.5 are both done and passed.</b></p>
 <ul>
@@ -160,10 +161,35 @@ code{font-family:var(--mono);font-size:.88em}
 <p><b>Open question before the ramp &mdash; the full recap versus card steps 0.1 and 0.2.</b> Eight positions on this board <b>must be non-polarised</b>: <b>C9, C10, C36, C38</b> (1&nbsp;&micro;F, film is fine) and <b>C50, C51, C54, C55</b> (10&nbsp;&micro;F 35&nbsp;V). If the recap put ordinary polarised electrolytics into any of them, they are being reverse-biased on half of every cycle. <b>C10 matters most</b> &mdash; it sits in series with R27 (2.2K) across the bias spreader, where there is no DC to define a polarity at all. Confirm what is actually fitted in those eight before ramping.</p>
 </div>
 
-<h2>2026-09-21 &mdash; card tick-boxes do not persist to the file</h2>
+<h2>2026-09-24 &mdash; card tick-boxes do not persist to the file</h2>
 <div class="entry">
 <p>The job card's checkboxes save to the browser's own local storage, <b>not into the HTML file</b>. Ticks made at the bench are invisible to anyone reading the file and are not captured by git &mdash; they live only on the machine and browser they were made on.</p>
 <p><b>So this log is the file of record for what has been done, not the card's ticks.</b> Use the card's <b>Export notes</b> button to lift the state out when it needs recording here.</p>
+</div>
+
+<h2>2026-09-24 &mdash; the amp has never been powered since the repairs</h2>
+<div class="entry hazard">
+<p><b>No live testing has been done on this amp since any component was replaced.</b> Everything logged between then and now is desk work or dead-amp bench work: the trimmer trace off the print, winding both pots to minimum, and the 0.4 / 0.5 checks. <b>No power has been applied.</b></p>
+<p><b>There is no test log to look back on, because no test has been run.</b> No ramp, no current figures, no rail readings. The only power-up this amp has ever had on this bench is the aborted limiter attempt in early August, <b>before</b> the zeners, the four feed resistors, C14 and the recap went in. <b>The variac ramp will be the first time the repaired amp sees mains.</b></p>
+</div>
+
+<h2>2026-09-24 &mdash; the J31 fuse, and why step 24 is closed</h2>
+<div class="entry">
+<p><b>The 4&nbsp;A fuse at J31 is blown, and it is the original one.</b> Trevor couldn’t recall whether he replaced it during the first round of testing. He didn’t — the reasoning is solid: <b>J31 sits in the speaker output leg</b>, and at the limiter attempt the amp only ever saw about 132&nbsp;V with the relays never pulling in. <b>No output current flowed at all, so nothing could have blown a fuse in that leg.</b> The blown fuse in there now is the one the amp arrived with.</p>
+<p><b>Card step 24 is closed.</b> It asked why the previous tech fitted that fuse, on the theory that an earlier intermittent might be behind it. <b>Pete has no history to give</b> — he bought the amp second-hand in this condition. There is nothing to ask him.</p>
+<p>The best available account stays the simple one: the fuse was fitted roughly 4&times; undersized, <b>it blew on a loud night without anything failing downstream</b>, and the amp went back to a customer still dead. An undersized fuse in a speaker line doesn’t need a fault to blow.</p>
+<p><b>Before any cab goes on this amp, fit a fresh fuse at J31.</b> For the variac ramp it doesn’t matter — no load, no output current — but card step 3 assumes a working 4&nbsp;A is in there, and right now there isn’t.</p>
+</div>
+
+<h2>2026-09-24 &mdash; log dates were write-up dates, now corrected</h2>
+<div class="entry">
+<p>Entries in this log had been stamped with the day they were <b>written up</b>, not the day the work happened. The 20 and 21&nbsp;Sep sessions were <b>job-card preparation</b>, not bench sessions.</p>
+<ul>
+<li><b>The limiter attempt is re-dated to early August 2026</b>, where it belongs — it was part of the original diagnosis.</li>
+<li><b>The trimmer trace (20&nbsp;Sep) stays</b> — it was desk work off the print, no amp involved.</li>
+<li><b>Winding the pots to minimum (21&nbsp;Sep) stays</b> — real bench work, but on a dead amp with no power applied.</li>
+</ul>
+<p><b>Going forward, date entries by when the work happened.</b> Where that differs from the write-up, say so in the entry.</p>
 </div>
 
 <h2>Open / next</h2>
@@ -173,7 +199,7 @@ code{font-family:var(--mono);font-size:.88em}
 <li><b>If the relays have not clicked by 200 V, stop there.</b> Don’t push on to 230. That is the point at which stage B (steps 8–12, bench supplies with the four feed resistors lifted) becomes worth the strip-down, and not before — stage B needs the amp open and the ramp needs it assembled, so each attempt costs a full reassembly.</li>
 <li>Bias never yet set. No bias readings taken.</li>
 <li>Breaker still the undersized 7 A — card step 22 wants the correct 8 A before handover.</li>
-<li>Card step 24: ask the customer why the previous tech fitted that fuse.</li>
+<li><b>Fit a fresh 4&nbsp;A fuse at J31 before any speaker load goes on.</b> The one in there is blown and always was. Not needed for the ramp itself.</li>
 </ul>
 </div>
 
