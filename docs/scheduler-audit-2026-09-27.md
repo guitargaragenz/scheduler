@@ -25,11 +25,12 @@ Nothing here has been changed yet. Each item needs your yes before anyone builds
    so recent crosses can quietly go missing. It would look exactly like the "not sticking" bug
    you just had. The Weekly Log has the same problem (252 rows). That one is already parked
    as a brief, but the Daily Log was never added to it. Fix: only load the weeks on screen.
-2. **Two junk rows on job 1735** (`1735-ST`, `1735-WR`). They were created blank on 10 Sept,
-   with no bench, no status and no description. That breaks the "no such thing as no bench"
-   rule. Delete them by hand after you confirm.
-3. **1175 Allen & Heath has both Backlog = Y and status "Waiting".** If "Waiting" means
-   waiting on parts, that breaks the rule that a job can't be in both. Needs your call.
+2. **Two blank job rows on 1735** (`1735-ST`, `1735-WR`). 1735 was completed 10 Sept
+   (invoice $433.80, revenue week 7 Sept). The two rows were made that same evening, when
+   pieces on the Daily Log for 8 Sept were crossed off. Crossing off a piece whose id no
+   longer matches a job looks like it creates a blank job row. Worth a proper look before
+   deleting them.
+3. **1175 Allen & Heath:** in dispute, changed to Hold in Multitrack. Clears on the next upload.
 4. **1520's two Electronics pieces are still booked on the calendar for 31 July.** They're done,
    so no real harm. But that booking is left over, and it's the only one ever made.
 5. **Known, already parked:** the job card shows the old description after a PDF import until
@@ -59,7 +60,7 @@ Each of these is built, but its data table shows nobody has used it:
 | **Ad-hoc tasks on the calendar** | 0 rows, ever | Remove |
 | **Deferred items / pull back in** | 0 rows | Goes with the old log |
 | **Booking time on the calendar Board + Google Calendar sync** | 1 booking ever (31 July), Google not signed in | Ask you: still wanted? This is the highest-risk code in the app |
-| **Parking Lot page** | Nothing added since 7 Aug | Ask you: still your meeting input? |
+| **Parking Lot page** | Nothing added since 7 Aug | Keep for now (Trevor, 27 Sept) |
 | **Firebase** (old database) | Nothing uses it; the leftover file and package are still there | Remove |
 | **GitHub Pages deploy script** | The app lives on Vercel now | Remove |
 
