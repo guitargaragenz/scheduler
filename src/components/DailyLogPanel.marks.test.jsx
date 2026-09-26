@@ -273,7 +273,7 @@ describe('the "+ Put a job on this day…" picker', () => {
   // that is the whole reason it stopped being a <select>.
   function pieceButtons() {
     return screen.getAllByRole('button')
-      .filter(b => /^(Setup|Electronics)( —|$)/.test(b.textContent))
+      .filter(b => /^(✓ )?(Setup|Electronics)( —|$)/.test(b.textContent))
       .map(b => b.textContent);
   }
 
@@ -291,11 +291,15 @@ describe('the "+ Put a job on this day…" picker', () => {
     expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
   });
 
-  it('still offers a piece already ticked off, like the Day View', () => {
+  // Offered, but ticked and greyed like the Day View — Trevor, 2026-09-27:
+  // 1708's crossed pieces came back looking like untouched work.
+  it('still offers a piece already ticked off, ticked and greyed like the Day View', () => {
     setup({ jobs: pickableJobs().map(j => (j.id === 'c2' ? { ...j, pieceDone: true } : j)) });
     search('1714');
 
-    expect(pieceButtons()).toEqual(['Setup — level and crown', 'Electronics']);
+    expect(pieceButtons()).toEqual(['Setup — level and crown', '✓ Electronics']);
+    const done = screen.getAllByRole('button').find(b => b.textContent === '✓ Electronics');
+    expect(done.style.opacity).toBe('0.45');
   });
 
   it('places the piece when its line is clicked', async () => {

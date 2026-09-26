@@ -230,7 +230,12 @@ export function dayJobOptions(jobs, weekKeys, marks, dayItems) {
       // meant to remove — so the option shows just the bench. `label` is what
       // gets STORED and stays whole: the placed row has no group above it.
       const short = part.bench || label;
-      out.push({ id: String(part.id), label, group, short, note: part.sessionNote || '' });
+      // A piece still on offer but already finished — done on the board or
+      // crossed off here. Trevor, 2026-09-27: after the 2026-09-19 change the
+      // picker listed 1708's seven crossed pieces as if nothing had been done.
+      // It shows them ticked and greyed, the way Day View does, not hidden.
+      const done = isPiece && (part.pieceDone || dayMarks.get(String(part.id)) === 'cross');
+      out.push({ id: String(part.id), label, group, short, note: part.sessionNote || '', done });
     }
   }
 
@@ -1067,7 +1072,8 @@ export default function DailyLogPanel({
                 onChange={() => toggleTick(o.id)}
                 aria-label={o.label}
               />
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: o.done ? 0.45 : 1 }}>
+                {o.done && <span style={{ color: '#4ade80' }}>✓ </span>}
                 {o.note ? `${o.short} — ${o.note}` : o.short}
               </span>
             </label>
@@ -1319,8 +1325,10 @@ export default function DailyLogPanel({
                           border: '1px solid transparent', background: '#1e293b',
                           color: '#e2e8f0', fontSize: 12.5, marginBottom: 2,
                           cursor: ready ? 'pointer' : 'default',
+                          opacity: o.done ? 0.45 : 1,
                         }}
                       >
+                        {o.done && <span style={{ color: '#4ade80' }}>✓ </span>}
                         {o.note ? `${o.short} — ${o.note}` : o.short}
                       </button>
                     ))}
