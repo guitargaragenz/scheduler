@@ -38,10 +38,6 @@ Real, nobody has picked them up, not attached to any brief.
 
 The table in the index names these briefs. This is the detail behind each.
 
-- **[Week marks row cap](PARKED-2026-08-23-week-marks-row-cap.md)** — the Weekly Log reads
-  `bench_week_marks` unbounded, so it takes the 1000-row default cap; it fills on calendar
-  time, roughly January 2027. Fix agreed: fetch only the weeks on screen. Blast-radius,
-  full protocol.
 - **[Stale description after import](parked-stale-description-after-import.md)** — waiting
   on nothing, a real bug nobody has picked up. After a PDF import the board shows the old
   description until reload; `src/hooks/useJobs.js:319` refreshes dates only. Blast-radius
