@@ -1,10 +1,15 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Scope lock — Logs keep finished jobs, and read every mark past the 1,000-row cap
+# Scope lock — New sessions add 1h instead of dividing the bench's hours
 
-Shipped at `bf95640` (PR #76), merged to main 2026-09-27. Checklist and council notes:
-`docs/briefs/logs-keep-finished-jobs.md` (closed).
+Trevor approved 2026-09-27 ("yp").
 
-Nothing live. Next session starts with `/next`.
+## Build
+- `src/components/JobDrawer.jsx` `setSessionCount`: + adds a 1h session, existing hours untouched.
+- − removes the last session and its hours.
+
+## Out of scope
+- Mobile job sheet (already adds benches at 1h, has no session +/−).
+- Anything that saves or stores jobs — this only changes the editor before Save.

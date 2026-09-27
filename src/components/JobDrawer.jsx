@@ -119,25 +119,15 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
     setRows(prev => prev.map((row, r) => {
       if (r !== ri) return row;
       const cur = row.sessions;
-      const total = cur.reduce((s, x) => s + Number(x.hours), 0);
       if (newCount === cur.length) return row;
+      // Each new session is its own 1hr and adds to the job's total — existing
+      // sessions keep their hours (Trevor, 2026-09-27: dividing the hours
+      // across sessions was frustrating). Removing a session drops its hours.
       if (newCount > cur.length) {
-        const perSession = parseFloat((total / newCount).toFixed(1));
-        // Redistribute all sessions evenly, preserving existing notes
-        const next = Array.from({ length: newCount }, (_, i) => ({
-          hours: perSession,
-          note: i < cur.length ? cur[i].note : '',
-        }));
-        // Fix last item for rounding drift
-        const runningTotal = next.reduce((s, x) => s + Number(x.hours), 0);
-        next[newCount - 1].hours = parseFloat((Number(next[newCount - 1].hours) + (total - runningTotal)).toFixed(1));
-        return { ...row, sessions: next };
-      } else {
-        const kept = cur.slice(0, newCount).map(s => ({ ...s }));
-        const removedHours = cur.slice(newCount).reduce((s, x) => s + Number(x.hours), 0);
-        kept[newCount - 1].hours = parseFloat((Number(kept[newCount - 1].hours) + removedHours).toFixed(1));
-        return { ...row, sessions: kept };
+        const added = Array.from({ length: newCount - cur.length }, () => ({ hours: 1, note: '' }));
+        return { ...row, sessions: [...cur, ...added] };
       }
+      return { ...row, sessions: cur.slice(0, newCount) };
     }));
   }
 
