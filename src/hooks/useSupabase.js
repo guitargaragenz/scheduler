@@ -187,6 +187,33 @@ export function normalizeJobsFromDb(dbJobs, benchHours = {}, benchKeywords = DEF
   return expandAutoSplits(mapped, benchHours);
 }
 
+// The jobs that HAVE departed, normalized the same way as live ones — for the
+// Daily and Weekly Log only, so the week a job was finished in still shows it.
+//
+// This is a separate, display-only list. It never goes into jobs[]: the live
+// list, the Board, Sidebar, Jobs, Jobs Sheet, Projects and both pickers keep
+// reading normalizeJobsFromDb() above, whose departure filter is untouched.
+//
+// Rows taken: every departed top-level row, plus every row whose parent is one
+// of them. Children are needed because expandAutoSplits() only emits children
+// alongside their parent, and writeDepartureBatch() stamps departed_at on the
+// top-level row alone — so a manual split's pieces carry no departed_at of
+// their own. departed_at is blanked on the copies so the unchanged
+// normalizeJobsFromDb() will let them through, and every result is tagged
+// `departed: true` so the logs can lock it: a departed job's marks are history
+// and nothing on the logs may write to them.
+export function departedJobsFromDb(dbJobs = [], benchHours = {}, benchKeywords = DEFAULT_BENCH_KEYWORDS) {
+  const departedIds = new Set(
+    dbJobs.filter(j => j.departed_at && !j.parent_id).map(j => String(j.id))
+  );
+  if (departedIds.size === 0) return [];
+  const rows = dbJobs
+    .filter(j => departedIds.has(String(j.id)) || (j.parent_id != null && departedIds.has(String(j.parent_id))))
+    .map(j => ({ ...j, departed_at: null }));
+  return normalizeJobsFromDb(rows, benchHours, benchKeywords)
+    .map(j => ({ ...j, departed: true }));
+}
+
 // NOTE: slot normalization lives in loadScheduledSlots() in utils/supabase.js,
 // which returns the map already shaped as slotKey -> jobId. A duplicate
 // normalizer used to sit here building objects instead; it was dead code and
@@ -196,6 +223,10 @@ export function useSupabase({
   jobs,
   scheduledSlots,
   setJobs,
+  // Optional. Receives departedJobsFromDb() on every load and realtime update,
+  // for the logs' display-only list of finished jobs. A caller that doesn't
+  // pass it behaves exactly as before.
+  setDepartedJobs,
   setScheduledSlots,
   setFirebaseReady,
   setLastSyncedAt,
@@ -240,6 +271,7 @@ export function useSupabase({
     const normalized = normalizeJobsFromDb(dbJobs, benchHoursRef.current, benchKeywordsRef.current || DEFAULT_BENCH_KEYWORDS);
 
     setJobs(normalized);
+    setDepartedJobs?.(departedJobsFromDb(dbJobs, benchHoursRef.current, benchKeywordsRef.current || DEFAULT_BENCH_KEYWORDS));
     prevJoinedJobsRef.current = normalized;
     setLastSyncedAt(new Date().toISOString());
 
@@ -292,6 +324,7 @@ export function useSupabase({
       }
 
       setJobs(normalized);
+      setDepartedJobs?.(departedJobsFromDb(updated, benchHoursRef.current, benchKeywordsRef.current || DEFAULT_BENCH_KEYWORDS));
       prevJoinedJobsRef.current = normalized;
       setLastSyncedAt(new Date().toISOString());
     });
