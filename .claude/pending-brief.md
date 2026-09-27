@@ -1,10 +1,10 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Scope lock — New sessions add 1h instead of dividing the bench's hours
 
-Trevor approved 2026-09-27 ("yp").
+Shipped at `dc78164`, 2026-09-27. Nothing live — next session starts with `/next`.
 
 ## Build
 - `src/components/JobDrawer.jsx` `setSessionCount`: + adds a 1h session, existing hours untouched.
