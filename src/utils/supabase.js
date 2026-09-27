@@ -1901,17 +1901,51 @@ export function subscribeToStatusSince(callback) {
 // Nothing in this section writes to jobs, scheduled_slots or calendar_slot.
 // That separation is the point of the table, not an implementation detail.
 
+// How many rows one request asks for. Supabase hands back at most 1,000 rows
+// per request and says nothing when it stops — a plain select('*') on a table
+// past that size quietly returns a random 1,000 and drops the rest. For the
+// mark tables that looks exactly like a cross that "didn't stick".
+export const MARKS_PAGE_SIZE = 1000;
+
+// A ceiling on pages, so a server that ignored .range() and kept sending full
+// pages could never spin this forever. 200 pages is 200,000 rows — decades of
+// marks at the current rate. Hitting it fails the read rather than guessing.
+const MARKS_MAX_PAGES = 200;
+
+// Reads EVERY row of a mark table, 1,000 at a time, until a page comes back
+// short. `orderBy` is the table's primary key: a stable, unique order is what
+// stops a row sliding from one page to the next between requests and being
+// read twice or not at all.
+//
+// All or nothing. Any failed page throws, and the caller turns that into null —
+// half a table must never be handed on as if it were the whole of it, because
+// the page would draw a week with marks missing and arm writing over it.
+async function selectAllMarkRows(table, orderBy) {
+  const rows = [];
+  for (let page = 0; page < MARKS_MAX_PAGES; page += 1) {
+    const from = page * MARKS_PAGE_SIZE;
+    let q = getClient().from(table).select('*');
+    for (const col of orderBy) q = q.order(col, { ascending: true });
+    const { data, error } = await q.range(from, from + MARKS_PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < MARKS_PAGE_SIZE) return rows;
+  }
+  throw new Error(`${table}: more than ${MARKS_MAX_PAGES} pages — refusing to guess where the table ends`);
+}
+
 // Returns { [jobId]: { [dateKey]: mark } } on success, or null if the read
 // genuinely failed. The null/{} distinction is load-bearing: {} means "no marks
 // yet", which is true on day one, while null means "we don't know". useWeekMarks
 // refuses to arm any write until it has had a non-null read, so a caller that
 // treats those the same can end up writing over a week it never actually saw.
+//
+// Read in pages (selectAllMarkRows) so the table can grow past Supabase's
+// 1,000-row cap without silently losing marks. A failed page is a failed read.
 export async function loadWeekMarks() {
   try {
-    const { data, error } = await getClient()
-      .from('bench_week_marks')
-      .select('*');
-    if (error) throw error;
+    const data = await selectAllMarkRows('bench_week_marks', ['job_id', 'date_key']);
     const byJobId = {};
     (data || []).forEach(r => {
       const jobId = String(r.job_id);
@@ -2414,10 +2448,12 @@ export async function batchWriteJobsState(writes) {
 // failed. null and {} mean different things and the caller relies on that: {}
 // is a genuinely empty table and arms writing, null is "we don't know" and
 // leaves the page read-only.
+//
+// Read in pages, same as loadWeekMarks(): past 1,000 rows a single select loses
+// marks without a word. A failed page is a failed read, so still null.
 export async function loadDayMarks() {
   try {
-    const { data, error } = await getClient().from('bench_day_marks').select('*');
-    if (error) throw error;
+    const data = await selectAllMarkRows('bench_day_marks', ['date_key', 'item_id']);
     const byDate = {};
     (data || []).forEach(r => {
       const dateKey = String(r.date_key);
