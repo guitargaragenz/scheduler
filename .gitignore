@@ -11,3 +11,6 @@ jt-backup-*.json
 
 # Firecrawl plugin output (plugin removed 2026-08-01)
 .firecrawl/
+
+# Manufacturer service drawings — copyrighted, repo is public. Keep local only.
+job-cards/*.pdf
