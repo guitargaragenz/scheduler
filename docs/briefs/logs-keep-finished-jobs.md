@@ -1,6 +1,9 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+Shipped at `bf95640` (PR #76), 2026-09-27.
+
 # Logs keep finished jobs, and read every mark past the 1,000-row cap — checklist
 
 The scope lock is `.claude/pending-brief.md`. This file holds the numbered checklist and the

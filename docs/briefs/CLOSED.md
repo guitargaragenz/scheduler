@@ -32,3 +32,4 @@ binds the code or how we work. A record, never a task list.
 - **Next bench on the job card** (PR #69, `02a525a`): display only, never writes job state.
 - **Ticked part saves** (PR #70, `96cc365`): save outside the `setJobs` updater — React can defer it, so the save never ran.
 - **Week page day box** (PR #72, `3182f84`): tap toggles `·`, hold opens the marks list; the lift after a hold is swallowed, same as the end box.
+- **Logs keep finished jobs** (PR #76, `bf95640`): departed jobs reach the logs through a separate display-only list, locked — never merged into live `jobs[]`. Mark tables read in 1,000-row pages; one failed page fails the whole read.

@@ -38,7 +38,6 @@ None of these is scoped or approved; each file holds the detail.
 
 | Brief | Waiting on |
 |-------|------------|
-| [PARKED-2026-08-23-week-marks-row-cap.md](PARKED-2026-08-23-week-marks-row-cap.md) | A fix, agreed but not started. Blast-radius. |
 | [parked-stale-description-after-import.md](parked-stale-description-after-import.md) | Nothing — a real bug, just not picked up. Blast-radius. |
 | [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | Nothing. Two small changes left. |
 | [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | Nothing. One finding of four left. |
