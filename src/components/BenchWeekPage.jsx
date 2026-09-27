@@ -363,6 +363,68 @@ export function weekRows(jobs, weekKeys, marks = {}, { keepDone = false } = {}) 
   return rows;
 }
 
+// Rows for jobs that have DEPARTED — Multitrack has finished with them, so
+// they are no longer in jobs[] — on any week where they still have marks.
+//
+// Trevor, 2026-09-27: "All completed jobs have disappeared." The week a job was
+// worked in is a record, and the record must not vanish because the job left
+// the printout. These rows come from a separate, display-only list and are
+// LOCKED: nothing on this page writes to them. They are never offered by the
+// add-a-job picker, which keeps reading live jobs only.
+//
+// Marks are the only way in — a day mark, or this week's row, close or send
+// key. A departed job's booking is not read: it is not a record of work, and a
+// stale one would drop a finished guitar onto a future week. `done` is ignored
+// for the same reason it is on the Daily Log: every departed job is done, and a
+// done job is exactly what this list exists to show.
+//
+// `liveIds` guards the one overlap that should never happen — a job both live
+// and departed — so a row can never be drawn twice.
+export function departedWeekRows(departedJobs, weekKeys, marks = {}, liveIds = new Set()) {
+  const all = departedJobs || [];
+  const byId = new Map(all.map(j => [j.id, j]));
+  const keys = [...(weekKeys || []), weekRowKey(weekKeys), weekCloseKey(weekKeys), weekSendKey(weekKeys)]
+    .filter(Boolean);
+  const rowKey = weekRowKey(weekKeys);
+  const rows = [];
+  for (const job of all) {
+    if (job.parentId || job.isDerived) continue;
+    const id = String(job.id);
+    if (liveIds.has(id)) continue;
+    const jobMarks = marks[id] || {};
+    if (!keys.some(k => jobMarks[k])) continue;
+    const parts = partsOf(job, all, byId);
+    rows.push({
+      id,
+      job,
+      bench: rowBenchOf(job, parts),
+      name: rowName(job),
+      bookedDays: new Set(),
+      addedByHand: Boolean(rowKey && jobMarks[rowKey]),
+      benches: [...new Set(parts.map(p => p.bench).filter(Boolean))],
+      locked: true,
+    });
+  }
+  return rows;
+}
+
+// The week's rows with the departed ones folded in: job rows oldest-first by
+// number, as weekRows() already orders them, typed rows still at the foot.
+export function withDepartedRows(rows, departedJobs, weekKeys, marks = {}) {
+  const live = rows || [];
+  const liveIds = new Set(live.map(r => String(r.id)));
+  const gone = departedWeekRows(departedJobs, weekKeys, marks, liveIds);
+  if (gone.length === 0) return live;
+  const jobRows = live.filter(r => !r.typed);
+  const typedRows = live.filter(r => r.typed);
+  const merged = [...jobRows, ...gone]
+    .sort((a, b) => compareJobNumber(a.job?.job ?? a.id, b.job?.job ?? b.id));
+  return [...merged, ...typedRows];
+}
+
+// Said whenever a tap lands on a departed job's row.
+export const LOCKED_TOAST = 'That job has been collected — its marks are locked';
+
 // What a cell shows. A stored mark always wins; otherwise a booked day shows
 // the booked dot. The dot is DERIVED from the booking rather than stored, so
 // there is no second copy of "this job is booked on Tuesday" to drift.
@@ -611,6 +673,8 @@ const LONG_PRESS_SLOP = 10;
 // menu — Send to next week, Close, Clear — and the click the browser fires when
 // the finger lifts is swallowed, so a long press can never also close the job.
 function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, onCloseJob, onClear }) {
+  // A departed job's end box is drawn but cannot be pressed.
+  const live = ready && !row.locked;
   const timer = useRef(null);
   const start = useRef(null);
   const fired = useRef(false);
@@ -626,7 +690,7 @@ function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, 
         type="button"
         aria-label={`End box for ${row.name}`}
         onPointerDown={(e) => {
-          if (!ready) return;
+          if (!live) return;
           fired.current = false;
           start.current = { x: e.clientX, y: e.clientY };
           cancel();
@@ -649,12 +713,14 @@ function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, 
           if (fired.current) { fired.current = false; return; }
           onTap();
         }}
-        disabled={!ready}
-        title={t.closed
+        disabled={!live}
+        title={row.locked
+          ? `${row.name} has been collected — locked`
+          : t.closed
           ? `${row.name} is closed — tap to undo`
           : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''} — hold for more`}
         style={{
-          width, height: 30, cursor: ready ? 'pointer' : 'default',
+          width, height: 30, cursor: live ? 'pointer' : 'default',
           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
           background: t.closed ? '#2a0f12' : '#111c2f',
           color: t.closed ? '#f87171' : (t.sent ? '#94a3b8' : '#475569'),
@@ -707,7 +773,7 @@ function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, 
 // nothing, so a stray tap can't wipe a real mark. A long press opens the full
 // list, same press as the end box, and the lift after it is swallowed.
 // Not-ready taps still reach onPick, which says so rather than silently refusing.
-function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick }) {
+function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick, locked = false }) {
   const timer = useRef(null);
   const start = useRef(null);
   const fired = useRef(false);
@@ -723,7 +789,10 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick })
         type="button"
         aria-label={label}
         data-mark={mark || ''}
+        // A departed job's day is history: no press, no menu, no tap.
+        disabled={locked}
         onPointerDown={(e) => {
+          if (locked) return;
           fired.current = false;
           start.current = { x: e.clientX, y: e.clientY };
           cancel();
@@ -743,13 +812,16 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick })
         onPointerCancel={cancel}
         onContextMenu={(e) => e.preventDefault()}
         onClick={() => {
+          if (locked) return;
           if (fired.current) { fired.current = false; return; }
           if (!mark) onPick('dot');
           else if (mark === 'dot') onPick('');
         }}
-        title={mark ? `${MARKS[mark].label} — hold for more` : 'blank — tap to book, hold for more'}
+        title={locked
+          ? (mark ? `${MARKS[mark].label} — collected, locked` : 'collected — locked')
+          : mark ? `${MARKS[mark].label} — hold for more` : 'blank — tap to book, hold for more'}
         style={{
-          width, height: 30, cursor: ready ? 'pointer' : 'default',
+          width, height: 30, cursor: ready && !locked ? 'pointer' : 'default',
           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
           background: '#111c2f',
           color: mark === 'cross' ? '#f87171' : mark === 'slash' ? '#34d399' : '#cbd5e1',
@@ -758,7 +830,7 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick })
           touchAction: 'manipulation',
         }}
       >{mark ? MARKS[mark].symbol : '\u00a0'}</button>
-      {open && (
+      {open && !locked && (
         <>
           <div onClick={onDismiss} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
           <div
@@ -795,9 +867,14 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick })
   );
 }
 
-export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
+export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
-  const rows = useMemo(() => weekRows(jobs, weekKeys, marks), [jobs, weekKeys, marks]);
+  // Live jobs as always, plus departed jobs with marks this week, locked.
+  // `jobs` itself stays live-only: the add-a-job picker below reads it.
+  const rows = useMemo(
+    () => withDepartedRows(weekRows(jobs, weekKeys, marks), departedJobs, weekKeys, marks),
+    [jobs, departedJobs, weekKeys, marks],
+  );
   const groups = useMemo(() => benchSections(rows), [rows]);
   const rowKey = useMemo(() => weekRowKey(weekKeys), [weekKeys]);
   const closeKey = useMemo(() => weekCloseKey(weekKeys), [weekKeys]);
@@ -826,6 +903,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // 2026-08-22: cycling means up to four taps to set one symbol, and one tap
   // too many wraps past it and starts again.
   async function setCell(row, dateKey, value) {
+    if (row.locked) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
@@ -854,6 +935,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // clears the week's note only; it does not un-invoice a job, and it asks no
   // money question on the way back.
   async function handleClose(row) {
+    if (row.locked) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
@@ -897,6 +982,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // choice under this week's send key so the box shows >. A typed row carries
   // its name and bench on that row key, so the same value is copied across.
   async function handleSend(row) {
+    if (row.locked) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
@@ -930,6 +1019,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   }
 
   async function handleClear(row) {
+    if (row.locked) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
@@ -971,6 +1064,10 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
   // Take a job off the week: its day marks and the week's row key go together.
   // Asks first, because it throws away marks for days already worked.
   async function handleRemove(row) {
+    if (row.locked) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
       return;
@@ -1092,7 +1189,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                   alignItems: isMobile ? 'stretch' : 'center',
                   minHeight: 32, marginBottom: isMobile ? 8 : 0, position: 'relative',
                 }}>
-                  <div style={nameStyle}>
+                  <div style={nameStyle} title={row.locked ? `${row.name} — collected, marks locked` : undefined}>
                     {/* The dim + says this line was typed by hand and has no job
                         number. Kept out of row.name so the Remove question and
                         the tooltip still read as plain words. */}
@@ -1136,6 +1233,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                         onOpen={() => setMenuFor(`${row.id}|${k}`)}
                         onDismiss={() => setMenuFor(null)}
                         onPick={(v) => setCell(row, k, v)}
+                        locked={Boolean(row.locked)}
                       />
                     );
                   })}
@@ -1162,7 +1260,7 @@ export default function BenchWeekPage({ jobs, weekDays, marks, ready, saveError,
                       the page BECAUSE of its booking, and clearing marks would
                       not remove it. Offering a button that visibly does nothing
                       is worse than not offering one. */}
-                  {row.bookedDays.size === 0 && (
+                  {row.bookedDays.size === 0 && !row.locked && (
                     <button
                       type="button"
                       onClick={() => handleRemove(row)}

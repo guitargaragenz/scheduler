@@ -88,6 +88,10 @@ export default function App() {
   // parseCSV(RAW_CSV, …), which returned [] anyway — RAW_CSV had been a bare
   // header line for months.)
   const [jobs, setJobs] = useState([]);
+  // Jobs Multitrack has finished with (departed), for the Daily and Weekly Log
+  // only, so the week a job was done in still shows it. Display-only and
+  // locked: nothing else reads it, and it never mixes into `jobs` above.
+  const [departedJobs, setDepartedJobs] = useState([]);
   const [scheduledSlots, setScheduledSlots] = useState({});
   const [weekDays, setWeekDays] = useState(() => getWeekDays());
   const [displayedDate, setDisplayedDate] = useState(() =>
@@ -204,6 +208,7 @@ export default function App() {
   // board by hand. Nothing else about this call changed.
   const supabaseOps = useSupabase({
     jobs, scheduledSlots, setJobs, setScheduledSlots,
+    setDepartedJobs,
     setFirebaseReady, setLastSyncedAt,
     setCompletedJobs, setDoneJobIds,
     justSavedAt, supabaseReady,
@@ -895,6 +900,7 @@ export default function App() {
               {(!isMobile || showWeekPage) && (
                 <BenchWeekPage
                   jobs={jobs}
+                  departedJobs={departedJobs}
                   weekDays={weekDays}
                   marks={weekMarks.marks}
                   ready={weekMarks.ready}
@@ -931,6 +937,7 @@ export default function App() {
               {(!isMobile || showDayPage) && (
                 <DailyLogPanel
                   jobs={jobs}
+                  departedJobs={departedJobs}
                   weekDays={weekDays}
                   marks={weekMarks.marks}
                   dayItems={dayMarks.dayItems}

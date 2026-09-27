@@ -86,6 +86,62 @@ export function weekCellJobId(rowId, jobs) {
   return top ? String(top.id) : null;
 }
 
+// Which DEPARTED job a day row belongs to, or null.
+//
+// Departed jobs — Multitrack has finished with them — are not in the live
+// jobs[] at all, so weekCellJobId() above answers null for them and the row
+// would float on its own with no heading. This is the display-only answer, from
+// the separate departed list. It is never used to write: anything it claims is
+// locked.
+//
+// Two ways in. A row whose id is still a job in the departed list (the job
+// itself, an auto-split card, a manual split still stored) goes through its
+// parent the normal way. A row whose id no longer exists as any job — a manual
+// split re-cut or dropped since, e.g. 1735's `1735_Wiring_0` — is matched on its
+// leading job number, which every piece id starts with (`1735-ST`,
+// `1735_Wiring_0`). Its line is then drawn from the label saved on the day.
+export function departedOwnerId(rowId, departedJobs) {
+  const all = departedJobs || [];
+  const id = String(rowId ?? '');
+  const job = all.find(j => String(j.id) === id);
+  if (job) {
+    const top = topLevelJob(job, all);
+    return top ? String(top.id) : null;
+  }
+  const m = id.match(/^(\d+)(?:[-_]|$)/);
+  if (!m) return null;
+  const top = all.find(j => !j.parentId && !j.isDerived && String(j.id) === m[1]);
+  return top ? String(top.id) : null;
+}
+
+// The bench of an old manual-split id (`1735_Wiring_0` -> Wiring), for its
+// colour only, when the piece no longer exists to ask.
+export function benchFromPieceId(rowId) {
+  const m = String(rowId ?? '').match(/^\d+_([A-Za-z]+)_\d+$/);
+  return m ? m[1] : '';
+}
+
+// Departed jobs on a day, as header rows — the departed twin of bookedOnDay().
+//
+// A departed job is on a day if the Weekly Log carries a mark for it on that
+// day. Its booking is not read: calendarSlot is not a record of work, and a
+// stale one would put a finished guitar on a day it never saw. Its pieces come
+// in on their own, from the rows stored on the day.
+export function departedOnDay(departedJobs, dateKey, marks) {
+  if (!dateKey) return [];
+  const out = [];
+  for (const job of departedJobs || []) {
+    if (job.parentId || job.isDerived) continue;
+    const id = String(job.id);
+    if (!marks?.[id]?.[dateKey]) continue;
+    out.push({ id, label: rowName(job) || id, note: '' });
+  }
+  return out;
+}
+
+// Said whenever a tap lands on a departed job's line.
+const LOCKED_TOAST = 'That job has been collected — its marks are locked';
+
 // Every Daily Log mark, one per row, latest day wins.
 //
 // A row can be marked on more than one day (worked Monday, finished Thursday),
@@ -454,7 +510,10 @@ function JobLine({
   // tints are made to sit ON the card's background, not instead of it.
   // Trevor, 2026-08-26. Every bench gets the same treatment.
   benchStyle,
+  // A departed job's line: drawn the same, but nothing on it can be changed.
+  locked = false,
 }) {
+  const live = ready && !locked;
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-start',
@@ -471,9 +530,9 @@ function JobLine({
     }}>
       <MarkSelect
         value={markValue}
-        disabled={!ready}
+        disabled={!live}
         onPick={onPick}
-        title="How this job went today"
+        title={locked ? 'Collected — this mark is locked' : 'How this job went today'}
         ariaLabel={`Mark for ${row.label}`}
       />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -502,7 +561,7 @@ function JobLine({
             <span style={{ color: '#475569', fontSize: 11 }}>–</span>
             <input
               defaultValue={n.text}
-              disabled={!ready}
+              disabled={!live}
               maxLength={MAX_NOTE}
               placeholder="What happened…"
               onBlur={(e) => {
@@ -517,38 +576,42 @@ function JobLine({
             <button
               type="button"
               onClick={() => onDeleteNote(n.id)}
-              disabled={!ready}
+              disabled={!live}
               title="Delete this note"
               style={{
                 border: 'none', background: 'transparent', color: '#475569',
-                fontSize: 12, cursor: ready ? 'pointer' : 'default', padding: '0 3px',
+                fontSize: 12, cursor: live ? 'pointer' : 'default', padding: '0 3px',
               }}
             >×</button>
           </div>
         ))}
+        {!locked && (
+          <button
+            type="button"
+            onClick={onAddNote}
+            disabled={!ready}
+            style={{
+              border: 'none', background: 'transparent', color: '#475569',
+              fontSize: 11, cursor: ready ? 'pointer' : 'default',
+              padding: '3px 0 0 0',
+            }}
+          >+ note</button>
+        )}
+      </span>
+      {!locked && taskControl}
+      {!locked && (
         <button
           type="button"
-          onClick={onAddNote}
+          onClick={onRemove}
           disabled={!ready}
+          title="Take this off the day"
           style={{
-            border: 'none', background: 'transparent', color: '#475569',
-            fontSize: 11, cursor: ready ? 'pointer' : 'default',
-            padding: '3px 0 0 0',
+            padding: '2px 9px', borderRadius: 5, border: '1px solid #334155',
+            background: 'transparent', color: '#64748b', fontSize: 11.5,
+            cursor: ready ? 'pointer' : 'default',
           }}
-        >+ note</button>
-      </span>
-      {taskControl}
-      <button
-        type="button"
-        onClick={onRemove}
-        disabled={!ready}
-        title="Take this off the day"
-        style={{
-          padding: '2px 9px', borderRadius: 5, border: '1px solid #334155',
-          background: 'transparent', color: '#64748b', fontSize: 11.5,
-          cursor: ready ? 'pointer' : 'default',
-        }}
-      >Remove</button>
+        >Remove</button>
+      )}
     </div>
   );
 }
@@ -561,6 +624,10 @@ const SECTION = {
 
 export default function DailyLogPanel({
   jobs, weekDays, marks,
+  // Jobs Multitrack has finished with. Display only: drawn on the days they
+  // have marks, locked, and never read by the picker or by any write below —
+  // those keep reading `jobs`, which is live jobs only.
+  departedJobs,
   dayItems, ready, saveError, addItem, removeItem,
   // The Weekly Log half. `ready` above is the DAY's save gate; this is the
   // week's, a separate gate with its own failure counter, so the two are never
@@ -599,10 +666,24 @@ export default function DailyLogPanel({
   // fault. No fallback: a split with no note shows nothing, never the guitar's
   // Multitrack text. Looked up fresh from jobs so it stays current if edited.
   const jobById = useMemo(() => new Map((jobs || []).map(j => [String(j.id), j])), [jobs]);
+  // For DRAWING only: live jobs, then departed ones under them. Every write
+  // path below reads `jobById`, which stays live-only.
+  const displayJobById = useMemo(() => {
+    const map = new Map((departedJobs || []).map(j => [String(j.id), j]));
+    for (const [id, j] of jobById) map.set(id, j);
+    return map;
+  }, [jobById, departedJobs]);
   const subTaskNote = (id) => {
-    const p = jobById.get(id);
+    const p = displayJobById.get(id);
     return p ? (p.sessionNote || '') : '';
   };
+
+  // Is this day row a departed job's? Live first: a job that has come back
+  // onto the printout is live and fully editable again.
+  const lockedOwner = (id) => (
+    weekCellJobId(id, jobs) ? null : departedOwnerId(id, departedJobs)
+  );
+  const isLocked = (id) => Boolean(lockedOwner(id));
 
   const onDay = dayItems?.[dateKey] || {};
   const entries = useMemo(() => Object.entries(onDay), [onDay]);
@@ -618,6 +699,12 @@ export default function DailyLogPanel({
     () => bookedOnDay(jobs, weekKeys, dateKey, marks),
     [jobs, weekKeys, dateKey, marks]
   );
+  // Departed jobs the week marked on this day. Kept out of `auto` so nothing
+  // that reads `auto` for writing can see them.
+  const departedAuto = useMemo(
+    () => departedOnDay(departedJobs, dateKey, marks),
+    [departedJobs, dateKey, marks]
+  );
   const dayJobs = useMemo(() => {
     const rows = [];
     const seen = new Set();
@@ -626,13 +713,18 @@ export default function DailyLogPanel({
       seen.add(a.id);
       rows.push({ id: a.id, label: a.label, auto: true });
     }
+    for (const a of departedAuto) {
+      if (hidden.has(a.id) || seen.has(a.id)) continue;
+      seen.add(a.id);
+      rows.push({ id: a.id, label: a.label, auto: true, locked: true });
+    }
     for (const [id, v] of entries) {
       if (v.kind !== 'job' || seen.has(id)) continue;
       seen.add(id);
       rows.push({ id, label: v.label, auto: false });
     }
     return rows;
-  }, [auto, entries, hidden]);
+  }, [auto, departedAuto, entries, hidden]);
 
   // The Daily Log's mark belongs to the ROW, not the job. Nine times in ten a
   // day row is a split or a task, not the whole job — so ticking one here must
@@ -686,11 +778,14 @@ export default function DailyLogPanel({
     const blocks = [];
     const groupAt = new Map(); // top-level job id -> index into blocks
     for (const row of dayJobs) {
-      const topId = weekCellJobId(row.id, jobs);
+      // A departed job's rows group under it too, locked. Live wins.
+      const liveTop = weekCellJobId(row.id, jobs);
+      const goneTop = liveTop ? null : departedOwnerId(row.id, departedJobs);
+      const topId = liveTop || goneTop;
       if (!topId) { blocks.push({ kind: 'single', row }); continue; }
       let at = groupAt.get(topId);
       if (at === undefined) {
-        const top = jobById.get(topId);
+        const top = displayJobById.get(topId);
         at = blocks.length;
         groupAt.set(topId, at);
         blocks.push({
@@ -699,6 +794,7 @@ export default function DailyLogPanel({
           label: top ? rowName(top) : row.label,
           headRow: null,
           rows: [],
+          locked: Boolean(goneTop),
         });
       }
       // The job's own row is the block's header line; anything else is a
@@ -707,7 +803,7 @@ export default function DailyLogPanel({
       else blocks[at].rows.push(row);
     }
     return blocks;
-  }, [dayJobs, jobById, jobs]);
+  }, [dayJobs, displayJobById, jobs, departedJobs]);
 
   // Already on the day, so not offered again.
   const taken = new Set(dayJobs.map(r => r.id));
@@ -833,6 +929,10 @@ export default function DailyLogPanel({
   }
 
   async function handleRemove(row) {
+    if (isLocked(row.id)) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the day has not loaded');
       return;
@@ -877,6 +977,12 @@ export default function DailyLogPanel({
   // Nothing here books a day. `>` says the work was deferred; which day it
   // moves to is Trevor's, by hand, and this never asks.
   async function handleSetMark(row, value) {
+    // A departed job's marks are history. Checked before anything else, so no
+    // write — day, week, or the board's pieceDone — can start.
+    if (isLocked(row.id)) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the day has not loaded');
       return;
@@ -995,6 +1101,10 @@ export default function DailyLogPanel({
   }
 
   async function handleAddNote(row) {
+    if (isLocked(row.id)) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     if (!ready) {
       showToast?.('Not saving yet — the day has not loaded');
       return;
@@ -1004,9 +1114,21 @@ export default function DailyLogPanel({
   }
 
   async function handleSaveNote(noteId, text) {
+    if (isLocked(noteOwner(noteId))) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
     // Same id = overwrite, so saving an edit is just adding it again.
     const res = await addItem(dateKey, noteId, 'note', text.slice(0, MAX_NOTE));
     if (!res?.ok) showToast?.('That note did not save');
+  }
+
+  async function handleDeleteNote(noteId) {
+    if (isLocked(noteOwner(noteId))) {
+      showToast?.(LOCKED_TOAST);
+      return;
+    }
+    await removeItem(dateKey, noteId);
   }
 
   // The `Task ▾` control for one job's line, and the tick list it opens.
@@ -1199,10 +1321,11 @@ export default function DailyLogPanel({
                   subNote={subTaskNote(block.headRow.id)}
                   notes={notesFor.get(block.headRow.id) || []}
                   onSaveNote={handleSaveNote}
-                  onDeleteNote={(id) => removeItem(dateKey, id)}
+                  onDeleteNote={handleDeleteNote}
                   onAddNote={() => handleAddNote(block.headRow)}
                   onRemove={() => handleRemove(block.headRow)}
                   taskControl={taskControlFor(block.id, block.label)}
+                  locked={block.locked}
                 />
               ) : (
                 <div style={{
@@ -1214,9 +1337,9 @@ export default function DailyLogPanel({
                 }}>
                   <MarkSelect
                     value={markOf.get(block.id)}
-                    disabled={!ready}
+                    disabled={!ready || block.locked}
                     onPick={(v) => handleSetMark({ id: block.id, label: block.label }, v)}
-                    title="How this job went today"
+                    title={block.locked ? 'Collected — this mark is locked' : 'How this job went today'}
                     ariaLabel={`Mark for ${block.label}`}
                   />
                   <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1226,7 +1349,7 @@ export default function DailyLogPanel({
                       indented rows under it are pieces already on the day, and a
                       piece has no pieces of its own. `block.id` is already the
                       top-level id. */}
-                  {taskControlFor(block.id, block.label)}
+                  {!block.locked && taskControlFor(block.id, block.label)}
                 </div>
               )}
               {taskListFor(block.id)}
@@ -1236,16 +1359,17 @@ export default function DailyLogPanel({
                   row={row}
                   indent
                   display={pieceLabel(row.label, block.label)}
-                  benchStyle={benchColors(jobById.get(row.id)?.bench)}
+                  benchStyle={benchColors(displayJobById.get(row.id)?.bench || benchFromPieceId(row.id))}
                   markValue={markOf.get(row.id)}
                   ready={ready}
                   onPick={(v) => handleSetMark(row, v)}
                   subNote={subTaskNote(row.id)}
                   notes={notesFor.get(row.id) || []}
                   onSaveNote={handleSaveNote}
-                  onDeleteNote={(id) => removeItem(dateKey, id)}
+                  onDeleteNote={handleDeleteNote}
                   onAddNote={() => handleAddNote(row)}
                   onRemove={() => handleRemove(row)}
+                  locked={block.locked}
                 />
               ))}
             </div>
@@ -1262,7 +1386,7 @@ export default function DailyLogPanel({
                 subNote={subTaskNote(block.row.id)}
                 notes={notesFor.get(block.row.id) || []}
                 onSaveNote={handleSaveNote}
-                onDeleteNote={(id) => removeItem(dateKey, id)}
+                onDeleteNote={handleDeleteNote}
                 onAddNote={() => handleAddNote(block.row)}
                 onRemove={() => handleRemove(block.row)}
                 taskControl={taskControlFor(weekCellJobId(block.row.id, jobs), block.row.label)}
