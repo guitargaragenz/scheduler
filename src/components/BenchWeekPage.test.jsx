@@ -3,7 +3,7 @@ import {
   weekRows, cellMark, trailing, slotDateKey, groupByBench, buildWeekExport,
   weekRowKey, weekCloseKey, weekSendKey, nextWeekKeys, hasDayMarks, benchSections, addableJobs, ruleOff,
   encodeTypedRow, decodeTypedRow, isTypedRowId, newTypedRowId, rowLabel,
-  compareJobNumber,
+  compareJobNumber, closeIsLocked, removeIsBlocked,
 } from './BenchWeekPage.jsx';
 
 const WEEK = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'];
@@ -399,5 +399,28 @@ describe('ruleOff', () => {
 
   it('is null on a closed row with no day cross', () => {
     expect(ruleOff(row, WEEK, { [closeKey]: 'closed' })).toBe(null);
+  });
+});
+
+// Job 1726 (2026-09-29): a second tap on the x of an invoiced job cleared its
+// close mark, and the finished job dropped off the week it was finished in.
+describe('a finished job keeps its close', () => {
+  it('a done, closed job cannot be un-closed', () => {
+    expect(closeIsLocked({ done: true }, true)).toBe(true);
+  });
+  it('a closed job that is not done can still be un-closed (mis-tap undo)', () => {
+    expect(closeIsLocked({ done: false }, true)).toBe(false);
+    expect(closeIsLocked({}, true)).toBe(false);
+  });
+  it('an open job closes as normal, done or not', () => {
+    expect(closeIsLocked({ done: true }, false)).toBe(false);
+    expect(closeIsLocked({ done: false }, false)).toBe(false);
+  });
+  it('a done job cannot be taken off the week', () => {
+    expect(removeIsBlocked({ done: true })).toBe(true);
+  });
+  it('a job that is not done can be taken off as before', () => {
+    expect(removeIsBlocked({ done: false })).toBe(false);
+    expect(removeIsBlocked(undefined)).toBe(false);
   });
 });
