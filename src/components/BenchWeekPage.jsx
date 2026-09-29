@@ -87,6 +87,23 @@ export function weekCloseKey(weekKeys) {
   return monday ? `close:${monday}` : null;
 }
 
+// A job that is finished (done) and closed on this week is invoiced work. A
+// second tap on its x must not clear the close mark: the row is only shown
+// because of that mark, so clearing it made the finished job drop off the week
+// it was finished in (job 1726, 2026-09-29). A job that is closed but NOT done
+// (invoice prompt cancelled) can still be un-closed -- that is the mis-tap undo.
+export const INVOICED_TOAST = 'Already invoiced — this close stays';
+export function closeIsLocked(job, closed) {
+  return Boolean(job?.done && closed);
+}
+
+// Taking a done job off the week would delete its close mark along with the
+// day marks, and the finished job would vanish the same way.
+export const REMOVE_DONE_TOAST = 'Already invoiced — a finished job stays on its week';
+export function removeIsBlocked(job) {
+  return Boolean(job?.done);
+}
+
 // The value stored under the close key. Same reasoning as ROW_MARK: never
 // drawn, and not a MARKS name.
 const CLOSE_MARK = 'closed';
@@ -946,6 +963,11 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
     if (!closeKey) return;
     const t = trailing(weekKeys, marks[row.id] || {});
 
+    if (closeIsLocked(row.job, t.closed)) {
+      showToast?.(INVOICED_TOAST);
+      return;
+    }
+
     if (t.closed) {
       const res = await setMark(row.id, closeKey, '');
       if (!res?.ok) showToast?.('That did not save');
@@ -1070,6 +1092,10 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
     }
     if (!ready) {
       showToast?.('Not saving yet — the week marks have not loaded');
+      return;
+    }
+    if (removeIsBlocked(row.job)) {
+      showToast?.(REMOVE_DONE_TOAST);
       return;
     }
     const ok = window.confirm(`Take ${row.name} off this week? Any days already marked on this row are cleared.`);
