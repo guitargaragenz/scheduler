@@ -19,8 +19,7 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 ## Live — work that hasn't finished
 
-Nothing is live. The next piece of work gets chosen from Parked, with Trevor — it is not picked off
-this page. Start a session with `next`; if this section is still empty, say so.
+- [week-close-sticks.md](week-close-sticks.md) — a finished job stays on its week; a second × can't undo it. Scope lock in `.claude/pending-brief.md`, awaiting approval (2026-09-29).
 
 ## Noticed, not scoped
 
