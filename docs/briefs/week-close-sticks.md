@@ -1,8 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# A second × can't undo an invoiced close — cause, rulings, checklist
+# Closed — shipped at `57d9138`. A second × can't undo an invoiced close — cause, rulings, checklist
 
 Scope lock: `.claude/pending-brief.md`.
 

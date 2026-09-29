@@ -51,3 +51,10 @@ The table in the index names these briefs. This is the detail behind each.
 - **[Parts as a stuck reason](parked-parts-as-a-stuck-reason.md)** — waiting on the first
   Sunday board meeting; `parts_to_order` is empty until the meeting fills it, so the UI
   would ship showing nothing.
+
+## Jobs finished from Close Day, Catch-up or revenue review get no × on the Week page
+
+Only the Week page × writes the close mark, so a job finished from those three places drops off its
+week straight away. Found 2026-09-29 while fixing job 1726. Check before scoping: a scan of
+finished jobs missing a mark looked worse than it was — 8 finished before the close column existed
+and 2 already had a mark on an earlier week.
