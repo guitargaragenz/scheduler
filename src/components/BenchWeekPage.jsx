@@ -1210,6 +1210,9 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
                       aria-hidden="true"
                       style={{
                         position: 'absolute', pointerEvents: 'none',
+                        // Above the cells: they are positioned too and come later in
+                        // the row, so without this they paint over the line and hide it.
+                        zIndex: 1,
                         left: ruleFrom * cellW + cellW / 2,
                         width: (weekKeys.length - ruleFrom) * cellW,
                         top: '50%', height: 1, background: '#f87171', opacity: 0.75,
