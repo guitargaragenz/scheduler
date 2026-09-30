@@ -62,6 +62,17 @@ misdescribes its own trigger reads perfectly correct if you only open the line i
 - **Blast-radius check.** Flag any touch to: `scheduledSlots`, `calendarSlot`,
   `useGoogleCalendar.js`, `useSupabase.js`, `utils/supabase.js`, or the `jobs[]` shape.
 
+## Before you call anything a bug
+
+Trevor, 2026-09-30: reviewers kept flagging bugs that were already fixed. So before you call
+anything a bug, a gap or "wrong":
+
+1. **Check git history** — `git log -S'<code>'` / `git log --grep` on the files involved.
+   A fix may already have landed.
+2. **Check live data** — a read-only Supabase query (pattern in `scripts/backfill_admin_bench.mjs`,
+   select only, never write) to see whether the case actually exists today.
+3. **Can't check both?** Mark it **"unverified"**, not a bug, and say what you couldn't check.
+
 ## Rules
 
 - Ground every claim in a file and line you actually read. No "this might" without a citation.
