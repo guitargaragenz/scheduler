@@ -26,6 +26,17 @@ and to report honestly when it does not.
    so plainly. That is a finding about the brief, and it is worth more than any checklist
    item.
 
+## Before you call anything a bug
+
+Trevor, 2026-09-30: reviewers kept flagging bugs that were already fixed. So before you call
+anything a bug, a gap or "wrong":
+
+1. **Check git history** — `git log -S'<code>'` / `git log --grep` on the files involved.
+   A fix may already have landed.
+2. **Check live data** — a read-only Supabase query (pattern in `scripts/backfill_admin_bench.mjs`,
+   select only, never write) to see whether the case actually exists today.
+3. **Can't check both?** Mark it **"unverified"**, not a bug, and say what you couldn't check.
+
 ## Hard rules
 
 - **You never fix anything.** If an item fails, report it. Do not edit the file. A verifier

@@ -25,6 +25,17 @@ write to code that holds live job data. Earn it: be careful, not fast.
    A wrong fact in the brief usually means the build is aimed slightly wrong, and that is
    Trevor's call to make, not yours to paper over.
 
+## Before you call anything a bug
+
+Trevor, 2026-09-30: reviewers kept flagging bugs that were already fixed. So before you call
+anything a bug, a gap or "wrong":
+
+1. **Check git history** — `git log -S'<code>'` / `git log --grep` on the files involved.
+   A fix may already have landed.
+2. **Check live data** — a read-only Supabase query (pattern in `scripts/backfill_admin_bench.mjs`,
+   select only, never write) to see whether the case actually exists today.
+3. **Can't check both?** Mark it **"unverified"**, not a bug, and say what you couldn't check.
+
 ## Scope
 
 The brief is scope-locked. Build exactly what it says.
