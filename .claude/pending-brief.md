@@ -1,19 +1,40 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Record — A finished job keeps its × and its week
+# Scope lock — Weekly Log shows a split job's parts in a dropdown
 
-Shipped at `57d9138` (PR 77), 2026-09-29. Nothing live — next session starts with `/next`.
+Trevor, 2026-09-30: "in WL I can't see the splits". Job 1635 sat under Luthier with
+Finishing, Wiring and Setup still waiting, and nothing on the row said so.
+Previous occupant: week-close-sticks record, shipped `57d9138`.
 
-Tests: 45 files, 882 tests, all passing. Verifier: code checks passed; browser click-through done by Trevor.
+## Build (`src/components/BenchWeekPage.jsx`)
 
-What shipped: a second × on an invoiced job does nothing but toast; Remove refuses on an invoiced
-job; job 1726's close mark restored by `scripts/fix_1726_close_mark.mjs` (applied 2026-09-29).
+1. Tapping a split job's number/name (job with more than one part via `partsOf`) drops down
+   its parts. Tap again or tap away closes. Always closed on page open; nothing remembered.
+   Tap area ≥32px tall. The tap-away layer must not swallow taps on day cells or end box.
+2. Dropdown lists parts in Trevor's shop order: Fretwork, Luthier, Finishing, Wiring, Setup,
+   then any other bench alphabetically.
+3. A part is done when `pieceDone` is true (not `done`, which is the whole job). Done parts
+   are crossed off with a tick; the first not-done part in that order gets a "next" badge.
+4. Row filing uses the EXISTING Board rule `nextBenchOf` in `src/utils/nextBench.js`
+   (Luthier → Fretwork → Setup, Electronics stays put). Do not change that file's order.
+   Trevor ruled 2026-09-30: Board order stays; Electronics jobs never move along.
+5. The page headings AND "Save week as a file" (`buildWeekExport`) both use the new filing,
+   so the file matches the screen (Trevor, 2026-09-30).
+6. Add-a-job picker (`addableJobs`) must not offer a job already on the week under a
+   different heading. Check, don't assume.
+7. Remove the uncommitted "· Wiring / · Finishing" grey tag near line 1223.
 
-Decisions the brief didn't cover: the builder wrote both toast wordings; tests cover the two
-helpers (`closeIsLocked`, `removeIsBlocked`), not a full page click-through.
+## Out of scope
 
-Checklist items not met as written: #5 was checked by Trevor in the preview, not by the verifier.
+- No change to jobs, splits, `calendarSlot`, `scheduledSlots` or how parts are marked done.
+- Daily Log, Board, Bench page: unchanged. `nextBench.js` unchanged.
+- No new benches or headings. Wiring and Finishing stay sub-benches.
 
-Cause and rulings: [docs/briefs/week-close-sticks.md](../docs/briefs/week-close-sticks.md).
+## Binding rules
+
+- Read-only on job data. Display and filing only.
+- No "no bench" state: a job with no bench still files on Admin.
+
+Background (don't open to start work): [docs/briefs/wl-split-dropdown.md](../docs/briefs/wl-split-dropdown.md).
