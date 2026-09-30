@@ -37,6 +37,14 @@ describe('orderedParts', () => {
       .toEqual(['Fretwork', 'Luthier', 'Finishing', 'Wiring', 'Setup', 'Electronics', 'Zeta']);
   });
 
+  it('carries the session note and keeps same-bench sessions in session order', () => {
+    const parts = [
+      { id: 1, bench: 'Luthier', sessionIndex: 2, sessionNote: ' clamp neck ' },
+      { id: 2, bench: 'Luthier', sessionIndex: 1 },
+    ];
+    expect(orderedParts(parts).map(p => [p.id, p.note])).toEqual([['2', ''], ['1', 'clamp neck']]);
+  });
+
   it('reads pieceDone, not done, and badges the first not-done part as next', () => {
     const out = orderedParts([
       { id: 1, bench: 'Luthier', pieceDone: true },

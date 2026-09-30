@@ -281,8 +281,8 @@ export function orderedParts(parts) {
     const i = PART_ORDER.indexOf(b);
     return i === -1 ? PART_ORDER.length : i;
   };
-  const list = (parts || []).map(p => ({ id: String(p.id), bench: p.bench || TYPED_ROW_BENCH, done: Boolean(p.pieceDone) }));
-  list.sort((a, b) => rank(a.bench) - rank(b.bench) || a.bench.localeCompare(b.bench));
+  const list = (parts || []).map(p => ({ id: String(p.id), bench: p.bench || TYPED_ROW_BENCH, done: Boolean(p.pieceDone), note: String(p.sessionNote || '').trim(), n: Number(p.sessionIndex) || 0 }));
+  list.sort((a, b) => rank(a.bench) - rank(b.bench) || a.bench.localeCompare(b.bench) || a.n - b.n);
   const firstOpen = list.findIndex(p => !p.done);
   return list.map((p, i) => ({ ...p, next: i === firstOpen }));
 }
@@ -974,8 +974,8 @@ function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
               role="listitem"
               data-done={p.done ? 'yes' : 'no'}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 12px', fontSize: 13.5,
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 8px',
+                padding: '8px 12px', fontSize: 13.5, maxWidth: 280,
                 color: p.done ? '#64748b' : '#e2e8f0',
               }}
             >
@@ -986,6 +986,11 @@ function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
                   marginLeft: 'auto', padding: '1px 7px', borderRadius: 9,
                   background: '#1e3a5f', color: '#93c5fd', fontSize: 11, fontWeight: 700,
                 }}>next</span>
+              )}
+              {/* Session note, only when there is one. Trevor, 2026-09-30:
+                  bench and note only — hours and day were surplus. */}
+              {p.note && (
+                <div style={{ flexBasis: '100%', paddingLeft: 22, fontSize: 12, color: '#94a3b8' }}>{p.note}</div>
               )}
             </div>
           ))}

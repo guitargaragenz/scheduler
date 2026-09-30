@@ -24,6 +24,8 @@ Previous occupant: week-close-sticks record, shipped `57d9138`.
    so the file matches the screen (Trevor, 2026-09-30).
 6. Add-a-job picker (`addableJobs`) must not offer a job already on the week under a
    different heading. Check, don't assume.
+8. Each part shows its session note (`sessionNote`) on a small line under it, only when
+   there is one. No hours or day (Trevor, 2026-09-30). Same-bench sessions in session order.
 7. Remove the uncommitted "· Wiring / · Finishing" grey tag near line 1223.
 
 ## Out of scope
