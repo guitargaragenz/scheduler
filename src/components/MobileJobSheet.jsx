@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
 
@@ -82,6 +82,14 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
 
   // Slide-up animation
   const [visible, setVisible] = useState(false);
+  const sheetRef = useRef(null);
+  const [focusNote, setFocusNote] = useState(null);
+  // After Enter adds a split, put the cursor in the new split's note box.
+  useEffect(() => {
+    if (!focusNote) return;
+    sheetRef.current?.querySelector(`[data-note="${focusNote.ri}-${focusNote.si}"]`)?.focus();
+    setFocusNote(null);
+  }, [focusNote]);
   useEffect(() => { requestAnimationFrame(() => setVisible(true)); }, []);
 
   function close() {
@@ -102,6 +110,15 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
       ...row,
       sessions: row.sessions.map((s, x) => x !== si ? s : { ...s, [field]: val }),
     }));
+  }
+
+  // Each new split is its own 1h and adds to the job's total.
+  function addSession(ri) {
+    const si = rows[ri].sessions.length;
+    setRows(prev => prev.map((row, r) => r !== ri ? row : {
+      ...row, sessions: [...row.sessions, { hours: 1, note: '' }],
+    }));
+    setFocusNote({ ri, si });
   }
 
   function setBench(ri, bench) {
@@ -159,7 +176,7 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
       />
 
       {/* Sheet */}
-      <div style={{
+      <div ref={sheetRef} style={{
         position: 'absolute', left: 0, right: 0, bottom: 0,
         background: '#1e293b',
         borderRadius: '16px 16px 0 0',
@@ -406,6 +423,13 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                           placeholder="Note…"
                           value={sess.note}
                           onChange={e => updateSession(ri, si, 'note', e.target.value)}
+                          data-note={`${ri}-${si}`}
+                          enterKeyHint={isSubtaskEdit ? undefined : 'next'}
+                          onKeyDown={e => {
+                            if (e.key !== 'Enter' || isSubtaskEdit) return;
+                            e.preventDefault();
+                            addSession(ri);
+                          }}
                           style={{
                             flex: 1, padding: '6px 10px', borderRadius: 6,
                             background: '#0f172a', border: '1px solid #334155',
