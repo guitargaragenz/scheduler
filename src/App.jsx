@@ -157,7 +157,9 @@ export default function App() {
   const [showBench, setShowBench] = useState(false);
   // The week page (bench view, Build 1). Its own flag and its own page — the
   // Bench board is a different screen and the two must not collide.
-  const [showWeekPage, setShowWeekPage] = useState(false);
+  // Opens on the Weekly Log — Trevor, 2026-09-30: "make default window WL".
+  // The parking-lot link still wins, since it asks for a page by name.
+  const [showWeekPage, setShowWeekPage] = useState(() => window.location.hash !== '#parking-lot');
   // The Daily Log. Its own flag because on a phone the two logs are seen one at
   // a time; on a desktop either flag shows both, side by side.
   const [showDayPage, setShowDayPage] = useState(false);
