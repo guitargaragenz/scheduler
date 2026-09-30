@@ -1,42 +1,24 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# Scope lock — Weekly Log shows a split job's parts in a dropdown
+# Record — Weekly Log shows a split job's parts in a dropdown
 
-Trevor, 2026-09-30: "in WL I can't see the splits". Job 1635 sat under Luthier with
-Finishing, Wiring and Setup still waiting, and nothing on the row said so.
-Previous occupant: week-close-sticks record, shipped `57d9138`.
+Shipped at `39d3911` (PR 79), 2026-09-30. Nothing live — next session starts with `/next`.
 
-## Build (`src/components/BenchWeekPage.jsx`)
+Tests: 46 files, 898 tests, all passing. Verifier: 7/7 by code and tests; browser check done by
+Trevor on the preview.
 
-1. Tapping a split job's number/name (job with more than one part via `partsOf`) drops down
-   its parts. Tap again or tap away closes. Always closed on page open; nothing remembered.
-   Tap area ≥32px tall. The tap-away layer must not swallow taps on day cells or end box.
-2. Dropdown lists parts in Trevor's shop order: Fretwork, Luthier, Finishing, Wiring, Setup,
-   then any other bench alphabetically.
-3. A part is done when `pieceDone` is true (not `done`, which is the whole job). Done parts
-   are crossed off with a tick; the first not-done part in that order gets a "next" badge.
-4. Row filing uses the EXISTING Board rule `nextBenchOf` in `src/utils/nextBench.js`
-   (Luthier → Fretwork → Setup, Electronics stays put). Do not change that file's order.
-   Trevor ruled 2026-09-30: Board order stays; Electronics jobs never move along.
-5. The page headings AND "Save week as a file" (`buildWeekExport`) both use the new filing,
-   so the file matches the screen (Trevor, 2026-09-30).
-6. Add-a-job picker (`addableJobs`) must not offer a job already on the week under a
-   different heading. Check, don't assume.
-8. Each part shows its session note (`sessionNote`) on a small line under it, only when
-   there is one. No hours or day (Trevor, 2026-09-30). Same-bench sessions in session order.
-7. Remove the uncommitted "· Wiring / · Finishing" grey tag near line 1223.
+What shipped: tapping a split job's name in the Weekly Log drops down its parts in shop order
+(Fretwork, Luthier, Finishing, Wiring, Setup), done ones ticked, "next" on the first open one,
+each with its session note. Split jobs file under the Board's `nextBenchOf` rule; the saved
+week file matches the page.
 
-## Out of scope
+Decisions the brief didn't cover: ▾ arrow on split names; a part with no bench lists as Admin;
+collected jobs get the dropdown too (display only). Session notes added after the preview
+(Trevor: bench and note only, no hours or day).
 
-- No change to jobs, splits, `calendarSlot`, `scheduledSlots` or how parts are marked done.
-- Daily Log, Board, Bench page: unchanged. `nextBench.js` unchanged.
-- No new benches or headings. Wiring and Finishing stay sub-benches.
+Not met as written: "a job with no bench files on Admin" — the Weekly Log never did that and a
+picker test depends on it, so no-bench jobs still get no heading. Needs its own conversation.
 
-## Binding rules
-
-- Read-only on job data. Display and filing only.
-- No "no bench" state: a job with no bench still files on Admin.
-
-Background (don't open to start work): [docs/briefs/wl-split-dropdown.md](../docs/briefs/wl-split-dropdown.md).
+Background: [docs/briefs/wl-split-dropdown.md](../docs/briefs/wl-split-dropdown.md).
