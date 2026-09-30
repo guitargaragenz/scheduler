@@ -89,6 +89,14 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
   const [timeVal, setTimeVal] = useState('09:00');
   const [saveError, setSaveError] = useState(null);
   const modalRef = useRef(null);
+  const [focusNote, setFocusNote] = useState(null);
+
+  // After Enter adds a split, put the cursor in the new split's note box.
+  useEffect(() => {
+    if (!focusNote) return;
+    modalRef.current?.querySelector(`[data-note="${focusNote.ri}-${focusNote.si}"]`)?.focus();
+    setFocusNote(null);
+  }, [focusNote]);
 
   useEffect(() => {
     function handleMouseDown(e) {
@@ -305,6 +313,13 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                       placeholder={row.sessions.length > 1 ? `Session ${si + 1} note…` : 'Note (optional)'}
                       value={sess.note}
                       onChange={e => updateSession(ri, si, 'note', e.target.value)}
+                      data-note={`${ri}-${si}`}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter' || isSubtaskEdit) return;
+                        e.preventDefault();
+                        setSessionCount(ri, row.sessions.length + 1);
+                        setFocusNote({ ri, si: row.sessions.length });
+                      }}
                       style={{
                         flex: 1, background: '#0f172a', border: '1px solid #475569', borderRadius: 4,
                         padding: '3px 8px', fontSize: 12, color: '#cbd5e1',
