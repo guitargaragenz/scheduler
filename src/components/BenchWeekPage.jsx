@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { benchColors } from '../data/jobs.js';
 import { localDateKey, formatDateRange, getWeekDays } from '../utils/calendar.js';
+import { nextBenchOf } from '../utils/nextBench.js';
 
 // The week page — bench view, Build 1.
 //
@@ -244,12 +245,46 @@ export function partsOf(job, all, byId) {
 // which heading its Weekly Log row sits under.
 const PRIMARY_OF = { Wiring: 'Setup', Finishing: 'Luthier' };
 
-// The bench a job's ROW is filed under: the parent's own if it has one,
-// otherwise the first bench any of its pieces sits on. One row, one bench
-// heading, even for a job split across two benches.
+// True when a job has real split parts — partsOf() hands back [job] itself
+// when it has none.
+export function isSplitRow(job, parts) {
+  return (parts || []).length > 0 && !(parts.length === 1 && parts[0] === job);
+}
+
+// The bench a job's ROW is filed under. One row, one bench heading, even for a
+// job split across several benches.
+//
+// A split job files under the Board's own "next bench" rule, nextBenchOf()
+// (Luthier, then Fretwork, then Setup; Electronics never moves; all parts done
+// = the job's own bench), so the Weekly Log and the Board never disagree about
+// where a job is up to (scope lock 2026-09-30). The saved week file uses these
+// same rows, so it follows too.
+//
+// A job with no bench at all is left as it always was (''); the add-a-job
+// picker deliberately never offers one (Build 1b).
 export function rowBenchOf(job, parts) {
-  const bench = job.bench || parts.map(p => p.bench).find(Boolean) || '';
+  const split = isSplitRow(job, parts);
+  const bench = (split ? nextBenchOf(job, parts) : job.bench)
+    || (parts || []).map(p => p.bench).find(Boolean)
+    || '';
   return PRIMARY_OF[bench] || bench;
+}
+
+// Trevor's shop order for a split job's parts in the Weekly Log dropdown. Any
+// bench not listed comes after, alphabetically.
+export const PART_ORDER = ['Fretwork', 'Luthier', 'Finishing', 'Wiring', 'Setup'];
+
+// A split job's parts, in shop order, each marked done (pieceDone — NOT done,
+// which is the whole job) and the first not-done one marked next. Display only.
+export function orderedParts(parts) {
+  const rank = b => {
+    const i = PART_ORDER.indexOf(b);
+    return i === -1 ? PART_ORDER.length : i;
+  };
+  const list = (parts || []).map(p => ({ id: String(p.id), bench: p.bench || TYPED_ROW_BENCH, done: Boolean(p.pieceDone), note: String(p.sessionNote || '').trim(), n: Number(p.sessionIndex) || 0 }));
+  list.sort((a, b) => rank(a.bench) - rank(b.bench) || a.bench.localeCompare(b.bench) || a.n - b.n);
+  const firstOpen = list.findIndex(p => !p.done);
+  return list.map((p, i) => ({ ...p, next: i === firstOpen }));
 }
 
 export function rowName(job) {
@@ -336,6 +371,7 @@ export function weekRows(jobs, weekKeys, marks = {}, { keepDone = false } = {}) 
       bookedDays,
       addedByHand,
       benches: [...new Set(parts.map(p => p.bench).filter(Boolean))],
+      parts: isSplitRow(job, parts) ? orderedParts(parts) : null,
     });
   }
 
@@ -419,6 +455,7 @@ export function departedWeekRows(departedJobs, weekKeys, marks = {}, liveIds = n
       bookedDays: new Set(),
       addedByHand: Boolean(rowKey && jobMarks[rowKey]),
       benches: [...new Set(parts.map(p => p.bench).filter(Boolean))],
+      parts: isSplitRow(job, parts) ? orderedParts(parts) : null,
       locked: true,
     });
   }
@@ -884,6 +921,85 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick, l
   );
 }
 
+// A split job's name, which drops down its parts (scope lock 2026-09-30:
+// "in WL I can't see the splits"). Tap the name to open, tap it again or tap
+// anywhere else to close. Closed on every page open; nothing is remembered.
+//
+// Tap-away is a document listener, NOT a full-screen layer like the day and
+// end-box menus use: a layer would eat the first tap on a day cell or end box.
+// The listener closes the list and lets that tap carry on to what was under it.
+// Display only — nothing here writes.
+function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
+  const wrap = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    function away(e) {
+      if (wrap.current && !wrap.current.contains(e.target)) onDismiss();
+    }
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [open, onDismiss]);
+
+  return (
+    <div ref={wrap} style={{ position: 'relative', flex: 'none', minWidth: 0, width: nameStyle.width }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={`Parts of ${row.name}`}
+        onClick={onToggle}
+        title={row.locked ? `${row.name} — collected, marks locked` : `${row.name} — tap for its parts`}
+        style={{
+          ...nameStyle, width: '100%', display: 'block', textAlign: 'left',
+          minHeight: 32, background: 'transparent', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit', lineHeight: '32px', paddingTop: 0,
+        }}
+      >
+        {children}
+        <span style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>{open ? '▴' : '▾'}</span>
+      </button>
+      {open && (
+        <div
+          role="list"
+          aria-label={`Parts of ${row.name}`}
+          style={{
+            position: 'absolute', top: '100%', left: 0, zIndex: 41,
+            display: 'flex', flexDirection: 'column', minWidth: 190,
+            background: '#0f172a', border: '1px solid #334155', borderRadius: 6,
+            boxShadow: '0 6px 18px rgba(0,0,0,0.5)', overflow: 'hidden', padding: '4px 0',
+          }}
+        >
+          {row.parts.map(p => (
+            <div
+              key={p.id}
+              role="listitem"
+              data-done={p.done ? 'yes' : 'no'}
+              style={{
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 8px',
+                padding: '8px 12px', fontSize: 13.5, maxWidth: 280,
+                color: p.done ? '#64748b' : '#e2e8f0',
+              }}
+            >
+              <span style={{ width: 14, color: p.done ? '#4ade80' : '#475569' }}>{p.done ? '✓' : '○'}</span>
+              <span style={{ textDecoration: p.done ? 'line-through' : 'none' }}>{p.bench}</span>
+              {p.next && (
+                <span style={{
+                  marginLeft: 'auto', padding: '1px 7px', borderRadius: 9,
+                  background: '#1e3a5f', color: '#93c5fd', fontSize: 11, fontWeight: 700,
+                }}>next</span>
+              )}
+              {/* Session note, only when there is one. Trevor, 2026-09-30:
+                  bench and note only — hours and day were surplus. */}
+              {p.note && (
+                <div style={{ flexBasis: '100%', paddingLeft: 22, fontSize: 12, color: '#94a3b8' }}>{p.note}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, ready, saveError, setMark, clearJobKeys, onCloseJob, onBookedOnDay, isMobile, showToast }) {
   const weekKeys = useMemo(() => (weekDays || []).map(localDateKey), [weekDays]);
   // Live jobs as always, plus departed jobs with marks this week, locked.
@@ -900,6 +1016,10 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
   const nextRowKey = useMemo(() => weekRowKey(nextKeys), [nextKeys]);
   // Which row's end-box menu is open, by row id. One at a time.
   const [menuFor, setMenuFor] = useState(null);
+  // Which split job's parts list is open, by row id. One at a time; starts
+  // closed and is never saved.
+  const [partsFor, setPartsFor] = useState(null);
+  const closeParts = useCallback(() => setPartsFor(null), []);
 
   function handleExport() {
     const text = buildWeekExport({ rows, weekKeys, weekDays, marks });
@@ -1215,6 +1335,15 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
                   alignItems: isMobile ? 'stretch' : 'center',
                   minHeight: 32, marginBottom: isMobile ? 8 : 0, position: 'relative',
                 }}>
+                  {row.parts ? (
+                    <SplitName
+                      row={row}
+                      nameStyle={nameStyle}
+                      open={partsFor === row.id}
+                      onToggle={() => setPartsFor(partsFor === row.id ? null : row.id)}
+                      onDismiss={closeParts}
+                    >{row.name}</SplitName>
+                  ) : (
                   <div style={nameStyle} title={row.locked ? `${row.name} — collected, marks locked` : undefined}>
                     {/* The dim + says this line was typed by hand and has no job
                         number. Kept out of row.name so the Remove question and
@@ -1222,6 +1351,7 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
                     {row.typed && <span style={{ color: '#64748b' }}>+ </span>}
                     {row.name}
                   </div>
+                  )}
                   <div style={{
                     display: 'flex', alignItems: 'center', position: 'relative',
                     flex: isMobile ? 'none' : 'initial',
