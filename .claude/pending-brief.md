@@ -1,16 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# Scope lock — the app opens on the Weekly Log
+# Record — the app opens on the Weekly Log
 
-Trevor, 2026-09-30: "also make default window WL pls".
-
-## Build
-
-1. `src/App.jsx`: the Weekly Log page is showing when the app first loads.
-2. The `#parking-lot` link still opens the Parking Lot instead.
-
-## Out of scope
-
-- No other page, button or data changes. Previous occupant: WL split-dropdown record, `39d3911`.
+Shipped at `a8781c0` (PR 81), 2026-09-30. Nothing live — next session starts with `/next`.
+One line in `src/App.jsx`; the `#parking-lot` link still opens the Parking Lot. 898 tests pass.
