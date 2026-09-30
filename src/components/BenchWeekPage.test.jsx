@@ -268,15 +268,16 @@ describe('adding a job to the week', () => {
   });
 
   it('will not offer a split job under its other bench', () => {
-    // One row per job: this guitar is filed under Luthier, so Fretwork must not
-    // still offer it even though a split of it sits on that bench.
+    // One row per job: this guitar's only open part is Fretwork, so it files
+    // there (the Board's next-bench rule), and Luthier — its own bench — must
+    // not still offer it.
     const split = [
       { id: 'p', job: '1714', mfr: 'Fender', isSplit: true, bench: 'Luthier' },
       { id: 'c1', parentId: 'p', bench: 'Fretwork' },
     ];
     const rows = weekRows(split, WEEK, { p: { [weekRowKey(WEEK)]: 'row' } });
     expect(rows).toHaveLength(1);
-    expect(rows[0].bench).toBe('Luthier');
+    expect(rows[0].bench).toBe('Fretwork');
     expect(addableJobs(split, 'Fretwork', rows)).toEqual([]);
     expect(addableJobs(split, 'Luthier', rows)).toEqual([]);
   });
