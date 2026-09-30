@@ -24,6 +24,10 @@ this page. Start a session with `next`; if this section is still empty, say so.
 
 ## Noticed, not scoped
 
+- **Weekly Log hides jobs with no bench.** They get no heading and can't be added, which clashes
+  with the "no such thing as no bench" rule. Found building the split dropdown (shipped `39d3911`,
+  2026-09-30: tap a split job's name to see its parts and session notes).
+
 Six real problems nobody has picked up, none attached to a brief. Detail in
 [BACKLOG.md](BACKLOG.md).
 

@@ -1,8 +1,10 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Weekly Log split dropdown — background
+
+Shipped at `39d3911` (PR 79), 2026-09-30.
 
 Scope lock: `.claude/pending-brief.md`.
 
