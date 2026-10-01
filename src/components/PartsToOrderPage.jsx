@@ -121,7 +121,37 @@ const labelStyle = {
   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 };
 
-export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [] }) {
+// A type-ahead box for the managed Category / Supplier lists. Matching names
+// pop up as you type; a name that isn't in the list is kept as typed and gets
+// saved to the list when the part is added (see handleAdd).
+function ListInput({ id, value, onChange, items, placeholder }) {
+  return (
+    <>
+      <input
+        id={id}
+        list={`${id}-list`}
+        style={fieldStyle}
+        value={value}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={e => onChange(e.target.value)}
+      />
+      <datalist id={`${id}-list`}>
+        {items.map(c => <option key={c.id} value={c.name} />)}
+      </datalist>
+    </>
+  );
+}
+
+// The list's own spelling if the typed name matches one (ignoring case),
+// otherwise the typed name trimmed.
+function canonicalName(items, typed) {
+  const clean = (typed || '').trim();
+  const hit = items.find(i => i.name.toLowerCase() === clean.toLowerCase());
+  return hit ? hit.name : clean;
+}
+
+export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [], onAddSupplier, onAddCategory }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -196,13 +226,26 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
 
   async function handleAdd(e) {
     e.preventDefault();
-    const payload = buildPartPayload({ description, category, neededForJob, partNumber, supplier });
+    const catName = canonicalName(categories, category);
+    const supName = canonicalName(suppliers, supplier);
+    const payload = buildPartPayload({ description, category: catName, neededForJob, partNumber, supplier: supName });
     if (!payload) {
       setWriteError('Type what the part is before adding it.');
       return;
     }
     setBusy(true);
     try {
+      // A name that isn't in the list yet is a new one — save it to the list
+      // first, so it shows up next time. If that fails, stop before the part is
+      // saved with a name the list doesn't have.
+      if (catName && !categories.some(c => c.name === catName) && onAddCategory && !(await onAddCategory(catName))) {
+        setWriteError(`The new category "${catName}" was NOT saved, so the part was not added.`);
+        return;
+      }
+      if (supName && !suppliers.some(x => x.name === supName) && onAddSupplier && !(await onAddSupplier(supName))) {
+        setWriteError(`The new supplier "${supName}" was NOT saved, so the part was not added.`);
+        return;
+      }
       await addPartsToOrderItems([payload]);
       setWriteError(null);
       setDescription('');
@@ -290,46 +333,28 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
 
           <div style={{ marginBottom: 18, marginTop: 18 }}>
             <label style={labelStyle} htmlFor="pto-cat">Category (optional)</label>
-            <select
-              id="pto-cat"
-              style={fieldStyle}
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-            >
-              {/* Blank is first and the default. A blank category is left off
-                  the saved part, so the existing "part" fallback still applies. */}
-              <option value="">— none —</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
+            <ListInput
+              id="pto-cat" value={category} onChange={setCategory}
+              items={categories} placeholder="Type or pick — new names are saved"
+            />
             {categories.length === 0 && (
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-                No categories set up yet — add them in Settings.
+                No categories yet — use “+ Add new category…” above.
               </div>
             )}
           </div>
 
           <div style={{ marginBottom: 18 }}>
             <label style={labelStyle} htmlFor="pto-supplier">Supplier (optional)</label>
-            <select
-              id="pto-supplier"
-              style={fieldStyle}
-              value={supplier}
-              onChange={e => setSupplier(e.target.value)}
-            >
-              {/* Blank first and selected by default — "not decided yet" is a
-                  perfectly normal state for a part to sit in. */}
-              <option value="">— not decided yet —</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
-              ))}
-            </select>
+            <ListInput
+              id="pto-supplier" value={supplier} onChange={setSupplier}
+              items={suppliers} placeholder="Not decided yet — type or pick; new names are saved"
+            />
             {/* If the list is empty the dropdown still works; it just offers
                 nothing but blank. Names are added in Settings. */}
             {suppliers.length === 0 && (
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-                No suppliers set up yet — add them in Settings.
+                No suppliers yet — use “+ Add new supplier…” above.
               </div>
             )}
           </div>

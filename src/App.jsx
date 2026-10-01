@@ -972,6 +972,8 @@ export default function App() {
             <PartsToOrderPage
               suppliers={suppliers}
               categories={partCategories}
+              onAddSupplier={addSupplier}
+              onAddCategory={addCategory}
               onCheckStock={term => {
                 setPartsDrawerSearch(term || '');
                 selectPage('parts');
