@@ -139,6 +139,12 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
     }));
   }
 
+  function removeSession(ri, si) {
+    setRows(prev => prev.map((row, r) => r !== ri || row.sessions.length < 2 ? row : {
+      ...row, sessions: row.sessions.filter((_, x) => x !== si),
+    }));
+  }
+
   function addBench() {
     const used = new Set(rows.map(r => r.bench));
     const next = ALL_BENCHES.find(b => !used.has(b)) || 'Admin';
@@ -325,6 +331,13 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
                         padding: '3px 8px', fontSize: 12, color: '#cbd5e1',
                       }}
                     />
+                    {row.sessions.length > 1 && !isSubtaskEdit && (
+                      <button
+                        onClick={() => removeSession(ri, si)}
+                        title="Delete this split"
+                        style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
+                      >×</button>
+                    )}
                   </div>
                 ))}
               </div>

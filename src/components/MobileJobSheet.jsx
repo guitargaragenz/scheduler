@@ -121,6 +121,12 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
     setFocusNote({ ri, si });
   }
 
+  function removeSession(ri, si) {
+    setRows(prev => prev.map((row, r) => r !== ri || row.sessions.length < 2 ? row : {
+      ...row, sessions: row.sessions.filter((_, x) => x !== si),
+    }));
+  }
+
   function setBench(ri, bench) {
     // Guard against two rows sharing a bench — child ids are
     // `${parentId}_${bench}_${sessionIndex}`, so a duplicate bench across
@@ -431,11 +437,18 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
                             addSession(ri);
                           }}
                           style={{
-                            flex: 1, padding: '6px 10px', borderRadius: 6,
+                            flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: 6,
                             background: '#0f172a', border: '1px solid #334155',
                             color: '#cbd5e1', fontSize: 13,
                           }}
                         />
+                        {row.sessions.length > 1 && !isSubtaskEdit && (
+                          <button
+                            onClick={() => removeSession(ri, si)}
+                            aria-label="Delete this split"
+                            style={{ width: 32, height: 32, flexShrink: 0, border: 'none', background: 'none', color: '#64748b', fontSize: 20, cursor: 'pointer' }}
+                          >×</button>
+                        )}
                       </div>
                     ))}
                   </div>
