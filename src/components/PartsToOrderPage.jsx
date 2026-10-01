@@ -124,7 +124,21 @@ const labelStyle = {
 // A type-ahead box for the managed Category / Supplier lists. Matching names
 // pop up as you type; a name that isn't in the list is kept as typed and gets
 // saved to the list when the part is added (see handleAdd).
-function ListInput({ id, value, onChange, items, placeholder }) {
+function ListInput({ id, value, onChange, items, placeholder, onAdd }) {
+  const [note, setNote] = useState('');
+
+  // Enter here saves the typed name to the list instead of adding the part.
+  async function commit(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const typed = value.trim();
+    if (!typed) return;
+    const name = canonicalName(items, typed);
+    if (items.some(i => i.name === name)) { onChange(name); setNote(''); return; }
+    if (onAdd && await onAdd(name)) { onChange(name); setNote(`Saved "${name}" to the list.`); }
+    else setNote(`"${name}" was NOT saved.`);
+  }
+
   return (
     <>
       <input
@@ -134,8 +148,10 @@ function ListInput({ id, value, onChange, items, placeholder }) {
         value={value}
         placeholder={placeholder}
         autoComplete="off"
-        onChange={e => onChange(e.target.value)}
+        onChange={e => { onChange(e.target.value); setNote(''); }}
+        onKeyDown={commit}
       />
+      {note && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>{note}</div>}
       <datalist id={`${id}-list`}>
         {items.map(c => <option key={c.id} value={c.name} />)}
       </datalist>
@@ -335,7 +351,7 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
             <label style={labelStyle} htmlFor="pto-cat">Category (optional)</label>
             <ListInput
               id="pto-cat" value={category} onChange={setCategory}
-              items={categories} placeholder="Type or pick — new names are saved"
+              items={categories} placeholder="Type or pick — Enter saves a new one" onAdd={onAddCategory}
             />
             {categories.length === 0 && (
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
@@ -348,7 +364,7 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
             <label style={labelStyle} htmlFor="pto-supplier">Supplier (optional)</label>
             <ListInput
               id="pto-supplier" value={supplier} onChange={setSupplier}
-              items={suppliers} placeholder="Not decided yet — type or pick; new names are saved"
+              items={suppliers} placeholder="Not decided yet — type or pick; Enter saves a new one" onAdd={onAddSupplier}
             />
             {/* If the list is empty the dropdown still works; it just offers
                 nothing but blank. Names are added in Settings. */}
