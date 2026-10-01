@@ -39,13 +39,15 @@ export function useSuppliers() {
   // so what is on screen is what is actually stored.
   const add = useCallback(async (name) => {
     const clean = (name ?? '').trim();
-    if (!clean) return;
+    if (!clean) return false;
     try {
       await addSupplier({ name: clean });
       setError(null);
       await refresh();
+      return true;
     } catch (e) {
       setError(`"${clean}" was NOT added: ${e?.message || String(e)}`);
+      return false;
     }
   }, [refresh]);
 

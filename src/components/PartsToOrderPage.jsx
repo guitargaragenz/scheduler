@@ -121,7 +121,104 @@ const labelStyle = {
   textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
 };
 
-export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [] }) {
+// A type-ahead box for the managed Category / Supplier lists. Arrow-down (or a
+// click) shows the whole list even when a name is already filled in; typing
+// narrows it. A name that isn't in the list gets an "Add" row, and Enter on
+// it — or Enter with nothing highlighted — saves it to the list. The part
+// itself is only added by the Add part button.
+function ListInput({ id, value, onChange, items, placeholder, onAdd }) {
+  const [note, setNote] = useState('');
+  const [open, setOpen] = useState(false);
+  const [narrow, setNarrow] = useState(false); // true once the user has typed since opening
+  const [hi, setHi] = useState(-1);
+
+  const typed = value.trim();
+  const exact = items.some(i => i.name.toLowerCase() === typed.toLowerCase());
+  const shown = narrow && typed
+    ? items.filter(i => i.name.toLowerCase().includes(typed.toLowerCase()))
+    : items;
+  const canAdd = !!onAdd && !!typed && !exact;
+  const rows = [...shown.map(i => ({ name: i.name, isNew: false })), ...(canAdd ? [{ name: typed, isNew: true }] : [])];
+
+  async function pick(row) {
+    setOpen(false); setHi(-1); setNarrow(false);
+    if (!row.isNew) { onChange(row.name); setNote(''); return; }
+    if (await onAdd(row.name)) { onChange(row.name); setNote(`Saved "${row.name}" to the list.`); }
+    else setNote(`"${row.name}" was NOT saved.`);
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!open) { setOpen(true); setNarrow(false); setHi(-1); return; }
+      setHi(h => Math.min(h + 1, rows.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHi(h => Math.max(h - 1, 0));
+    } else if (e.key === 'Escape') {
+      setOpen(false); setHi(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault(); // never submits the part from here
+      if (open && hi >= 0 && rows[hi]) { pick(rows[hi]); return; }
+      if (!typed) return;
+      const name = canonicalName(items, typed);
+      pick({ name, isNew: !items.some(i => i.name === name) });
+    }
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        style={fieldStyle}
+        value={value}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={e => { onChange(e.target.value); setNote(''); setOpen(true); setNarrow(true); setHi(-1); }}
+        onFocus={() => { setNarrow(false); }}
+        onClick={() => { setOpen(true); setNarrow(false); }}
+        onBlur={() => { setOpen(false); setHi(-1); }}
+        onKeyDown={onKeyDown}
+      />
+      {open && rows.length > 0 && (
+        <div role="listbox" style={{
+          position: 'absolute', left: 0, right: 0, top: '100%', marginTop: 4, zIndex: 20,
+          maxHeight: 220, overflowY: 'auto', background: '#111827',
+          border: `1px solid ${BORDER}`, borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        }}>
+          {rows.map((r, i) => (
+            <div
+              key={(r.isNew ? 'new:' : '') + r.name}
+              role="option"
+              aria-selected={i === hi}
+              onMouseDown={e => { e.preventDefault(); pick(r); }}
+              onMouseEnter={() => setHi(i)}
+              style={{
+                padding: '9px 12px', fontSize: 14, cursor: 'pointer',
+                color: r.isNew ? '#93c5fd' : '#f9fafb',
+                background: i === hi ? '#1f2937' : 'transparent',
+                borderTop: r.isNew && i > 0 ? `1px solid ${BORDER}` : 'none',
+              }}
+            >{r.isNew ? `+ Add "${r.name}" to the list` : r.name}</div>
+          ))}
+        </div>
+      )}
+      {note && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>{note}</div>}
+    </div>
+  );
+}
+
+// The list's own spelling if the typed name matches one (ignoring case),
+// otherwise the typed name trimmed.
+function canonicalName(items, typed) {
+  const clean = (typed || '').trim();
+  const hit = items.find(i => i.name.toLowerCase() === clean.toLowerCase());
+  return hit ? hit.name : clean;
+}
+
+export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [], onAddSupplier, onAddCategory }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -196,13 +293,26 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
 
   async function handleAdd(e) {
     e.preventDefault();
-    const payload = buildPartPayload({ description, category, neededForJob, partNumber, supplier });
+    const catName = canonicalName(categories, category);
+    const supName = canonicalName(suppliers, supplier);
+    const payload = buildPartPayload({ description, category: catName, neededForJob, partNumber, supplier: supName });
     if (!payload) {
       setWriteError('Type what the part is before adding it.');
       return;
     }
     setBusy(true);
     try {
+      // A name that isn't in the list yet is a new one — save it to the list
+      // first, so it shows up next time. If that fails, stop before the part is
+      // saved with a name the list doesn't have.
+      if (catName && !categories.some(c => c.name === catName) && onAddCategory && !(await onAddCategory(catName))) {
+        setWriteError(`The new category "${catName}" was NOT saved, so the part was not added.`);
+        return;
+      }
+      if (supName && !suppliers.some(x => x.name === supName) && onAddSupplier && !(await onAddSupplier(supName))) {
+        setWriteError(`The new supplier "${supName}" was NOT saved, so the part was not added.`);
+        return;
+      }
       await addPartsToOrderItems([payload]);
       setWriteError(null);
       setDescription('');
@@ -290,46 +400,28 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
 
           <div style={{ marginBottom: 18, marginTop: 18 }}>
             <label style={labelStyle} htmlFor="pto-cat">Category (optional)</label>
-            <select
-              id="pto-cat"
-              style={fieldStyle}
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-            >
-              {/* Blank is first and the default. A blank category is left off
-                  the saved part, so the existing "part" fallback still applies. */}
-              <option value="">— none —</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
+            <ListInput
+              id="pto-cat" value={category} onChange={setCategory}
+              items={categories} placeholder="Type, or ↓ to see all — Enter saves a new one" onAdd={onAddCategory}
+            />
             {categories.length === 0 && (
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-                No categories set up yet — add them in Settings.
+                No categories yet — use “+ Add new category…” above.
               </div>
             )}
           </div>
 
           <div style={{ marginBottom: 18 }}>
             <label style={labelStyle} htmlFor="pto-supplier">Supplier (optional)</label>
-            <select
-              id="pto-supplier"
-              style={fieldStyle}
-              value={supplier}
-              onChange={e => setSupplier(e.target.value)}
-            >
-              {/* Blank first and selected by default — "not decided yet" is a
-                  perfectly normal state for a part to sit in. */}
-              <option value="">— not decided yet —</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
-              ))}
-            </select>
+            <ListInput
+              id="pto-supplier" value={supplier} onChange={setSupplier}
+              items={suppliers} placeholder="Not decided yet — type, or ↓ to see all" onAdd={onAddSupplier}
+            />
             {/* If the list is empty the dropdown still works; it just offers
                 nothing but blank. Names are added in Settings. */}
             {suppliers.length === 0 && (
               <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>
-                No suppliers set up yet — add them in Settings.
+                No suppliers yet — use “+ Add new supplier…” above.
               </div>
             )}
           </div>
