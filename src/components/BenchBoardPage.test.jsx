@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { toBenchCards, columnFor, groupCards } from './BenchBoardPage.jsx';
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import BenchBoardPage, { toBenchCards, columnFor, groupCards, allPartsOf } from './BenchBoardPage.jsx';
+
+afterEach(cleanup);
 
 const job = (over = {}) => ({
   id: over.id ?? 'j1', job: '1000', customer: 'C', status: 'Active', action: 'GTS',
@@ -127,5 +131,44 @@ describe('columnFor', () => {
     const parent = job({ id: 'p', status: 'On Hold' });
     const card = job({ id: 'a', parentId: 'p', status: 'Active' });
     expect(columnFor({ card, parent })).toBe('parked');
+  });
+});
+
+// Board split-parts list (scope lock 2026-10-04, job 1635): every part of a split
+// job, in shop order, done ones ticked and greyed, first open one badged "next".
+describe('split parts list', () => {
+  const split = [
+    job({ id: 'p', job: '1635', bench: 'Luthier', isSplit: true }),
+    job({ id: 'a', job: '1635', parentId: 'p', bench: 'Finishing', sessionNote: 'coat 1' }),
+    job({ id: 'b', job: '1635', parentId: 'p', bench: 'Fretwork', pieceDone: true, sessionNote: 'LCP' }),
+    job({ id: 'c', job: '1635', parentId: 'p', bench: 'Setup', sessionNote: 'setup' }),
+  ];
+
+  it('lists every part in shop order, flags done and next', () => {
+    const parts = allPartsOf(split[0], split);
+    expect(parts.map(p => p.bench)).toEqual(['Fretwork', 'Finishing', 'Setup']);
+    expect(parts.map(p => p.done)).toEqual([true, false, false]);
+    expect(parts.map(p => p.next)).toEqual([false, true, false]);
+  });
+
+  it('is null for an unsplit job', () => {
+    expect(allPartsOf(job(), [job()])).toBeNull();
+  });
+
+  it('shows the toggle, and opening it ticks the done part and badges next', () => {
+    render(<BenchBoardPage jobs={split} />);
+    fireEvent.click(screen.getByText(/3 parts · 1 done/));
+    const items = screen.getAllByRole('listitem');
+    expect(items.map(li => li.getAttribute('data-done'))).toEqual(['true', 'false', 'false']);
+    expect(items[0].textContent).toContain('Fretwork');
+    expect(items[1].textContent).toContain('next');
+  });
+
+  it('still lists a part that sits in another column', () => {
+    // 'a' is booked so it lands in "On the bench"; the others stay in "Ready to start".
+    const jobs = split.map(j => (j.id === 'a' ? { ...j, calendarSlot: '2026-10-05_9:00' } : j));
+    render(<BenchBoardPage jobs={jobs} />);
+    for (const t of screen.getAllByText(/3 parts · 1 done/)) fireEvent.click(t);
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(3);
   });
 });

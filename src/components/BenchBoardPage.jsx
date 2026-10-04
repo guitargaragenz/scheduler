@@ -1,5 +1,6 @@
 import { useState, useMemo, Fragment } from 'react';
 import { blockedPile, blockedReason, benchColors } from '../data/jobs.js';
+import { orderedParts, partsOf, isSplitRow } from './BenchWeekPage.jsx';
 
 // A read-only board of the open work, cut two ways: by what's stopping a card,
 // or by which bench it belongs to.
@@ -136,6 +137,15 @@ const COLUMNS = [
 // make the board lie about what the week holds.
 const BENCH_CAP = 4;
 
+// Every part of a split job, in shop order, each flagged done / next. Reads
+// the whole jobs list, not the column's pieces, so a part sitting in another
+// column still shows. Null for a job that isn't split into real parts.
+export function allPartsOf(parent, jobs) {
+  const all = jobs || [];
+  const parts = partsOf(parent, all, new Map(all.map(j => [j.id, j])));
+  return isSplitRow(parent, parts) ? orderedParts(parts) : null;
+}
+
 const hrs = n => `${Math.round((n || 0) * 10) / 10}h`;
 const totalHours = cards => cards.reduce((s, c) => s + (Number(c.card.hours) || 0), 0);
 
@@ -200,7 +210,7 @@ export default function BenchBoardPage({ jobs }) {
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: '100%' }}>
           {columns.map(col => (
-            <Column key={col.key} col={col} grouped={cut === 'blocking'} />
+            <Column key={col.key} col={col} grouped={cut === 'blocking'} jobs={jobs} />
           ))}
         </div>
       </div>
@@ -208,7 +218,7 @@ export default function BenchBoardPage({ jobs }) {
   );
 }
 
-function Column({ col, grouped }) {
+function Column({ col, grouped, jobs }) {
   const total = totalHours(col.cards);
   // One entry per group, so expanding one guitar's pieces doesn't expand
   // another job that happens to sit in the same column.
@@ -250,22 +260,28 @@ function Column({ col, grouped }) {
       {!grouped && col.cards.map(c => <Card key={c.card.id} entry={c} colour={col.colour} />)}
 
       {grouped && groupCards(col.cards).map(g => {
-        // A single piece needs no toggle — a "1 sub-task" dropdown is just a
-        // card with an extra click in front of it.
-        if (g.pieces.length === 1) {
-          return <Card key={g.key} entry={g.pieces[0]} colour={col.colour} />;
+        const parts = g.pieces[0].piece ? allPartsOf(g.parent, jobs) : null;
+        // A job with a single part needs no toggle — a "1 part" dropdown is
+        // just a card with an extra click in front of it.
+        if (!parts || parts.length < 2) {
+          return g.pieces.length === 1
+            ? <Card key={g.key} entry={g.pieces[0]} colour={col.colour} />
+            : <Card key={g.key} entry={{ card: g.parent, parent: g.parent, piece: null }} colour={col.colour}
+                hoursOverride={totalHours(g.pieces)}
+                benchOverride={[...new Set(g.pieces.map(p => p.card.bench).filter(Boolean))]} />;
         }
         const isOpen = open[g.key];
+        const doneCount = parts.filter(p => p.done).length;
         return (
           <Fragment key={g.key}>
             <Card
-              entry={{ card: g.parent, parent: g.parent, piece: null }}
+              entry={g.pieces.length === 1 ? g.pieces[0] : { card: g.parent, parent: g.parent, piece: null }}
               colour={col.colour}
               // The parent's own `hours` is the whole job. In this column it
               // must read as the hours actually sitting here, or a job split
               // across two columns would count its full hours in both.
-              hoursOverride={totalHours(g.pieces)}
-              benchOverride={[...new Set(g.pieces.map(p => p.card.bench).filter(Boolean))]}
+              hoursOverride={g.pieces.length === 1 ? undefined : totalHours(g.pieces)}
+              benchOverride={g.pieces.length === 1 ? undefined : [...new Set(g.pieces.map(p => p.card.bench).filter(Boolean))]}
             />
             <div
               onClick={() => setOpen(prev => ({ ...prev, [g.key]: !prev[g.key] }))}
@@ -274,13 +290,23 @@ function Column({ col, grouped }) {
                 padding: '1px 6px 2px 10px', userSelect: 'none', marginTop: -4,
               }}
             >
-              {isOpen ? '▼' : '▶'} {g.pieces.length} sub-tasks
+              {isOpen ? '▼' : '▶'} {parts.length} parts · {doneCount} done
             </div>
-            {isOpen && g.pieces.map(p => (
-              <div key={p.card.id} style={{ marginLeft: 12 }}>
-                <Card entry={p} colour={col.colour} />
-              </div>
-            ))}
+            {isOpen && (
+              <ul aria-label={`${g.parent.job} parts`} style={{ listStyle: 'none', margin: '0 0 0 12px', padding: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {parts.map(p => (
+                  <li key={p.id} data-done={p.done ? 'true' : 'false'} style={{
+                    fontSize: 12, display: 'flex', gap: 6, alignItems: 'baseline',
+                    color: p.done ? '#64748b' : '#e2e8f0',
+                    textDecoration: p.done ? 'line-through' : 'none',
+                  }}>
+                    <span aria-hidden="true">{p.done ? '✓' : '○'}</span>
+                    <span>{p.bench}{p.note ? ` — ${p.note}` : ''}</span>
+                    {p.next && <Chip colors={{ bg: '#451a03', border: '#b45309', text: '#fcd34d' }}>next</Chip>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Fragment>
         );
       })}

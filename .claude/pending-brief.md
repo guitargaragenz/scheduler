@@ -1,10 +1,26 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-Shipped at `80e8d9d` (PR 91), 2026-10-04.
+# Scope lock — Board cards show every part of a split job (Trevor "yp" 2026-10-04)
 
-# Clear a mark from the job card
+Background only (don't follow unless this page can't answer a question):
+[board-split-parts.md](../docs/briefs/board-split-parts.md).
 
-A "Marks on this job" block in the drawer and phone sheet, one Clear button per mark, normal jobs only.
-Two council rounds, verifier passed, browser-tested on job 1604 (desktop only; phone sheet untested live).
+## Build
+On the Board's "What's stopping it" view, a split job's card gets a toggle listing **every part of
+the job** (all benches, not just this column), in shop order via `orderedParts`/`partsOf` from
+`BenchWeekPage.jsx`. Done part (`pieceDone`, NOT `done`) = ticked and greyed. First not-done part
+= "next" badge. Toggle label like "▶ 8 parts · 1 done". Shows even when only one part sits in
+this column, as long as the job has more than one part.
+
+## Out of scope
+Ticking parts from the Board. Which column a card lands in. The By bench view. Any saved data.
+Job drawer. `scheduledSlots`, `calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js`,
+`utils/supabase.js`, `jobs[]` shape.
+
+## Binding rules
+- Read-only: no Supabase call, no write, no `jobs[]` mutation. Not blast-radius.
+- Reuse `orderedParts` and `partsOf`; no second ordering.
+- Files: `BenchBoardPage.jsx`, `BenchBoardPage.test.jsx` only.
+- Browser test: 1635 shows 8 parts, Fretwork ticked and greyed, a not-done part badged next.
