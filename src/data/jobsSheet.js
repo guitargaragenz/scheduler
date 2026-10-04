@@ -230,7 +230,7 @@ export function applySheetEdits(job, changes) {
 export function rowSearchText(job, draft) {
   const d = draft || initialRowDraft(job);
   return [
-    job.job, job.customer, job.mfr, job.model, job.status, job.desc,
+    job.job, job.customer, job.mfr, job.model, job.status, job.bench, job.desc,
     d.tag, d.action,
   ].map(v => (v ?? '').toString().toLowerCase()).join(' ');
 }
