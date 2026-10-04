@@ -1,10 +1,10 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Board cards: show every part of a split job, ticked or not
 
-Drafted 2026-10-04. Waits on Trevor's "yp". Display only — no job data written, none of the
+Shipped at `d82dab0` (PR #92), 2026-10-04. Display only — no job data written, none of the
 blast-radius files touched, so the lighter path applies (builder, verifier, browser test, merge).
 
 ## Why

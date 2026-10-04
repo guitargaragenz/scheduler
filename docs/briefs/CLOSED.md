@@ -33,3 +33,4 @@ binds the code or how we work. A record, never a task list.
 - **Ticked part saves** (PR #70, `96cc365`): save outside the `setJobs` updater — React can defer it, so the save never ran.
 - **Week page day box** (PR #72, `3182f84`): tap toggles `·`, hold opens the marks list; the lift after a hold is swallowed, same as the end box.
 - **Logs keep finished jobs** (PR #76, `bf95640`): departed jobs reach the logs through a separate display-only list, locked — never merged into live `jobs[]`. Mark tables read in 1,000-row pages; one failed page fails the whole read.
+- **Split job parts in the Board side lists** (PR #92, `d82dab0`): the Board day view list is `JobShelf.jsx`, not `Sidebar.jsx` (that one sits beside Week View) — name the screen in the brief, then check which file draws it.

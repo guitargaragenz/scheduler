@@ -1,8 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# Scope lock — Board day view side list shows every part of a split job (rewritten 2026-10-04, awaits Trevor "yp")
+# Scope lock — Board day view side list shows every part of a split job — shipped at `d82dab0` (PR #92), 2026-10-04
 
 Background only (don't follow unless this page can't answer a question):
 [board-split-parts.md](../docs/briefs/board-split-parts.md).
