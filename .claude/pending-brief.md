@@ -2,15 +2,9 @@
 doc_status: closed
 ---
 
-Shipped at `6b794b3` (PR 88), 2026-10-04.
+Shipped at `074f30e` (PR 89), 2026-10-04. Brief was written after the merge, not before.
 
-# Jobs Sheet greys out jobs ticked off on the Weekly Log
+# Jobs Sheet: Bench column and bench search
 
-**Build:** a job with any `close:<Monday>` mark in the week marks shows greyed on the Jobs Sheet,
-with a "ticked off" label beside its job number.
-
-**Out of scope:** removing jobs, writing anything, the PDF import's hold-back rule, any other page.
-
-**Binding rules:** display-only — no database write, no change to `jobs[]`. Two files:
-`JobsSheetPage.jsx` (new `weekMarks` prop) and `App.jsx` (passes it). Not blast-radius.
-Trevor approved the brief and "any ticked job" (not just this week).
+Read-only Bench column on the Jobs Sheet; search also matches bench. Display and search only —
+no write, no `jobs[]` change. Files: `JobsSheetPage.jsx`, `data/jobsSheet.js`. Not blast-radius.
