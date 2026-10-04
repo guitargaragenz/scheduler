@@ -203,7 +203,7 @@ select.gcell { cursor: pointer; }
 // the container — so a widened Desc only actually gets wider if the table is
 // told to be exactly as wide as its columns add up to. Must stay in step with
 // the colgroup.
-const FIXED_COLS_PX = 58 + 150 + 100 + 130 + 92 + 72 + 68 + 86 + 40 + 40 + 40;
+const FIXED_COLS_PX = 58 + 150 + 100 + 130 + 92 + 84 + 72 + 68 + 86 + 40 + 40 + 40;
 const DESC_MIN_PX = 120;
 const DESC_WIDTH_KEY = 'ggnz.jobsSheet.descWidth';
 
@@ -540,6 +540,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
               <col style={{ width: 100 }} />{/* Mfr */}
               <col style={{ width: 130 }} />{/* Model */}
               <col style={{ width: 92 }} />{/* Status */}
+              <col style={{ width: 84 }} />{/* Bench */}
               <col style={descWidth === null ? undefined : { width: descWidth }} />{/* Desc */}
               <col style={{ width: 72 }} />{/* Tag */}
               <col style={{ width: 68 }} />{/* Hours */}
@@ -555,6 +556,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
                 {headerCell('Mfr', '')}
                 {headerCell('Model', '')}
                 {headerCell('Status', '')}
+                {headerCell('Bench', '')}
                 <th key="Desc" className="resizable" ref={descThRef}>
                   Desc
                   <button
@@ -589,6 +591,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
                     <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
                     <td className="ro" title={job.model || ''}>{job.model}</td>
                     <td className="ro">{job.status}</td>
+                    <td className="ro">{job.bench}</td>
                     <td className="ro wrap">{job.desc}</td>
 
                     {/* Tag — picking one fills in the matching hours */}
