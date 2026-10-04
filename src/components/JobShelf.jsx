@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import JobCard from './JobCard.jsx';
 import DeferredItemsList from './DeferredItemsList.jsx';
+import { partsOf, isSplitRow, orderedParts } from './BenchWeekPage.jsx';
 import { benchColors, HOURS_BUCKETS, blockedPile, partsMayHaveArrived } from '../data/jobs.js';
 
 export const BENCH_ORDER = ['Setup', 'Luthier', 'Electronics', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
@@ -52,11 +53,6 @@ function getAllSubtasks(job, jobs) {
   return [];
 }
 
-// Only unscheduled subtasks — once a split piece is dragged onto the
-// calendar it should drop out of the shelf, same as Sidebar.jsx.
-function getSubtasks(job, jobs) {
-  return getAllSubtasks(job, jobs).filter(j => !j.scheduled);
-}
 
 function formatSyncedAt(lastSyncedAt) {
   const d = new Date(lastSyncedAt);
@@ -164,7 +160,12 @@ export default function JobShelf({
   ).filter(matchHours).sort((a, b) => (b.days ?? 0) - (a.days ?? 0));
 
   function renderJob(job, indent = false) {
-    const subtasks = getSubtasks(job, jobs);
+    // Every part of a split job, scheduled or not, in the Weekly Log's shop
+    // order — done (pieceDone, not done) ticked and struck, first open one
+    // badged next. Same as Sidebar.jsx. Display only. Trevor, 2026-10-04.
+    const byId = new Map(jobs.map(j => [j.id, j]));
+    const allParts = indent ? [] : partsOf(job, jobs, byId);
+    const parts = isSplitRow(job, allParts) ? orderedParts(allParts) : null;
     const isExpanded = expandedJobs[job.id];
     const jobDeferredItems = deferredItems.filter(d => d.jobId === job.id);
     return (
@@ -179,15 +180,31 @@ export default function JobShelf({
           onToggleFocus={onToggleFocus && !indent ? () => onToggleFocus(job.job) : undefined}
         />
         <DeferredItemsList items={jobDeferredItems} onPullBackIn={onPullBackIn} />
-        {subtasks.length > 0 && (
+        {parts && (
           <div
             onClick={() => toggleExpand(job.id)}
             style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}
           >
-            {isExpanded ? '▼' : '▶'} {subtasks.length} sub-tasks
+            {isExpanded ? '▼' : '▶'} {parts.length} parts · {parts.filter(p => p.done).length} done
           </div>
         )}
-        {isExpanded && subtasks.map(st => renderJob(st, true))}
+        {isExpanded && parts && parts.map(p => {
+          const part = byId.get(p.id) || byId.get(Number(p.id));
+          // An unscheduled part stays a draggable card so it can still be booked.
+          const draggable = part && !part.scheduled && !p.done;
+          return (
+            <div key={p.id} data-done={p.done ? 'yes' : 'no'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: p.done ? '#64748b' : '#e2e8f0', padding: '2px 0 2px 16px' }}>
+                <span style={{ width: 12, color: p.done ? '#4ade80' : '#475569' }}>{p.done ? '✓' : '○'}</span>
+                <span style={{ textDecoration: p.done ? 'line-through' : 'none' }}>{p.bench}</span>
+                {p.next && (
+                  <span style={{ padding: '1px 6px', borderRadius: 9, background: '#1e3a5f', color: '#93c5fd', fontSize: 10, fontWeight: 700 }}>next</span>
+                )}
+              </div>
+              {draggable && renderJob(part, true)}
+            </div>
+          );
+        })}
       </div>
     );
   }
