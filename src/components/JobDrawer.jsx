@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
+import { isTopLevelJob } from '../data/pdfImportPlan.js';
+
+// The marks the card can clear. Action codes are cleared to null; VB and BL are
+// flags cleared to false. GTS, RS, FB and PJ are deliberately not here.
+const CLEARABLE_ACTIONS = ['WP', 'CI', 'INC', 'RS-C', 'DG'];
+function marksOn(job) {
+  const marks = [];
+  if (CLEARABLE_ACTIONS.includes(job.action)) marks.push(job.action);
+  if (job.vb === true) marks.push('VB');
+  if (job.backlog === true) marks.push('BL');
+  return marks;
+}
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
@@ -83,8 +95,14 @@ function initRows(job, allJobs = []) {
   return [{ bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus }) {
+export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = [], onSchedule, isFocused = false, onToggleFocus, onClearMark }) {
   const [rows, setRows] = useState(() => initRows(job, jobs));
+  const [clearing, setClearing] = useState(null);
+  const marks = onClearMark && isTopLevelJob(job) ? marksOn(job) : [];
+  async function clearMark(mark) {
+    setClearing(mark);
+    try { await onClearMark(job, mark); } finally { setClearing(null); }
+  }
   const [selectedDay, setSelectedDay] = useState(0);
   const [timeVal, setTimeVal] = useState('09:00');
   const [saveError, setSaveError] = useState(null);
@@ -239,6 +257,31 @@ export default function JobDrawer({ job, jobs = [], onClose, onSave, weekDays = 
 
         {/* Bench rows */}
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {marks.length > 0 && (
+            <div style={{ borderBottom: '1px solid #334155', paddingBottom: 10 }}>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                Marks on this job
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {marks.map(mark => (
+                  <div key={mark} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: '#0f172a', border: '1px solid #475569', borderRadius: 6, padding: '3px 4px 3px 8px',
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0' }}>{mark}</span>
+                    <button
+                      onClick={() => clearMark(mark)}
+                      disabled={clearing !== null}
+                      style={{
+                        background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 4,
+                        padding: '2px 8px', fontSize: 11, cursor: clearing !== null ? 'default' : 'pointer',
+                      }}
+                    >{clearing === mark ? 'Clearing…' : 'Clear'}</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {rows.map((row, ri) => {
             const colors = benchColors(row.bench);
             const rowTotal = row.sessions.reduce((s, x) => s + Number(x.hours), 0);

@@ -32,3 +32,7 @@ browser test → "yp".
 4. Yes — the Parts Arrived banner should clear once WP is cleared. Verify it does.
 
 Next step: write the scope lock from these answers, get "yp", run the protocol.
+
+## Update 2026-10-04
+Scope lock drafted in `.claude/pending-brief.md` on branch `tick-off-from-job-card` (code re-checked against live).
+Waiting on Trevor: drawer/sheet block (recommended) or tappable ⚠/⭐ badges, then "yp" and the council.

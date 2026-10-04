@@ -1,6 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BENCH_COLORS, benchColors } from '../data/jobs.js';
+import { isTopLevelJob } from '../data/pdfImportPlan.js';
+
+// The marks the card can clear (mirrors JobDrawer.jsx). Action codes are
+// cleared to null; VB and BL are flags cleared to false. GTS, RS, FB and PJ are
+// deliberately not here.
+const CLEARABLE_ACTIONS = ['WP', 'CI', 'INC', 'RS-C', 'DG'];
+function marksOn(job) {
+  const marks = [];
+  if (CLEARABLE_ACTIONS.includes(job.action)) marks.push(job.action);
+  if (job.vb === true) marks.push('VB');
+  if (job.backlog === true) marks.push('BL');
+  return marks;
+}
 
 const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
 
@@ -63,8 +76,14 @@ function initRows(job, allJobs = []) {
   return [{ bench: job.bench, sessions: [{ hours: job.hours, note: job.sessionNote || '' }] }];
 }
 
-export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, onSave, onClose, onRemove, isFocused = false, onToggleFocus }) {
+export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, onSave, onClose, onRemove, isFocused = false, onToggleFocus, onClearMark }) {
   const [tab, setTab] = useState('schedule');
+  const [clearing, setClearing] = useState(null);
+  const marks = onClearMark && isTopLevelJob(job) ? marksOn(job) : [];
+  async function clearMark(mark) {
+    setClearing(mark);
+    try { await onClearMark(job, mark); } finally { setClearing(null); }
+  }
 
   // Schedule tab state
   const [selectedDay, setSelectedDay] = useState(0);
@@ -238,6 +257,32 @@ export default function MobileJobSheet({ job, jobs = [], weekDays, onSchedule, o
               >×</button>
             </div>
           </div>
+
+          {marks.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Marks on this job
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {marks.map(mark => (
+                  <div key={mark} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: '#0f172a', border: '1px solid #475569', borderRadius: 8, padding: '4px 4px 4px 10px',
+                  }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{mark}</span>
+                    <button
+                      onClick={() => clearMark(mark)}
+                      disabled={clearing !== null}
+                      style={{
+                        background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 6,
+                        padding: '6px 12px', fontSize: 13, cursor: clearing !== null ? 'default' : 'pointer',
+                      }}
+                    >{clearing === mark ? 'Clearing…' : 'Clear'}</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tab bar */}
           <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
