@@ -98,6 +98,8 @@ const SHEET_CSS = `
 .gsheet tbody tr:nth-child(odd)  td { background: #f8fafc; }
 .gsheet tbody tr:hover td { background: #eff6ff; }
 .gsheet tbody tr.dirty td { background: #fef9c3; }
+.gsheet tbody tr.ticked td { color: #9ca3af; background: #f3f4f6; }
+.gsheet .tickedTag { font-size: 10px; font-style: italic; }
 
 /* Multitrack's columns: present, but quiet — readable on white, just not
    as dark as the columns Trevor owns. */
@@ -209,7 +211,10 @@ function headerCell(label, cls) {
   return <th key={label} className={cls}>{label}</th>;
 }
 
-export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved }) {
+// A job ticked off on the Weekly Log carries a `close:<Monday>` mark. Any week counts.
+const isTickedOff = (marks) => Object.entries(marks || {}).some(([k, v]) => k.startsWith('close:') && v);
+
+export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved, weekMarks = {} }) {
   // Top-level jobs only. Split and derived cards have ids like
   // 1620_Electronics_0 and are the app's own bookkeeping — Trevor never triages
   // them here, and the Multitrack columns would be meaningless on them.
@@ -573,12 +578,13 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved 
               {visibleRows.map(job => {
                 const d = draftFor(job);
                 const changed = Object.keys(draftChanges(job, d)).length > 0;
+                const ticked = isTickedOff(weekMarks[String(job.id)]);
                 const badHours = isHoursInputInvalid(d.hoursText);
                 const avg = !badHours && /-/.test(String(d.hoursText || '')) ? parseHoursInput(d.hoursText) : null;
 
                 return (
-                  <tr key={job.id} className={changed ? 'dirty' : undefined}>
-                    <td className="ro freeze">{job.job}</td>
+                  <tr key={job.id} className={[changed && 'dirty', ticked && 'ticked'].filter(Boolean).join(' ') || undefined}>
+                    <td className="ro freeze">{job.job}{ticked && <span className="tickedTag"> ticked off</span>}</td>
                     <td className="ro" title={job.customer || ''}>{job.customer}</td>
                     <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
                     <td className="ro" title={job.model || ''}>{job.model}</td>
