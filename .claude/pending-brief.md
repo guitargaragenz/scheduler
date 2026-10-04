@@ -1,6 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+Shipped at `6b794b3` (PR 88), 2026-10-04.
 
 # Jobs Sheet greys out jobs ticked off on the Weekly Log
 
