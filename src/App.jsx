@@ -881,6 +881,7 @@ export default function App() {
           ) : showJobsSheet ? (
             <JobsSheetPage
               jobs={jobs}
+              weekMarks={weekMarks.marks}
               isMobile={isMobile}
               onBack={() => setShowJobsSheet(false)}
               onSaved={handleJobsSheetSaved}

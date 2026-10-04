@@ -1,8 +1,14 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Record — the app opens on the Weekly Log
+# Jobs Sheet greys out jobs ticked off on the Weekly Log
 
-Shipped at `a8781c0` (PR 81), 2026-09-30. Nothing live — next session starts with `/next`.
-One line in `src/App.jsx`; the `#parking-lot` link still opens the Parking Lot. 898 tests pass.
+**Build:** a job with any `close:<Monday>` mark in the week marks shows greyed on the Jobs Sheet,
+with a "ticked off" label beside its job number.
+
+**Out of scope:** removing jobs, writing anything, the PDF import's hold-back rule, any other page.
+
+**Binding rules:** display-only — no database write, no change to `jobs[]`. Two files:
+`JobsSheetPage.jsx` (new `weekMarks` prop) and `App.jsx` (passes it). Not blast-radius.
+Trevor approved the brief and "any ticked job" (not just this week).
