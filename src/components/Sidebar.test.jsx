@@ -135,3 +135,28 @@ describe('Sidebar — the Parts Arrived? group', () => {
     expect(html).toContain('(1)');
   });
 });
+
+// Board side list: a split job lists every part, done ones ticked and struck,
+// first open one badged next (Trevor, 2026-10-04). Same rules as the Weekly Log.
+describe('split job parts in the Board side list', () => {
+  const parent = job({ id: 'p1', job: '1635', isSplit: true, bench: 'Fretwork' });
+  const kid = (id, bench, over) => job({ id, job: '1635', parentId: 'p1', bench, ...over });
+  const jobs = [
+    parent,
+    kid('k1', 'Setup'),
+    kid('k2', 'Fretwork', { pieceDone: true, scheduled: true }),
+    kid('k3', 'Finishing'),
+  ];
+  const html = renderToStaticMarkup(
+    <Sidebar jobs={jobs} dragMode="job" onDragModeChange={() => {}} onPdfUpload={() => {}}
+      highlightedJobId={null} onClearHighlight={() => {}} onJobClick={() => {}}
+      isOpen={true} onToggle={() => {}} lastSyncedAt={null} />
+  );
+
+  it('counts every part, scheduled or not, and how many are done', () => {
+    expect(html).toContain('3 parts · 1 done');
+  });
+  it('leaves an unsplit job alone', () => {
+    expect(render([job({})])).not.toContain(' parts · ');
+  });
+});

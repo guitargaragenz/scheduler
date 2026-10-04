@@ -239,3 +239,25 @@ describe('🔧 Parts Arrived chip', () => {
     expect(chipCount(markup, '🔧 Parts Arrived')).toBe(1);
   });
 });
+
+// Board day view side list: a split job lists every part, done ones ticked and
+// struck, first open one badged next (Trevor, 2026-10-04). Same rules as the
+// Weekly Log and the Week View sidebar.
+describe('split job parts in the Board day view side list', () => {
+  const PARENT = { id: 'sp', job: 1635, status: 'Active', action: '', isSplit: true, bench: 'Luthier', mfr: 'Epiphone', model: 'LesPaul', days: 9 };
+  const kid = (id, bench, over) => ({ id, job: 1635, status: 'Active', action: '', parentId: 'sp', bench, mfr: 'Epiphone', model: 'LesPaul', days: 9, ...over });
+  const jobs = [
+    PARENT,
+    kid('k1', 'Setup'),
+    kid('k2', 'Fretwork', { pieceDone: true, scheduled: true }),
+    kid('k3', 'Finishing'),
+  ];
+
+  it('counts every part, scheduled or not, and how many are done', () => {
+    expect(render(jobs, 'Luthier')).toContain('3 parts · 1 done');
+  });
+
+  it('leaves an unsplit job alone', () => {
+    expect(render([WORKABLE], 'Setup')).not.toContain(' parts · ');
+  });
+});

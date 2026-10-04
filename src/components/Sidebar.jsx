@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import JobCard from './JobCard.jsx';
+import { partsOf, isSplitRow, orderedParts } from './BenchWeekPage.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS, partsMayHaveArrived } from '../data/jobs.js';
 
 export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
@@ -16,14 +17,6 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
 
   const renderJob = (job, highlighted = false) => {
     if (job.parentId && !highlighted) return null; // subtasks shown via expand or focus mode only
-    // Only show unscheduled subtasks — auto-splits (hasSubtasks) and manual splits (isSplit) both supported
-    const autoSubtasks = job.hasSubtasks
-      ? jobs.filter(j => job.subtasks?.includes(j.id) && !j.scheduled)
-      : [];
-    const manualSubtasks = job.isSplit
-      ? jobs.filter(j => j.parentId === job.id && !j.scheduled)
-      : [];
-    const subtaskList = [...autoSubtasks, ...manualSubtasks];
     // If all subtasks are scheduled, hide the parent too (unless it's a focus-mode highlight)
     if (!highlighted && job.hasSubtasks && job.subtasks?.length > 0) {
       const allSubtasksScheduled = jobs
@@ -36,6 +29,12 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
       if (manualChildren.length > 0 && manualChildren.every(j => j.scheduled)) return null;
     }
     const isExpanded = expandedJobs[job.id];
+    // Every part of a split job, scheduled or not, in the Weekly Log's shop
+    // order — done (pieceDone, not done) ticked and struck, first open one
+    // badged next. Display only. Trevor, 2026-10-04.
+    const byId = new Map(jobs.map(j => [j.id, j]));
+    const allParts = partsOf(job, jobs, byId);
+    const parts = isSplitRow(job, allParts) ? orderedParts(allParts) : null;
     return (
       <div key={job.id}>
         <JobCard
@@ -47,19 +46,33 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
           isFocused={focusSet.has(String(job.job))}
           onToggleFocus={onToggleFocus ? () => onToggleFocus(job.job) : undefined}
         />
-        {(job.hasSubtasks || job.isSplit) && subtaskList.length > 0 && (
+        {parts && (
           <div
             onClick={() => toggleExpand(job.id)}
             style={{ fontSize: 10, color: '#94a3b8', cursor: 'pointer', padding: '2px 4px 4px 8px' }}
           >
-            {isExpanded ? '▼' : '▶'} {subtaskList.length} sub-tasks
+            {isExpanded ? '▼' : '▶'} {parts.length} parts · {parts.filter(p => p.done).length} done
           </div>
         )}
-        {isExpanded && subtaskList.map(st => (
-          <div key={st.id} style={{ marginLeft: 16, marginTop: 4 }}>
-            <JobCard job={st} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(st)} />
-          </div>
-        ))}
+        {isExpanded && parts && parts.map(p => {
+          const part = byId.get(p.id) || byId.get(Number(p.id));
+          // An unscheduled part stays a draggable card so it can still be booked.
+          const draggable = part && !part.scheduled;
+          return (
+            <div key={p.id} data-done={p.done ? 'yes' : 'no'} style={{ marginLeft: 16, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: p.done ? '#64748b' : '#e2e8f0', padding: '2px 0' }}>
+                <span style={{ width: 12, color: p.done ? '#4ade80' : '#475569' }}>{p.done ? '✓' : '○'}</span>
+                <span style={{ textDecoration: p.done ? 'line-through' : 'none' }}>{p.bench}</span>
+                {p.next && (
+                  <span style={{ padding: '1px 6px', borderRadius: 9, background: '#1e3a5f', color: '#93c5fd', fontSize: 10, fontWeight: 700 }}>next</span>
+                )}
+              </div>
+              {draggable && !p.done && (
+                <JobCard job={part} dragMode={dragMode} isHighlighted={false} onClick={() => onJobClick(part)} />
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };
