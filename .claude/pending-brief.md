@@ -1,15 +1,33 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-Shipped at `5cd6f6b` (PR 90), 2026-10-04.
+# Scope lock — clear a hold-up mark from the job drawer (DRAFT, awaiting Trevor's "yp")
 
-# Jobs Sheet: fix huge row height on a phone
+Background only (don't follow unless this page can't answer a question):
+[parked-tick-off-from-job-card.md](../docs/briefs/parked-tick-off-from-job-card.md). Facts below
+re-checked against live code 2026-10-04.
 
-**Build:** on a phone the Desc column gets a 240px width (it collapsed to 0, stacking every word),
-and the ticked-off marker becomes a small ✓ instead of the words "ticked off".
+## Build
+In the job drawer (desktop) and job sheet (phone), a **"Holding this job up"** block lists
+whichever hold-up marks the job carries, each with a **Clear** button:
+- Action values **WP, CI, INC, RS-C, DG** — Clear sets `action` to blank.
+- **VB** and **BL** — Clear sets that flag false.
 
-**Out of scope:** desktop layout, editing on mobile, any write.
+Clearing one mark never touches another (WP never touches BL). After a clear, the job's
+Planning / Waiting / Ready pile re-derives at once (reuse `applySheetEdits` + `statusFlagsFor`).
+The Parts Arrived banner clears when WP is cleared (verify, don't assume).
 
-**Binding rules:** display only. One file: `JobsSheetPage.jsx`. Not blast-radius.
-Trevor reported it 2026-10-04.
+## Out of scope
+GTS, RS, FB, PJ and VB/BL being *set* from the card. Tag and hours. Any Sheet change. The
+PDF import. Bulk clearing. Changing what any mark means.
+
+## Binding rules
+- Writes through the existing `batchWriteJobsState` — **no new write path** (the Jobs Sheet's
+  Commit already uses it with the same fields).
+- A job is never Backlog and Waiting Parts at once; clearing must not create that.
+- Blast-radius: touches `jobs[]` fields and the Supabase save → full agent-team protocol.
+- Files expected: `JobDrawer.jsx`, `MobileJobSheet.jsx`, `App.jsx` (handler), `jobsSheet.js` (reuse).
+
+## Open question for Trevor
+Put the block in the drawer/sheet (recommended), or tap the ⚠/⭐ badge on the card itself?
