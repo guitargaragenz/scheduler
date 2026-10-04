@@ -2,7 +2,7 @@
 doc_status: live
 ---
 
-# Scope lock — clear a hold-up mark from the job drawer (DRAFT — placement decided, awaiting "yp")
+# Scope lock — clear a hold-up mark from the job drawer (DRAFT — placement decided, approved "yp" 2026-10-04)
 
 Background only (don't follow unless this page can't answer a question):
 [parked-tick-off-from-job-card.md](../docs/briefs/parked-tick-off-from-job-card.md). Facts below
@@ -30,4 +30,4 @@ PDF import. Bulk clearing. Changing what any mark means.
 - Files expected: `JobDrawer.jsx`, `MobileJobSheet.jsx`, `App.jsx` (handler), `jobsSheet.js` (reuse).
 
 ## Decided
-Trevor chose the drawer/sheet block (2026-10-04). Still waiting on his "yp" to approve the scope.
+Trevor chose the drawer/sheet block (2026-10-04). Approved "yp" 2026-10-04. Next: council.
