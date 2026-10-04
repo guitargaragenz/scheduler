@@ -5,7 +5,7 @@ import {
 } from '@dnd-kit/core';
 import { benchColors, DEFAULT_BENCH_KEYWORDS, inferBench, isBenchUnplaced } from './data/jobs.js';
 import { getWeekDays, formatDateRange, localDateKey } from './utils/calendar.js';
-import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob } from './utils/supabase.js';
+import { isSupabaseConfigured, loadConflictLog, clearConflictLog, appendConflictLog, saveJob, deleteJob, batchWriteJobsState } from './utils/supabase.js';
 import { pickMasterFields } from './data/joinJobs.js';
 import { noticeJobs, pruneDismissed, dismissAll } from './data/partsArrivedNotice.js';
 import { applySheetEdits } from './data/jobsSheet.js';
@@ -290,6 +290,35 @@ export default function App() {
   const handleJobsSheetSaved = useCallback((updates) => {
     setJobs(prev => prev.map(j => (updates[j.id] ? applySheetEdits(j, updates[j.id]) : j)));
   }, []);
+
+  // Clearing one mark from the job card ("Marks on this job"). Same write the
+  // Jobs Sheet's Commit makes, cut down to one row: the one changed column plus
+  // `job` (NOT NULL on the upsert), through batchWriteJobsState — never the
+  // full jobsStateFieldsFor row, which would rewrite every column from a card
+  // that may be stale. justSavedAt is set before the write so the realtime echo
+  // can't race it, and the board only changes once Supabase says ok — a failed
+  // clear leaves the card showing the mark it still has. applySheetEdits
+  // re-derives the pile flags at once, and the Parts Arrived banner reads
+  // jobs[], so it drops on its own when WP goes.
+  const handleClearMark = useCallback(async (job, mark) => {
+    const live = jobsRef.current.find(j => j.id === job.id) || job;
+    let changes;
+    if (mark === 'VB') changes = { vb: false };
+    else if (mark === 'BL') changes = { backlog: false };
+    else if ((live.action ?? '') === mark) changes = { action: null };
+    else return; // the action has already changed — clearing must not wipe a different one
+    if (!isSupabaseConfigured()) {
+      showToast('⚠ Not connected — mark not cleared');
+      return;
+    }
+    justSavedAt.current = Date.now();
+    const res = await batchWriteJobsState([{ id: live.id, data: { ...changes, job: live.job } }]);
+    if (!res?.ok) {
+      showToast(`⚠ Couldn't clear ${mark} on #${live.job} — nothing changed`);
+      return;
+    }
+    setJobs(prev => prev.map(j => (j.id === live.id ? applySheetEdits(j, changes) : j)));
+  }, [setJobs, showToast]);
 
   // Lifted out of the Settings JSX when Settings became a page — same handler,
   // same behaviour, just no longer written inline in a prop.
@@ -1151,10 +1180,16 @@ export default function App() {
         onDismiss={() => setNeedsBenchIds([])}
       />
 
-      {editingJob && (
-        isMobile ? (
+      {/* The card is handed the LIVE job, not the snapshot taken when it was
+          opened, so a mark cleared from it disappears at once — and so its
+          Save (which passes this job on to handleSaveDrawer) can't copy a stale
+          mark onto freshly split pieces. Falls back to the snapshot if the job
+          has left jobs[] while open. */}
+      {editingJob && (() => {
+        const liveJob = jobs.find(j => j.id === editingJob.id) || editingJob;
+        return isMobile ? (
           <MobileJobSheet
-            job={editingJob}
+            job={liveJob}
             jobs={jobs}
             weekDays={schedulerWeekDays}
             onSchedule={scheduler.handleMobileSchedule}
@@ -1163,10 +1198,11 @@ export default function App() {
             onRemove={scheduler.unscheduleJob}
             isFocused={focusList.some(id => String(id) === String(editingJob.id))}
             onToggleFocus={() => toggleFocusJob(editingJob.id)}
+            onClearMark={handleClearMark}
           />
         ) : (
           <JobDrawer
-            job={editingJob}
+            job={liveJob}
             jobs={jobs}
             onClose={() => setEditingJob(null)}
             onSave={jobOps.handleSaveDrawer}
@@ -1175,9 +1211,10 @@ export default function App() {
             onRemove={scheduler.unscheduleJob}
             isFocused={focusList.some(id => String(id) === String(editingJob.id))}
             onToggleFocus={() => toggleFocusJob(editingJob.id)}
+            onClearMark={handleClearMark}
           />
-        )
-      )}
+        );
+      })()}
 
       {pomoJob && (() => {
         const currentJob = jobs.find(j => j.id === pomoJob.id) || pomoJob;
