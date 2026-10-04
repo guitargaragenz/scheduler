@@ -163,6 +163,13 @@ export default function App() {
   // The Daily Log. Its own flag because on a phone the two logs are seen one at
   // a time; on a desktop either flag shows both, side by side.
   const [showDayPage, setShowDayPage] = useState(false);
+  // Which log the Log button opens when tapped from another page: the last one
+  // looked at. Starts on the Weekly Log, the page the app opens on.
+  const [lastLog, setLastLog] = useState('weekPage');
+  useEffect(() => {
+    if (showWeekPage) setLastLog('weekPage');
+    else if (showDayPage) setLastLog('dayPage');
+  }, [showWeekPage, showDayPage]);
   const [showCloseDay, setShowCloseDay] = useState(false);
   const [showCatchUp, setShowCatchUp] = useState(false);
   const [bumpPrompt, setBumpPrompt] = useState(null); // { job, fromSlot, toSlot } | null
@@ -594,6 +601,7 @@ export default function App() {
   const onBoard = !showParkingLot && !showJobsSheet && !showJobs && !showProjects
     && !showPartsToOrder && !showParts && !showHelp && !showSettings && !showBench
     && !showWeekPage && !showDayPage;
+  const onLog = showWeekPage || showDayPage;
 
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
@@ -731,67 +739,37 @@ export default function App() {
               {syncLabels[gcal.syncStatus]}
             </button>
 
-            {/* The week page: what actually happened at the bench this week,
-                one line per job. Marking it is a record, not a booking. Sits
-                ahead of the day/week calendar toggle — it's the page Trevor
-                starts from now, so it shouldn't be hunted for further along. */}
+            {/* Two page buttons, not four — Trevor, 2026-10-04, to save header
+                room. Tapping the one you're not on opens it in the view last
+                used there; tapping the one you're on flips its view. The label
+                names the view you're looking at. Log comes first: it's the page
+                the app opens on. */}
             <button
-              onClick={() => selectPage('weekPage')}
+              onClick={() => onLog
+                ? selectPage(showWeekPage ? 'dayPage' : 'weekPage')
+                : selectPage(lastLog)}
               style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekPage ? '#0369a1' : '#334155'}`,
-                background: showWeekPage ? '#0c4a6e' : '#1e293b',
-                color: showWeekPage ? '#7dd3fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showWeekPage ? 700 : 400,
+                padding: '7px 14px', borderRadius: 6, border: `1px solid ${onLog ? '#0369a1' : '#334155'}`,
+                background: onLog ? '#0c4a6e' : '#1e293b',
+                color: onLog ? '#7dd3fc' : '#94a3b8',
+                fontSize: 12, cursor: 'pointer', fontWeight: onLog ? 700 : 400,
+                whiteSpace: 'nowrap',
               }}
             >
-              W Log
-            </button>
-
-            {/* The Daily Log. On a desktop this shows the same two-page spread
-                as the pill beside it, opened on the day rather than the week;
-                on a phone it's the day on its own. Short label because the pill
-                row has no room for "Daily Log". */}
-            <button
-              onClick={() => selectPage('dayPage')}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showDayPage ? '#0369a1' : '#334155'}`,
-                background: showDayPage ? '#0c4a6e' : '#1e293b',
-                color: showDayPage ? '#7dd3fc' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showDayPage ? 700 : 400,
-              }}
-            >
-              D Log
+              Log · {(onLog ? showWeekPage : lastLog === 'weekPage') ? 'W' : 'D'}
             </button>
 
             <button
-              onClick={() => setShowWeekView(w => !w)}
-              style={{
-                padding: '7px 14px', borderRadius: 6, border: `1px solid ${showWeekView ? '#065f46' : '#334155'}`,
-                background: showWeekView ? '#022c22' : '#1e293b',
-                color: showWeekView ? '#6ee7b7' : '#94a3b8',
-                fontSize: 12, cursor: 'pointer', fontWeight: showWeekView ? 700 : 400,
-              }}
-            >
-              {/* The view you are looking at, not the one the click would switch
-                  to — reading "Week View" while looking at a single day was
-                  backwards. */}
-              {showWeekView ? 'Week View' : 'Day View'}
-            </button>
-
-            {/* The Board is a page selection like any other, it just happens to
-                be the one that renders when no page flag is set. Without this
-                button the only way back was clicking the lit-up page button
-                again, which made every page button a toggle. */}
-            <button
-              onClick={() => selectPage(null)}
+              onClick={() => onBoard ? setShowWeekView(w => !w) : selectPage(null)}
               style={{
                 padding: '7px 14px', borderRadius: 6, border: `1px solid ${onBoard ? '#0369a1' : '#334155'}`,
                 background: onBoard ? '#0c4a6e' : '#1e293b',
                 color: onBoard ? '#7dd3fc' : '#94a3b8',
                 fontSize: 12, cursor: 'pointer', fontWeight: onBoard ? 700 : 400,
+                whiteSpace: 'nowrap',
               }}
             >
-              Board
+              Board · {showWeekView ? 'Week' : 'Day'}
             </button>
 
             {isMobile && (
