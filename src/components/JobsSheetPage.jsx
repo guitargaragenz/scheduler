@@ -99,7 +99,7 @@ const SHEET_CSS = `
 .gsheet tbody tr:hover td { background: #eff6ff; }
 .gsheet tbody tr.dirty td { background: #fef9c3; }
 .gsheet tbody tr.ticked td { color: #9ca3af; background: #f3f4f6; }
-.gsheet .tickedTag { font-size: 10px; font-style: italic; }
+.gsheet .tickedTag { font-size: 11px; white-space: nowrap; }
 
 /* Multitrack's columns: present, but quiet — readable on white, just not
    as dark as the columns Trevor owns. */
@@ -369,6 +369,9 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
     setResult(null);
   }, []);
 
+  // On a phone the other columns already overfill the screen, so an auto-width Desc
+  // collapses to nothing and every word stacks on its own line. Give it a real width.
+  const shownDesc = descWidth ?? (isMobile ? 240 : null);
   const editable = !isMobile;
   const searching = search.trim().length > 0;
 
@@ -532,7 +535,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
         ) : (
           <table
             className="gsheet"
-            style={descWidth === null ? undefined : { width: FIXED_COLS_PX + descWidth, minWidth: '100%' }}
+            style={shownDesc === null ? undefined : { width: FIXED_COLS_PX + shownDesc, minWidth: '100%' }}
           >
             <colgroup>
               <col style={{ width: 58 }} />{/* Job */}
@@ -541,7 +544,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
               <col style={{ width: 130 }} />{/* Model */}
               <col style={{ width: 92 }} />{/* Status */}
               <col style={{ width: 84 }} />{/* Bench */}
-              <col style={descWidth === null ? undefined : { width: descWidth }} />{/* Desc */}
+              <col style={shownDesc === null ? undefined : { width: shownDesc }} />{/* Desc */}
               <col style={{ width: 72 }} />{/* Tag */}
               <col style={{ width: 68 }} />{/* Hours */}
               <col style={{ width: 86 }} />{/* Action */}
@@ -586,7 +589,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
 
                 return (
                   <tr key={job.id} className={[changed && 'dirty', ticked && 'ticked'].filter(Boolean).join(' ') || undefined}>
-                    <td className="ro freeze">{job.job}{ticked && <span className="tickedTag"> ticked off</span>}</td>
+                    <td className="ro freeze">{job.job}{ticked && <span className="tickedTag" title="Ticked off on the Weekly Log"> ✓</span>}</td>
                     <td className="ro" title={job.customer || ''}>{job.customer}</td>
                     <td className="ro" title={job.mfr || ''}>{job.mfr}</td>
                     <td className="ro" title={job.model || ''}>{job.model}</td>

@@ -1,10 +1,13 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-Shipped at `074f30e` (PR 89), 2026-10-04. Brief was written after the merge, not before.
+# Jobs Sheet: fix huge row height on a phone
 
-# Jobs Sheet: Bench column and bench search
+**Build:** on a phone the Desc column gets a 240px width (it collapsed to 0, stacking every word),
+and the ticked-off marker becomes a small ✓ instead of the words "ticked off".
 
-Read-only Bench column on the Jobs Sheet; search also matches bench. Display and search only —
-no write, no `jobs[]` change. Files: `JobsSheetPage.jsx`, `data/jobsSheet.js`. Not blast-radius.
+**Out of scope:** desktop layout, editing on mobile, any write.
+
+**Binding rules:** display only. One file: `JobsSheetPage.jsx`. Not blast-radius.
+Trevor reported it 2026-10-04.
