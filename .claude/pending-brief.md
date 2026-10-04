@@ -1,6 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
+
+Shipped at `5cd6f6b` (PR 90), 2026-10-04.
 
 # Jobs Sheet: fix huge row height on a phone
 
