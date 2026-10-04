@@ -2,7 +2,7 @@
 doc_status: live
 ---
 
-# Scope lock — clear a hold-up mark from the job drawer (DRAFT, awaiting Trevor's "yp")
+# Scope lock — clear a hold-up mark from the job drawer (DRAFT — placement decided, awaiting "yp")
 
 Background only (don't follow unless this page can't answer a question):
 [parked-tick-off-from-job-card.md](../docs/briefs/parked-tick-off-from-job-card.md). Facts below
@@ -29,5 +29,5 @@ PDF import. Bulk clearing. Changing what any mark means.
 - Blast-radius: touches `jobs[]` fields and the Supabase save → full agent-team protocol.
 - Files expected: `JobDrawer.jsx`, `MobileJobSheet.jsx`, `App.jsx` (handler), `jobsSheet.js` (reuse).
 
-## Open question for Trevor
-Put the block in the drawer/sheet (recommended), or tap the ⚠/⭐ badge on the card itself?
+## Decided
+Trevor chose the drawer/sheet block (2026-10-04). Still waiting on his "yp" to approve the scope.

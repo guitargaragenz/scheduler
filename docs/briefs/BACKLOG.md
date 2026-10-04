@@ -10,6 +10,11 @@ then, with Trevor. Nothing here is scoped or approved.
 
 ## Noticed, not scoped
 
+- **Job dependencies — to explore with Trevor (raised 2026-10-04).** "X can't start until Y is
+  done" between jobs or pieces. Not the same as hold-up marks (WP/VB/BL, outside blockers). The
+  app has no job-to-job ordering today; the only neighbour is the 12-hour glue rule. Start by
+  asking what he'd want it for and what he does by hand now.
+
 Real, nobody has picked them up, not attached to any brief.
 
 - **Three revenue rows carry the wrong week**, stamped 2026-09-07, left behind by the
