@@ -1,8 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
-# Scope lock — Header: two toggle buttons (Board, Log) replace four page buttons
+# Scope lock — Header: two toggle buttons (Board, Log) replace four page buttons — shipped at `a2259e9` (PR #93), 2026-10-04
 
 ## Why
 Saving header room. Trevor approved the design from a tappable mockup, 2026-10-04.
