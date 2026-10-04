@@ -1,6 +1,8 @@
 ---
-doc_status: parked
+doc_status: closed
 ---
+
+Shipped at `80e8d9d` (PR 91), 2026-10-04. Built as "Marks on this job" in the drawer and phone sheet.
 
 # Parked — tick off WP (and other Sheet marks) from the job card
 
