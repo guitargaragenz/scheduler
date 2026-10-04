@@ -72,7 +72,6 @@ A design that needs an exception to one of these is wrong, not clever.
 - **A bench is picked from the work, never the brand or item.** Any sort by manufacturer is guessing.
 - **There is no such thing as "no bench".** Unclassifiable work parks on Admin. "Needs a bench" is
   a derived flag for the popup, never stored. No empty, null or "No bench set" bench.
-- **Glue needs at least 12 hours to set.** A glue-up and the work depending on it can't share a day.
 
 ---
 

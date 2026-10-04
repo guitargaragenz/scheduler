@@ -76,8 +76,13 @@ Trevor pays for that in context, which is what he has least of.
   combination doesn't occur.
 - **Bench comes from the work, Trevor's ruling 2026-09-03,** after brand and model were dropped as
   bench signals.
-- **Glue needs 12 hours, added 2026-08-04,** after a week schedule put a 1635 neck glue and the
-  rest of its bench cards on the same Friday.
+
+## Retired rules
+
+- **Glue needs 12 hours, added 2026-08-04, retired 2026-10-04.** It came from a week schedule that
+  put a 1635 neck glue and the rest of its bench cards on the same Friday. Trevor retired it: the
+  Daily Log and Weekly Log aren't time-based, so there is no clock for a 12-hour gap to run on.
+  The code never enforced it anyway (see the note in `BenchWeekPage.jsx`).
 
 ## Spent standing orders
 
