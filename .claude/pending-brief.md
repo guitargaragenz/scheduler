@@ -48,3 +48,5 @@ drop down to next box like G sheet."* (2026-07-29). Confirmed still wanted 2026-
 9. After picking a Tag, Enter lands in that row's Hours with text selected (browser check).
 10. Rows run newest `firstSeen` first; no-date jobs sit at the bottom with the note shown.
 11. Full test suite passes.
+
+Shipped in PR #104 at `32d3aa0`.
