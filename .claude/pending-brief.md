@@ -14,6 +14,7 @@ drop down to next box like G sheet."* (2026-07-29). Confirmed still wanted 2026-
 
 - **Sort** (Trevor 2026-10-12: *"by date (from JBA) not by job number with most recent on top"*):
   `rows` (`:221-225`) sorts by `firstSeen` newest first; ties and no-date jobs by id desc, no-date last.
+  Any no-date jobs: a note above the grid, e.g. "2 jobs have no JBA date — at the bottom".
 
 The Hours cell is the only free-text input in a row (`JobsSheetPage.jsx:618`); Tag, Action
 and VB/BL/PJ are selects and checkboxes.
@@ -33,7 +34,7 @@ and VB/BL/PJ are selects and checkboxes.
 - Enter after picking a Tag (focus is on the select) — deferred.
 - No 30-minute snapping — Trevor types half hours himself.
 - No Escape-to-revert, no change to Tab order, no movement for selects or checkboxes.
-- No visual change (scroll-margin aside), no column changes, or any file other than `JobsSheetPage.jsx` (plus a test).
+- No visual change (scroll-margin, no-date note aside), no column changes, or any file other than `JobsSheetPage.jsx` (plus a test).
 - Blast-radius files untouched.
 
 ## Checklist for the verifier
@@ -46,5 +47,5 @@ and VB/BL/PJ are selects and checkboxes.
 6. Focusing an Hours cell selects its text, by Enter and by mouse click.
 7. A test proves Enter makes zero write calls; Commit still saves the typed hours.
 8. Focused cell is visible, not under the sticky header (browser check).
-9. Rows run newest `firstSeen` first; jobs with no date sit at the bottom.
+9. Rows run newest `firstSeen` first; no-date jobs sit at the bottom with the note shown.
 10. Full test suite passes.
