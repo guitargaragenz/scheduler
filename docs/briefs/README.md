@@ -22,7 +22,7 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 ## Noticed, not scoped
 
 
-Six real problems nobody has picked up, none attached to a brief. Detail in
+Real problems nobody has picked up, none attached to a brief. Detail in
 [BACKLOG.md](BACKLOG.md).
 
 ## Parked — agreed in principle, waiting on something
@@ -36,11 +36,7 @@ None of these is scoped or approved; each file holds the detail.
 
 | Brief | Waiting on |
 |-------|------------|
-| [parked-stale-description-after-import.md](parked-stale-description-after-import.md) | Nothing — a real bug, just not picked up. Blast-radius. |
 | [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | Nothing. Two small changes left. |
-| [blocked-pile-naming-alignment.md](blocked-pile-naming-alignment.md) | Nothing. One finding of four left. |
-| [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | The first Sunday board meeting. |
-| [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md) | Nothing — see file. |
 
 What each is actually waiting on, in full: [BACKLOG.md](BACKLOG.md).
 
