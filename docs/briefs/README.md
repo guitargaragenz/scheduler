@@ -19,8 +19,6 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 ## Live — work that hasn't finished
 
-- Sub-bench chips + empty "h" fix — scope lock in `.claude/pending-brief.md`, branch `staging/sub-bench-chips`.
-
 ## Noticed, not scoped
 
 
