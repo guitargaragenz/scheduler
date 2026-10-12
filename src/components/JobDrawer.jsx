@@ -5,7 +5,8 @@ import { isTopLevelJob } from '../data/pdfImportPlan.js';
 
 // The marks the card can clear. Action codes are cleared to null; VB and BL are
 // flags cleared to false. GTS, RS, FB and PJ are deliberately not here.
-const CLEARABLE_ACTIONS = ['WP', 'CI', 'INC', 'RS-C', 'DG'];
+// DG and WP are set and cleared by the card's action chips now.
+const CLEARABLE_ACTIONS = ['CI', 'INC', 'RS-C'];
 function marksOn(job) {
   const marks = [];
   if (CLEARABLE_ACTIONS.includes(job.action)) marks.push(job.action);

@@ -55,6 +55,7 @@ import { useAppSettings } from './hooks/useAppSettings.js';
 import { useSuppliers } from './hooks/useSuppliers.js';
 import { usePartCategories } from './hooks/usePartCategories.js';
 import { usePendingRevenueReview } from './hooks/usePendingRevenueReview.js';
+import { cardActionChange, replacedToast } from './data/cardActions.js';
 
 export default function App() {
   // --- Core state ---
@@ -144,6 +145,9 @@ export default function App() {
   // Order page's "check stock" control; '' every other way the drawer opens.
   const [partsDrawerSearch, setPartsDrawerSearch] = useState('');
   const [showPartsToOrder, setShowPartsToOrder] = useState(false);
+  // Job number the Parts to Order form opens with, set when a WP chip is
+  // tapped on a card. Cleared on leaving that page.
+  const [partsPrefillJob, setPartsPrefillJob] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showParkingLot, setShowParkingLot] = useState(() => window.location.hash === '#parking-lot');
@@ -390,11 +394,43 @@ export default function App() {
     // Leaving the Parts page drops the search the Parts to Order page seeded it
     // with, so re-opening it plainly doesn't come back still filtered.
     if (page !== 'parts') setPartsDrawerSearch('');
+    if (page !== 'partsToOrder') setPartsPrefillJob('');
     // The Parking Lot is reached by #parking-lot, so leaving it has to clear the
     // hash too, or a reload drops straight back into it.
     setShowParkingLot(false);
     if (window.location.hash === '#parking-lot') window.history.replaceState(null, '', '#');
   }, []);
+
+  // The DG / GTS / WP chips on a job card. Same one-row write as
+  // handleClearMark: the live job from jobsRef (the card may be stale), only
+  // the changed columns plus `job`, justSavedAt before the write so the
+  // realtime echo can't race it, and the board only changes once Supabase says
+  // ok. Rules (one action per job, WP clears Backlog) live in cardActions.js.
+  // Setting WP then opens Parts to Order with this job filled in; leaving that
+  // page without saving adds no part, and WP stays set.
+  const handleSetCardAction = useCallback(async (job, action) => {
+    const live = jobsRef.current.find(j => j.id === job.id) || job;
+    const result = cardActionChange(live, action);
+    if (!result) return;
+    const { changes, replaced, cleared } = result;
+    if (!isSupabaseConfigured()) {
+      showToast(`⚠ Not connected — ${action} not saved`);
+      return;
+    }
+    justSavedAt.current = Date.now();
+    const res = await batchWriteJobsState([{ id: live.id, data: { ...changes, job: live.job } }]);
+    if (!res?.ok) {
+      showToast(`⚠ Couldn't save ${action} on #${live.job} — nothing changed`);
+      return;
+    }
+    setJobs(prev => prev.map(j => (j.id === live.id ? applySheetEdits(j, changes) : j)));
+    const msg = replacedToast(replaced, action, live.job);
+    if (msg) showToast(msg);
+    if (action === 'WP' && !cleared) {
+      setPartsPrefillJob(String(live.job ?? ''));
+      selectPage('partsToOrder');
+    }
+  }, [setJobs, showToast, selectPage]);
 
   // The week page's marks. Its own table, loaded whether or not the page is
   // open so switching to it doesn't show a blank week for a moment.
@@ -982,6 +1018,8 @@ export default function App() {
             <WorkshopProjectsPage jobs={jobs} />
           ) : showPartsToOrder ? (
             <PartsToOrderPage
+              key={partsPrefillJob}
+              prefillJob={partsPrefillJob}
               suppliers={suppliers}
               categories={partCategories}
               onAddSupplier={addSupplier}
@@ -1038,6 +1076,7 @@ export default function App() {
                 onJobClick={jobOps.handleOpenPomo}
                 onRemoveAdHocTask={removeAdHocTask}
                 onMarkPieceDone={handleMarkPieceDoneWithInvoicing}
+                onSetCardAction={handleSetCardAction}
                 jobs={jobs}
               />
               <Sidebar
@@ -1053,6 +1092,7 @@ export default function App() {
                 lastSyncedAt={lastSyncedAt}
                 focusList={focusList}
                 onToggleFocus={toggleFocusJob}
+                onSetCardAction={handleSetCardAction}
               />
             </>
           ) : (
@@ -1093,6 +1133,7 @@ export default function App() {
               onRequestCloseDay={() => setShowCloseDay(true)}
               focusList={focusList}
               onToggleFocus={toggleFocusJob}
+              onSetCardAction={handleSetCardAction}
               onAutoCarryForward={handleAutoCarryForward}
               catchUpNeeded={catchUpNeeded}
               onRequestCatchUp={() => setShowCatchUp(true)}

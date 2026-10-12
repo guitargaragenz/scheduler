@@ -96,7 +96,7 @@ function formatSyncedAt(lastSyncedAt) {
 export default function JobShelf({
   jobs, dragMode, onDragModeChange, onPdfUpload,
   highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
-  focusList = [], deferredItems = [], onPullBackIn, onToggleFocus,
+  focusList = [], deferredItems = [], onPullBackIn, onToggleFocus, onSetCardAction,
 }) {
   // Validate what comes back out of localStorage: a stale value that is neither
   // a real bench nor a known pile key would boot the shelf into a dead filter
@@ -210,6 +210,7 @@ export default function JobShelf({
           jobs={jobs}
           isFocused={focusSet.has(String(job.job))}
           onToggleFocus={onToggleFocus && !indent ? () => onToggleFocus(job.job) : undefined}
+          onSetAction={onSetCardAction && !indent ? a => onSetCardAction(job, a) : undefined}
         />
         <DeferredItemsList items={jobDeferredItems} onPullBackIn={onPullBackIn} />
         {parts && (

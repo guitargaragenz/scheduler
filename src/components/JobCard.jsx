@@ -2,8 +2,36 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { benchColors, blockedPile, blockedReason } from '../data/jobs.js';
 import { displayBenchOf } from '../utils/nextBench.js';
+import { CARD_ACTIONS } from '../data/cardActions.js';
 
-export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus, jobs = [] }) {
+// One-tap action chips (DG, GTS, WP): faded off, bright when that is the job's
+// action. Both handlers stop propagation, exactly like the 🎯 button — onClick
+// so the tap doesn't open the card, onPointerDown so it doesn't start a drag.
+export function ActionChips({ action, onSetAction, small = false }) {
+  return CARD_ACTIONS.map(a => {
+    const on = action === a;
+    return (
+      <button
+        key={a}
+        onClick={e => { e.stopPropagation(); onSetAction(a); }}
+        onPointerDown={e => e.stopPropagation()}
+        title={on ? `Clear ${a}` : `Set ${a}`}
+        aria-pressed={on}
+        style={{
+          background: on ? 'rgba(248,113,113,0.25)' : 'none',
+          border: `1px solid ${on ? '#f87171' : 'rgba(255,255,255,0.25)'}`,
+          borderRadius: 3, padding: small ? '0 2px' : '0 4px', cursor: 'pointer',
+          fontSize: small ? 8 : 9, fontWeight: 700, lineHeight: small ? '12px' : '14px',
+          color: on ? '#fecaca' : '#fff', opacity: on ? 1 : 0.35,
+        }}
+      >
+        {a}
+      </button>
+    );
+  });
+}
+
+export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false, dragMode = 'regular', compact = false, isHighlighted = false, onClick, onMarkPieceDone, parentJob, isFocused = false, onToggleFocus, onSetAction, jobs = [] }) {
   const draggableId = inCalendar && slotKeyProp ? `${job.id}::${slotKeyProp}` : job.id;
 
   // A blocked job (Waiting or Planning pile) never picks up at all — Trevor's
@@ -102,6 +130,11 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
                 {job.pieceDone ? '✓' : '○'}
               </button>
             )}
+            {onSetAction && (
+              <div style={{ display: 'flex', gap: 2 }}>
+                <ActionChips action={job.action} onSetAction={onSetAction} small />
+              </div>
+            )}
             <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
               #{job.job}
             </span>
@@ -135,6 +168,7 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
               🎯
             </button>
           )}
+          {onSetAction && <ActionChips action={job.action} onSetAction={onSetAction} />}
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.1)', color: colors.text }}>
             {shownBench}
           </span>

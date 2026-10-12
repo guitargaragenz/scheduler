@@ -16,7 +16,7 @@ const ALL_SLOTS = [
   ...EVENING_HOURS.flatMap(h => [{hour: h, minute: 0}, {hour: h, minute: 30}]),
 ];
 
-function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, jobs = [] }) {
+function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent, isDropping, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, onSetCardAction, jobs = [] }) {
   const key = slotKey(date, hour, minute);
   const { setNodeRef, isOver } = useDroppable({ id: key, data: { dayIdx, hour, minute } });
 
@@ -69,6 +69,7 @@ function TimeSlot({ date, dayIdx, hour, minute, job, isFirstSlot, externalEvent,
             compact
             onClick={() => onJobClick(job)}
             onMarkPieceDone={onMarkPieceDone}
+            onSetAction={onSetCardAction && !job.parentId ? a => onSetCardAction(job, a) : undefined}
             jobs={jobs}
             parentJob={job.parentId ? jobs.find(j => j.id === job.parentId) : null}
           />
@@ -174,7 +175,7 @@ function LunchSlot({ dayIdx, minute }) {
   );
 }
 
-export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, jobs = [], scrollToCurrentHour = true }) {
+export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, externalEvents, isDragging, activeJobId, onJobClick, onRemoveAdHocTask, onMarkPieceDone, onSetCardAction, jobs = [], scrollToCurrentHour = true }) {
 
   const scrollRef = useRef(null);
   const todayStr = new Date().toDateString();
@@ -344,6 +345,7 @@ export default function CalendarGrid({ weekDays, scheduledJobs, bufferSlotKeys, 
                       onJobClick={onJobClick}
                       onRemoveAdHocTask={onRemoveAdHocTask}
                       onMarkPieceDone={onMarkPieceDone}
+                      onSetCardAction={onSetCardAction}
                       jobs={jobs}
                     />
                   </div>
