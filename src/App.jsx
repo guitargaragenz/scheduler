@@ -443,6 +443,10 @@ export default function App() {
     setPomoJob(parentJob);
   }, [setPomoJob]);
 
+  // The week the header is showing. Computed here, above useJobs, so its revenue
+  // can be loaded on demand; the header filter further down reuses it.
+  const currentWeekKey = weekDays[0] ? localDateKey(weekDays[0]) : undefined;
+
   const jobOps = useJobs({
     jobs, setJobs, scheduledSlots, setScheduledSlots,
     doneJobIds, completedJobs, setCompletedJobs, setDoneJobIds,
@@ -457,6 +461,7 @@ export default function App() {
     // Raised by a committed PDF import for any newly created job that no
     // keyword could place.
     onNeedsBench: addNeedsBench,
+    viewedWeekKey: currentWeekKey,
   });
 
   // Dropping a Multitrack PDF only ever gets as far as the preview screen.
@@ -605,7 +610,6 @@ export default function App() {
 
   // localDateKey, not toISOString() — see useJobs.js handleMarkDone for why
   // the UTC conversion drifts a day off local date for NZ timezones.
-  const currentWeekKey = weekDays[0] ? localDateKey(weekDays[0]) : undefined;
   const weekRevenueRecords = completedJobs.filter(r => r.weekKey === currentWeekKey);
   const weekRevenue = weekRevenueRecords.reduce((s, r) => s + (Number(r.invoiceAmount) || 0), 0);
   const revenueRatio = weeklyTarget > 0 ? weekRevenue / weeklyTarget : 0;
