@@ -104,10 +104,26 @@ describe('blockedPile', () => {
     expect(blockedPile(job({ status: 'On Hold', action: 'GTS', backlog: false }))).toBe('hold');
   });
 
-  it('treats DG exactly like INC — both are planning, whatever the status', () => {
-    expect(blockedPile(job({ status: 'Active', action: 'DG' }))).toBe('planning');
-    expect(blockedPile(job({ status: 'Booked In', action: 'DG' }))).toBe('planning');
-    expect(blockedPile(job({ status: 'On Hold', action: 'dg' }))).toBe('planning');
+  // DG was planning until 2026-10-12. Trevor: "the diagnosis is the work" — a
+  // DG job hidden in the planning pile was a free job he never saw.
+  it('treats DG as workable — the diagnosis is the work', () => {
+    expect(blockedPile(job({ status: 'Active', action: 'DG' }))).toBe(null);
+    expect(blockedPile(job({ status: 'Booked In', action: 'dg' }))).toBe(null);
+  });
+
+  it('still blocks a DG job by its status, VB or BL like any other action', () => {
+    expect(blockedPile(job({ status: 'On Hold', action: 'DG' }))).toBe('hold');
+    expect(blockedPile(job({ status: 'Waiting', action: 'DG' }))).toBe('waiting');
+    expect(blockedPile(job({ status: 'In Transit', action: 'DG' }))).toBe('transit');
+    expect(blockedPile(job({ status: 'Active', action: 'DG', backlog: true }))).toBe('hold');
+    expect(blockedPile(job({ status: 'Active', action: 'DG', vb: true }))).toBe('waiting');
+  });
+
+  it('leaves INC, RS and RS-C in planning, whatever the status', () => {
+    for (const action of ['INC', 'RS', 'RS-C']) {
+      expect(blockedPile(job({ status: 'Active', action }))).toBe('planning');
+      expect(blockedPile(job({ status: 'On Hold', action }))).toBe('planning');
+    }
   });
 
   it('blocks a VB job regardless of status and action — the guitar is not in the shop', () => {
@@ -162,10 +178,18 @@ describe('blockedReason — CI takes priority over status', () => {
     expect(blockedReason({ status: 'On Hold', action: 'INC' })).toBe('planning');
   });
 
-  it('reports "planning" for RS, RS-C and DG too, not just INC', () => {
+  it('reports "planning" for RS and RS-C too, not just INC', () => {
     expect(blockedReason({ status: 'Active', action: 'RS' })).toBe('planning');
     expect(blockedReason({ status: 'Active', action: 'RS-C' })).toBe('planning');
-    expect(blockedReason({ status: 'Active', action: 'DG' })).toBe('planning');
+  });
+
+  it('gives no reason for a workable DG job, and the real reason for a blocked one', () => {
+    expect(blockedReason({ status: 'Active', action: 'DG' })).toBe(null);
+    expect(blockedReason({ status: 'On Hold', action: 'DG' })).toBe('on hold');
+    expect(blockedReason({ status: 'In Transit', action: 'DG' })).toBe('in transit');
+    expect(blockedReason({ status: 'Waiting', action: 'DG' })).toBe('waiting — see Multitrack');
+    expect(blockedReason({ status: 'Active', action: 'DG', vb: true })).toBe('customer still has the instrument');
+    expect(blockedReason({ status: 'Active', action: 'DG', backlog: true })).toBe('backlog');
   });
 
   it('says what is actually stopping a VB or BL job', () => {
@@ -218,10 +242,16 @@ describe('inferBench — blocked work gets Admin', () => {
     expect(inferBench('full setup', 'Waiting', '', '', 'Fender')).toBe('Admin');
     expect(inferBench('full setup', 'In Transit', '', '', 'Fender')).toBe('Admin');
     expect(inferBench('full setup', 'Active', 'INC', '', 'Fender')).toBe('Admin');
-    expect(inferBench('full setup', 'Active', 'DG', '', 'Fender')).toBe('Admin');
+    expect(inferBench('full setup', 'On Hold', 'DG', '', 'Fender')).toBe('Admin');
     // 8th positional parameter is vb; 7th is backlog.
     expect(inferBench('full setup', 'Active', 'GTS', '', 'Fender', undefined, true, false)).toBe('Admin');
     expect(inferBench('full setup', 'Active', 'GTS', '', 'Fender', undefined, false, true)).toBe('Admin');
+  });
+
+  it('gives an Active DG job its real bench, same as with no action', () => {
+    const plain = inferBench('full setup', 'Active', '', '', 'Fender');
+    expect(plain).not.toBe('Admin');
+    expect(inferBench('full setup', 'Active', 'DG', '', 'Fender')).toBe(plain);
   });
 
   it('leaves a workable job on its real inferred bench', () => {

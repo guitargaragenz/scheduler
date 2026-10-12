@@ -102,8 +102,16 @@ describe('columnFor', () => {
     expect(col({})).toBe('ready');
   });
 
-  it.each(['INC', 'RS', 'RS-C', 'DG'])('puts %s in still-working-it-out', act => {
+  it.each(['INC', 'RS', 'RS-C'])('puts %s in still-working-it-out', act => {
     expect(col({ action: act })).toBe('thinking');
+  });
+
+  it('puts an unblocked DG job in ready — the diagnosis is the work', () => {
+    expect(col({ action: 'DG' })).toBe('ready');
+  });
+
+  it('still parks an On Hold DG job', () => {
+    expect(col({ action: 'DG', status: 'On Hold' })).toBe('parked');
   });
 
   it('splits the two waits apart', () => {
