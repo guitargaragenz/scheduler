@@ -371,7 +371,12 @@ export function bookedOnDay(jobs, weekKeys, dateKey, marks) {
   const out = [];
 
   for (const row of rows) {
-    if (!row.job) continue;
+    // A typed Weekly Log row has no job, so nothing books it but the day mark.
+    // Trevor, 2026-10-12: these were skipped here and never reached the day.
+    if (!row.job) {
+      if (marks?.[row.id]?.[dateKey]) out.push({ id: String(row.id), label: row.name, note: '' });
+      continue;
+    }
 
     let booked = 0;
     for (const part of partsOf(row.job, all, byId)) {
