@@ -170,6 +170,7 @@ const SHEET_CSS = `
 
 /* A cell you can type in is a plain cell until you touch it. */
 .gcell {
+  scroll-margin-top: 32px; /* clears the sticky column header when focus moves */
   width: 100%; height: 29px; box-sizing: border-box;
   background: transparent; border: 1px solid transparent; border-radius: 0;
   padding: 0 2px; margin: 0;
@@ -214,16 +215,41 @@ function headerCell(label, cls) {
 // A job ticked off on the Weekly Log carries a `close:<Monday>` mark. Any week counts.
 const isTickedOff = (marks) => Object.entries(marks || {}).some(([k, v]) => k.startsWith('close:') && v);
 
+// The JBA date-in as a sortable YYYY-MM-DD key, or null when the job has none.
+// first_seen can come back from Supabase as a full timestamp, so only the date
+// part counts — two jobs in on the same day tie and fall through to job number.
+const dateKey = (job) => {
+  const s = job.firstSeen ? String(job.firstSeen).slice(0, 10) : '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+};
+
+// Trevor, 2026-10-12: "by date (from JBA) not by job number with most recent on
+// top". Newest date first; same day or no date, highest job number first; jobs
+// with no date at all go to the bottom, where the note above the grid owns up
+// to them rather than slotting them somewhere that looks deliberate.
+export function sortSheetRows(jobs) {
+  return jobs.slice().sort((a, b) => {
+    const da = dateKey(a);
+    const db = dateKey(b);
+    if (da !== db) {
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da < db ? 1 : -1;
+    }
+    return Number(b.id) - Number(a.id);
+  });
+}
+
+export const countUndated = (jobs) => jobs.filter(j => dateKey(j) === null).length;
+
 export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved, weekMarks = {} }) {
   // Top-level jobs only. Split and derived cards have ids like
   // 1620_Electronics_0 and are the app's own bookkeeping — Trevor never triages
   // them here, and the Multitrack columns would be meaningless on them.
   const rows = useMemo(() => {
-    return (jobs || [])
-      .filter(isTopLevelJob)
-      .slice()
-      .sort((a, b) => Number(b.id) - Number(a.id));
+    return sortSheetRows((jobs || []).filter(isTopLevelJob));
   }, [jobs]);
+  const undatedCount = useMemo(() => countUndated(rows), [rows]);
 
   const [drafts, setDrafts] = useState({});
   const [search, setSearch] = useState('');
@@ -325,6 +351,67 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
     const shown = new Set(visibleRows.map(j => j.id));
     return dirty.filter(d => !shown.has(d.job.id)).length;
   }, [dirty, visibleRows, search]);
+
+  // Enter-to-move-down, the way the Google Sheet did it. One map of Hours inputs
+  // keyed by job id, walked in visibleRows order — so a search is respected and
+  // hidden rows are skipped. A row that unmounts takes its entry with it; a
+  // missing entry just means nowhere to go. Moving focus never writes anything:
+  // Commit stays the only save.
+  const hoursRefs = useRef(new Map());
+  const hoursRefFor = useCallback(id => el => {
+    if (el) hoursRefs.current.set(id, el);
+    else hoursRefs.current.delete(id);
+  }, []);
+
+  // Returns true only if focus actually moved, so the caller knows whether to
+  // swallow the keypress.
+  const focusHours = useCallback(id => {
+    const el = hoursRefs.current.get(id);
+    if (!el) return false;
+    el.focus();
+    el.select();
+    return true;
+  }, []);
+
+  const moveHours = useCallback((fromId, step) => {
+    const i = visibleRows.findIndex(j => j.id === fromId);
+    if (i === -1) return false;
+    const next = visibleRows[i + step];
+    if (!next) return false; // first or last row: stay put
+    return focusHours(next.id);
+  }, [visibleRows, focusHours]);
+
+  const isPlainEnter = e =>
+    e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.nativeEvent?.isComposing;
+
+  const onHoursKeyDown = useCallback((e, id) => {
+    if (!isPlainEnter(e)) return;
+    if (moveHours(id, e.shiftKey ? -1 : 1)) e.preventDefault();
+  }, [moveHours]);
+
+  // Enter on the Tag select (closed — an open native list eats its own Enter)
+  // drops into the same row's Hours, so pick-tag-then-type is one motion.
+  const onTagKeyDown = useCallback((e, id) => {
+    if (!isPlainEnter(e) || e.shiftKey) return;
+    if (focusHours(id)) e.preventDefault();
+  }, [focusHours]);
+
+  // Click-to-select: focus selects the text, but the mouseup that follows a
+  // click would collapse the selection to a caret. Swallow that one mouseup only
+  // when it belongs to the click that just focused the box, so a second click
+  // still places the caret normally.
+  const justFocused = useRef(null);
+  const onHoursFocus = useCallback(e => {
+    e.target.select();
+    justFocused.current = e.target;
+  }, []);
+  const onHoursMouseUp = useCallback(e => {
+    if (justFocused.current === e.target) {
+      e.preventDefault();
+      justFocused.current = null;
+    }
+  }, []);
+  const onHoursBlur = useCallback(() => { justFocused.current = null; }, []);
 
   const invalidCount = useMemo(() => {
     return Object.values(drafts).filter(d => isHoursInputInvalid(d.hoursText)).length;
@@ -520,6 +607,15 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
         </div>
       )}
 
+      {undatedCount > 0 && (
+        <div style={{
+          padding: '6px 18px', fontSize: 11, color: C.warn,
+          borderBottom: `1px solid ${C.line}`,
+        }}>
+          {undatedCount} job{undatedCount === 1 ? ' has' : 's have'} no JBA date — at the bottom
+        </div>
+      )}
+
       {/* Grid */}
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {rows.length === 0 ? (
@@ -603,6 +699,7 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
                         <select
                           className="gcell"
                           value={d.tag ?? ''}
+                          onKeyDown={e => onTagKeyDown(e, job.id)}
                           onChange={e => setDraft(job, applyTagToDraft(d, e.target.value))}
                         >
                           {withLegacyOption(TAG_OPTIONS, d.tag).map(o => (
@@ -618,7 +715,13 @@ export default function JobsSheetPage({ jobs, onBack, isMobile = false, onSaved,
                         <input
                           className={badHours ? 'gcell bad' : 'gcell'}
                           style={{ textAlign: 'right' }}
+                          ref={hoursRefFor(job.id)}
+                          aria-label={`Hours for job ${job.job}`}
                           value={d.hoursText}
+                          onKeyDown={e => onHoursKeyDown(e, job.id)}
+                          onFocus={onHoursFocus}
+                          onMouseUp={onHoursMouseUp}
+                          onBlur={onHoursBlur}
                           onChange={e => setDraft(job, { ...d, hoursText: e.target.value })}
                           title={avg !== null ? `Saves as ${avg}` : undefined}
                         />

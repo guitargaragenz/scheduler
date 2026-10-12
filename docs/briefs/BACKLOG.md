@@ -17,14 +17,6 @@ then, with Trevor. Nothing here is scoped or approved.
 
 Real, nobody has picked them up, not attached to any brief.
 
-- **Three revenue rows carry the wrong week**, stamped 2026-09-07, left behind by the
-  bug `049ec99` closed. `cj-1632` should read Friday 4 Sept; `cj-1711` is correct as-is;
-  `cj-1740`'s job was deleted by hand, so its money survives with no job on the board and
-  its finished day still needs confirming with Trevor. A by-hand fix, not app code.
-- **The importer can strand a job.** `src/data/pdfImportPlan.js` clears the `done` flag
-  only on the "returning" path, which needs a non-null `departed_at`. A job still on the
-  printout can stay flagged done and vanish from the board. Job 1740 was unstuck by hand
-  once. Needs its own brief.
 - **Four screens whose names collide** — Day view and Week view (both `CalendarGrid.jsx`),
   Weekly Log (`BenchWeekPage.jsx`), Daily Log (`DailyLogPanel.jsx`). It already cost a
   round on 2026-08-26, when a fix waited on asking which "day view" Trevor meant.
@@ -43,23 +35,4 @@ Real, nobody has picked them up, not attached to any brief.
 
 The table in the index names these briefs. This is the detail behind each.
 
-- **[Stale description after import](parked-stale-description-after-import.md)** — waiting
-  on nothing, a real bug nobody has picked up. After a PDF import the board shows the old
-  description until reload; `src/hooks/useJobs.js:319` refreshes dates only. Blast-radius
-  (`jobs[]`).
-- **[Jobs Sheet usability changes](parked-jobs-sheet-usability-changes.md)** — waiting on
-  nothing. White sheet shipped (`ce1cc65`). Still open: Enter-to-move-down a row, and
-  30-minute snapping in `parseHoursInput()`. Full protocol.
-- **[Blocked-pile naming](blocked-pile-naming-alignment.md)** — waiting on nothing. Three
-  of four findings already fixed. What's left: the Sidebar's three buckets don't match
-  `blockedPile()`'s four piles, so `🔒 ON HOLD` is a catch-all bin.
-- **[Parts as a stuck reason](parked-parts-as-a-stuck-reason.md)** — waiting on the first
-  Sunday board meeting; `parts_to_order` is empty until the meeting fills it, so the UI
-  would ship showing nothing.
 
-## Jobs finished from Close Day, Catch-up or revenue review get no × on the Week page
-
-Only the Week page × writes the close mark, so a job finished from those three places drops off its
-week straight away. Found 2026-09-29 while fixing job 1726. Check before scoping: a scan of
-finished jobs missing a mark looked worse than it was — 8 finished before the close column existed
-and 2 already had a mark on an earlier week.
