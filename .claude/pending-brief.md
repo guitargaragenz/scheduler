@@ -16,9 +16,6 @@ drop down to next box like G sheet."* (2026-07-29). Confirmed still wanted 2026-
   `rows` (`:221-225`) sorts by `firstSeen` newest first; ties and no-date jobs by id desc, no-date last.
   Any no-date jobs: a note above the grid, e.g. "2 jobs have no JBA date — at the bottom".
 
-The Hours cell is the only free-text input in a row (`JobsSheetPage.jsx:618`); Tag, Action
-and VB/BL/PJ are selects and checkboxes.
-
 - **Enter** in an Hours cell moves focus to the Hours cell one row down, in the order rows
   are on screen (`visibleRows`, so search is respected; there is no sort control). Last row: stay put.
 - **Shift+Enter** moves up one row. First row: stay put.
