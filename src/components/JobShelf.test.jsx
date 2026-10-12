@@ -25,7 +25,7 @@ globalThis.localStorage = {
   removeItem: k => { delete store[k]; },
 };
 
-const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER, PARTS_ARRIVED_VALUE } = await import('./JobShelf.jsx');
+const { default: JobShelf, dragModeVisible, pileOf, PILE_VALUES, BENCH_ORDER, PARTS_ARRIVED_VALUE, TO_DIAGNOSE_VALUE, isToDiagnose } = await import('./JobShelf.jsx');
 const { blockedPile } = await import('../data/jobs.js');
 
 // One of each: a Planning job (INC), a Hold job (On Hold), a Transit job
@@ -270,4 +270,69 @@ describe('search matches the Board week list fields', () => {
     'finds the job by %s', q => expect(matchesSearch(j, q)).toBe(true));
   it('does not match unrelated text', () => expect(matchesSearch(j, 'gibson')).toBe(false));
   it('copes with missing fields', () => expect(matchesSearch({}, 'x')).toBe(false));
+});
+
+// --- 🔍 To Diagnose chip ---
+//
+// DG jobs are workable (Trevor, 2026-10-12: "the diagnosis is the work"). The
+// chip lists every unblocked DG job, any bench; blocked DG jobs stay out.
+const DG_FREE = { id: 'dg1', job: 1801, status: 'Active', action: 'DG', bench: 'Electronics', mfr: 'Fender', model: 'Jazzmaster', days: 9 };
+const DG_HOLD = { id: 'dg2', job: 1802, status: 'On Hold', action: 'DG', bench: 'Electronics', mfr: 'Gibson', model: 'ES335', days: 8 };
+const DG_BL = { id: 'dg3', job: 1803, status: 'Active', action: 'DG', backlog: true, bench: 'Electronics', mfr: 'Epiphone', model: 'Casino', days: 7 };
+const DG_VB = { id: 'dg4', job: 1804, status: 'Active', action: 'DG', vb: true, bench: 'Electronics', mfr: 'Squier', model: 'Bronco', days: 6 };
+
+describe('isToDiagnose', () => {
+  it('is true for an unblocked DG job, any case', () => {
+    expect(isToDiagnose(DG_FREE)).toBe(true);
+    expect(isToDiagnose({ ...DG_FREE, action: ' dg ' })).toBe(true);
+  });
+  it('is false for a DG job blocked by status, BL or VB', () => {
+    for (const j of [DG_HOLD, DG_BL, DG_VB,
+      { ...DG_FREE, status: 'Waiting' }, { ...DG_FREE, status: 'In Transit' }]) {
+      expect(isToDiagnose(j)).toBe(false);
+    }
+  });
+  it('is false for other actions and for nothing', () => {
+    expect(isToDiagnose(WORKABLE)).toBe(false);
+    expect(isToDiagnose(PLANNING)).toBe(false);
+    expect(isToDiagnose(null)).toBe(false);
+  });
+});
+
+describe('🔍 To Diagnose chip', () => {
+  it('counts only the unblocked DG jobs', () => {
+    const markup = render([DG_FREE, DG_HOLD, DG_BL, DG_VB, WORKABLE]);
+    expect(chipCount(markup, '🔍 To Diagnose')).toBe(1);
+  });
+
+  it('is hidden entirely when nothing qualifies', () => {
+    const markup = render([DG_HOLD, DG_BL, DG_VB, WORKABLE]);
+    expect(markup).not.toContain('To Diagnose');
+  });
+
+  it('filters the list to unblocked DG jobs when selected', () => {
+    const markup = render([DG_FREE, DG_HOLD, DG_BL, DG_VB, WORKABLE], TO_DIAGNOSE_VALUE);
+    expect(markup).toContain('#1801');
+    for (const n of ['#1802', '#1803', '#1804', '#1001']) expect(markup).not.toContain(n);
+  });
+
+  it('includes a DG job filed on Admin, so a wrong bench cannot hide it', () => {
+    const markup = render([{ ...DG_FREE, bench: 'Admin' }], TO_DIAGNOSE_VALUE);
+    expect(markup).toContain('#1801');
+  });
+
+  it('still shows the DG job under its own bench chip', () => {
+    const markup = render([DG_FREE, WORKABLE], 'Electronics');
+    expect(markup).toContain('#1801');
+  });
+
+  it('keeps a stored To Diagnose selection across reload rather than clearing it as junk', () => {
+    render([DG_FREE], TO_DIAGNOSE_VALUE);
+    expect(store.jobShelfBench).toBe(TO_DIAGNOSE_VALUE);
+  });
+
+  it('is not treated as a blocked pile', () => {
+    expect(pileOf(TO_DIAGNOSE_VALUE)).toBe(null);
+    expect(PILE_VALUES).not.toContain(TO_DIAGNOSE_VALUE);
+  });
 });

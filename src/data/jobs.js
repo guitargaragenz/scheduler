@@ -139,18 +139,20 @@ export function parseDays(raw) {
 // current three-locked-sections sprawl happened, and it is what makes a job
 // show up as blocked on one screen and workable on another.
 //
-// 'planning' is `INC`, `RS`, `RS-C` or `DG` alone, deliberately status-independent
-// (settled at council 2026-07-27, RS/RS-C added 2026-07-28, DG 2026-08-05). On the live data
+// 'planning' is `INC`, `RS` or `RS-C` alone, deliberately status-independent
+// (settled at council 2026-07-27, RS/RS-C added 2026-07-28). On the live data
 // the only two INC jobs are 393 and 693, both `Booked In`, so gating on
 // `Waiting + INC` as the spec originally said would have matched zero jobs and
 // shipped an empty pile. INC is the action code MT uses to mean "Incubating" —
 // the job is still turning over in Trevor's head, nowhere near planning or
 // quoting yet. RS (Research) and RS-C (Research with Claude) are the same
 // still-figuring-it-out phase — whatever the status column says, so a future
-// `Active + INC/RS/RS-C/DG` job leaving the active list is intended, not a
-// regression. `DG` (To be Diagnosed) joined them 2026-08-05: ProjectsPage.jsx
-// has always grouped all four together under "Needs Thinking" while this
-// function listed only three, so the two screens disagreed. They now match.
+// `Active + INC/RS/RS-C` job leaving the active list is intended, not a
+// regression. `DG` (To be Diagnosed) is NOT planning: it was here 2026-08-05
+// to 2026-10-12, but Trevor ruled "the diagnosis is the work" — a DG job hidden
+// in the planning pile was a free job he never saw on its bench. DG now falls
+// through to the status/VB/BL rules like any other action, so an Active DG job
+// is workable and sits on its real bench, still carrying its DG tag.
 //
 // There is no longer a `readyToStart` exemption. It modelled On Hold + BL=Y +
 // GTS ("parts arrived, good to start"), which Trevor ruled on 2026-08-04 "would
@@ -175,7 +177,7 @@ export function parseDays(raw) {
 export function blockedPile(job) {
   if (!job) return null;
   const act = (job.action || '').trim().toUpperCase();
-  if (['INC', 'RS', 'RS-C', 'DG'].includes(act)) return 'planning';
+  if (['INC', 'RS', 'RS-C'].includes(act)) return 'planning';
 
   const status = job.status || '';
   if (status === 'On Hold') return 'hold';
@@ -206,11 +208,12 @@ export function blockedReason(job) {
   // On Hold + CI — checking status === 'On Hold' first used to report
   // "on hold", which just restates the status column. "waiting on the
   // customer" tells Trevor who to chase, so CI is checked ahead of status.
-  // All four still-figuring-it-out codes read 'planning', matching the pile
-  // above and the Projects page's "Needs Thinking" group. Only INC was listed
+  // The three still-figuring-it-out codes read 'planning', matching the pile
+  // above and the Projects page's "Needs Thinking" group (DG is not one of
+  // them — see blockedPile). Only INC was listed
   // here before, so RS/RS-C jobs sat in the planning pile while reporting
   // "waiting — see Multitrack" as the reason.
-  if (['INC', 'RS', 'RS-C', 'DG'].includes(act)) return 'planning';
+  if (['INC', 'RS', 'RS-C'].includes(act)) return 'planning';
   if (act === 'CI') return 'waiting on the customer';
   if (status === 'In Transit') return 'in transit';
   if (status === 'On Hold') return 'on hold';
