@@ -1,37 +1,40 @@
 ---
-doc_status: closed
+doc_status: live
 ---
 
-# Scope lock — Board day view side list shows every part of a split job — shipped at `d82dab0` (PR #92), 2026-10-04
+# Scope lock — DG jobs are ready to start, on their benches, with a 🔍 To Diagnose chip
 
-Background only (don't follow unless this page can't answer a question):
-[board-split-parts.md](../docs/briefs/board-split-parts.md).
+Previous lock (Board split parts) is in git at `0bb5cc5`. Background only (don't follow unless
+this page can't answer a question): [dg-ready-to-start.md](../docs/briefs/dg-ready-to-start.md).
 
-## Why rewritten
-The first build (3d78df6) changed `Sidebar.jsx`, which is the list beside the **Week View**
-calendar. The list Trevor uses is on the Board in **day view**, drawn by `JobShelf.jsx`.
-Browser test showed 1635 there still reading "▶ 8 sub-tasks". Trevor: keep the Sidebar
-change too, and build the same thing in `JobShelf.jsx`.
+Trevor: "DG means to be diagnosed and if they aren't at their benches then I won't know they are
+free. This has been the reason I have been missing jobs recently." Rule: **the diagnosis is the work.**
 
-## Build
-In `JobShelf.jsx`, a split job's "▶ N sub-tasks" list shows **every part of the job**,
-scheduled or not, in shop order via `partsOf`/`orderedParts`/`isSplitRow` from
-`BenchWeekPage.jsx`. Copy the look of the `Sidebar.jsx` version in 3d78df6: done part
-(`pieceDone`, NOT `done`) = green ✓, name struck through, greyed; not-done = ○; first
-not-done = "next" badge. Toggle label e.g. "▶ 8 parts · 1 done". An unscheduled, not-done
-part still shows its draggable card under its row, so it can still be booked.
-Today the list only holds unscheduled parts (`getSubtasks`), so done/scheduled ones vanish.
+## Build (code only)
+1. `blockedPile()` and `blockedReason()` in `src/data/jobs.js`: DG no longer returns `'planning'`.
+   It falls through to the normal status/VB/BL rules like any other action. INC, RS, RS-C unchanged.
+2. Update the comments in `jobs.js` that say DG is planning, so they don't contradict the code.
+3. `ProjectsPage.jsx`: DG moves from "Needs Thinking" to "Ready to Schedule" (sub-labels to match).
+4. `JobShelf.jsx` (Board day view side list): a **🔍 To Diagnose** chip beside 🔧 Parts Arrived,
+   built the same way — own `filter:` value, hidden at zero, divider condition (~281–297) too, shows hours, lists every live unscheduled
+   top-level DG job that is not blocked, survives reload. Jobs still show under their bench chip too.
+5. Tests: update the DG cases in `jobs.test.js` / `BenchBoardPage.test.jsx`; add tests for the
+   chip and for DG + On Hold / Waiting / BL / VB still being blocked by those.
 
-## Out of scope
-Ticking parts from the Board. Which cards show or hide in the list (the "every part
-scheduled hides the parent" rule at `JobShelf.jsx` ~line 105 stays). Undoing the
-`Sidebar.jsx` change. Calendar cards, Jobs page, Bench page (`BenchBoardPage.jsx`), any
-saved data. `scheduledSlots`, `calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js`,
-`utils/supabase.js`, `jobs[]` shape.
+## Merge 2 — dropped
+Live check 2026-10-12: all 21 live DG rows already carry Electronics, none on Admin, none 0 hours.
+No data script. No 0-hour fix.
+
+## Not in scope
+- No edits to `useSupabase.js`, `utils/supabase.js`, `useGoogleCalendar.js`, `scheduledSlots`,
+  `calendarSlot` or the `jobs[]` shape. (Behaviour changes through `blockedPile()`; code doesn't.)
+- No change to INC / RS / RS-C, to the DG tag itself, or to how the card shows the tag.
+- No auto-clearing of DG. Trevor changes it in the Jobs Sheet when diagnosed.
+- No change to `inferBench()` keywords or bench order.
 
 ## Binding rules
-- Read-only: no Supabase call, no write, no `jobs[]` mutation. Not blast-radius.
-- Reuse the WL helpers; no second ordering.
-- Files: `JobShelf.jsx`, `JobShelf.test.jsx` only.
-- Browser test: Board, **day view**, Luthier chip → 1635 shows "8 parts · 1 done";
-  opened, Fretwork ticked + struck + greyed, Finishing badged next.
+- A job is never BL and WP at once; no "no bench"; bench picked from the work, never the brand.
+- `git add` specific files only. Staging branch `staging/dg-ready`.
+
+## Verifier checklist
+In the background doc, section "Verifier checklist" — the verifier reads it there.
