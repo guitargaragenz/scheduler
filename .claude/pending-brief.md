@@ -1,7 +1,8 @@
 ---
-doc_status: live
+doc_status: closed
 ---
-# Brief — Jobs Sheet: Enter moves down in Hours; rows sorted by JBA date
+# Record (shipped) — Jobs Sheet: Enter moves down in Hours; rows sorted by JBA date
+Shipped PR #102 `652f7d1`; tests 941 → 951; Trevor browser-checked all six. Builder calls: notes doc.
 
 Background (don't follow unless stuck): [council notes](../docs/briefs/jobs-sheet-enter-notes.md).
 

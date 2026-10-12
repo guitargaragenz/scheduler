@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Jobs Sheet Enter + date sort — background to the scope lock
@@ -15,3 +15,6 @@ order, which Enter-to-move follows via `visibleRows`.
 
 Why Hours only: The Hours cell is the only free-text input in a row (`JobsSheetPage.jsx:618`); Tag, Action
 and VB/BL/PJ are selects and checkboxes.
+
+
+Builder calls: hidden label "Hours for job N"; Shift+Enter on Tag does nothing; bad dates count as no date.
