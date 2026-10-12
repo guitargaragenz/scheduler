@@ -140,7 +140,7 @@ export function useJobs({
   // Board's week revenue showed $0 until the next job was ticked, and a job
   // ticked before the reload looked untouched.
   //
-  // Bounded to the CURRENT WEEK only (recentWeekKeys(1)). The table is
+  // Bounded to this week plus the week on screen (buildRevenueWeekKeys). The table is
   // append-only and grows forever, so an unbounded read gets slower every week
   // for data nothing on screen uses.
   const [revenueWeekKeys, setRevenueWeekKeys] = useState(() => recentWeekKeys(1));
