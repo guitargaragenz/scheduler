@@ -1,9 +1,9 @@
 ---
 doc_status: live
 ---
-# Brief — Jobs Sheet: Enter moves down a row in the Hours column
+# Brief — Jobs Sheet: Enter moves down in Hours; rows sorted by JBA date
 
-Previous occupant (week revenue record) is in git at `37f5984`, merged `ff21ce6`.
+Background (don't follow unless stuck): [council notes](../docs/briefs/jobs-sheet-enter-notes.md).
 
 ## The problem, in Trevor's words
 
@@ -11,6 +11,9 @@ Previous occupant (week revenue record) is in git at `37f5984`, merged `ff21ce6`
 drop down to next box like G sheet."* (2026-07-29). Confirmed still wanted 2026-10-12.
 
 ## Scope — one merge, one file: `src/components/JobsSheetPage.jsx`
+
+- **Sort** (Trevor 2026-10-12: *"by date (from JBA) not by job number with most recent on top"*):
+  `rows` (`:221-225`) sorts by `firstSeen` newest first; ties and no-date jobs by id desc, no-date last.
 
 The Hours cell is the only free-text input in a row (`JobsSheetPage.jsx:618`); Tag, Action
 and VB/BL/PJ are selects and checkboxes.
@@ -30,7 +33,7 @@ and VB/BL/PJ are selects and checkboxes.
 - Enter after picking a Tag (focus is on the select) — deferred.
 - No 30-minute snapping — Trevor types half hours himself.
 - No Escape-to-revert, no change to Tab order, no movement for selects or checkboxes.
-- No change to styling, columns, or any file other than `JobsSheetPage.jsx` (plus a test).
+- No visual change (scroll-margin aside), no column changes, or any file other than `JobsSheetPage.jsx` (plus a test).
 - Blast-radius files untouched.
 
 ## Checklist for the verifier
@@ -43,8 +46,5 @@ and VB/BL/PJ are selects and checkboxes.
 6. Focusing an Hours cell selects its text, by Enter and by mouse click.
 7. A test proves Enter makes zero write calls; Commit still saves the typed hours.
 8. Focused cell is visible, not under the sticky header (browser check).
-9. Full test suite passes.
-
-## Council (2026-10-12) — both go-with-changes
-
-Dropped "sort" (none exists); added scroll-margin, click-select, IME, unmount, mobile/Tag cuts.
+9. Rows run newest `firstSeen` first; jobs with no date sit at the bottom.
+10. Full test suite passes.
