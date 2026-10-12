@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import DailyLogPanel, { dayJobOptions, groupsOf, matchesSearch, newDayTaskId, isDayTaskId, bookedOnDay, piecesForJob, markIdFor, pieceLabel } from './DailyLogPanel.jsx';
-import { weekRowKey, weekCloseKey, weekRows } from './BenchWeekPage.jsx';
+import { weekRowKey, weekCloseKey, weekRows, encodeTypedRow } from './BenchWeekPage.jsx';
 
 // The Daily Log reads Google Calendar for the day's appointments. Nothing here
 // is about appointments, and a real read would go to the network.
@@ -422,5 +422,20 @@ describe('pieceLabel', () => {
   it('keeps the whole label rather than showing nothing', () => {
     expect(pieceLabel('1722 PRS SE Custom — ', '1722 PRS SE Custom'))
       .toBe('1722 PRS SE Custom — ');
+  });
+});
+
+// Trevor, 2026-10-12: a typed admin row marked on a day in the Weekly Log
+// never reached that day's Daily Log.
+describe('bookedOnDay shows typed Weekly Log rows on their marked day', () => {
+  const DAY = '2026-08-11';
+  const id = 'task:2026-08-10:abc';
+  it('shows a typed row on the day it is marked', () => {
+    const marks = { [id]: { [weekRowKey(WEEK)]: encodeTypedRow('buy strings'), [DAY]: 'dot' } };
+    expect(bookedOnDay([], WEEK, DAY, marks)).toEqual([{ id, label: 'buy strings', note: '' }]);
+  });
+  it('leaves it off days it is not marked', () => {
+    const marks = { [id]: { [weekRowKey(WEEK)]: encodeTypedRow('buy strings'), '2026-08-12': 'dot' } };
+    expect(bookedOnDay([], WEEK, DAY, marks)).toEqual([]);
   });
 });
