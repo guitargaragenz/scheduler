@@ -1,50 +1,50 @@
 ---
 doc_status: closed
 ---
-# Record (shipped) — action chips on job cards (DG, GTS, WP)
-Shipped PR #105, merge `ff04dca`; tests 954 → 963. Builder calls: no chips on split parts (like 🎯); toast on any replace; prefill cleared on leaving Parts. Item 9 (import) checked by Trevor in browser only.
+# Record (shipped) — DG/WP labels on the Daily and Weekly Logs
+Shipped PR #107; tests 963 → 970. Trevor cut it to DG (green) + WP (red) only after seeing it.
+Render points were ~1341/1364 in DailyLogPanel, not ~1403. Follow-up (Trevor yes, 2026-10-13):
+lit DG card chip turns green to match, `JobCard.jsx` ActionChips only.
 
-Trevor, 2026-10-12: wants to set DG on a job card in one tap, like the 🎯 focus button,
-"much quicker than the sheet". Extended to GTS and WP. Previous lock (admin marks) shipped PR #104 `c6cfecd`.
+Trevor, 2026-10-13: "lets discuss ways that we can transfer this to weekly and daily bc I can't
+see these tags there" — after card action chips shipped (PR #105; that lock closed in git at `8d7da04`).
+He chose show-only (no tapping) from a mockup.
 
 ## Build
 
-- Three small text chips (DG, GTS, WP) next to 🎯 (`JobCard.jsx` ~125-137), faded off, bright when set.
-  On every card: Sidebar, JobShelf, CalendarGrid, DayViewPage, and the day page's mobile card.
-- Tap sets that action, replacing any other. One action per job. Tap the lit chip again → action blank.
-- Replacing a different action shows a toast naming it ("INC replaced by DG on #1234").
-- WP also sets `backlog: false` in the same one-row write. BL and WP never coexist.
-- Save: new App-level handler modelled on `handleClearMark` (`App.jsx` ~310): read live job from
-  `jobsRef`, one-row `batchWriteJobsState`, `justSavedAt` first, board changes only on ok, `applySheetEdits`.
-- Tapping WP then jumps to the parts page with this job prefilled as "needed for job":
-  `partsPrefillJob` state in App + one prop seeding `neededForJob` in `PartsToOrderPage.jsx` (~235).
-  Skipping = navigate back; WP stays set, no part added.
-- Chips copy 🎯's BOTH `onClick` and `onPointerDown` stopPropagation (no open, no drag).
-- Remove 'DG' and 'WP' from `CLEARABLE_ACTIONS` in `JobDrawer.jsx:8` and `MobileJobSheet.jsx:9`
-  (now duplicates of the chips). CI, INC, RS-C stay.
+- A small read-only label beside the job name on Daily Log (`DailyLogPanel.jsx`) and Weekly Log
+  (`BenchWeekPage.jsx`) rows — ONLY for DG (green, "good to go") and WP (red, "held up").
+  Every other action and blank → no label. (Trevor 2026-10-13 after first build.)
+- Label is its own span OUTSIDE the ellipsis-clipped name, small and fixed-size, never clipped.
+  Never put it inside `rowName()` / `row.name` / `row.label` — those feed aria-labels, tooltips,
+  the Remove confirm and stored Daily Log labels.
+- Find the job by id, never by parsing label text.
+  Weekly: `row.job.action` (name at ~1345 split via `SplitName`, ~1352 plain).
+  Daily: `displayJobById.get(id)` (~690, holds live + departed). Label on the split group header
+  (~1364) and plain `JobLine` (~564, new optional `action` prop from ~1403); none on piece lines (~1379).
+- Split jobs show the parent's action. Departed jobs carry `action` already
+  (`useSupabase.js:159`, `:205`) — they get labels, no new read.
 
 ## Not in scope
 
-- Other actions (INC, CI, RS, RS-C, FB) stay sheet-only.
-- No change to the sheet's Action dropdown.
-- No change to how WP or DG sort into piles or benches (`jobs.js`, `BenchBoardPage.jsx`).
-- `useSupabase.js`, `utils/supabase.js`, `scheduledSlots`, `calendarSlot`, jobs[] shape.
+- No tapping: display only. Setting/clearing stays on cards and the sheet.
+- No change to log marks (· × >), carry-forward, rows, ordering or grouping.
+- No new Supabase reads or writes. `useSupabase.js`, `utils/supabase.js`, `scheduledSlots`,
+  `calendarSlot`, jobs[] shape untouched.
+- Typed admin rows (no job) get no label.
 
 ## Verifier checklist
 
-1. Each chip sets its action; card and sheet both show it — on all four card locations.
-2. A second chip replaces the first. Never two actions.
-3. Replacing a sheet-only action (e.g. INC) shows the toast naming it.
-4. Tapping the lit chip clears the action to blank.
-5. WP on a Backlog job clears Backlog, in one write.
-6. WP jumps to parts page with job number filled in. Saving adds the part; going back adds nothing.
-7. Tapping a chip doesn't open or drag the card. (WP cards are then undraggable — expected, blocked.)
-8. Drawer and mobile sheet no longer offer DG or WP clear; CI, INC, RS-C still do.
-9. After a Multitrack import, the chip-set action is still there.
-10. Full suite passes, plus new tests: set, replace (+toast), clear, WP clears Backlog.
+1. A job with DG shows a DG label on the Daily Log and the Weekly Log.
+2. DG shows green, WP shows red; GTS, INC, CI, RS, RS-C, FB and blank show none.
+3. Setting/clearing a chip on a card updates both logs' labels without a reload.
+4. Split jobs: label on the parent/header, not on piece lines.
+5. A long job name on the desktop Weekly Log and on the phone: label still fully visible.
+6. Marks, carry-forward, row order, aria-labels and Remove confirm text unchanged.
+7. Typed admin rows show no label; departed jobs do.
+8. Full suite passes, plus new tests: label shown, none when blank, split uses parent.
 
-## Council changes (2026-10-12)
+## Council changes (2026-10-13)
 
-Both reviewers "not yet" on brief fixes only. Save path corrected to handleClearMark (sheet saves in
-batches, not reusable). Prop threading, dual stopPropagation, jump-not-popup added. Trevor chose:
-toast on replace, chips everywhere, remove DG+WP from the clear-mark lists.
+R1 go, R2 not-yet on layout only. Added: label outside clipped name, find job by id, render
+points, departed jobs answered yes, long-name check (item 5). No Trevor decision needed.
