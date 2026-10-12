@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ActionLabel from './ActionLabel.jsx';
 import { benchColors } from '../data/jobs.js';
 import { localDateKey, formatDateRange, getWeekDays } from '../utils/calendar.js';
 import { nextBenchOf } from '../utils/nextBench.js';
@@ -929,7 +930,7 @@ function DayCell({ label, mark, ready, width, open, onOpen, onDismiss, onPick, l
 // end-box menus use: a layer would eat the first tap on a day cell or end box.
 // The listener closes the list and lets that tap carry on to what was under it.
 // Display only — nothing here writes.
-function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
+function SplitName({ row, nameStyle, open, onToggle, onDismiss, action, children }) {
   const wrap = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
@@ -941,7 +942,7 @@ function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
   }, [open, onDismiss]);
 
   return (
-    <div ref={wrap} style={{ position: 'relative', flex: 'none', minWidth: 0, width: nameStyle.width }}>
+    <div ref={wrap} style={{ position: 'relative', flex: 'none', minWidth: 0, width: nameStyle.width, display: 'flex', alignItems: 'center', gap: 6, paddingRight: nameStyle.paddingRight }}>
       <button
         type="button"
         aria-expanded={open}
@@ -949,7 +950,7 @@ function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
         onClick={onToggle}
         title={row.locked ? `${row.name} — collected, marks locked` : `${row.name} — tap for its parts`}
         style={{
-          ...nameStyle, width: '100%', display: 'block', textAlign: 'left',
+          ...nameStyle, width: 'auto', flex: '0 1 auto', paddingRight: 0, display: 'block', textAlign: 'left',
           minHeight: 32, background: 'transparent', border: 'none', cursor: 'pointer',
           fontFamily: 'inherit', lineHeight: '32px', paddingTop: 0,
         }}
@@ -957,6 +958,8 @@ function SplitName({ row, nameStyle, open, onToggle, onDismiss, children }) {
         {children}
         <span style={{ color: '#64748b', fontSize: 10, marginLeft: 6 }}>{open ? '▴' : '▾'}</span>
       </button>
+      {/* The parent's action — a split shows its guitar's, never a piece's. */}
+      <ActionLabel action={action} />
       {open && (
         <div
           role="list"
@@ -1342,14 +1345,21 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
                       open={partsFor === row.id}
                       onToggle={() => setPartsFor(partsFor === row.id ? null : row.id)}
                       onDismiss={closeParts}
+                      action={row.job?.action}
                     >{row.name}</SplitName>
                   ) : (
-                  <div style={nameStyle} title={row.locked ? `${row.name} — collected, marks locked` : undefined}>
+                  // The name box keeps its fixed width so the day columns line
+                  // up; the action label sits inside it, after the clipped
+                  // name, so a long name shortens rather than hiding the label.
+                  <div style={{ flex: 'none', width: nameStyle.width, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, paddingRight: nameStyle.paddingRight }}>
+                  <div style={{ ...nameStyle, width: 'auto', flex: '0 1 auto', paddingRight: 0 }} title={row.locked ? `${row.name} — collected, marks locked` : undefined}>
                     {/* The dim + says this line was typed by hand and has no job
                         number. Kept out of row.name so the Remove question and
                         the tooltip still read as plain words. */}
                     {row.typed && <span style={{ color: '#64748b' }}>+ </span>}
                     {row.name}
+                  </div>
+                  <ActionLabel action={row.job?.action} />
                   </div>
                   )}
                   <div style={{

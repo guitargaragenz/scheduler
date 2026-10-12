@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ActionLabel from './ActionLabel.jsx';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
 import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX, decodeTypedRow, weekRowKey } from './BenchWeekPage.jsx';
@@ -530,6 +531,9 @@ function JobLine({
   benchStyle,
   // A departed job's line: drawn the same, but nothing on it can be changed.
   locked = false,
+  // The job's action (DG, GTS …), shown read-only beside the name. Looked up
+  // by id by the caller; only a job's own line passes one, never a piece.
+  action,
 }) {
   const live = ready && !locked;
   return (
@@ -554,7 +558,8 @@ function JobLine({
         ariaLabel={`Mark for ${row.label}`}
       />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <span style={{ flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {benchStyle ? (
             <span style={{
               display: 'inline-block', padding: '1px 7px', borderRadius: 4,
@@ -564,6 +569,8 @@ function JobLine({
               {display || row.label}
             </span>
           ) : (display || row.label)}
+        </span>
+        <ActionLabel action={action} />
         </div>
         {subNote && (
           <div style={{
@@ -1344,6 +1351,7 @@ export default function DailyLogPanel({
                   onRemove={() => handleRemove(block.headRow)}
                   taskControl={taskControlFor(block.id, block.label)}
                   locked={block.locked}
+                  action={displayJobById.get(block.id)?.action}
                 />
               ) : (
                 <div style={{
@@ -1360,8 +1368,11 @@ export default function DailyLogPanel({
                     title={block.locked ? 'Collected — this mark is locked' : 'How this job went today'}
                     ariaLabel={`Mark for ${block.label}`}
                   />
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {block.label}
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {block.label}
+                    </span>
+                    <ActionLabel action={displayJobById.get(block.id)?.action} />
                   </span>
                   {/* The job's own line is where its tasks are reached. The
                       indented rows under it are pieces already on the day, and a
