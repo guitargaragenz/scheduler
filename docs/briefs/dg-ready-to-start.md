@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # DG jobs are ready to start — background
@@ -97,3 +97,5 @@ Waiting, so those stay blocked. The rules below are kept only as a record — no
 12. Chip divider: a lone To Diagnose chip still starts its own row (condition near `JobShelf.jsx` 281–297).
 13. To Diagnose chip lists a DG job whose bench is Admin as well as ones on real benches.
 14. To Diagnose chip cards show hours; verifier reports how many live DG jobs have 0/null hours.
+
+Closed 2026-10-12. Shipped at `70d93d0` (PR #95). Chip shows a count only — hours dropped (Trevor: only needed back when the calendar was used).

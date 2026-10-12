@@ -138,9 +138,11 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.1)', color: colors.text }}>
             {shownBench}
           </span>
-          <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.15)', color: '#fbbf24' }}>
-            {job.hoursRange}h
-          </span>
+          {job.hoursRange && (
+            <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.15)', color: '#fbbf24' }}>
+              {job.hoursRange}h
+            </span>
+          )}
         </div>
       </div>
       )}

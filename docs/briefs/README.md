@@ -19,10 +19,7 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 ## Live — work that hasn't finished
 
-- **[dg-ready-to-start.md](dg-ready-to-start.md)** — paused, half-built on branch `staging/dg-ready`
-  (tests not updated). DG (To be Diagnosed) jobs treated as ready to start + a 🔍 To Diagnose chip.
-  Re-check after the day-list work ships: it may no longer be needed. Live check 2026-10-12: all 21
-  live DG rows are saved on Electronics; the data-fix step is dropped.
+- Sub-bench chips + empty "h" fix — scope lock in `.claude/pending-brief.md`, branch `staging/sub-bench-chips`.
 
 ## Noticed, not scoped
 

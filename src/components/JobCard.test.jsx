@@ -44,3 +44,10 @@ describe('JobCard drag disabling', () => {
     expect(options.disabled).toBe(false);
   });
 });
+
+describe('hours box', () => {
+  const html = job => renderToStaticMarkup(<JobCard job={{ id: 'a', bench: 'Setup', ...job }} />);
+  it('hides when there are no hours, instead of a bare "h"', () =>
+    expect(html({})).not.toMatch(/>\s*h\s*</));
+  it('shows when hours are set', () => expect(html({ hoursRange: '2' })).toContain('2h'));
+});
