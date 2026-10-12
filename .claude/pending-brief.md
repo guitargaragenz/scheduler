@@ -1,49 +1,43 @@
 ---
-doc_status: closed
+doc_status: live
 ---
-# Record (shipped) — week revenue loads for whichever week is on screen
+# Brief — Jobs Sheet: Enter moves down a row in the Hours column
 
-Previous lock (typed rows on Daily Log) is in git at `ff699cf`, merged `e5105cd`.
+Previous occupant (week revenue record) is in git at `37f5984`, merged `ff21ce6`.
 
-Trevor, 2026-10-12: "previous weeks show nothing at all" — then: "how about it d/ls on demand?"
+## The problem, in Trevor's words
 
-Cause: `useJobs.js:131` loads `completed_jobs` for the current week only (`recentWeekKeys(1)`).
-The header (`App.jsx:608-609`) filters by the *viewed* week's key, so any other week finds nothing.
+*"it's really hard to enter hrs in. It shld be select box, enter hrs, push enter, and it will
+drop down to next box like G sheet."* (2026-07-29). Confirmed still wanted 2026-10-12.
 
-## Build (one merge)
+## Scope — one merge, one file: `src/components/JobsSheetPage.jsx`
 
-- In App, compute the viewed-week key from `weekDays` (state, `App.jsx:96`) **above** the `useJobs`
-  call (`App.jsx:446`), and have line 608 reuse it. Don't reference the line-608 const at 446 (crash).
-- Pass it to `useJobs` as a new optional argument. Undefined = this week only (keeps
-  `useJobsPieceDone.test.jsx:85` passing).
-- Final keys = rollover-tracked this-week key + viewed key, deduped, derived (don't put the viewed
-  key into the rollover state). Effect depends on a stable string (e.g. `keys.join(',')`).
-- Keep the rollover check, `cancelled` flag and `state === null` skip unchanged.
-- Extract the key-building as a pure function and unit-test it.
-- While an old week loads, this week stays shown; the past week reads $0 until it fills. Accepted.
+The Hours cell is the only free-text input in a row (`JobsSheetPage.jsx:618`); Tag, Action
+and VB/BL/PJ are selects and checkboxes.
+
+- **Enter** in an Hours cell moves focus to the Hours cell one row down, in the order rows
+  are on screen (`visibleRows`, so search and sort are respected). Last row: stay put.
+- **Shift+Enter** moves up one row. First row: stay put.
+- Focusing an Hours cell selects its contents, so typing replaces.
+- The newly focused cell scrolls into view clear of the sticky header (`:88`).
+- Use a ref map keyed by job id plus `visibleRows` order, not per-row ad-hoc handlers.
 
 ## Not in scope
 
-- `src/utils/supabase.js` — `loadCompletedJobs(weekKeys)` already takes any key list; don't edit it.
-- `useSupabase.js`, `useGoogleCalendar.js`, `scheduledSlots`, `calendarSlot`, `jobs[]` shape.
-- Revenue target, breakdown popup styling, colours. Loading more than these two weeks.
-- Close Day / Catch Up only see loaded weeks (this + viewed). Not "history is loaded" — say so.
+- **No saving on Enter.** Commit stays the only write. Nothing in `jobsSheet.js` changes.
+- No 30-minute snapping — Trevor types half hours himself.
+- No Escape-to-revert, no change to Tab order, no movement for selects or checkboxes.
+- No change to styling, columns, or any file other than `JobsSheetPage.jsx` (plus a test).
+- Blast-radius files untouched.
 
-## Verifier checklist
+## Checklist for the verifier
 
-1. Viewing last week shows its total, matching `completed_jobs` rows for that week_key.
-2. Breakdown popup on a past week lists that week's records.
-3. Back on this week, total is the same as before the change.
-4. This week's done jobs stay done while viewing another week.
-5. Flipping weeks triggers no write to `completed_jobs`.
-6. Rollover check (`useJobs.js:137-152`) still present.
-7. Every `completedJobs` reader filters by week or looks up by id (App 609, 1220 via weekRevenue;
-   CloseDayModal 235; CatchUpInterview 79; useJobs 412) — nothing sums the whole list.
-8. Viewed key is computed before `useJobs` at App 446; no use-before-declare.
-9. Browser: flip weeks fast 5×, land on last week — right total, no console channel errors.
-10. Browser: after flipping, tick a job — total updates once.
-11. No edits to not-in-scope files. Full suite passes; new unit test for key building.
-
-## Background (don't open to start work)
-
-Council record: [docs/briefs/week-revenue-on-demand.md](../docs/briefs/week-revenue-on-demand.md)
+1. Only `JobsSheetPage.jsx` and test files changed.
+2. Enter in an Hours cell focuses the Hours cell of the next visible row.
+3. Shift+Enter focuses the previous visible row's Hours cell.
+4. Enter on the last row / Shift+Enter on the first row leaves focus where it is, no error.
+5. With a search filter on, Enter skips hidden rows.
+6. Focusing an Hours cell selects its text.
+7. Pressing Enter writes nothing to the database; Commit still saves the typed hours.
+8. Focused cell is visible, not under the sticky header (browser check).
+9. Full test suite passes.
