@@ -74,6 +74,18 @@ export function planPieceDone(jobs, parentJobId, childJobId, pieceDone) {
   return { updatedChild, parentJob, children, allChildrenDone, next };
 }
 
+// The week keys whose completed_jobs rows should be loaded: this week (as the
+// rollover check tracks it) plus whichever week the Board is showing, deduped.
+// The viewed key is optional — undefined/empty means this week only. Kept out of
+// the rollover state on purpose: the rollover check owns "this week", the
+// screen owns "viewed week", and mixing them would let a flip of the week arrows
+// be mistaken for the week turning over.
+export function buildRevenueWeekKeys(thisWeekKeys, viewedWeekKey) {
+  const keys = [...(thisWeekKeys || [])];
+  if (viewedWeekKey && !keys.includes(viewedWeekKey)) keys.push(viewedWeekKey);
+  return keys;
+}
+
 export function useJobs({
   jobs,
   setJobs,
@@ -114,6 +126,9 @@ export function useJobs({
   // import created that no keyword could place — they are on Admin, but nobody
   // chose that, so a human still has to file them.
   onNeedsBench = null,
+  // The week the Board header is showing ('YYYY-MM-DD' Monday key). Its revenue
+  // is loaded on demand alongside this week's. Undefined = this week only.
+  viewedWeekKey,
 }) {
   // Latest jobs, readable from handlers without waiting on a setJobs updater.
   const jobsRef = useRef(jobs);
@@ -125,7 +140,7 @@ export function useJobs({
   // Board's week revenue showed $0 until the next job was ticked, and a job
   // ticked before the reload looked untouched.
   //
-  // Bounded to the CURRENT WEEK only (recentWeekKeys(1)). The table is
+  // Bounded to this week plus the week on screen (buildRevenueWeekKeys). The table is
   // append-only and grows forever, so an unbounded read gets slower every week
   // for data nothing on screen uses.
   const [revenueWeekKeys, setRevenueWeekKeys] = useState(() => recentWeekKeys(1));
@@ -151,8 +166,13 @@ export function useJobs({
     };
   }, []);
 
+  // A stable string, so the load/subscribe effect re-runs only when the set of
+  // weeks actually changes — not on every render's fresh array.
+  const loadKeysString = buildRevenueWeekKeys(revenueWeekKeys, viewedWeekKey).join(',');
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
+    const loadKeys = loadKeysString.split(',');
     let cancelled = false;
     // Read-only into revenue state. This never touches jobs[], never writes
     // anything back, and never calls handleMarkDone() — loading money that is
@@ -165,13 +185,13 @@ export function useJobs({
       setCompletedJobs(state.records);
       setDoneJobIds(state.doneJobIds);
     };
-    loadCompletedJobs(revenueWeekKeys).then(apply);
-    const unsubscribe = subscribeToCompletedJobs(apply, revenueWeekKeys);
+    loadCompletedJobs(loadKeys).then(apply);
+    const unsubscribe = subscribeToCompletedJobs(apply, loadKeys);
     return () => {
       cancelled = true;
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, [revenueWeekKeys]);
+  }, [loadKeysString]);
 
   function handleSaveDrawer(parentJob, rows) {
     const totalCards = rows.reduce((s, r) => s + r.sessions.length, 0);
