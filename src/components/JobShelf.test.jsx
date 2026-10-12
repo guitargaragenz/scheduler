@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { matchesSearch } from './JobShelf.jsx';
 
 // Brief F — the Waiting / Planning chips on the bench-picker row.
 //
@@ -260,4 +261,13 @@ describe('split job parts in the Board day view side list', () => {
   it('leaves an unsplit job alone', () => {
     expect(render([WORKABLE], 'Setup')).not.toContain(' parts · ');
   });
+});
+
+describe('search matches the Board week list fields', () => {
+  const j = { job: 1742, customer: 'Smith', mfr: 'Fender', model: 'Strat', bench: 'Electronics',
+    desc: 'Scratchy pots', status: 'Booked In', action: 'DG' };
+  it.each(['1742', 'smith', 'fender', 'strat', 'electronics', 'scratchy', 'booked', 'dg'])(
+    'finds the job by %s', q => expect(matchesSearch(j, q)).toBe(true));
+  it('does not match unrelated text', () => expect(matchesSearch(j, 'gibson')).toBe(false));
+  it('copes with missing fields', () => expect(matchesSearch({}, 'x')).toBe(false));
 });
