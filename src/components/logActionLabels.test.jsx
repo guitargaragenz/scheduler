@@ -32,7 +32,7 @@ const rows = (dgAction = 'DG') => [
   dbRow({ id: '1801', job: '1801', mfr: 'Gibson', model: 'SG', bench: 'Setup' }),
   // Departed, with an action of its own.
   dbRow({
-    id: '1735', job: '1735', mfr: 'Yamaha', model: 'RGX', bench: 'Setup', action: 'CI',
+    id: '1735', job: '1735', mfr: 'Yamaha', model: 'RGX', bench: 'Setup', action: 'WP',
     done: true, departed_at: '2026-09-14T00:00:00Z',
   }),
 ];
@@ -70,7 +70,7 @@ const DAY = {
 describe('Daily Log action labels', () => {
   it('shows the action beside the job, none when blank, none on a typed row, yes on a departed job', () => {
     dl(normalizeJobsFromDb(rows()), departedJobsFromDb(rows()), DAY);
-    expect(labels().sort()).toEqual(['CI', 'DG']);
+    expect(labels().sort()).toEqual(['DG', 'WP']);
     expect(labelBeside('order strings')).toBeNull();
   });
 
@@ -83,9 +83,9 @@ describe('Daily Log action labels', () => {
   it('follows a chip change without a reload', () => {
     const rerender = dl(normalizeJobsFromDb(rows()), departedJobsFromDb(rows()), DAY);
     rerender(normalizeJobsFromDb(rows('GTS')));
-    expect(labels().sort()).toEqual(['CI', 'GTS']);
+    expect(labels().sort()).toEqual(['WP']);
     rerender(normalizeJobsFromDb(rows('')));
-    expect(labels()).toEqual(['CI']);
+    expect(labels()).toEqual(['WP']);
   });
 
   it('a split shows the parent action on its header, not on the pieces', () => {
@@ -108,21 +108,21 @@ describe('Weekly Log action labels', () => {
     onCloseJob: vi.fn(), onBookedOnDay: vi.fn(), isMobile: false, showToast: vi.fn(),
   };
 
-  it('every action value shows its label; blank shows none', () => {
+  it('only DG and WP show a label; every other action and blank show none', () => {
     const values = ACTION_OPTIONS.filter(Boolean);
     const jobs = values.map((a, i) => ({ id: String(2000 + i), job: String(2000 + i), mfr: 'M', model: a, bench: 'Setup', action: a }));
     jobs.push({ id: '2999', job: '2999', mfr: 'M', model: 'none', bench: 'Setup', action: '' });
     const marks = Object.fromEntries(jobs.map(j => [j.id, { [ROWKEY]: 'row' }]));
     render(<BenchWeekPage jobs={jobs} marks={marks} {...props} />);
-    expect(labels().sort()).toEqual([...values].sort());
+    expect(labels().sort()).toEqual(['DG', 'WP']);
   });
 
   it('departed jobs get their label too; chip changes show without a reload', () => {
     const marks = { 1800: { [ROWKEY]: 'row' }, 1801: { [ROWKEY]: 'row' }, 1735: { [ROWKEY]: 'row', [MON]: 'cross' } };
     const r = render(<BenchWeekPage jobs={normalizeJobsFromDb(rows())} departedJobs={departedJobsFromDb(rows())} marks={marks} {...props} />);
-    expect(labels().sort()).toEqual(['CI', 'DG']);
+    expect(labels().sort()).toEqual(['DG', 'WP']);
     r.rerender(<BenchWeekPage jobs={normalizeJobsFromDb(rows('GTS'))} departedJobs={departedJobsFromDb(rows())} marks={marks} {...props} />);
-    expect(labels().sort()).toEqual(['CI', 'GTS']);
+    expect(labels().sort()).toEqual(['WP']);
   });
 
   it('a split row shows the parent action, outside the name button', () => {
