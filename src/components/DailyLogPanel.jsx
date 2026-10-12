@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { localDateKey } from '../utils/calendar.js';
 import { listEvents, isSignedIn } from '../utils/googleCalendar.js';
-import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX } from './BenchWeekPage.jsx';
+import { weekRows, partsOf, rowName, slotDateKey, MARKS, TYPED_ID_PREFIX, decodeTypedRow, weekRowKey } from './BenchWeekPage.jsx';
 import { topLevelJob } from '../hooks/useJobs.js';
 import { benchColors } from '../data/jobs.js';
 
@@ -84,6 +84,19 @@ export function weekCellJobId(rowId, jobs) {
   if (!job) return null;
   const top = topLevelJob(job, all);
   return top ? String(top.id) : null;
+}
+
+// The Weekly Log cell for a typed admin row, or null.
+//
+// A typed row has no job, so weekCellJobId() above can't find it. But an admin
+// task typed on the Weekly Log IS a week row — its own id is its cell. Trevor,
+// 2026-10-12: "admin typed jobs in daily : adding action marks doesn't change
+// in weekly". A task typed on the Daily Log only has no week row, so it stays null.
+export function typedWeekCellId(rowId, weekKeys, marks) {
+  const id = String(rowId ?? '');
+  if (!id.startsWith(TYPED_ID_PREFIX)) return null;
+  const rowKey = weekRowKey(weekKeys);
+  return rowKey && decodeTypedRow(marks?.[id]?.[rowKey]) ? id : null;
 }
 
 // Which DEPARTED job a day row belongs to, or null.
@@ -993,9 +1006,9 @@ export default function DailyLogPanel({
       return;
     }
 
-    // A typed task has no job and so no Weekly Log cell — its mark is a Daily
-    // Log mark only, and the week's gate has no say over it.
-    const weekJobId = weekCellJobId(row.id, jobs);
+    // A typed task made on the Daily Log has no Weekly Log cell — its mark is a
+    // Daily Log mark only. One typed on the Weekly Log has its own cell.
+    const weekJobId = weekCellJobId(row.id, jobs) ?? typedWeekCellId(row.id, weekKeys, marks);
 
     // Both gates, before either half is written. Half a mark — the day marked
     // and the week silently missed — is worse than no mark, because the screen
