@@ -4,7 +4,7 @@ import JobCard from './JobCard.jsx';
 import { partsOf, isSplitRow, orderedParts } from './BenchWeekPage.jsx';
 import { BENCH_COLORS, HOURS_BUCKETS, partsMayHaveArrived } from '../data/jobs.js';
 
-export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus }) {
+export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, isOpen, onToggle, lastSyncedAt, focusList = [], onToggleFocus, onSetCardAction }) {
   const [search, setSearch] = useState('');
   const [benchFilter, setBenchFilter] = useState(null);
   const [hoursFilter, setHoursFilter] = useState(null);
@@ -45,6 +45,7 @@ export default function Sidebar({ jobs, dragMode, onDragModeChange, onPdfUpload,
           jobs={jobs}
           isFocused={focusSet.has(String(job.job))}
           onToggleFocus={onToggleFocus ? () => onToggleFocus(job.job) : undefined}
+          onSetAction={onSetCardAction ? a => onSetCardAction(job, a) : undefined}
         />
         {parts && (
           <div

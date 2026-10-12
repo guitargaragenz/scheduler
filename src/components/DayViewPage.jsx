@@ -3,6 +3,7 @@ import { latestDayMarks } from './DailyLogPanel.jsx';
 import JobShelf from './JobShelf';
 import CalendarGrid from './CalendarGrid';
 import DeferredItemsList from './DeferredItemsList.jsx';
+import { ActionChips } from './JobCard.jsx';
 import ReasonPicker from './ReasonPicker.jsx';
 import { benchColors } from '../data/jobs.js';
 import { displayBenchOf } from '../utils/nextBench.js';
@@ -427,7 +428,7 @@ function splitLine(s) {
   return parts.filter(Boolean).join(' · ');
 }
 
-function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn, crossedIds }) {
+function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], onPullBackIn, crossedIds, onSetAction }) {
   const splits = jobs.filter(j => j.parentId === job.id);
   // Done on the board (pieceDone) or crossed off on the Daily Log. Crosses made
   // before the Daily Log saved pieceDone never wrote it, so the marks are read too.
@@ -475,6 +476,7 @@ function LogJobCard({ job, pulled, onPull, onOpenJob, jobs, deferredItems = [], 
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', marginBottom: splits.length ? 8 : 0 }}>
         <Tag label={shownBench} style={benchStyle} />
         {job.action && <Tag label={job.action} style={actionStyle} />}
+        {onSetAction && <ActionChips action={job.action} onSetAction={onSetAction} />}
         {job.hoursRange && (
           <span style={{ fontSize: 10, color: '#64748b' }}>{job.hoursRange}h</span>
         )}
@@ -714,7 +716,7 @@ export default function DayViewPage({
   dragMode, onDragModeChange, onPdfUpload, highlightedJobId, onClearHighlight, onJobClick, lastSyncedAt,
   todayLog, onAddBullet, onToggleDone, onRemoveBullet, onBulletJobClick, onRequestCloseDay,
   onAddChecklistItem, onToggleChecklistItem, deferredItems = [], onPullBackIn,
-  focusList = [], onToggleFocus,
+  focusList = [], onToggleFocus, onSetCardAction,
   onAutoCarryForward, catchUpNeeded, onRequestCatchUp,
   onSetBumpReason,
   onMarkPieceDone, dayItems,
@@ -1189,6 +1191,7 @@ export default function DayViewPage({
                     deferredItems={deferredItems}
                     onPullBackIn={onPullBackIn}
                     crossedIds={crossedIds}
+                    onSetAction={onSetCardAction ? a => onSetCardAction(job, a) : undefined}
                   />
                 ))
               )}
@@ -1353,6 +1356,7 @@ export default function DayViewPage({
             lastSyncedAt={lastSyncedAt}
             focusList={focusList}
             onToggleFocus={onToggleFocus}
+            onSetCardAction={onSetCardAction}
             deferredItems={deferredItems}
             onPullBackIn={onPullBackIn}
           />

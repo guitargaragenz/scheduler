@@ -218,7 +218,7 @@ function canonicalName(items, typed) {
   return hit ? hit.name : clean;
 }
 
-export default function PartsToOrderPage({ onCheckStock, suppliers = [], categories = [], onAddSupplier, onAddCategory }) {
+export default function PartsToOrderPage({ prefillJob = '', onCheckStock, suppliers = [], categories = [], onAddSupplier, onAddCategory }) {
   const [itemsById, setItemsById] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -232,7 +232,8 @@ export default function PartsToOrderPage({ onCheckStock, suppliers = [], categor
 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [neededForJob, setNeededForJob] = useState('');
+  // Seeded with the job number when a WP chip on a job card brought Trevor here.
+  const [neededForJob, setNeededForJob] = useState(prefillJob);
   const [partNumber, setPartNumber] = useState('');
   // Blank is "not decided yet" and is the default. Optional exactly like the
   // part number — the form must never refuse a part for want of a supplier.

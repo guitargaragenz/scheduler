@@ -51,3 +51,18 @@ describe('hours box', () => {
     expect(html({})).not.toMatch(/>\s*h\s*</));
   it('shows when hours are set', () => expect(html({ hoursRange: '2' })).toContain('2h'));
 });
+
+describe('JobCard action chips', () => {
+  const job = { id: 'c1', job: 77, status: 'Booked In', action: 'GTS', bench: 'Setup', mfr: 'Fender', model: 'Strat' };
+  it('shows DG, GTS, WP with only the set one lit', () => {
+    const html = renderToStaticMarkup(<JobCard job={job} onSetAction={() => {}} />);
+    expect(html).toContain('aria-pressed="true"');
+    expect(html.match(/aria-pressed="false"/g)).toHaveLength(2);
+    expect(html).toContain('Clear GTS');
+    expect(html).toContain('Set DG');
+    expect(html).toContain('Set WP');
+  });
+  it('shows no chips without a handler', () => {
+    expect(renderToStaticMarkup(<JobCard job={job} />)).not.toContain('aria-pressed');
+  });
+});
