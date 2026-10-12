@@ -36,10 +36,7 @@ None of these is scoped or approved; each file holds the detail.
 
 | Brief | Waiting on |
 |-------|------------|
-| [parked-stale-description-after-import.md](parked-stale-description-after-import.md) | Nothing — a real bug, just not picked up. Blast-radius. |
 | [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | Nothing. Two small changes left. |
-| [parked-parts-as-a-stuck-reason.md](parked-parts-as-a-stuck-reason.md) | The first Sunday board meeting. |
-| [appointments-not-showing-on-the-calendar.md](appointments-not-showing-on-the-calendar.md) | Nothing — see file. |
 
 What each is actually waiting on, in full: [BACKLOG.md](BACKLOG.md).
 

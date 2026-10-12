@@ -35,14 +35,7 @@ Real, nobody has picked them up, not attached to any brief.
 
 The table in the index names these briefs. This is the detail behind each.
 
-- **[Stale description after import](parked-stale-description-after-import.md)** — waiting
-  on nothing, a real bug nobody has picked up. After a PDF import the board shows the old
-  description until reload; `src/hooks/useJobs.js:319` refreshes dates only. Blast-radius
-  (`jobs[]`).
 - **[Jobs Sheet usability changes](parked-jobs-sheet-usability-changes.md)** — waiting on
   nothing. White sheet shipped (`ce1cc65`). Still open: Enter-to-move-down a row, and
   30-minute snapping in `parseHoursInput()`. Full protocol.
-- **[Parts as a stuck reason](parked-parts-as-a-stuck-reason.md)** — waiting on the first
-  Sunday board meeting; `parts_to_order` is empty until the meeting fills it, so the UI
-  would ship showing nothing.
 
