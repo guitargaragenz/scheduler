@@ -59,6 +59,18 @@ export function matchesSearch(j, q) {
     .some(v => String(v || '').toLowerCase().includes(q));
 }
 
+// Wiring and Finishing are sub-benches: a job reaches them as a part of a
+// bigger job, so their chips also list any job with an unfinished, unbooked
+// part on that bench. The job stays on its main bench chip too — nothing is
+// moved. Same rule as the Board week list (Sidebar.jsx SUB_ONLY_BENCHES).
+// Trevor, 2026-10-12.
+const SUB_BENCHES = new Set(['Wiring', 'Finishing']);
+export function onBench(job, bench, jobs) {
+  if (job.bench === bench) return true;
+  return SUB_BENCHES.has(bench) &&
+    jobs.some(k => k.parentId === job.id && k.bench === bench && !k.done && !k.scheduled);
+}
+
 function getAllSubtasks(job, jobs) {
   if (job.hasSubtasks && Array.isArray(job.subtasks)) {
     return jobs.filter(j => job.subtasks.includes(j.id));
@@ -128,7 +140,7 @@ export default function JobShelf({
   // bench chip and its pile chip.
   const benchCounts = BENCH_ORDER.map(bench => ({
     bench,
-    count: topLevel.filter(j => j.bench === bench && blockedPile(j) == null).length,
+    count: topLevel.filter(j => onBench(j, bench, jobs) && blockedPile(j) == null).length,
   }));
 
   const pileCounts = PILES.map(p => ({
@@ -173,7 +185,7 @@ export default function JobShelf({
       : selectedPile
       ? topLevel.filter(j => blockedPile(j) === selectedPile)
       : selectedBench
-        ? topLevel.filter(j => j.bench === selectedBench && blockedPile(j) == null)
+        ? topLevel.filter(j => onBench(j, selectedBench, jobs) && blockedPile(j) == null)
         : focusOnly
           ? topLevel.filter(j => focusSet.has(String(j.job)))
           : []

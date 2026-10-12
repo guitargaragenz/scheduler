@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { matchesSearch } from './JobShelf.jsx';
+import { matchesSearch, onBench } from './JobShelf.jsx';
 
 // Brief F — the Waiting / Planning chips on the bench-picker row.
 //
@@ -335,4 +335,21 @@ describe('🔍 To Diagnose chip', () => {
     expect(pileOf(TO_DIAGNOSE_VALUE)).toBe(null);
     expect(PILE_VALUES).not.toContain(TO_DIAGNOSE_VALUE);
   });
+});
+
+describe('Wiring and Finishing chips list jobs with a part on that bench', () => {
+  const parent = { id: 'p', bench: 'Electronics' };
+  const part = (bench, extra = {}) => ({ id: 'k', parentId: 'p', bench, ...extra });
+  it('lists a job whose open part is on Wiring', () =>
+    expect(onBench(parent, 'Wiring', [parent, part('Wiring')])).toBe(true));
+  it('lists a job whose open part is on Finishing', () =>
+    expect(onBench(parent, 'Finishing', [parent, part('Finishing')])).toBe(true));
+  it('keeps the job on its main bench', () =>
+    expect(onBench(parent, 'Electronics', [parent, part('Wiring')])).toBe(true));
+  it('ignores done or booked parts', () => {
+    expect(onBench(parent, 'Wiring', [parent, part('Wiring', { done: true })])).toBe(false);
+    expect(onBench(parent, 'Wiring', [parent, part('Wiring', { scheduled: true })])).toBe(false);
+  });
+  it('only Wiring and Finishing look at parts', () =>
+    expect(onBench(parent, 'Setup', [parent, part('Setup')])).toBe(false));
 });
