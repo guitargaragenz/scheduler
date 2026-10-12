@@ -28,6 +28,15 @@ export const pileOf = sel => (typeof sel === 'string' && sel.startsWith('pile:')
 // Regular / 🚨 Urgent toggle above cards that genuinely can be dragged.
 export const PARTS_ARRIVED_VALUE = 'filter:partsArrived';
 
+// 🔍 To Diagnose — same shape as Parts Arrived: its own `filter:` value, not a
+// pile, because DG jobs are workable (Trevor, 2026-10-12: "the diagnosis is
+// the work"). Lists DG jobs on ANY bench, Admin included, so a DG job filed on
+// the wrong bench still can't go unseen. A DG job that is also On Hold,
+// Waiting, In Transit, BL or VB is blocked by that and stays in its pile.
+export const TO_DIAGNOSE_VALUE = 'filter:toDiagnose';
+export const isToDiagnose = job =>
+  (job?.action || '').trim().toUpperCase() === 'DG' && blockedPile(job) == null;
+
 // Whether to offer the Regular / 🚨 Urgent drag-mode toggle. Hide it only when
 // a blocked pile is what's actually driving the list, because those cards can't
 // be dragged.
@@ -75,7 +84,7 @@ export default function JobShelf({
   // (active, but nothing can ever match it).
   const [selectedBench, setSelectedBench] = useState(() => {
     const stored = localStorage.getItem('jobShelfBench');
-    if (stored && (BENCH_ORDER.includes(stored) || PILE_VALUES.includes(stored) || stored === PARTS_ARRIVED_VALUE)) return stored;
+    if (stored && (BENCH_ORDER.includes(stored) || PILE_VALUES.includes(stored) || stored === PARTS_ARRIVED_VALUE || stored === TO_DIAGNOSE_VALUE)) return stored;
     if (stored) localStorage.removeItem('jobShelfBench');
     return null;
   });
@@ -127,6 +136,8 @@ export default function JobShelf({
   // twice. Taking them out of the bench chips would instead hide real, bookable
   // work from the bench he is actually picking from.
   const partsArrivedCount = topLevel.filter(partsMayHaveArrived).length;
+  // Same reasoning: DG jobs also count under their bench chip.
+  const toDiagnoseCount = topLevel.filter(isToDiagnose).length;
 
   // Count only the focus jobs this shelf can actually list, so the pill's number
   // always matches what clicking it reveals. `topLevel` has already dropped the
@@ -150,6 +161,8 @@ export default function JobShelf({
     ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
     : selectedBench === PARTS_ARRIVED_VALUE
       ? topLevel.filter(partsMayHaveArrived)
+      : selectedBench === TO_DIAGNOSE_VALUE
+      ? topLevel.filter(isToDiagnose)
       : selectedPile
       ? topLevel.filter(j => blockedPile(j) === selectedPile)
       : selectedBench
@@ -294,7 +307,7 @@ export default function JobShelf({
                 filled, so they read as "not a bench" at a glance. Each pile
                 gets its own colour (Trevor, 2026-07-28) so Waiting/Planning/
                 Hold/In Transit are distinguishable without reading the label. */}
-            {(pileCounts.some(p => p.count > 0) || partsArrivedCount > 0) && (
+            {(pileCounts.some(p => p.count > 0) || partsArrivedCount > 0 || toDiagnoseCount > 0) && (
               <div style={{ flexBasis: '100%', height: 0 }} />
             )}
             {pileCounts.filter(p => p.count > 0).map(({ key, label, count, color }) => {
@@ -336,6 +349,24 @@ export default function JobShelf({
                 }}
               >
                 🔧 Parts Arrived <span style={{ opacity: 0.7 }}>{partsArrivedCount}</span>
+              </span>
+            )}
+
+            {/* 🔍 To Diagnose — workable DG jobs on any bench. Hidden at zero,
+                same as Parts Arrived. */}
+            {toDiagnoseCount > 0 && (
+              <span
+                onClick={() => pickBench(TO_DIAGNOSE_VALUE)}
+                title="Tagged DG and free to start — the diagnosis is the work"
+                style={{
+                  fontSize: 9, padding: '4px 9px', borderRadius: 11, fontWeight: 600, cursor: 'pointer',
+                  background: 'transparent',
+                  color: '#fca5a5',
+                  opacity: selectedBench === TO_DIAGNOSE_VALUE ? 1 : 0.5,
+                  border: '1px solid #fca5a5',
+                }}
+              >
+                🔍 To Diagnose <span style={{ opacity: 0.7 }}>{toDiagnoseCount}</span>
               </span>
             )}
           </div>

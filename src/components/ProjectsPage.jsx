@@ -4,10 +4,11 @@ import { displayBenchOf } from '../utils/nextBench.js';
 
 const SECTION_DEFS = [
   { key: 'input',    label: 'Needs Input',       sub: 'CI · WP',              actions: ['CI', 'WP'],             hatch: true  },
-  { key: 'thinking', label: 'Needs Thinking',    sub: 'INC · RS · RS-C · DG', actions: ['INC', 'RS', 'RS-C', 'DG'], hatch: true  },
+  { key: 'thinking', label: 'Needs Thinking',    sub: 'INC · RS · RS-C',      actions: ['INC', 'RS', 'RS-C'],       hatch: true  },
   // FB sits with GTS rather than in a blocked pile: a job needing a jig is not
   // waiting on anyone, the jig is bookable work on the Admin bench right now.
-  { key: 'ready',    label: 'Ready to Schedule', sub: 'GTS · FB',             actions: ['GTS', 'FB'],            hatch: false },
+  // DG sits here too (2026-10-12): the diagnosis is the work, so it is bookable.
+  { key: 'ready',    label: 'Ready to Schedule', sub: 'GTS · FB · DG',        actions: ['GTS', 'FB', 'DG'],      hatch: false },
 ];
 
 function ageBadgeColor(days) {
