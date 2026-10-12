@@ -52,6 +52,13 @@ export function dragModeVisible({ selectedPile, searching }) {
   return !(selectedPile && !searching);
 }
 
+// Same fields as the Board week list's search (Sidebar.jsx matchText), so a job
+// found on one list is found on the other. Trevor, 2026-10-12. `q` is lowercase.
+export function matchesSearch(j, q) {
+  return [j.job, j.customer, j.mfr, j.model, j.bench, j.desc, j.status, j.action]
+    .some(v => String(v || '').toLowerCase().includes(q));
+}
+
 function getAllSubtasks(job, jobs) {
   if (job.hasSubtasks && Array.isArray(job.subtasks)) {
     return jobs.filter(j => job.subtasks.includes(j.id));
@@ -158,7 +165,7 @@ export default function JobShelf({
   };
 
   const visible = (searching
-    ? topLevel.filter(j => [j.customer, j.mfr, j.model].some(v => String(v || '').toLowerCase().includes(q)))
+    ? topLevel.filter(j => matchesSearch(j, q))
     : selectedBench === PARTS_ARRIVED_VALUE
       ? topLevel.filter(partsMayHaveArrived)
       : selectedBench === TO_DIAGNOSE_VALUE
