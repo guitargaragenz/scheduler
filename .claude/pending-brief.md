@@ -1,7 +1,7 @@
 ---
-doc_status: live
+doc_status: closed
 ---
-# Scope lock — week revenue loads for whichever week is on screen
+# Record (shipped) — week revenue loads for whichever week is on screen
 
 Previous lock (typed rows on Daily Log) is in git at `ff699cf`, merged `e5105cd`.
 

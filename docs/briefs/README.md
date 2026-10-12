@@ -52,3 +52,4 @@ Designs and specs live in [`../superpowers/specs/`](../superpowers/specs/), not 
 brief says *what to do next*; a spec says *what we agreed to build*.
 
 - day-list-matches-week-list.md — closed, search fix shipped in PR #94 (`049b7e9`).
+- **Week revenue on any week** (PR #98, `d74f5ec`): loads this week + the week on screen on demand. Close Day / Catch Up only see those two weeks — not full history.
