@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: closed
 ---
 
 # Board day list matches the week list — background
@@ -37,3 +37,5 @@ Once this ships, re-check whether DG still needs its own rule change or the 🔍
 8. An old saved `pile:*` chip value on reload is cleared, the list opens clean.
 9. No diff outside `JobShelf.jsx` and its test (plus the two brief files). Full test suite passes.
 10. Browser: Board day vs Board week, same bench → same jobs, same counts.
+
+Closed 2026-10-12. Search fix shipped at `049b7e9` (PR #94); chips/DG difference moved to dg-ready-to-start.md.

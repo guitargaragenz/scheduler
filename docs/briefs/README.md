@@ -19,10 +19,6 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 
 ## Live — work that hasn't finished
 
-- **[day-list-matches-week-list.md](day-list-matches-week-list.md)** — Board day list's chips,
-  counts and search made to work exactly like the Board week list (week is correct). Scope lock is
-  written in `.claude/pending-brief.md`, **waiting on Trevor's "yp"**. Next step: get the yp, then
-  council (two `ggnz-council`), builder, verifier, browser test.
 - **[dg-ready-to-start.md](dg-ready-to-start.md)** — paused, half-built on branch `staging/dg-ready`
   (tests not updated). DG (To be Diagnosed) jobs treated as ready to start + a 🔍 To Diagnose chip.
   Re-check after the day-list work ships: it may no longer be needed. Live check 2026-10-12: all 21
@@ -59,3 +55,5 @@ Closed work is a one-line history of lessons in [CLOSED.md](CLOSED.md).
 
 Designs and specs live in [`../superpowers/specs/`](../superpowers/specs/), not here. A
 brief says *what to do next*; a spec says *what we agreed to build*.
+
+- day-list-matches-week-list.md — closed, search fix shipped in PR #94 (`049b7e9`).
