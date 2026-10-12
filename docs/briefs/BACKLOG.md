@@ -35,7 +35,4 @@ Real, nobody has picked them up, not attached to any brief.
 
 The table in the index names these briefs. This is the detail behind each.
 
-- **[Jobs Sheet usability changes](parked-jobs-sheet-usability-changes.md)** — waiting on
-  nothing. White sheet shipped (`ce1cc65`). Still open: Enter-to-move-down a row, and
-  30-minute snapping in `parseHoursInput()`. Full protocol.
 

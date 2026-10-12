@@ -25,20 +25,9 @@ warns on any read of a non-`live` doc; that's a backstop, not permission to skip
 Real problems nobody has picked up, none attached to a brief. Detail in
 [BACKLOG.md](BACKLOG.md).
 
-## Parked — agreed in principle, waiting on something
+## Parked
 
-> **No standing order.** UI work was blocked until the PDF drop shipped and the
-> CSV pipeline went. Both happened 2026-07-29 at `1e4186a`, so nothing below is
-> blocked now. Unblocked is not approved — the two UI briefs need a yes from me
-> before either restarts.
-
-None of these is scoped or approved; each file holds the detail.
-
-| Brief | Waiting on |
-|-------|------------|
-| [parked-jobs-sheet-usability-changes.md](parked-jobs-sheet-usability-changes.md) | Nothing. Two small changes left. |
-
-What each is actually waiting on, in full: [BACKLOG.md](BACKLOG.md).
+None.
 
 Closed work is a one-line history of lessons in [CLOSED.md](CLOSED.md).
 
@@ -49,3 +38,4 @@ brief says *what to do next*; a spec says *what we agreed to build*.
 
 - day-list-matches-week-list.md — closed, search fix shipped in PR #94 (`049b7e9`).
 - **Week revenue on any week** (PR #98, `d74f5ec`): loads this week + the week on screen on demand. Close Day / Catch Up only see those two weeks — not full history.
+- **Jobs Sheet Enter + date sort** (PR #102, `652f7d1`): Enter moves down Hours, Enter on a Tag jumps to its Hours, rows newest JBA date first.
