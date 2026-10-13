@@ -15,7 +15,7 @@ function marksOn(job) {
   return marks;
 }
 
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
 // The sentinel for "nobody has picked a bench for this row yet".
 //
