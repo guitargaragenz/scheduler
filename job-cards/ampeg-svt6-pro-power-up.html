@@ -378,20 +378,19 @@
       <span class="stage-note">power off</span>
     </div>
     <div class="step" data-step>
-      <input type="checkbox" id="c7"><span class="step-n">07</span>
+      <input type="checkbox" id="c7"><span class="step-n">01</span>
       <div class="step-body">
-        <p class="step-text">Set <b>AP1</b> and <b>AP2</b> to <b>minimum bias</b>.</p>
-        <p class="why"><b>Both are 10K trimpots, marked AP1 and AP2 on the print — not R26 or R100.</b> AP1 is topside next to Q4 (plus half); AP2 is on the <b>underside</b>, through the access hole (minus half). <b>R26 and R100 are fixed resistors — don't go near them.</b><br><br>
-        <b>Anticlockwise is minimum. Wind both fully anticlockwise, amp off, before you ramp.</b> Traced off the print: the pot sits base-to-emitter on the bias transistor, so full 10K is the smallest spread.<br><br>
-        <b>Single-turn pots — the whole bias range is inside about 270°, and it's badly non-linear.</b> The first half of the travel does almost nothing, then it comes up fast, and <b>the last of it is vicious</b>. Expect to finish roughly two thirds back toward clockwise. Work in small fractions and let the meter settle.<br><br>
-        <b>At the 120 V pause on the ramp, read the millivolts before you touch either pot.</b> Near zero is expected. <b>30&nbsp;mV+ means something is wrong — variac straight down</b> and find out. Then give one pot a quarter turn just to see how far it moves, and put it back.<br><br>
-        <b>Variac down first, trimmer second. Both directions, no exceptions.</b> Twenty IRFP240/9240 at an unknown idle current is the one load in this amp that can run away.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <p class="step-text">Turn <b>AP1</b> and <b>AP2</b> fully <b>anticlockwise</b>. That's minimum bias.</p>
+        <p class="why"><b>AP1</b> — topside, next to Q4 (+ half).<br>
+        <b>AP2</b> — underside, through the access hole (− half).<br>
+        Both are 10K trimpots. <b>Don't touch R26 or R100</b> — those are fixed resistors, not the pots.<br><br>
+        <b>The pots are touchy.</b> The first half of the turn does almost nothing, then it comes up fast. You'll likely end up about two thirds of the way round. Turn in tiny bits and let the meter settle each time.</p>
+        <textarea data-note id="note0" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
   </section>
 
-  <!-- ================= STAGE C ================= -->
+  <!-- ================= VARIAC RAMP ================= -->
   <section class="stage">
     <div class="stage-head">
       <span class="stage-key">B</span>
@@ -399,32 +398,49 @@
       <span class="stage-note">no current limiting — hand on the dial</span>
     </div>
 
-
     <div class="step" data-step>
-      <input type="checkbox" id="c15"><span class="step-n">15</span>
+      <input type="checkbox" id="c17"><span class="step-n">02</span>
       <div class="step-body">
-        <p class="step-text">Clip meters on <b>before</b> you touch the variac.</p>
-        <p class="why"><b>Meter A — + half (bank 1).</b> DC millivolts across <b>R32</b>. One probe each end of the resistor, never to ground. 20&nbsp;mV = 42&nbsp;mA. Watch for runaway.<br>
-        <b>Meter C — − half (bank 2).</b> Same again across <b>R85</b>. Each half has its own bias pot, so each needs its own meter.<br>
-        <b>Meter B — +65&nbsp;V rail to chassis ground.</b> DC volts. Tells you when the relay is about to click (150–180&nbsp;V mains).<br>
-        <b>Meter D — −65&nbsp;V rail to chassis ground</b> (small Tenma). DC volts. Both rails should rise together — one lagging means a blown fuse or diode.<br>
-        <b>Mains current</b> — read the variac's ammeter or a clamp meter. No DMM needed.<br><br>
-        Use your best DMMs on A and C — they're reading millivolts.<br><br>
-        <b>Never a scope across a source resistor.</b> Its ground clip is earthed. A DMM is fine.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <p class="step-text">Know when to stop — <b>read this before you start.</b></p>
+        <div class="abort">
+          <b>Variac straight down if:</b>
+          <ul style="margin:.4rem 0 0; padding-left:1.1rem;">
+            <li>Mains current keeps climbing while you hold the variac still.</li>
+            <li>Meter A or B (bias) keeps creeping up on its own.</li>
+            <li>Meter A or B reads in <b>volts</b> instead of millivolts.</li>
+            <li>One rail meter (C or D) comes up and the other doesn't.</li>
+          </ul>
+          <div style="margin-top:.5rem;">Always turn the <b>variac down first</b>, then touch the pots. Never the other way round.</div>
+        </div>
+        <textarea data-note id="note2" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c16"><span class="step-n">16</span>
+      <input type="checkbox" id="c15"><span class="step-n">03</span>
       <div class="step-body">
-        <p class="step-text">Ramp in steps, <b>pause 30&nbsp;s at each</b> and log the reading.</p>
-        <p class="why"><b>At the 120&nbsp;V pause, stop and do the trimmer check in step 7</b> — read the bias millivolts before touching either pot, confirm you wound to the minimum end and not the maximum one, and take the quarter-turn feel reading. Don't go past 120&nbsp;V until that's settled.</p>
+        <p class="step-text">Clip meters on <b>before</b> you touch the variac.</p>
+        <p class="why"><b>Meter A — + half (bank 1).</b> DC millivolts across <b>R32</b>. One probe each end of the resistor, never to ground. 20&nbsp;mV = 42&nbsp;mA. Watch for runaway.<br>
+        <b>Meter B — − half (bank 2).</b> Same again across <b>R85</b>. Each half has its own bias pot, so each needs its own meter.<br>
+        <b>Meter C — +65&nbsp;V rail to chassis ground.</b> DC volts. Tells you when the relay is about to click (150–180&nbsp;V mains).<br>
+        <b>Meter D — −65&nbsp;V rail to chassis ground</b> (small Tenma). DC volts. Both rails should rise together — one lagging means a blown fuse or diode.<br>
+        <b>Mains current</b> — read the variac's ammeter or a clamp meter. No DMM needed.<br><br>
+        Use your best DMMs on A and B — they're reading millivolts.<br><br>
+        <b>Never a scope across a source resistor.</b> Its ground clip is earthed. A DMM is fine.</p>
+        <textarea data-note id="note1" placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c16"><span class="step-n">04</span>
+      <div class="step-body">
+        <p class="step-text">Bring the variac up in steps. <b>Wait 30&nbsp;s at each</b> and write down the readings.</p>
+        <p class="why"><b>At 120&nbsp;V, stop and check Meters A and B.</b> They should read near zero. <b>30&nbsp;mV or more — variac down</b>, the pots may be at the wrong end. If it's fine, give one pot a quarter turn to feel how much it moves, then put it back.</p>
         <div class="tablewrap">
           <table>
             <caption>Ramp log</caption>
             <thead>
-              <tr><th class="mono">Mains</th><th>Expected</th><th class="mono">Actual&nbsp;I</th><th class="mono">Rail&nbsp;V</th><th>Observations</th></tr>
+              <tr><th class="mono">Mains</th><th>Expected</th><th class="mono">Current</th><th class="mono">Rail&nbsp;V</th><th>Notes</th></tr>
             </thead>
             <tbody>
               <tr>
@@ -436,21 +452,28 @@
               </tr>
               <tr>
                 <td class="mono">50–100 V</td>
-                <td>Gentle rise. Tube heaters warming.</td>
+                <td>Slow, gentle rise.</td>
                 <td><input type="text" id="r2i" size="6"></td>
                 <td><input type="text" id="r2v" size="6"></td>
                 <td><input type="text" id="r2n"></td>
               </tr>
               <tr>
+                <td class="mono">120 V</td>
+                <td><b>Stop. Bias check</b> (above).</td>
+                <td><input type="text" id="r5i" size="6"></td>
+                <td><input type="text" id="r5v" size="6"></td>
+                <td><input type="text" id="r5n"></td>
+              </tr>
+              <tr>
                 <td class="mono">150–180 V</td>
-                <td><b>Relays should click in.</b> D11 is a 30&nbsp;V zener — UVLO releases here.</td>
+                <td><b>Relays click in</b> (allow 1–3 s).</td>
                 <td><input type="text" id="r3i" size="6"></td>
                 <td><input type="text" id="r3v" size="6"></td>
                 <td><input type="text" id="r3n"></td>
               </tr>
               <tr>
                 <td class="mono">230 V</td>
-                <td>Idle roughly 0.5–1&nbsp;A once biased.</td>
+                <td>Roughly 0.5–1&nbsp;A once biased.</td>
                 <td><input type="text" id="r4i" size="6"></td>
                 <td><input type="text" id="r4v" size="6"></td>
                 <td><input type="text" id="r4n"></td>
@@ -458,29 +481,13 @@
             </tbody>
           </table>
         </div>
-        <p class="why"><b>Relays click in at 150–180&nbsp;V on the variac — and give it 1–3 seconds after you get there before you call it dead.</b> The delay is <b>C12 (2.2&nbsp;µF)</b> charging through D11 into IC1-D — so the click is delayed, not instant. (C11, the 220&nbsp;µF reservoir, sits straight off +65&nbsp;V through D10 and fills almost instantly; it isn't what times the delay.) Below about 120&nbsp;V it will never release: the +65&nbsp;V rail scales with the mains, and D11 is a 30&nbsp;V zener that has to be passed before the circuit lets go.<br><br>
-        If they pull in at 150–180&nbsp;V, the ±16&nbsp;V rail, IC1, the under-voltage chain and the relay drivers are all good. <b>If they haven't clicked by 200&nbsp;V, stop there — don't push on to 230.</b> Variac down and find out why.</p>
-      </div>
-    </div>
-
-    <div class="step" data-step>
-      <input type="checkbox" id="c17"><span class="step-n">17</span>
-      <div class="step-body">
-        <p class="step-text">Abort criteria — know these before you start.</p>
-        <div class="abort">
-          <b>Kill it immediately if either occurs:</b>
-          <ul style="margin:.4rem 0 0; padding-left:1.1rem;">
-            <li>Current climbing while voltage is <b>held constant</b> — that's thermal runaway building.</li>
-            <li>Source-resistor millivolts drifting upward on their own.</li>
-          </ul>
-          <div style="margin-top:.5rem;">Variac <b>down</b> first. Trimmer second. Never the other way round.</div>
-        </div>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <p class="why"><b>The relay click is delayed on purpose</b> — give it 1–3 seconds once you reach 150–180&nbsp;V. A click means the protection circuit and the ±16&nbsp;V rail are working.<br>
+        <b>No click by 200&nbsp;V — stop.</b> Don't go on to 230&nbsp;V. Variac down and find out why.</p>
       </div>
     </div>
   </section>
 
-  <!-- ================= STAGE D ================= -->
+  <!-- ================= BIAS ================= -->
   <section class="stage">
     <div class="stage-head">
       <span class="stage-key">C</span>
@@ -489,21 +496,22 @@
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c18"><span class="step-n">18</span>
+      <input type="checkbox" id="c18"><span class="step-n">05</span>
       <div class="step-body">
-        <p class="step-text">Conditions: <b>cold start</b>, <b>no load</b>, <b>Tube Voltage control at '300V'</b>.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <p class="step-text">Set up: <b>no load</b> on the output, <b>Tube Voltage switch on '300V'</b>, and do it straight after the ramp while the amp is still cool.</p>
+        <textarea data-note id="note3" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c19"><span class="step-n">19</span>
+      <input type="checkbox" id="c19"><span class="step-n">06</span>
       <div class="step-body">
-        <p class="step-text"><b>AP1</b> → average <b>20 ±5 mVdc</b> across bank 1.</p>
-        <p class="why"><b>Millivolts, across one source resistor at a time — never volts.</b> 20&nbsp;mV across 0.47&nbsp;Ω is 42&nbsp;mA through that FET. <b>20&nbsp;V across it would be 42&nbsp;A</b>, and the bank would be gone before you looked up. Any reading in whole volts across a source resistor means <b>variac straight down</b>. The few-volt figures in step 7 are internal to the bias spreader and are never something you dial to.</p>
+        <p class="step-text">+ half: turn <b>AP1</b> slowly clockwise, watching <b>Meter A</b>, until it reads about <b>20&nbsp;mV</b>. Then measure all ten resistors below and fill them in.</p>
+        <p class="why"><b>The target is the average: 15–25&nbsp;mV.</b> The box works it out for you.<br>
+        <b>Millivolts, never volts.</b> A reading in volts means variac straight down.</p>
         <div class="tablewrap">
           <table>
-            <caption>Bank 1 — Channel 1 (+) half · AP1 (10K trim at Q2) · topside near Q4</caption>
+            <caption>Bank 1 — + half · AP1 · topside near Q4</caption>
             <thead><tr><th class="mono">R32</th><th class="mono">R34</th><th class="mono">R36</th><th class="mono">R38</th><th class="mono">R112</th><th class="mono">R33</th><th class="mono">R35</th><th class="mono">R37</th><th class="mono">R39</th><th class="mono">R138</th></tr></thead>
             <tbody><tr>
               <td><input type="number" step="0.1" class="b1" id="b1a" size="4"></td>
@@ -525,18 +533,17 @@
             <span style="color:var(--ink-3);">target 15–25 mV</span>
           </div>
         </div>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <textarea data-note id="note4" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c20"><span class="step-n">20</span>
+      <input type="checkbox" id="c20"><span class="step-n">07</span>
       <div class="step-body">
-        <p class="step-text"><b>AP2</b> → same across bank 2. Adjust from underneath, through the access hole.</p>
-        <p class="why"><b>Millivolts again — same warning as step 19.</b> Anticlockwise is minimum, and the last of the travel moves fast.</p>
+        <p class="step-text">− half: same again with <b>AP2</b> (underside, through the access hole), watching <b>Meter B</b>. Then fill in all ten.</p>
         <div class="tablewrap">
           <table>
-            <caption>Bank 2 — Channel 1 (−) half · AP2 (10K trim at Q22) · underside</caption>
+            <caption>Bank 2 — − half · AP2 · underside</caption>
             <thead><tr><th class="mono">R85</th><th class="mono">R57</th><th class="mono">R96</th><th class="mono">R58</th><th class="mono">R143</th><th class="mono">R104</th><th class="mono">R86</th><th class="mono">R89</th><th class="mono">R106</th><th class="mono">R141</th></tr></thead>
             <tbody><tr>
               <td><input type="number" step="0.1" class="b2" id="b2a" size="4"></td>
@@ -558,21 +565,21 @@
             <span style="color:var(--ink-3);">target 15–25 mV</span>
           </div>
         </div>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <textarea data-note id="note5" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c21"><span class="step-n">21</span>
+      <input type="checkbox" id="c21"><span class="step-n">08</span>
       <div class="step-body">
-        <p class="step-text">Run <b>15–20 min</b>, then re-check both banks.</p>
-        <p class="why">IRFP240/9240 are positive-tempco at low idle. Bias will climb as the sinks warm — <b>expect to pull it back</b>. A single resistor is a proxy, not the spec; the spec is the average of ten.</p>
-        <textarea data-note placeholder="Re-check readings after warm-up…"></textarea>
+        <p class="step-text">Leave it idling <b>15–20 min</b>, then check Meters A and B again.</p>
+        <p class="why">Bias climbs as the heatsinks warm up — <b>expect to turn it back down a little.</b></p>
+        <textarea data-note id="note6" placeholder="Re-check readings after warm-up…"></textarea>
       </div>
     </div>
   </section>
 
-  <!-- ================= STAGE E ================= -->
+  <!-- ================= BEFORE HANDOVER ================= -->
   <section class="stage">
     <div class="stage-head">
       <span class="stage-key">D</span>
@@ -580,58 +587,51 @@
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c3"><span class="step-n">21b</span>
+      <input type="checkbox" id="c29"><span class="step-n">09</span>
       <div class="step-body">
-        <p class="step-text">Swap the speaker-line fuse at <code>J31</code> for a <b>15&nbsp;A slow-blow</b>.</p>
-        <p class="why">It only protects the cab, not the FETs. Keep a fresh 4&nbsp;A slow-blow in for any bench load work — the one the amp arrived with is blown. 15&nbsp;A decided 13 Oct: full power into 4&nbsp;Ω is 16.6&nbsp;A, but Pete won't get near that.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
+        <p class="step-text">Measure <b>DC offset across the speaker output</b>, no load, warm. A few tens of millivolts at most.</p>
+        <p class="why"><b>Meter across the two output legs — never a leg to ground.</b> A big reading means the two halves don't match. Find that before a speaker does.</p>
+        <textarea data-note id="note10" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c22"><span class="step-n">22</span>
+      <input type="checkbox" id="c31"><span class="step-n">10</span>
       <div class="step-body">
-        <p class="step-text">Fit the correct <b>8&nbsp;A</b> breaker. Currently <b>7&nbsp;A</b>.</p>
-        <p class="why">Print calls out 15&nbsp;A domestic/Japan, <b>8&nbsp;A export</b>. 7&nbsp;A is undersized 12.5% — the safe direction, but marginal on inrush (six 5600&nbsp;µF plus a large EI transformer) and at sustained high output. <b>Never go above 8&nbsp;A</b> — that's the transformer's protection.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
-      </div>
-    </div>
-
-    <div class="step" data-step>
-      <input type="checkbox" id="c23"><span class="step-n">23</span>
-      <div class="step-body">
-        <p class="step-text">Confirm the ±16&nbsp;V rail still holds <b>≥15&nbsp;V</b> under full load, and that the resistor and zener standoff work is secure.</p>
-        <p class="why">The resistors are fine as stock — <b>don't uprate them.</b> The heat is the zeners: they dump whatever the load leaves over, up to <b>1.8&nbsp;W</b>, through leads only. Standing them off is the repair. If the measured load came in over ~90&nbsp;mA, the rail will sag and the real fix is a TO-220 series-pass transistor using the zener as its reference — <b>quote that separately, don't do it inside this job.</b></p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
-      </div>
-    </div>
-
-    <div class="step" data-step>
-      <input type="checkbox" id="c29"><span class="step-n">23b</span>
-      <div class="step-body">
-        <p class="step-text">Measure <b>DC offset across the speaker output</b>, no load, warm. Should be a few tens of millivolts at most.</p>
-        <p class="why"><b>Measure across the two output legs, not from either leg to chassis ground.</b> The output is bridged and neither side sits at ground. A big offset here means one half is biased differently from the other — find that before a speaker does.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
-      </div>
-    </div>
-
-    <div class="step" data-step>
-      <input type="checkbox" id="c31"><span class="step-n">23c</span>
-      <div class="step-body">
-        <p class="step-text"><b>Soak test, quiet.</b> Only after the offset check passes. Two 8&nbsp;Ω 100&nbsp;W resistors <b>in parallel = 4&nbsp;Ω, 200&nbsp;W</b> across the output, fresh <b>4&nbsp;A slow-blow</b> in J31. Steady tone (100&nbsp;Hz or 1&nbsp;kHz) into the input, turned up until the load is warm. Run <b>1–2 hours</b>.</p>
-        <p class="why"><b>Both output leads go to the load — neither to ground.</b> Keep it gentle: the 4&nbsp;A fuse opens around 64&nbsp;W, and that's plenty for a soak.<br><br>
+        <p class="step-text"><b>Quiet soak test, 1–2 hours.</b> Only once step 9 passes.</p>
+        <p class="why"><b>Load:</b> two 8&nbsp;Ω 100&nbsp;W resistors in parallel (= 4&nbsp;Ω, 200&nbsp;W). Both output leads to the load, neither to ground.<br>
+        <b>Fuse:</b> fresh <b>4&nbsp;A slow-blow</b> in J31 (it blows around 64&nbsp;W — keeps it gentle).<br>
+        <b>Signal:</b> steady tone (100&nbsp;Hz or 1&nbsp;kHz), turned up until the load is warm.<br><br>
         <b>Every 15–20 min:</b> heatsinks warm not scorching, no smell, relays still in, current steady.<br>
-        <b>At the end:</b> re-check bias on both banks while warm, then a brief low-volume listen on a speaker to confirm it's clean.</p>
-        <textarea data-note placeholder="Times, temps, bias after soak…"></textarea>
+        <b>At the end:</b> check bias again (Meters A and B), then a short, quiet listen on a speaker.</p>
+        <textarea data-note id="note11" placeholder="Times, temps, bias after soak…"></textarea>
       </div>
     </div>
 
     <div class="step" data-step>
-      <input type="checkbox" id="c24"><span class="step-n">24</span>
+      <input type="checkbox" id="c23"><span class="step-n">11</span>
       <div class="step-body">
-        <p class="step-text"><b>Closed — nothing to ask.</b> This step wanted the fuse’s history from the customer.</p>
-        <p class="why"><b>Pete bought the amp second-hand in this condition</b> and has no history to give. The best account is the plain one: the previous tech fitted a fuse roughly 4&times; undersized, it blew on a loud night with nothing failing downstream, and the amp went back still dead. <b>No hidden intermittent needs inventing to explain it.</b></p>
-        <textarea data-note placeholder="Customer response…"></textarea>
+        <p class="step-text">During the soak, check the <b>±16&nbsp;V rail</b> (J13 pin 2 and pin 3) still reads <b>15&nbsp;V or more</b>, and the stood-off zeners and resistors are secure.</p>
+        <p class="why">If it's sagging below 15&nbsp;V, the proper fix is a bigger regulator. <b>Quote that separately — not part of this job.</b></p>
+        <textarea data-note id="note9" placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c3"><span class="step-n">12</span>
+      <div class="step-body">
+        <p class="step-text">Soak done — swap the J31 fuse for a <b>15&nbsp;A slow-blow</b>.</p>
+        <p class="why">It protects the speaker cab, not the amp. 15&nbsp;A decided 13 Oct — Pete won't get near full power.</p>
+        <textarea data-note id="note7" placeholder="Notes / readings…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
+      <input type="checkbox" id="c22"><span class="step-n">13</span>
+      <div class="step-body">
+        <p class="step-text">Swap the mains breaker for an <b>8&nbsp;A</b>. It's currently <b>7&nbsp;A</b>.</p>
+        <p class="why">8&nbsp;A is the export spec. 7&nbsp;A can trip at switch-on. <b>Never go above 8&nbsp;A</b> — it protects the transformer.</p>
+        <textarea data-note id="note8" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
   </section>
@@ -749,7 +749,7 @@
   }
 
   // Give every note textarea a stable id based on document order.
-  document.querySelectorAll("[data-note]").forEach(function (t, i) { t.id = "note" + i; });
+  document.querySelectorAll("[data-note]").forEach(function (t, i) { if (!t.id) t.id = "note" + i; });
 
   function grow(t) { t.style.height = "auto"; t.style.height = (t.scrollHeight + 2) + "px"; }
 
