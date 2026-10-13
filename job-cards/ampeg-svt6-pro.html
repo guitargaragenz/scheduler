@@ -366,7 +366,6 @@
     <ul>
       <li><b>The output is not ground-referenced.</b> This PCB is hardwired mono-bridge. Never put a grounded scope probe on either output leg — use differential, isolated or floating measurement.</li>
       <li><b>Filter caps hold lethal charge long after power-down.</b> Six 5600&nbsp;µF/80&nbsp;V plus two 47&nbsp;µF/450&nbsp;V (C14, C15) on a ~296&nbsp;V B+. Discharge and verify 0&nbsp;V before touching anything.</li>
-      <li><b>A variac is an autotransformer, not an isolator.</b> Always feed it from an isolation transformer.</li>
       <li><b>Mains-potential taps.</b> The unused transformer primary tap sits at line potential when powered. It must be insulated, never landed on a tab.</li>
     </ul>
   </section>
@@ -659,13 +658,6 @@
       <span class="stage-note">no current limiting — hand on the dial</span>
     </div>
 
-    <div class="step" data-step>
-      <input type="checkbox" id="c14"><span class="step-n">14</span>
-      <div class="step-body">
-        <p class="step-text"><b>Isolation transformer → variac → amp.</b> Never variac alone.</p>
-        <textarea data-note placeholder="Notes / readings…"></textarea>
-      </div>
-    </div>
 
     <div class="step" data-step>
       <input type="checkbox" id="c15"><span class="step-n">15</span>
