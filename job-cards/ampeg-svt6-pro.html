@@ -663,12 +663,12 @@
       <input type="checkbox" id="c15"><span class="step-n">15</span>
       <div class="step-body">
         <p class="step-text">Clip meters on <b>before</b> you touch the variac.</p>
-        <p class="why"><b>Meter A — + half (bank 1).</b> DC millivolts across <b>R32</b>. One probe each end of the resistor, never to ground. 20&nbsp;mV = 42&nbsp;mA. Watch for runaway.<br>
-        <b>Meter B — − half (bank 2).</b> Same again across <b>R85</b>. Each half has its own bias pot, so each needs its own meter.<br>
+        <p class="why"><b>Meter A — + half (bank 1, hidden side). DC amps, in series with the <code>J37</code> faston</b> (+65&nbsp;V feed to that side). Power off, unplug J37, meter on the <b>10&nbsp;A range</b> between the plug and the tab, both ends solid. <b>Never turn its dial while it's in series</b> — volts or ohms shorts the rail.<br>
+        <b>Meter B — − half (bank 2).</b> DC millivolts across <b>R141</b> (far-left white resistor). One probe each end, never to ground. 20&nbsp;mV = 42&nbsp;mA. Each half has its own bias pot, so each needs its own meter.<br>
         <b>Meter C — +65&nbsp;V rail to chassis ground.</b> DC volts. Tells you when the relay is about to click (150–180&nbsp;V mains).<br>
         <b>Meter D — −65&nbsp;V rail to chassis ground</b> (small Tenma). DC volts. Both rails should rise together — one lagging means a blown fuse or diode.<br>
         <b>Mains current</b> — read the variac's ammeter or a clamp meter. No DMM needed.<br><br>
-        Use your best DMMs on A and B — they're reading millivolts.<br><br>
+        Use your best DMM on B — it's reading millivolts.<br><br>
         <b>Never a scope across a source resistor.</b> Its ground clip is earthed. A DMM is fine.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
@@ -678,7 +678,7 @@
       <input type="checkbox" id="c16"><span class="step-n">16</span>
       <div class="step-body">
         <p class="step-text">Ramp in steps, <b>pause 30&nbsp;s at each</b> and log the reading.</p>
-        <p class="why"><b>At the 120&nbsp;V pause, stop and do the trimmer check in step 7</b> — read the bias millivolts before touching either pot, confirm you wound to the minimum end and not the maximum one, and take the quarter-turn feel reading. Don't go past 120&nbsp;V until that's settled.</p>
+        <p class="why"><b>At the 120&nbsp;V pause, write down Meter A — the starting current for step 19 — then</b> do the trimmer check in step 7 — read the bias millivolts before touching either pot, confirm you wound to the minimum end and not the maximum one, and take the quarter-turn feel reading. Don't go past 120&nbsp;V until that's settled.</p>
         <div class="tablewrap">
           <table>
             <caption>Ramp log</caption>
@@ -758,31 +758,18 @@
     <div class="step" data-step>
       <input type="checkbox" id="c19"><span class="step-n">19</span>
       <div class="step-body">
-        <p class="step-text"><b>AP1</b> → average <b>20 ±5 mVdc</b> across bank 1.</p>
-        <p class="why"><b>Millivolts, across one source resistor at a time — never volts.</b> 20&nbsp;mV across 0.47&nbsp;Ω is 42&nbsp;mA through that FET. <b>20&nbsp;V across it would be 42&nbsp;A</b>, and the bank would be gone before you looked up. Any reading in whole volts across a source resistor means <b>variac straight down</b>. The few-volt figures in step 7 are internal to the bias spreader and are never something you dial to.</p>
+        <p class="step-text">+ half (hidden side): turn <b>AP1</b> slowly clockwise, watching <b>Meter A</b>, until it reads <b>0.42&nbsp;A more than your starting current</b> from the 120&nbsp;V stop.</p>
+        <p class="why">0.42&nbsp;A = ten FETs × 42&nbsp;mA, the same as 20&nbsp;mV per resistor. You can't reach the resistors on this side, so this total is the check — it can't spot one odd FET, but it shows runaway well.</p>
         <div class="tablewrap">
           <table>
-            <caption>Bank 1 — Channel 1 (+) half · AP1 (10K trim at Q2) · topside near Q4</caption>
-            <thead><tr><th class="mono">R32</th><th class="mono">R34</th><th class="mono">R36</th><th class="mono">R38</th><th class="mono">R112</th><th class="mono">R33</th><th class="mono">R35</th><th class="mono">R37</th><th class="mono">R39</th><th class="mono">R138</th></tr></thead>
+            <caption>Bank 1 — + half · AP1 · Meter A in series with J37</caption>
+            <thead><tr><th>Start (120&nbsp;V, pot at min)</th><th>Target (start + 0.42&nbsp;A)</th><th>Final</th></tr></thead>
             <tbody><tr>
-              <td><input type="number" step="0.1" class="b1" id="b1a" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1b" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1c" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1d" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1e" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1f" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1g" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1h" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1i" size="4"></td>
-              <td><input type="number" step="0.1" class="b1" id="b1j" size="4"></td>
+              <td><input type="text" id="b1start" size="6"></td>
+              <td><input type="text" id="b1target" size="6"></td>
+              <td><input type="text" id="b1final" size="6"></td>
             </tr></tbody>
           </table>
-          <div class="avgrow">
-            <span>Average</span>
-            <b id="b1avg">—</b><span>mV</span>
-            <span class="verdict idle" id="b1v">no data</span>
-            <span style="color:var(--ink-3);">target 15–25 mV</span>
-          </div>
         </div>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
@@ -792,7 +779,7 @@
       <input type="checkbox" id="c20"><span class="step-n">20</span>
       <div class="step-body">
         <p class="step-text"><b>AP2</b> → same across bank 2. Adjust from underneath, through the access hole.</p>
-        <p class="why"><b>Millivolts again — same warning as step 19.</b> Anticlockwise is minimum, and the last of the travel moves fast.</p>
+        <p class="why"><b>Millivolts, never volts</b> — a reading in volts means variac straight down. Anticlockwise is minimum, and the last of the travel moves fast.</p>
         <div class="tablewrap">
           <table>
             <caption>Bank 2 — Channel 1 (−) half · AP2 (10K trim at Q22) · underside</caption>
@@ -1028,6 +1015,7 @@
   }
 
   function updateBias(cls, avgId, verdictId) {
+    if (!document.getElementById(avgId)) return;
     var a = average("." + cls);
     var avgEl = document.getElementById(avgId);
     var vEl = document.getElementById(verdictId);
@@ -1169,7 +1157,7 @@
     var a1 = average(".b1"), a2 = average(".b2");
     out.push("");
     out.push("BIAS AVERAGES (spec 20 ±5 mV)");
-    out.push("  Bank 1 (AP1): " + (a1 === null ? "—" : a1.toFixed(1) + " mV"));
+    out.push("  Bank 1 (AP1): set by J37 current — see table above");
     out.push("  Bank 2 (AP2): " + (a2 === null ? "—" : a2.toFixed(1) + " mV"));
 
     var text = out.join("\n");
