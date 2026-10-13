@@ -10,6 +10,10 @@ import { CARD_ACTIONS } from '../data/cardActions.js';
 export function ActionChips({ action, onSetAction, small = false }) {
   return CARD_ACTIONS.map(a => {
     const on = action === a;
+    // DG lights green ("good to go"), the rest red — same as the log labels.
+    const lit = a === 'DG'
+      ? { bg: 'rgba(74,222,128,0.25)', border: '#4ade80', text: '#bbf7d0' }
+      : { bg: 'rgba(248,113,113,0.25)', border: '#f87171', text: '#fecaca' };
     return (
       <button
         key={a}
@@ -18,11 +22,11 @@ export function ActionChips({ action, onSetAction, small = false }) {
         title={on ? `Clear ${a}` : `Set ${a}`}
         aria-pressed={on}
         style={{
-          background: on ? 'rgba(248,113,113,0.25)' : 'none',
-          border: `1px solid ${on ? '#f87171' : 'rgba(255,255,255,0.25)'}`,
+          background: on ? lit.bg : 'none',
+          border: `1px solid ${on ? lit.border : 'rgba(255,255,255,0.25)'}`,
           borderRadius: 3, padding: small ? '0 2px' : '0 4px', cursor: 'pointer',
           fontSize: small ? 8 : 9, fontWeight: 700, lineHeight: small ? '12px' : '14px',
-          color: on ? '#fecaca' : '#fff', opacity: on ? 1 : 0.35,
+          color: on ? lit.text : '#fff', opacity: on ? 1 : 0.35,
         }}
       >
         {a}
