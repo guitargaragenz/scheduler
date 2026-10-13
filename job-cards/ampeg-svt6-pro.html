@@ -506,8 +506,9 @@
     <div class="stage-head">
       <span class="stage-key">B</span>
       <h2>Relay chain test</h2>
-      <span class="stage-note">bench supplies — no mains</span>
+      <span class="stage-note"><b>SKIPPED</b> — went straight to variac</span>
     </div>
+    <p class="why"><b>Skipped on this job — don't work through this stage.</b> Decided to go straight to the variac ramp (stage C). Kept here for reference only.</p>
 
     <div class="step" data-step>
       <input type="checkbox" id="c8"><span class="step-n">08</span>
@@ -893,7 +894,20 @@
           <dt>B+</dt><dd>+296 V</dd>
           <dt>Op-amp</dt><dd>±16 V zener shunt</dd>
           <dt>Relay</dt><dd>+60 V</dd>
+          <dt>R134 drop</dt><dd>−46 V (off −65 V)</dd>
         </dl>
+      </div>
+      <div class="refcard">
+        <h3>Rail test points</h3>
+        <dl>
+          <dt>±65 V</dt><dd>+65: J37, J38 · −65: J40, J41</dd>
+          <dt>±100 V</dt><dd>CH1 + half: R14 and D2 cathode · CH1 − half: R16 and D35 cathode</dd>
+          <dt>+296 V</dt><dd>Plate volts: J13 pin 8</dd>
+          <dt>±16 V</dt><dd>J13 pin 2 = +16, pin 3 = −16</dd>
+          <dt>−46 V</dt><dd>R134, the end not on −65 V</dd>
+          <dt>+60 V</dt><dd>K1: D13 cathode · K2: D42 cathode</dd>
+        </dl>
+        <p class="why" style="margin-top:.6rem;">All to chassis ground, DC volts. <b>Never ground-reference a probe on the output legs.</b></p>
       </div>
       <div class="refcard">
         <h3>Bias</h3>
