@@ -453,9 +453,9 @@
     <div class="step" data-step>
       <input type="checkbox" id="c3"><span class="step-n">03</span>
       <div class="step-body">
-        <p class="step-text"><b>The 4&nbsp;A inline fuse at <code>J31</code> is blown — it is the one the amp arrived with.</b> Fine to ramp with it blown (no load, no output current), but <b>fit a fresh 4&nbsp;A before any speaker goes on</b>. Remove it and restore the stock connection at final assembly, before handover.</p>
-        <p class="why">J31 is the <b>CH1(−) output leg</b> — the fuse is in the <b>speaker line</b>, so it protects the cab, not the MOSFETs. It didn't save them; the 220&nbsp;Ω feed resistors and the sagging rails did. At rated power that leg carries <b>12.2&nbsp;A</b> into 4&nbsp;Ω (600&nbsp;W) and <b>22.4&nbsp;A</b> into 2&nbsp;Ω (1000&nbsp;W), so 4&nbsp;A opens at around 64&nbsp;W — useless in service, but a good safety net on the bench.<br><br>
-        <b>At handover: pull it out (factory fitted none), or go up to 15&nbsp;A slow-blow if you want one there. Anything smaller nuisance-blows on a loud note.</b> If you want actual device protection, that belongs in the ±65&nbsp;V rails — 10&nbsp;A slow-blow per leg — not the output. <b>Even then a fuse only limits collateral damage; silicon fails faster than any fuse can open.</b></p>
+        <p class="step-text"><b>The 4&nbsp;A inline fuse at <code>J31</code> is blown — it is the one the amp arrived with.</b> Fine to ramp with it blown (no load, no output current), but <b>fit a fresh 4&nbsp;A slow-blow before any speaker goes on</b>. Remove it and restore the stock connection at final assembly, before handover.</p>
+        <p class="why">J31 is the <b>CH1(−) output leg</b> — the fuse is in the <b>speaker line</b>, so it protects the cab, not the MOSFETs. It didn't save them; the 220&nbsp;Ω feed resistors and the sagging rails did. At rated power that leg carries <b>16.6&nbsp;A</b> into 4&nbsp;Ω (1100&nbsp;W) and <b>9.7&nbsp;A</b> into 8&nbsp;Ω (750&nbsp;W), so 4&nbsp;A opens at around 64&nbsp;W — useless in service, but a good safety net on the bench.<br><br>
+        <b>At handover: fit a 15&nbsp;A slow-blow (decided 13 Oct). Full power into 4&nbsp;Ω is 16.6&nbsp;A, but Pete won't get near that.</b> If you want actual device protection, that belongs in the ±65&nbsp;V rails — 10&nbsp;A slow-blow per leg — not the output. <b>Even then a fuse only limits collateral damage; silicon fails faster than any fuse can open.</b></p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -873,6 +873,17 @@
     </div>
 
     <div class="step" data-step>
+      <input type="checkbox" id="c31"><span class="step-n">23c</span>
+      <div class="step-body">
+        <p class="step-text"><b>Soak test, quiet.</b> Only after the offset check passes. Two 8&nbsp;Ω 100&nbsp;W resistors <b>in parallel = 4&nbsp;Ω, 200&nbsp;W</b> across the output, fresh <b>4&nbsp;A slow-blow</b> in J31. Steady tone (100&nbsp;Hz or 1&nbsp;kHz) into the input, turned up until the load is warm. Run <b>1–2 hours</b>.</p>
+        <p class="why"><b>Both output leads go to the load — neither to ground.</b> Keep it gentle: the 4&nbsp;A fuse opens around 64&nbsp;W, and that's plenty for a soak.<br><br>
+        <b>Every 15–20 min:</b> heatsinks warm not scorching, no smell, relays still in, current steady.<br>
+        <b>At the end:</b> re-check bias on both banks while warm, then a brief low-volume listen on a speaker to confirm it's clean.</p>
+        <textarea data-note placeholder="Times, temps, bias after soak…"></textarea>
+      </div>
+    </div>
+
+    <div class="step" data-step>
       <input type="checkbox" id="c24"><span class="step-n">24</span>
       <div class="step-body">
         <p class="step-text"><b>Closed — nothing to ask.</b> This step wanted the fuse’s history from the customer.</p>
@@ -962,7 +973,7 @@
           <dt>at 0.55 A</dt><dd>amp sees 117 V</dd>
           <dt>at 0.7 A</dt><dd>amp sees 65 V</dd>
         </dl>
-        <p class="why" style="margin-top:.6rem;">A 200 W bulb is <b>too small</b> for a 1000 W amp with 33,600 µF of filter caps. Full-on bulb and half rails on the 200 W is the limiter, not a short — the resistance checks all came out clean. Use a bigger bulb or the variac, and listen for the relay click.</p>
+        <p class="why" style="margin-top:.6rem;">A 200 W bulb is <b>too small</b> for an 1100 W amp with 33,600 µF of filter caps. Full-on bulb and half rails on the 200 W is the limiter, not a short — the resistance checks all came out clean. Use a bigger bulb or the variac, and listen for the relay click.</p>
       </div>
     </div>
   </details>
