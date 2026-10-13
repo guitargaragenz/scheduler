@@ -403,13 +403,14 @@
     <div class="step" data-step>
       <input type="checkbox" id="c15"><span class="step-n">15</span>
       <div class="step-body">
-        <p class="step-text">Clip meters on <b>before</b> you dial anything up: one source resistor per bank, one main rail, ammeter in line where you can see it without looking away from the variac.</p>
-        <p class="why"><b>With two meters, cover it in this order:</b><br>
-        <b>Meter A — DC millivolts across R32</b> (0.47&nbsp;Ω 5&nbsp;W, bank 1). Probes on the resistor's two ends, <b>not</b> either end to ground. 20&nbsp;mV = 42&nbsp;mA through that FET. This is the bias reading and the runaway warning.<br>
-        <b>Meter B — DC volts, +65&nbsp;V rail to chassis ground.</b> Shows the rails tracking the mains and tells you when you're near the 150–180&nbsp;V relay click.<br>
-        <b>Current — use the variac's own panel ammeter, or a clamp meter on the mains lead.</b> Don't tie up a DMM on it; during a ramp you need both hands and both eyes elsewhere.<br>
-        <b>Bank 2 (R85)</b> — move Meter A over once bank 1 reads sane. You don't need both banks live at once during the ramp.<br><br>
-        <b>Both ends of a source resistor float at high voltage.</b> A DMM is fine floating like that. <b>A scope is not</b> — its ground lead is bonded to mains earth, so clipping it across a source resistor shorts a rail to ground. Same reason step 21 says measure across the two output legs and never leg-to-ground.</p>
+        <p class="step-text">Clip meters on <b>before</b> you touch the variac.</p>
+        <p class="why"><b>Meter A — + half (bank 1).</b> DC millivolts across <b>R32</b>. One probe each end of the resistor, never to ground. 20&nbsp;mV = 42&nbsp;mA. Watch for runaway.<br>
+        <b>Meter C — − half (bank 2).</b> Same again across <b>R85</b>. Each half has its own bias pot, so each needs its own meter.<br>
+        <b>Meter B — +65&nbsp;V rail to chassis ground.</b> DC volts. Tells you when the relay is about to click (150–180&nbsp;V mains).<br>
+        <b>Meter D — −65&nbsp;V rail to chassis ground</b> (small Tenma). DC volts. Both rails should rise together — one lagging means a blown fuse or diode.<br>
+        <b>Mains current</b> — read the variac's ammeter or a clamp meter. No DMM needed.<br><br>
+        Use your best DMMs on A and C — they're reading millivolts.<br><br>
+        <b>Never a scope across a source resistor.</b> Its ground clip is earthed. A DMM is fine.</p>
         <textarea data-note placeholder="Notes / readings…"></textarea>
       </div>
     </div>
