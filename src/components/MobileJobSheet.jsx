@@ -16,7 +16,7 @@ function marksOn(job) {
   return marks;
 }
 
-const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Admin'];
+const ALL_BENCHES = ['Luthier', 'Electronics', 'Setup', 'Fretwork', 'Wiring', 'Finishing', 'Admin'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
