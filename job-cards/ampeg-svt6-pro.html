@@ -282,7 +282,7 @@
     .step {
       grid-template-columns:5mm 7mm 1fr; gap:2mm;
       border:none; border-bottom:1px solid #ccc; border-left:none;
-      padding:1.8mm 0; margin:0; break-inside:avoid; page-break-inside:avoid;
+      padding:1.8mm 0; margin:0;
     }
     .step.done { background:#fff; }
     .step.done .step-text, .step.done .step-text b, .step.done .step-text code { color:#000; text-decoration:none; }
@@ -306,6 +306,9 @@
       padding:.5mm 0; min-height:6mm; height:auto !important; font-size:9.5pt; resize:none;
     }
     textarea::placeholder { color:transparent; }
+    textarea:placeholder-shown { height:6mm !important; min-height:0; }
+    .step-text { break-inside:avoid; break-after:avoid; }
+    .verdict.idle { display:none; }
 
     .tablewrap { border:1px solid #000; overflow:visible; break-inside:avoid; page-break-inside:avoid; }
     table { min-width:0; font-size:9pt; }
@@ -351,7 +354,7 @@
     <div class="jobfields">
       <div class="field"><label for="f-job">Job no.</label><input type="text" id="f-job"></div>
       <div class="field"><label for="f-tech">Technician</label><input type="text" id="f-tech"></div>
-      <div class="field"><label for="f-date">Date</label><input type="date" id="f-date"></div>
+      <div class="field"><label for="f-date">Date</label><input type="text" id="f-date"></div>
       <div class="field"><label for="f-serial">Serial no.</label><input type="text" id="f-serial"></div>
     </div>
 
