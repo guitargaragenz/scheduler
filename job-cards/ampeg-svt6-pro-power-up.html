@@ -310,6 +310,17 @@
     .step-text { break-inside:avoid; break-after:avoid; }
     .verdict.idle { display:none; }
 
+    /* Safari slices grid rows across pages, so print uses plain blocks */
+    .step { display:block; overflow:hidden; }
+    .step input[type="checkbox"] { float:left; margin-right:2mm; }
+    .step-n { float:left; width:7mm; }
+    .step-body { display:block; margin-left:13mm; }
+    .step-body > * + * { margin-top:1.5mm; }
+    details.ref { display:block; }
+    details.ref .refgrid { display:block; }
+    .refcard { display:inline-block; width:49%; vertical-align:top; }
+    html, body { height:auto !important; overflow:visible !important; }
+
     .tablewrap { border:1px solid #000; overflow:visible; break-inside:avoid; page-break-inside:avoid; }
     table { min-width:0; font-size:9pt; }
     th { background:#eee; color:#000; }
