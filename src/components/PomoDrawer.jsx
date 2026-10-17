@@ -1,6 +1,8 @@
-import { useReducer, useEffect, useRef, useState } from 'react';
+import { useReducer, useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { benchColors } from '../data/jobs.js';
+import { hasReviewed } from '../data/reviewMatch.js';
+import { REVIEW_NAMES, REVIEWS_UPDATED } from '../data/reviewNames.js';
 
 const BREAK_MINS = 5;
 const DEFAULT_WORK_MINS = 25;
@@ -53,6 +55,8 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onM
   const [doneAmount, setDoneAmount] = useState('');
   const startedAtRef = useRef(null);
   const colors = benchColors(job.bench);
+  // Soft check against the Google review list - names only, nothing stored.
+  const reviewed = useMemo(() => hasReviewed(job.customer, REVIEW_NAMES), [job.customer]);
 
   // Run the clock only when work or break
   useEffect(() => {
@@ -374,6 +378,17 @@ export default function PomoDrawer({ job, onClose, onLogSession, onMarkDone, onM
                 }}
               >Done ✓</button>
             </div>
+            {reviewed === 'no' && (
+              <div
+                title={`Review list updated ${REVIEWS_UPDATED}`}
+                style={{ marginTop: 8, fontSize: 13, color: '#fbbf24', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere' }}
+              >💬 No Google review found for {job.customer} — ask them?</div>
+            )}
+            {reviewed === 'yes' && (
+              <div style={{ marginTop: 8, fontSize: 13, color: '#4ade8099', textAlign: 'left', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                ⭐ {job.customer} has probably left a review
+              </div>
+            )}
           </div>
         )}
 
