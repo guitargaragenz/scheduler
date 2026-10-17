@@ -1,6 +1,8 @@
 ---
-doc_status: parked
+doc_status: closed
 ---
+Superseded: Trevor chose the Pomodoro invoice-box prompt instead (shipped b343d9e). Never built to main.
+
 # Review tag on job cards — background and verifier checklist
 
 Scope lock: `.claude/pending-brief.md`.

@@ -1,7 +1,11 @@
 ---
-doc_status: live
+doc_status: closed
 ---
-# Brief — review prompt in the Pomodoro invoice box
+# Record (shipped) — review prompt in the Pomodoro invoice box
+
+Shipped at b343d9e (PR 111, build 0e9afe0). 53 files / 989 tests green. Verifier 4/4 pass;
+Trevor clicked through the preview. Builder's own calls: amber #fbbf24, dim green #4ade8099;
+the ⭐ test picks a real name from the list so it survives a Takeout refresh. All items met.
 
 Replaces the parked card-tag brief (bfc2792; background in docs/briefs/review-tag-on-cards.md,
 code on branch `staging/review-tag` at 1c0267b, PR 110 closed unmerged).
