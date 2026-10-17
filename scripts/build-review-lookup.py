@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Rebuild the Review Lookup page from a Google Takeout (Google Business Profile) export.
+
+Refresh: re-run Takeout, leave the unzipped "Takeout" folder in ~/Downloads, then run this.
+The page is self-contained (reviews baked in), so it opens straight from Finder or a bookmark.
+"""
+import glob, json, os, shutil, sys
+
+SRC = os.path.expanduser(sys.argv[1] if len(sys.argv) > 1 else "~/Downloads/Takeout")
+OUT = os.path.expanduser(
+    "~/Library/Mobile Documents/com~apple~CloudDocs/Desktop/SCHEDULER_old/review_lookup.html")
+
+reviews = []
+for f in glob.glob(os.path.join(SRC, "Google Business Profile", "account-*", "location-*", "reviews*.json")):
+    for r in json.load(open(f)).get("reviews", []):
+        reviews.append({
+            "n": r.get("reviewer", {}).get("displayName", "Anonymous"),
+            "s": {"ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5}.get(r.get("starRating"), 0),
+            "t": (r.get("comment") or "").split("(Translated by Google)")[0].strip(),
+            "d": r.get("createTime", "")[:10],
+            "r": (r.get("reviewReply") or {}).get("comment", ""),
+        })
+if not reviews:
+    sys.exit(f"No reviews found under {SRC} - is the Takeout folder there and unzipped?")
+reviews.sort(key=lambda r: r["d"], reverse=True)
+
+html = open(os.path.join(os.path.dirname(__file__), "review-lookup-template.html")).read()
+html = html.replace("/*REVIEWS*/[]", json.dumps(reviews, ensure_ascii=False))
+
+old = OUT.replace(".html", "_old.html")
+if os.path.exists(OUT) and not os.path.exists(old):
+    shutil.copy(OUT, old)  # keep the original hand-made page once
+open(OUT, "w").write(html)
+print(f"{len(reviews)} reviews -> {OUT}")

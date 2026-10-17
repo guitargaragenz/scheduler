@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GGNZ Review Lookup</title>
+<style>
+  body { background:#0d0d0d; color:#e0e0e0; font-family:-apple-system,system-ui,sans-serif;
+         padding:30px 16px; max-width:720px; margin:0 auto; }
+  h1 { color:#4ade80; font-size:1.4em; margin:0 0 4px; }
+  .sub { color:#888; font-size:.9em; margin-bottom:20px; }
+  input { width:100%; padding:14px; font-size:1.15em; background:#1a1a1a; border:1px solid #333;
+          color:#e0e0e0; border-radius:6px; box-sizing:border-box; }
+  input:focus { outline:none; border-color:#4ade80; }
+  label { color:#888; font-size:.85em; display:block; margin:8px 0 0; }
+  #status { margin:16px 0 8px; font-size:1.05em; }
+  .yes { color:#4ade80; } .no { color:#f87171; }
+  .result { padding:14px; margin-bottom:10px; border-radius:6px; border-left:3px solid #4ade80;
+            background:#161616; cursor:pointer; }
+  .top { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+  .name { font-weight:600; color:#fff; }
+  .date { color:#888; font-size:.85em; white-space:nowrap; }
+  .stars { color:#facc15; letter-spacing:1px; }
+  .text { margin-top:8px; line-height:1.45; color:#ccc;
+          display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .open .text { display:block; }
+  .reply { display:none; margin-top:10px; padding:10px; background:#1f1f1f; border-radius:4px;
+           color:#aaa; font-size:.92em; line-height:1.4; }
+  .open .reply { display:block; }
+  .reply b { color:#4ade80; font-weight:600; }
+  .actions { display:none; margin-top:10px; }
+  .open .actions { display:block; }
+  .actions a { color:#4ade80; font-size:.9em; }
+  mark { background:#4ade8044; color:inherit; border-radius:2px; }
+  .count { color:#555; font-size:.8em; margin-top:30px; }
+</style>
+</head>
+<body>
+
+<h1>Review Lookup</h1>
+<div class="sub">Type a customer name. Tap a result to read the full review and your reply.</div>
+
+<input type="text" id="search" placeholder="Type a name..." autofocus autocomplete="off">
+<label><input type="checkbox" id="words" style="width:auto"> Also search the review words (e.g. "Les Paul")</label>
+
+<div id="status"></div>
+<div id="results"></div>
+<div class="count" id="count"></div>
+
+<script>
+const reviews = /*REVIEWS*/[];
+const MAPS = "https://www.google.com/maps/search/?api=1&query=Guitar+Garage+NZ";
+
+const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const hl = (s, q) => {
+  let out = esc(s);
+  q.forEach(w => { if (w) out = out.replace(new RegExp("(" + w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")", "gi"), "<mark>$1</mark>"); });
+  return out;
+};
+const fmt = d => d ? new Date(d).toLocaleDateString("en-NZ", {day:"numeric", month:"short", year:"numeric"}) : "";
+
+function render() {
+  const raw = document.getElementById("search").value.trim();
+  const inText = document.getElementById("words").checked;
+  const words = norm(raw).split(/\s+/).filter(Boolean);
+  const status = document.getElementById("status");
+  let list = reviews;
+  if (words.length) {
+    list = reviews.filter(r => {
+      const nameWords = norm(r.n).split(/[\s\-_&()]+/);
+      const nameHit = words.every(w => nameWords.some(nw => nw.startsWith(w)) || norm(r.n).includes(w));
+      return nameHit || (inText && words.every(w => norm(r.t).includes(w)));
+    });
+    status.innerHTML = list.length
+      ? `<span class="yes">✔ ${list.length} match${list.length > 1 ? "es" : ""}</span>`
+      : `<span class="no">✘ No review found for "${esc(raw)}". Worth asking them!</span>`;
+  } else status.textContent = "";
+
+  const shown = words.length ? list : list.slice(0, 10);
+  document.getElementById("results").innerHTML = shown.map(r => `
+    <div class="result">
+      <div class="top"><span class="name">${hl(r.n, raw.split(/\s+/))}</span><span class="date">${fmt(r.d)}</span></div>
+      <div class="stars">${"★".repeat(r.s)}</div>
+      ${r.t ? `<div class="text">${inText ? hl(r.t, raw.split(/\s+/)) : esc(r.t)}</div>` : ""}
+      ${r.r ? `<div class="reply"><b>Your reply:</b> ${esc(r.r)}</div>` : ""}
+      <div class="actions"><a href="${MAPS}" target="_blank" onclick="event.stopPropagation()">Open Google reviews ↗</a></div>
+    </div>`).join("");
+  document.querySelectorAll(".result").forEach(el => el.onclick = () => el.classList.toggle("open"));
+}
+
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("words").addEventListener("change", render);
+const five = reviews.filter(r => r.s === 5).length;
+document.getElementById("count").textContent =
+  `${reviews.length} reviews (${five} five-star) · newest ${fmt(reviews[0]?.d)} · empty search shows the 10 newest`;
+render();
+</script>
+</body>
+</html>
