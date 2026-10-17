@@ -66,3 +66,34 @@ describe('JobCard action chips', () => {
     expect(renderToStaticMarkup(<JobCard job={job} />)).not.toContain('aria-pressed');
   });
 });
+
+// Review tag on job cards (docs/briefs/review-tag-on-cards.md, checklist item 3).
+const { REVIEW_NAMES } = await import('../data/reviewNames.js');
+describe('JobCard review tag', () => {
+  const base = { id: 'r1', job: 500, status: 'Booked In', bench: 'Setup', mfr: 'Fender', model: 'Strat' };
+  const html = (job, props = {}) => renderToStaticMarkup(<JobCard job={job} {...props} />);
+  const reviewer = REVIEW_NAMES.find(n => /^\p{L}+ \p{L}+$/u.test(n));
+
+  it('shows 💬 for a two-word customer not in the list', () => {
+    const out = html({ ...base, customer: 'Zzyzx Qwertyuiop' });
+    expect(out).toContain('💬');
+    expect(out).toContain('No Google review found under this name (list updated');
+  });
+  it('shows ⭐ Probably reviewed for a customer in the list', () => {
+    const out = html({ ...base, customer: reviewer });
+    expect(out).toContain('title="Probably reviewed"');
+    expect(out).not.toContain('💬');
+  });
+  it('shows nothing for a single-word or business customer', () => {
+    for (const customer of ['Andrew', 'Wellington Music Ltd']) {
+      const out = html({ ...base, customer });
+      expect(out).not.toContain('💬');
+      expect(out).not.toContain('Probably reviewed');
+    }
+  });
+  it('compact cards show nothing', () => {
+    const out = html({ ...base, customer: 'Zzyzx Qwertyuiop' }, { compact: true });
+    expect(out).not.toContain('💬');
+    expect(out).not.toContain('Probably reviewed');
+  });
+});

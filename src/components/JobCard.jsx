@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { benchColors, blockedPile, blockedReason } from '../data/jobs.js';
 import { displayBenchOf } from '../utils/nextBench.js';
 import { CARD_ACTIONS } from '../data/cardActions.js';
+import { REVIEW_NAMES, REVIEWS_UPDATED } from '../data/reviewNames.js';
+import { hasReviewed } from '../data/reviewMatch.js';
 
 // One-tap action chips (DG, GTS, WP): faded off, bright when that is the job's
 // action. Both handlers stop propagation, exactly like the 🎯 button — onClick
@@ -54,6 +57,10 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
   // Parent cards show the next bench still to do; child parts keep their own.
   const shownBench = displayBenchOf(job, jobs);
   const colors = benchColors(shownBench);
+
+  // Review tag: soft hint only — names never match perfectly and the list goes
+  // stale between Takeouts. Nothing stored; derived from the customer name.
+  const reviewed = useMemo(() => hasReviewed(job.customer, REVIEW_NAMES), [job.customer]);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -189,6 +196,12 @@ export default function JobCard({ job, slotKey: slotKeyProp, inCalendar = false,
           {job.customer && (
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
               {job.customer}
+              {reviewed === 'no' && (
+                <span title={`No Google review found under this name (list updated ${REVIEWS_UPDATED})`} style={{ marginLeft: 4, fontSize: 10, opacity: 0.5 }}>💬</span>
+              )}
+              {reviewed === 'yes' && (
+                <span title="Probably reviewed" style={{ marginLeft: 4, fontSize: 10, opacity: 0.7 }}>⭐</span>
+              )}
             </div>
           )}
           <div style={{ fontSize: 12, color: colors.text, marginTop: job.customer ? 1 : 2, fontWeight: 600 }}>
