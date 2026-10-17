@@ -199,6 +199,9 @@
 
   .abort { background: var(--warn-soft); border:1px solid var(--warn); border-left-width:3px; padding: var(--s3) var(--s4); font-size:.87rem; }
   .abort b { color: var(--warn); }
+  ul.meters { margin:0; padding-left:1.1rem; font-size:.9rem; display:flex; flex-direction:column; gap:.2rem; }
+  details.more summary { cursor:pointer; font-size:.8rem; color: var(--accent); }
+  details.more .why { margin-top:.3rem; }
 
   /* ---------- reference ---------- */
   details.ref { margin-top: var(--s6); border:1px solid var(--line); background: var(--surface); }
@@ -330,6 +333,7 @@
     .verdict { border:1px solid #000 !important; background:#fff !important; color:#000 !important; }
     .abort { border:1px solid #000; border-left-width:3px; padding:2mm 3mm; font-size:9pt; break-inside:avoid; }
     .abort b { color:#000; }
+    details.more summary { display:none; }
 
     details.ref { border:none; margin-top:5mm; break-before:page; page-break-before:always; }
     details.ref::before { content:"Reference data"; display:block; font-weight:700; font-size:12pt; border-bottom:2px solid #000; padding-bottom:1mm; margin-bottom:2mm; }
@@ -398,7 +402,7 @@
         <p class="why"><b>AP1</b> — topside, next to Q4 (+ half).<br>
         <b>AP2</b> — underside, through the access hole (− half).<br>
         Both are 10K trimpots. <b>Don't touch R26 or R100</b> — those are fixed resistors, not the pots.<br><br>
-        <b>The pots are touchy.</b> The first half of the turn does almost nothing, then it comes up fast. You'll likely end up about two thirds of the way round. Turn in tiny bits and let the meter settle each time.</p>
+        <b>Touchy pots:</b> the first half-turn does nothing, then it comes up fast. Tiny turns.</p>
         <textarea data-note id="note0" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -434,13 +438,18 @@
       <input type="checkbox" id="c15"><span class="step-n">03</span>
       <div class="step-body">
         <p class="step-text">Clip meters on <b>before</b> you touch the variac.</p>
-        <p class="why"><b>Meter A — + half (bank 1, hidden side). DC amps, in series with the <code>J37</code> faston</b> (+65&nbsp;V feed to that side). Power off, unplug J37, meter on the <b>10&nbsp;A range</b> between the plug and the tab, both ends solid. <b>Never turn its dial while it's in series</b> — volts or ohms shorts the rail.<br>
-        <b>Meter B — − half (bank 2).</b> DC millivolts across <b>R141</b> (far-left white resistor). One probe each end, never to ground. 20&nbsp;mV = 42&nbsp;mA. Each half has its own bias pot, so each needs its own meter.<br>
-        <b>Meter C — +65&nbsp;V rail at <span class="desig">J38</span> to chassis ground.</b> Not J37 — Meter A is in series there. DC volts. Tells you when the relay is about to click (150–180&nbsp;V mains).<br>
-        <b>Meter D — −65&nbsp;V rail to chassis ground</b> (small Tenma). DC volts. Both rails should rise together — one lagging means a blown fuse or diode.<br>
-        <b>Mains current</b> — read the variac's ammeter or a clamp meter. No DMM needed.<br><br>
-        Use your best DMM on B — it's reading millivolts.<br><br>
-        <b>Never a scope across a source resistor.</b> Its ground clip is earthed. A DMM is fine.</p>
+        <ul class="meters">
+          <li><b>A</b> — in series at <code>J37</code> · DC amps, <b>10&nbsp;A socket</b></li>
+          <li><b>B</b> — across <b>R141</b> · DC millivolts · your best DMM</li>
+          <li><b>C</b> — <span class="desig">J38</span> to chassis · DC volts</li>
+          <li><b>D</b> — −65&nbsp;V rail to chassis · DC volts (small Tenma)</li>
+          <li><b>Mains</b> — variac ammeter or clamp meter</li>
+        </ul>
+        <p class="why"><b>Never turn Meter A's dial while it's in series</b> — volts or ohms shorts the rail.<br>
+        Meter A: power off, unplug J37, meter between plug and tab, both ends solid.<br>
+        Meter B: one probe each end of R141 (far-left white resistor), never to ground.<br>
+        C and D should rise together — one lagging means a blown fuse or diode.<br>
+        <b>Never a scope across a source resistor</b> — its ground clip is earthed.</p>
         <textarea data-note id="note1" placeholder="Notes / readings…"></textarea>
       </div>
     </div>
@@ -449,7 +458,15 @@
       <input type="checkbox" id="c16"><span class="step-n">04</span>
       <div class="step-body">
         <p class="step-text">Bring the variac up in steps. <b>Wait 30&nbsp;s at each</b> and write down the readings.</p>
-        <p class="why"><b>At 120&nbsp;V, stop.</b> Write down Meter A — that's the <b>starting current</b> for step 6. Meter B should read near zero. <b>Meter B at 30&nbsp;mV or more — variac down</b>, the pots may be at the wrong end. If it's fine, give one pot a quarter turn to feel how much it moves, then put it back.</p>
+        <div class="abort">
+          <b>At 120&nbsp;V — stop and check.</b>
+          <ul style="margin:.4rem 0 0; padding-left:1.1rem;">
+            <li>Write Meter A in the 120&nbsp;V row — that's your <b>starting current</b>. Expect under ~0.1&nbsp;A.</li>
+            <li><b>Meter A 0.3&nbsp;A or more — variac down.</b></li>
+            <li><b>Meter B 30&nbsp;mV or more — variac down.</b> Pots may be at the wrong end.</li>
+            <li>Nudge each pot clockwise a touch — its meter should rise. Put it back.</li>
+          </ul>
+        </div>
         <div class="tablewrap">
           <table>
             <caption>Ramp log</caption>
@@ -521,14 +538,14 @@
       <input type="checkbox" id="c19"><span class="step-n">06</span>
       <div class="step-body">
         <p class="step-text">+ half (hidden side): turn <b>AP1</b> slowly clockwise, watching <b>Meter A</b>, until it reads <b>0.21&nbsp;A more than your starting current</b> from the 120&nbsp;V stop.</p>
-        <p class="why">0.21&nbsp;A = the five top FETs × 42&nbsp;mA (20&nbsp;mV across each 0.47&nbsp;Ω). J37 only feeds the top five — the bottom five carry the same current in series. You can't reach the resistors on this side, so this total is the check — it can't spot one odd FET, but it shows runaway well.</p>
+        <details class="more"><summary>Why 0.21&nbsp;A</summary><p class="why">Five top FETs × 42&nbsp;mA (20&nbsp;mV across each 0.47&nbsp;Ω). J37 only feeds the top five — the bottom five carry the same current in series. It can't spot one odd FET, but it shows runaway well.</p></details>
         <div class="tablewrap">
           <table>
             <caption>Bank 1 — + half · AP1 · Meter A in series with J37</caption>
-            <thead><tr><th>Start (120&nbsp;V, pot at min)</th><th>Target (start + 0.21&nbsp;A)</th><th>Final</th></tr></thead>
+            <thead><tr><th>Start — copied from the 120&nbsp;V row</th><th>Target — fills in</th><th>Final</th></tr></thead>
             <tbody><tr>
               <td><input type="text" id="b1start" size="6"></td>
-              <td><input type="text" id="b1target" size="6"></td>
+              <td><input type="text" id="b1target" size="6" readonly title="Fills in from the start"></td>
               <td><input type="text" id="b1final" size="6"></td>
             </tr></tbody>
           </table>
@@ -794,7 +811,16 @@
     vEl.textContent = ok ? "in spec" : (a < 15 ? "under" : "over");
   }
 
-  function refresh() {
+  // Step 6: start comes from the 120 V row, target = start + 0.21 A.
+  function syncBank1(e) {
+    var r5 = document.getElementById("r5i"), st = document.getElementById("b1start"), tg = document.getElementById("b1target");
+    if (e && e.target === r5) st.value = r5.value;
+    var v = parseFloat(st.value);
+    tg.value = isNaN(v) ? "" : (v + 0.21).toFixed(3);
+  }
+
+  function refresh(e) {
+    syncBank1(e);
     updateProgress();
     updateBias("b1", "b1avg", "b1v");
     updateBias("b2", "b2avg", "b2v");
@@ -835,7 +861,7 @@
   var timer = null;
   document.addEventListener("input", function (e) {
     if (e.target.tagName === "TEXTAREA") grow(e.target);
-    refresh();
+    refresh(e);
     clearTimeout(timer);
     timer = setTimeout(save, 400);
   });
