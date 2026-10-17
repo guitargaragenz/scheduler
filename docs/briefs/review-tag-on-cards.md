@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: parked
 ---
 # Review tag on job cards — background and verifier checklist
 

@@ -1,5 +1,5 @@
 ---
-doc_status: live
+doc_status: parked
 ---
 # Brief — review tag on job cards
 
