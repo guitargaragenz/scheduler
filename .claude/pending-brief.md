@@ -1,39 +1,42 @@
 ---
-doc_status: parked
+doc_status: live
 ---
-# Brief — review tag on job cards
+# Brief — review prompt in the Pomodoro invoice box
 
-Previous occupant (Finishing bench record, closed) is in git at 408533b.
+Replaces the parked card-tag brief (bfc2792; background in docs/briefs/review-tag-on-cards.md,
+code on branch `staging/review-tag` at 1c0267b, PR 110 closed unmerged).
 
-Trevor, 2026-10-17: "the scheduler is an idea I hadn't thought of and definitely keeping it up to
-date is important too". After council he chose: tag on every card, names are "John Smith" order,
-reviewer names in the app are fine (already public).
+Trevor, 2026-10-17: "now I want a prompt from invoice page instead of across all cards" ...
+"I meant last stage of closing job. Which appears to be pomodoro page".
 
 ## Build
 
-1. `scripts/build-review-lookup.py` also writes `src/data/reviewNames.js`: frozen array of
-   reviewer display names only (no text, no replies), plus `REVIEWS_UPDATED` (newest review date).
-2. New pure module `src/data/reviewMatch.js`, `hasReviewed(customer, names)` → `'yes'|'no'|'unknown'`:
-   - Fold case and accents, strip punctuation and anything in brackets, on BOTH sides.
-   - Match = both names have 2+ words AND the same words (order ignored). "John Smith Jr" ≠ "John Smith".
-   - `'unknown'` for blank customer, single-word customer, or business names (Ltd, Limited, Music,
-     Studio(s), Church, School, Band, Trust, Co).
-3. `src/components/JobCard.jsx`, on the customer line (~line 189, non-compact only): when
-   `'no'`, append a small dim `💬` with tooltip "No Google review found under this name
-   (list updated <REVIEWS_UPDATED>)". `'yes'` → small `⭐` with tooltip "Probably reviewed".
-   `'unknown'` → nothing. Compute once per card (useMemo), no props added.
+1. Bring over unchanged from `staging/review-tag` (already council-reviewed and verified):
+   `scripts/build-review-lookup.py`, `src/data/reviewNames.js`, `src/data/reviewMatch.js`,
+   `src/data/reviewMatch.test.js`.
+2. `src/components/PomoDrawer.jsx`, inside the "Job done? Invoice amount (ex-GST)" block
+   (~line 346, top-level jobs only), one line under the $ input + Done button:
+   - `hasReviewed(job.customer, REVIEW_NAMES)` is `'no'` →
+     `💬 No Google review found for <customer> — ask them?` (amber, readable, not tiny).
+   - `'yes'` → `⭐ <customer> has probably left a review` (dim green).
+   - `'unknown'` → nothing.
+   - useMemo on `job.customer`. No new props. Matches the drawer's inline styling.
 
 ## Not in scope
 
-- `useJobs.js` / `handleMarkDone`, toasts, `jobs[]` shape, Supabase, `scheduledSlots`,
-  `calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js`, `utils/supabase.js`. Nothing stored.
-- MobileJobSheet, drawer, compact cards. Live Google feed (waits on API approval).
+- Job cards (no tag), CloseDayModal, CatchUpInterview, RevenueReviewBanner.
+- `handleMarkDone`, toasts, `jobs[]`, Supabase, `scheduledSlots`, `calendarSlot`,
+  `useGoogleCalendar.js`, `useSupabase.js`, `utils/supabase.js`. Nothing stored.
 
 ## Rules
 
-- Never commit the Takeout or any review text into `src/`.
-- Wording is soft (names don't match perfectly; list goes stale between Takeouts).
+- Never commit the Takeout or review text into `src/`. Names only.
+- Soft wording (names don't always match; list is stale until the next Takeout).
 
-## Background (council rulings, verifier checklist)
+## Verifier checklist
 
-[docs/briefs/review-tag-on-cards.md](../docs/briefs/review-tag-on-cards.md) — background only; don't open it to start work. The verifier uses its checklist.
+1. The four brought-over files match `staging/review-tag` byte for byte.
+2. PomoDrawer test: 'no' customer shows the 💬 line with the name; 'yes' shows ⭐; blank or
+   business name shows nothing; split piece (has parentId) shows no invoice box at all.
+3. Diff touches only those four files, PomoDrawer.jsx and its test.
+4. Full test suite passes.
