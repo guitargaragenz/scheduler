@@ -42,6 +42,7 @@
 
 <input type="text" id="search" placeholder="Type a name..." autofocus autocomplete="off">
 <label><input type="checkbox" id="words" style="width:auto"> Also search the review words (e.g. "Les Paul")</label>
+<label><input type="checkbox" id="noreply" style="width:auto"> Only show reviews I haven't replied to</label>
 
 <div id="status"></div>
 <div id="results"></div>
@@ -65,7 +66,8 @@ function render() {
   const inText = document.getElementById("words").checked;
   const words = norm(raw).split(/\s+/).filter(Boolean);
   const status = document.getElementById("status");
-  let list = reviews;
+  const noReply = document.getElementById("noreply").checked;
+  let list = noReply ? reviews.filter(r => !r.r) : reviews;
   if (words.length) {
     list = reviews.filter(r => {
       const nameWords = norm(r.n).split(/[\s\-_&()]+/);
@@ -75,22 +77,23 @@ function render() {
     status.innerHTML = list.length
       ? `<span class="yes">✔ ${list.length} match${list.length > 1 ? "es" : ""}</span>`
       : `<span class="no">✘ No review found for "${esc(raw)}". Worth asking them!</span>`;
-  } else status.textContent = "";
+  } else status.innerHTML = noReply ? `<span class="no">${list.length} reviews still need a reply</span>` : "";
 
-  const shown = words.length ? list : list.slice(0, 10);
+  const shown = words.length || noReply ? list : list.slice(0, 10);
   document.getElementById("results").innerHTML = shown.map(r => `
     <div class="result">
       <div class="top"><span class="name">${hl(r.n, raw.split(/\s+/))}</span><span class="date">${fmt(r.d)}</span></div>
       <div class="stars">${"★".repeat(r.s)}</div>
       ${r.t ? `<div class="text">${inText ? hl(r.t, raw.split(/\s+/)) : esc(r.t)}</div>` : ""}
       ${r.r ? `<div class="reply"><b>Your reply:</b> ${esc(r.r)}</div>` : ""}
-      <div class="actions"><a href="${MAPS}" target="_blank" onclick="event.stopPropagation()">Open Google reviews ↗</a></div>
+      <div class="actions">${r.r ? "" : '<span class="no">Not replied yet · </span>'}<a href="${MAPS}" target="_blank" onclick="event.stopPropagation()">Open Google reviews ↗</a></div>
     </div>`).join("");
   document.querySelectorAll(".result").forEach(el => el.onclick = () => el.classList.toggle("open"));
 }
 
 document.getElementById("search").addEventListener("input", render);
 document.getElementById("words").addEventListener("change", render);
+document.getElementById("noreply").addEventListener("change", render);
 const five = reviews.filter(r => r.s === 5).length;
 document.getElementById("count").textContent =
   `${reviews.length} reviews (${five} five-star) · newest ${fmt(reviews[0]?.d)} · empty search shows the 10 newest`;
