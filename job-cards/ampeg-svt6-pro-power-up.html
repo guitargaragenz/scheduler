@@ -471,42 +471,57 @@
           <table>
             <caption>Ramp log</caption>
             <thead>
-              <tr><th class="mono">Mains</th><th>Expected</th><th class="mono">Current</th><th class="mono">Rail&nbsp;V</th><th>Notes</th></tr>
+              <tr><th class="mono">Mains</th><th>Expected</th><th class="mono">Mains&nbsp;A</th><th class="mono">A&nbsp;(amps)</th><th class="mono">B&nbsp;(mV)</th><th class="mono">C&nbsp;+65</th><th class="mono">D&nbsp;−65</th><th>Notes</th></tr>
             </thead>
             <tbody>
               <tr>
                 <td class="mono">30–50 V</td>
                 <td>Tens of mA. <b>Over ~200&nbsp;mA — stop.</b> That's a short.</td>
-                <td><input type="text" id="r1i" size="6"></td>
-                <td><input type="text" id="r1v" size="6"></td>
+                <td><input type="text" id="r1m" size="5"></td>
+                <td><input type="text" id="r1i" size="5"></td>
+                <td><input type="text" id="r1b" size="5"></td>
+                <td><input type="text" id="r1v" size="5"></td>
+                <td><input type="text" id="r1d" size="5"></td>
                 <td><input type="text" id="r1n"></td>
               </tr>
               <tr>
                 <td class="mono">50–100 V</td>
                 <td>Slow, gentle rise.</td>
-                <td><input type="text" id="r2i" size="6"></td>
-                <td><input type="text" id="r2v" size="6"></td>
+                <td><input type="text" id="r2m" size="5"></td>
+                <td><input type="text" id="r2i" size="5"></td>
+                <td><input type="text" id="r2b" size="5"></td>
+                <td><input type="text" id="r2v" size="5"></td>
+                <td><input type="text" id="r2d" size="5"></td>
                 <td><input type="text" id="r2n"></td>
               </tr>
               <tr>
                 <td class="mono">120 V</td>
                 <td><b>Stop. Bias check</b> (above).</td>
-                <td><input type="text" id="r5i" size="6"></td>
-                <td><input type="text" id="r5v" size="6"></td>
+                <td><input type="text" id="r5m" size="5"></td>
+                <td><input type="text" id="r5i" size="5"></td>
+                <td><input type="text" id="r5b" size="5"></td>
+                <td><input type="text" id="r5v" size="5"></td>
+                <td><input type="text" id="r5d" size="5"></td>
                 <td><input type="text" id="r5n"></td>
               </tr>
               <tr>
                 <td class="mono">150–180 V</td>
                 <td><b>Relays click in</b> (allow 1–3 s).</td>
-                <td><input type="text" id="r3i" size="6"></td>
-                <td><input type="text" id="r3v" size="6"></td>
+                <td><input type="text" id="r3m" size="5"></td>
+                <td><input type="text" id="r3i" size="5"></td>
+                <td><input type="text" id="r3b" size="5"></td>
+                <td><input type="text" id="r3v" size="5"></td>
+                <td><input type="text" id="r3d" size="5"></td>
                 <td><input type="text" id="r3n"></td>
               </tr>
               <tr>
                 <td class="mono">230 V</td>
                 <td>Roughly 0.5–1&nbsp;A once biased.</td>
-                <td><input type="text" id="r4i" size="6"></td>
-                <td><input type="text" id="r4v" size="6"></td>
+                <td><input type="text" id="r4m" size="5"></td>
+                <td><input type="text" id="r4i" size="5"></td>
+                <td><input type="text" id="r4b" size="5"></td>
+                <td><input type="text" id="r4v" size="5"></td>
+                <td><input type="text" id="r4d" size="5"></td>
                 <td><input type="text" id="r4n"></td>
               </tr>
             </tbody>
