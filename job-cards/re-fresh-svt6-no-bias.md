@@ -14,6 +14,7 @@ Start a fresh session, read this, then carry on. Trevor is at the bench, custome
 - **Turning AP1 or AP2 fully clockwise does nothing**: Meter A and Meter B don't move. Both pots are single-turn.
 - Pots were left at max: **Trevor told to put both back fully anticlockwise before any power-up.**
 - The pots sweep in-circuit (wiper reads 7.5 → 6 kΩ), so they work.
+- **Not yet proved that anticlockwise = minimum on this amp** (card says so). Once bias responds, confirm a small clockwise turn raises Meter A before setting it.
 - +100 V supply OK: D32 cathode 90 V (D32 is in the +100 V supply, schematic sheet 2).
 - Both halves dead the same way → look for something shared.
 
