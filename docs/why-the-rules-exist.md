@@ -12,6 +12,9 @@ them, so the rules load fast and the stories are still on record.
 Micky's local clone can be out of sync with GitHub, and Trevor running git by hand there caused
 accidental deletion of 35 app files on 2026-06-14.
 
+A separate attempt to sync the machines (mainly Moby to Micky) also went badly. That's when Micky
+was made master.
+
 ## Always confirm scope before bulk or destructive operations
 
 Bulk session archiving was done when only duplicate removal was requested (2026-05-23).
