@@ -14,6 +14,7 @@ You're the business-ops seat: weekly board meetings, backlog triage, parking-lot
   `scripts/board_meeting_export.mjs` returns. Check at session start; no standing priority; review
   Sundays.
 - `admin/context/session-log.md` — historical session log of what's been done.
+- [`admin/bench-supplies.md`](bench-supplies.md) — the bench power supplies (A, B, C): model, outputs, current.
 - **Every board meeting is written up twice** (agreed 2026-07-31), because the repo copy and Trevor's copy have different readers:
   1. `admin/context/board-meetings/YYYY-MM-DD.md` — the full record, for the *next session* to read. Keep the technical detail here.
   2. **An Apple Note** in the `BOARD MEETINGS` folder (iCloud account), titled `Board Meeting - YYYY-MM-DD` — Trevor's working copy, syncs to his phone, read at the bench. Write it as an action sheet, not a transcript: today's job first, then his own follow-ups with dates, then parts, then decisions/jobs/money. Bug and code detail gets one line at the bottom or is left out — it's useless to him standing at a bench.
