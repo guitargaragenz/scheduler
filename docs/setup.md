@@ -9,6 +9,8 @@
   Setup is clone → `npm install` → symlink `~/.claude/CLAUDE.md` to `personal-instructions.md` →
   AirDrop `.env` from Micky. **AirDrop only — never paste keys into a chat, the transcript keeps
   them.**
+- **Slim** — Mac mini, workshop. Not set up yet as of 2026-10-20. Steps: `docs/slim-setup.md`.
+  A Slim session shows as "remote" in Micky's Claude app; that's just "different computer", not a fault.
 
 CLAUDE.md loads automatically everywhere. Sessions don't sync across devices; context lives in
 CLAUDE.md, not in session history.
