@@ -724,7 +724,8 @@ export const LONG_PRESS_MS = 500;
 // How far a finger can drift before the press counts as a scroll, not a hold.
 const LONG_PRESS_SLOP = 10;
 
-// The end box. A tap toggles × exactly as before. A long press opens a small
+// The end box. Trevor, 2026-10-20: a tap defaults to > (send on), a tap on >
+// clears it, a tap on × undoes the close. A long press opens a small
 // menu — Send to next week, Close, Clear — and the click the browser fires when
 // the finger lifts is swallowed, so a long press can never also close the job.
 function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, onCloseJob, onClear }) {
@@ -773,7 +774,9 @@ function EndBox({ row, t, ready, width, open, onOpen, onDismiss, onTap, onSend, 
           ? `${row.name} has been collected — locked`
           : t.closed
           ? `${row.name} is closed — tap to undo`
-          : `Close ${row.name} off${row.job ? ' and enter the invoice' : ''} — hold for more`}
+          : t.sent
+          ? `${row.name} is sent on — tap to undo`
+          : `Send ${row.name} to next week — hold to close`}
         style={{
           width, height: 30, cursor: live ? 'pointer' : 'default',
           border: '1px solid #1e293b', borderRadius: 4, margin: '1px 0',
@@ -1418,7 +1421,7 @@ export default function BenchWeekPage({ jobs, departedJobs, weekDays, marks, rea
                     open={menuFor === row.id}
                     onOpen={() => setMenuFor(row.id)}
                     onDismiss={() => setMenuFor(null)}
-                    onTap={() => handleClose(row)}
+                    onTap={() => (t.closed ? handleClose(row) : t.sent ? handleClear(row) : handleSend(row))}
                     onSend={() => { setMenuFor(null); handleSend(row); }}
                     onCloseJob={() => { setMenuFor(null); if (!t.closed) handleClose(row); }}
                     onClear={() => { setMenuFor(null); handleClear(row); }}
