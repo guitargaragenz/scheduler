@@ -1,9 +1,9 @@
 ---
-doc_status: live
+doc_status: closed
 ---
-# Brief — invoice entry incl-GST, revenue stays ex-GST
+# Record (shipped) — invoice entry incl-GST, revenue stays ex-GST
 
-Previous occupant (review-prompt record) is in git at `fa5cd79`.
+Shipped at `25eeba6` (PR #113). Tests 992/993; the one failure (`BenchWeekPage.sendNext` "a plain tap still closes") fails on main too. Builder's own call: toast reads "$X ex-GST invoiced". Checklist all met.
 
 ## Problem, in Trevor's words
 
