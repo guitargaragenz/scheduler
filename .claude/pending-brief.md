@@ -14,13 +14,14 @@ Option 1 agreed: convert on entry, store ex-GST. Weekly target is ex-GST, unchan
 
 - **One conversion point**: `handleMarkDone` in `src/hooks/useJobs.js` (~line 425).
   Every entry path (PomoDrawer, CloseDayModal, CatchUpInterview, RevenueReviewBanner) goes
-  through it. Store `invoiceAmount = round2(Number(amount) / 1.15)`, rounded to cents.
-- Success toast (~line 468) shows the stored ex-GST figure, not the typed one. Fix the comment above it.
+  through it. Store `invoiceAmount = exGstFromIncl(Number(amount) || 0)`. Compute once, reuse for the toast.
+- **New** pure helper `exGstFromIncl` + `GST_RATE = 0.15` in `src/utils/money.js`:
+  `Math.round(x / (1 + GST_RATE) * 100) / 100`. Tested directly (handleMarkDone has no harness).
+- Success toast (~line 468) shows the stored figure as "$X ex-GST". Fix the comment at :467.
 - Relabel every amount input from "ex-GST" to "incl-GST":
   `PomoDrawer.jsx:353`, `RevenueReviewBanner.jsx:41`, `CloseDayModal.jsx:207,419`,
   `CatchUpInterview.jsx:202,238`.
 - Week revenue header, RevenueBreakdown, "Already invoiced $X" stay as-is (ex-GST, from the stored value).
-- GST rate 15% as one named constant, not magic numbers scattered.
 
 ## Not in scope
 
@@ -31,15 +32,21 @@ Option 1 agreed: convert on entry, store ex-GST. Weekly target is ex-GST, unchan
 
 ## Binding rules
 
-- Conversion happens exactly once, in `handleMarkDone`. No component divides by 1.15.
+- Conversion happens exactly once, in `handleMarkDone`, via the helper. No component converts.
 - Duplicate-refusal path unchanged (it shows the stored figure already).
 
 ## Verifier checklist
 
 1. `handleMarkDone` stores `Number(amount)/1.15` rounded to 2dp; `0`/blank still stores 0.
-2. No other file divides by 1.15 or the GST constant.
+2. Only `handleMarkDone` calls `exGstFromIncl`; no `1.15` literal anywhere in src.
 3. All six input labels read incl-GST; no "ex-GST" text left on an entry input.
-4. Success toast shows the ex-GST stored amount.
+4. Success toast shows the stored amount with "ex-GST".
 5. Week revenue total sums stored values unchanged (`App.jsx:650`).
 6. Nothing in the not-in-scope list changed (`git diff --stat`).
-7. Tests: one for conversion + rounding (e.g. 115 → 100, 100 → 86.96); full suite passes.
+7. Tests on `exGstFromIncl`: 115 → 100, 100 → 86.96, 0 → 0; full suite passes.
+
+## Council changes (2 reviewers, both "not yet" → settled)
+
+- Rounding helper didn't exist; now a named new function in money.js so it's testable.
+- Trevor: no GST-exempt jobs. Multitrack is master for revenue; this is a weekly target only,
+  so losing the typed incl figure and cent drift are fine. No extra ex-GST wording beyond the toast.
