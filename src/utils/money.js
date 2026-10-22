@@ -5,3 +5,13 @@ export function formatMoney(n) {
   const v = Number(n || 0);
   return Number.isInteger(v) ? v.toString() : v.toFixed(2);
 }
+
+// NZ GST. Invoices are typed GST-inclusive (what's on the Multitrack invoice);
+// revenue is stored and shown ex-GST, because the weekly target is ex-GST.
+export const GST_RATE = 0.15;
+
+// Incl-GST -> ex-GST, rounded to the cent. Called in exactly one place:
+// handleMarkDone in src/hooks/useJobs.js. No component converts.
+export function exGstFromIncl(x) {
+  return Math.round(x / (1 + GST_RATE) * 100) / 100;
+}

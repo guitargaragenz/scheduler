@@ -199,7 +199,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
                 <input
                   type="number"
                   autoFocus
-                  placeholder="Invoice amount, ex-GST ($)"
+                  placeholder="Invoice amount, incl-GST ($)"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   style={{
@@ -235,7 +235,7 @@ export default function CatchUpInterview({ days = [], logs = {}, jobs = [], comp
                   <input
                     type="number"
                     autoFocus
-                    placeholder="Invoice amount, ex-GST ($)"
+                    placeholder="Invoice amount, incl-GST ($)"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     style={{
