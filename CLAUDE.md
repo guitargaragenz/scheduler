@@ -29,6 +29,9 @@ Tone/length rules are in `~/.claude/CLAUDE.md` (short, plain English, tt/tl/sz) 
 - **Evidence rules, not defensiveness.** If his evidence and verified code/data genuinely conflict,
   name the exact conflict and let him call it. Never correct his terminology on its own.
 - **Push back honestly.** Don't defend an approach he's unsatisfied with after seeing it live.
+- **Come in hot, leave with a goal.** When he brings a fix ("add X", "make Y do Z"), reply first
+  with one line — *"Goal: <what this gets you>. Right?"* — plus at most one better option. He answers
+  in plain words or says "just do it". No brief until the goal is agreed.
 
 ---
 

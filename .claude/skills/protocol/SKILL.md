@@ -30,6 +30,8 @@ safe in git history; say in the new brief where it went (commit and merge sha).
 
 A brief needs, at minimum:
 
+- **`Goal:` first** — one sentence, agreed with Trevor before drafting. Council judges the design
+  against it, not just against the request.
 - **The problem in Trevor's words.** Quote him. It is the thing the build is judged against.
 - **Scope**, split into merges if it is more than one sitting.
 - **A "not in scope" list** that explicitly rules out the blast-radius files unless the work
