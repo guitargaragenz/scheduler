@@ -33,7 +33,6 @@ Option 1 agreed: convert on entry, store ex-GST. Weekly target is ex-GST, unchan
 ## Binding rules
 
 - Conversion happens exactly once, in `handleMarkDone`, via the helper. No component converts.
-- Duplicate-refusal path unchanged (it shows the stored figure already).
 
 ## Verifier checklist
 
@@ -48,5 +47,4 @@ Option 1 agreed: convert on entry, store ex-GST. Weekly target is ex-GST, unchan
 ## Council changes (2 reviewers, both "not yet" → settled)
 
 - Rounding helper didn't exist; now a named new function in money.js so it's testable.
-- Trevor: no GST-exempt jobs. Multitrack is master for revenue; this is a weekly target only,
-  so losing the typed incl figure and cent drift are fine. No extra ex-GST wording beyond the toast.
+- Trevor: no exempt jobs; Multitrack is master, this is target-only — typed figure loss and cent drift fine.
