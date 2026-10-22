@@ -204,7 +204,7 @@ function ActionRow({ selected, reason, onSelect, onReasonChange, invoiceJob, amo
           autoFocus
           value={amount || ''}
           onChange={e => onAmountChange(e.target.value)}
-          placeholder="Invoice amount, ex-GST ($)"
+          placeholder="Invoice amount, incl-GST ($)"
           style={{
             marginTop: 8, width: '100%', boxSizing: 'border-box',
             background: '#1e293b', border: '1px solid #334155', borderRadius: 6,
@@ -416,7 +416,7 @@ export default function CloseDayModal({ bullets = [], jobs = [], completedJobs =
                     type="number"
                     value={manualAmounts[bullet.id] || ''}
                     onChange={e => setManualAmount(bullet.id, e.target.value)}
-                    placeholder="Invoice amount, ex-GST ($) — optional"
+                    placeholder="Invoice amount, incl-GST ($) — optional"
                     style={{
                       marginBottom: 8, width: '100%', boxSizing: 'border-box',
                       background: '#1e293b', border: '1px solid #334155', borderRadius: 6,

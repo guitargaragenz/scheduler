@@ -9,7 +9,7 @@ import { isSupabaseConfigured, appendCompletedJob, loadCompletedJobs, subscribeT
 import { jobAgeDays } from '../utils/jobAge.js';
 import { getWeekDays, localDateKey, recentWeekKeys } from '../utils/calendar.js';
 import { deleteEvent } from '../utils/googleCalendar.js';
-import { formatMoney } from '../utils/money.js';
+import { formatMoney, exGstFromIncl } from '../utils/money.js';
 
 // Split children carry their own GCal event(s) once synced. Deleting a child
 // locally (un-split, or re-split dropping it) must also delete its calendar
@@ -417,12 +417,17 @@ export function useJobs({
     // UTC midnight, which in NZ (UTC+12/+13) is midday the same day — harmless
     // here, but the reverse rounding bites on other offsets. Build the local
     // date from its parts instead, at midday, so no DST shift can move the day.
+    // Trevor types the invoice GST-inclusive; revenue is stored ex-GST so it
+    // lines up with the ex-GST weekly target. This is the ONE conversion
+    // point — every entry path lands here, and no component converts.
+    const invoiceAmount = exGstFromIncl(Number(amount) || 0);
+
     const finishedDate = parseLocalDateKey(finishedOn);
     const weekKey = localDateKey(getWeekDays(finishedDate || undefined)[0]);
     const record = {
       id: String(invoiceJob.id), job: invoiceJob.job, mfr: invoiceJob.mfr, model: invoiceJob.model,
       bench: invoiceJob.bench, hours: invoiceJob.hours, customer: invoiceJob.customer || '',
-      invoiceAmount: Number(amount) || 0,
+      invoiceAmount,
       completedAt: (finishedDate || new Date()).toISOString(),
       weekKey,
     };
@@ -464,8 +469,9 @@ export function useJobs({
         .then(res => { if (!res?.ok) showToast('⚠ Mark-done did not save — reload and re-check this job'); });
     }
     setPomoJob(null);
-    // Exact amount entered, not rounded — matches the stored invoiceAmount above.
-    showToast(`✓ ${invoiceJob.mfr} ${invoiceJob.model} — $${formatMoney(amount)} invoiced`);
+    // The stored ex-GST figure, not the incl-GST amount typed — so the toast
+    // matches what the week revenue header will add up.
+    showToast(`✓ ${invoiceJob.mfr} ${invoiceJob.model} — $${formatMoney(invoiceAmount)} ex-GST invoiced`);
   }
 
   // --- Multitrack PDF import (Brief G, Build 1a) ---
