@@ -1,49 +1,45 @@
 ---
-doc_status: closed
+doc_status: live
 ---
-# Record (shipped) — review prompt in the Pomodoro invoice box
+# Brief — invoice entry incl-GST, revenue stays ex-GST
 
-Shipped at b343d9e (PR 111, build 0e9afe0). 53 files / 989 tests green. Verifier 4/4 pass;
-Trevor clicked through the preview. Builder's own calls: amber #fbbf24, dim green #4ade8099;
-the ⭐ test picks a real name from the list so it survives a Takeout refresh. All items met.
+Previous occupant (review-prompt record) is in git at `fa5cd79`.
 
-Replaces the parked card-tag brief (bfc2792; background in docs/briefs/review-tag-on-cards.md,
-code on branch `staging/review-tag` at 1c0267b, PR 110 closed unmerged).
+## Problem, in Trevor's words
 
-Trevor, 2026-10-17: "now I want a prompt from invoice page instead of across all cards" ...
-"I meant last stage of closing job. Which appears to be pomodoro page".
+"Change scheduler revenue entry to GST included and have revenue show GST excluded."
+Option 1 agreed: convert on entry, store ex-GST. Weekly target is ex-GST, unchanged.
 
-## Build
+## Scope (one merge)
 
-1. Branch `staging/review-prompt` from **main**. Copy (don't merge) from `staging/review-tag` with
-   `git checkout staging/review-tag -- <path>` (verified in the card-tag round):
-   `scripts/build-review-lookup.py`, `src/data/reviewNames.js`, `src/data/reviewMatch.js`,
-   `src/data/reviewMatch.test.js`.
-2. `src/components/PomoDrawer.jsx`, inside the "Job done? Invoice amount (ex-GST)" block
-   (~line 346, top-level jobs only), one line under the $ input + Done button:
-   - `hasReviewed(job.customer, REVIEW_NAMES)` is `'no'` →
-     `💬 No Google review found for <customer> — ask them?` (amber, ~13px, wraps,
-     tooltip "Review list updated <REVIEWS_UPDATED>").
-   - `'yes'` → `⭐ <customer> has probably left a review` (dim green).
-   - `'unknown'` → nothing.
-   - useMemo on `job.customer`. No new props. Matches the drawer's inline styling.
+- **One conversion point**: `handleMarkDone` in `src/hooks/useJobs.js` (~line 425).
+  Every entry path (PomoDrawer, CloseDayModal, CatchUpInterview, RevenueReviewBanner) goes
+  through it. Store `invoiceAmount = round2(Number(amount) / 1.15)`, rounded to cents.
+- Success toast (~line 468) shows the stored ex-GST figure, not the typed one. Fix the comment above it.
+- Relabel every amount input from "ex-GST" to "incl-GST":
+  `PomoDrawer.jsx:353`, `RevenueReviewBanner.jsx:41`, `CloseDayModal.jsx:207,419`,
+  `CatchUpInterview.jsx:202,238`.
+- Week revenue header, RevenueBreakdown, "Already invoiced $X" stay as-is (ex-GST, from the stored value).
+- GST rate 15% as one named constant, not magic numbers scattered.
 
 ## Not in scope
 
-- Job cards (no tag), CloseDayModal, CatchUpInterview, RevenueReviewBanner.
-- `handleMarkDone`, toasts, `jobs[]`, Supabase, `scheduledSlots`, `calendarSlot`,
-  `useGoogleCalendar.js`, `useSupabase.js`, `utils/supabase.js`. Nothing stored.
+- `src/utils/supabase.js`, `appendCompletedJob`, the `completed_jobs` table: no changes.
+- Existing stored records: no migration (already ex-GST).
+- Weekly target: no change.
+- `scheduledSlots`, `calendarSlot`, `useGoogleCalendar.js`, `useSupabase.js`, `jobs[]` shape.
 
-## Rules
+## Binding rules
 
-- Never commit the Takeout or review text into `src/`. Names only.
-- Trevor confirmed (council question) he closes jobs in the Pomodoro drawer, so no other paths.
-- Soft wording (names don't always match; list is stale until the next Takeout).
+- Conversion happens exactly once, in `handleMarkDone`. No component divides by 1.15.
+- Duplicate-refusal path unchanged (it shows the stored figure already).
 
 ## Verifier checklist
 
-1. The four brought-over files match `staging/review-tag` byte for byte.
-2. New `src/components/PomoDrawer.test.jsx` (none exists), idle phase: 'no' customer shows the 💬 line with the name; 'yes' shows ⭐; blank, single-word ("Dave")
-   or business name shows nothing; split piece (has parentId) shows no invoice box at all.
-3. Diff touches only those four files, PomoDrawer.jsx and its test.
-4. Full test suite passes.
+1. `handleMarkDone` stores `Number(amount)/1.15` rounded to 2dp; `0`/blank still stores 0.
+2. No other file divides by 1.15 or the GST constant.
+3. All six input labels read incl-GST; no "ex-GST" text left on an entry input.
+4. Success toast shows the ex-GST stored amount.
+5. Week revenue total sums stored values unchanged (`App.jsx:650`).
+6. Nothing in the not-in-scope list changed (`git diff --stat`).
+7. Tests: one for conversion + rounding (e.g. 115 → 100, 100 → 86.96); full suite passes.
